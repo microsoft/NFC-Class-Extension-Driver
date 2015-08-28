@@ -1,11 +1,8 @@
 /*
- *          Modifications Copyright © Microsoft. All rights reserved.
- *
- *              Original code Copyright (c), NXP Semiconductors
- *
- *
- *
- */
+*          Modifications Copyright (c) Microsoft. All rights reserved.
+*
+*              Original code Copyright (c), NXP Semiconductors
+*/
 
 #include "phNciNfc_CorePch.h"
 
@@ -248,10 +245,13 @@ static uint8_t phNciNfc_CoreRecvChkPktType(void *pContext)
     uint8_t Status = 0;
     uint8_t bMsgType = 0;
     pphNciNfc_CoreContext_t pCtx = pContext;
-    pphNciNfc_sCoreRecvBuff_List_t pNode = NULL;
+    pphNciNfc_RecvStateContext_t pStateCtx = NULL;
+
     PH_LOG_NCI_FUNC_ENTRY();
+
     if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
     {
+        pStateCtx = &(pCtx->RecvStateContext);
         /* Validate the buffer sent from Tml and length of received data should be 0 */
         if((NULL != pCtx->pInfo.pBuff) && (0 != pCtx->pInfo.wLength)
              && (NFCSTATUS_SUCCESS == pCtx->pInfo.wStatus))
@@ -261,21 +261,32 @@ static uint8_t phNciNfc_CoreRecvChkPktType(void *pContext)
             {
                 case phNciNfc_e_NciCoreMsgTypeCntrlCmd:
                 {
-                    PH_LOG_NCI_WARN_STR("NFCC Sends Command Packet Type, droping...");
+                    PH_LOG_NCI_WARN_STR("NFCC Sends Command Packet Type, dropping...");
                     Status = 1;
                 }
                 break;
+                case phNciNfc_e_NciCoreMsgTypeCntrlNtf:
+                {
+                    if ((phNciNfc_STATE_RECV_MAX > pStateCtx->CurrState) && (PHNCINFC_CORE_PKT_HEADER_LEN + 1 < pCtx->pInfo.wLength) &&
+                        (phNciNfc_e_CoreNciCoreGid == PHNCINFC_CORE_GET_GID(pCtx->pInfo.pBuff)) && 
+                        (phNciNfc_e_NciCoreInterfaceErrNtfOid == PHNCINFC_CORE_GET_OID(pCtx->pInfo.pBuff)) &&
+                        (PH_NCINFC_STATUS_RF_TRANSMISSION_ERROR == pCtx->pInfo.pBuff[PHNCINFC_CORE_PKT_HEADER_LEN]))
+                    {
+                        PH_LOG_NCI_WARN_STR("Received RF transmission error ntf in state %d, dropping...", pStateCtx->CurrState);
+                        Status = 1;
+                        break;
+                    }
+                }
+                // Falling through the current case to the subsequent one for ntf processing.
                 case phNciNfc_e_NciCoreMsgTypeData:
                 case phNciNfc_e_NciCoreMsgTypeCntrlRsp:
-                case phNciNfc_e_NciCoreMsgTypeCntrlNtf:
                 {
                     if (pCtx->tReceiveInfo.wNumOfNodes > 1 && phNciNfc_CoreRecvChkExptdPktType(pCtx))
                     {
                         PH_LOG_NCI_INFO_STR("New packet received before completion of previous segmented packet");
+                        phOsalNfc_MemCopy(pCtx->tReceiveInfo.ListHead.tMem.aBuffer, pCtx->pInfo.pBuff, pCtx->pInfo.wLength);
+                        pCtx->pInfo.pBuff = pCtx->tReceiveInfo.ListHead.tMem.aBuffer;
                         phNciNfc_CoreDeleteList(pCtx);
-                        pNode = phNciNfc_CoreGetNewNode(pCtx);
-                        phOsalNfc_MemCopy(pNode->tMem.aBuffer, pCtx->pInfo.pBuff, pCtx->pInfo.wLength);
-                        pCtx->pInfo.pBuff = pNode->tMem.aBuffer;
                     }
 
                     /*Update Header Info of the received packet*/
@@ -296,7 +307,7 @@ static uint8_t phNciNfc_CoreRecvChkPktType(void *pContext)
                 break;
                 default:
                 {
-                    PH_LOG_NCI_WARN_STR("NFCC Sends Unknown Packet Type, droping...");
+                    PH_LOG_NCI_WARN_STR("NFCC Sends Unknown Packet Type, dropping...");
                     /* Delete list */
                     phNciNfc_CoreDeleteList(pCtx);
                     Status = 1;

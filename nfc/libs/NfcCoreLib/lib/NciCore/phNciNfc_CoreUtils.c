@@ -1,11 +1,8 @@
-/*----------------------------------------------------------------------------*/
-/*                                                                            */
-/*          Modifications Copyright © Microsoft. All rights reserved.         */
-/*                                                                            */
-/*          Original code Copyright(C) NXP N.V. 2011                          */
-/*                                                                            */
-/*                                                                            */
-/*----------------------------------------------------------------------------*/
+/*
+*          Modifications Copyright (c) Microsoft. All rights reserved.
+*
+*              Original code Copyright (c), NXP Semiconductors
+*/
 
 #include "phNciNfc_CorePch.h" 
 

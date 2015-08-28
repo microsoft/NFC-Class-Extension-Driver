@@ -1,13 +1,8 @@
 /*
- *          Modifications Copyright ? Microsoft. All rights reserved.
- *
- *              Original code Copyright (c), NXP Semiconductors
- *
- *                       (C)NXP Electronics N.V. 2012
- *
- *
- *
- */
+*          Modifications Copyright (c) Microsoft. All rights reserved.
+*
+*              Original code Copyright (c), NXP Semiconductors
+*/
 
 #include "phLibNfc_Pch.h"
 

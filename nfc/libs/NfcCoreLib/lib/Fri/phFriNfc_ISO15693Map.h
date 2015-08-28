@@ -1,10 +1,8 @@
 /*
- *          Modifications Copyright © Microsoft. All rights reserved.
- *
- *              Original code Copyright (c), NXP Semiconductors
- *
- *
- */
+*          Modifications Copyright (c) Microsoft. All rights reserved.
+*
+*              Original code Copyright (c), NXP Semiconductors
+*/
 
 #pragma once
 

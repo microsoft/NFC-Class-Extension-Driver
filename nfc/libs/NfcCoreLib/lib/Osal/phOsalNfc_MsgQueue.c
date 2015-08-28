@@ -1,9 +1,7 @@
 /*
-*          Modifications Copyright ? Microsoft. All rights reserved.
+*          Modifications Copyright (c) Microsoft. All rights reserved.
 *
 *              Original code Copyright (c), NXP Semiconductors
-*
-*
 */
 
 #include "phOsalNfc_Pch.h"

@@ -1,12 +1,7 @@
 /*
-* =============================================================================
-*
-*          Modifications Copyright ? Microsoft. All rights reserved.
+*          Modifications Copyright (c) Microsoft. All rights reserved.
 *
 *              Original code Copyright (c), NXP Semiconductors
-*
-*
-* =============================================================================
 */
 
 #include "phFriNfc_Pch.h"
@@ -122,6 +117,7 @@ void SnepSocketSendCb (void *pContext, NFCSTATUS status)
     {
         // TODO
         //pProcessingBuffer is occasionally NULL on fast-taps.
+        // This should probably be fixed better than this...
         status = NFCSTATUS_FAILED;
     }
 

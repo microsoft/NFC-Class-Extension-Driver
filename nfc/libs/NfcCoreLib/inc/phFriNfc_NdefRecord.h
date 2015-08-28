@@ -1,8 +1,7 @@
 /*
-*          Modifications Copyright © Microsoft. All rights reserved.
+*          Modifications Copyright (c) Microsoft. All rights reserved.
 *
 *              Original code Copyright (c), NXP Semiconductors
-*    
 */
 
 #pragma once
@@ -334,5 +333,6 @@ NFCSTATUS phFriNfc_NdefRecord_Generate(phFriNfc_NdefRecord_t *pRecord,
  *  This is a sub function to the Generate Function. This function gives the length of a record given as
  *  input and this will not check for any errors in the Record.
  *
+ * \note <b>This is not a user API. This should not be exposed in the SDK.</b>
  */
 uint32_t phFriNfc_NdefRecord_GetLength(phFriNfc_NdefRecord_t* pRecord);

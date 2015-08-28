@@ -1,8 +1,7 @@
 /*
-*          Modifications Copyright © Microsoft. All rights reserved.
+*          Modifications Copyright (c) Microsoft. All rights reserved.
 *
 *              Original code Copyright (c), NXP Semiconductors
-*
 */
 
 #include "phFriNfc_Pch.h"
@@ -36,10 +35,6 @@
     ( PHFRINFC_LLCP_TLV_LENGTH_HEADER + PHFRINFC_LLCP_TLV_LENGTH_OPT ))   /**< \internal Maximum size of link params TLV.*/
 
 #define PHFRINFC_LLCP_SLOW_SYMMETRY                16
-
-#ifdef ENABLE_FUZZ
-void FuzzLlcpBuffer(unsigned char buffer[], int size, unsigned char **ppbuffer, DWORD *pSize);
-#endif
 
 static
 void
@@ -1241,15 +1236,6 @@ phFriNfc_Llcp_Receive_CB(
         phFriNfc_Llcp_InternalDeactivate(Llcp);
         return;
     }
-
-#ifdef ENABLE_FUZZ
-    /// Fuzz packet before pass to parser
-    DWORD size=0;
-    PBYTE pFuzzedBuffer = NULL;
-    FuzzLlcpBuffer(psData->buffer, psData->length, &pFuzzedBuffer, &size);
-    psData->length = size;
-    psData->buffer = pFuzzedBuffer;
-#endif
 
     /* Parse header */
     phFriNfc_Llcp_Buffer2Header(psData->buffer, 0, &sPacketHeader);
