@@ -262,17 +262,21 @@ static uint8_t phNciNfc_CoreRecvChkPktType(void *pContext)
                 case phNciNfc_e_NciCoreMsgTypeCntrlCmd:
                 {
                     PH_LOG_NCI_WARN_STR("NFCC Sends Command Packet Type, dropping...");
+                    phNciNfc_CoreRemoveLastChainedNode(pCtx);
                     Status = 1;
                 }
                 break;
                 case phNciNfc_e_NciCoreMsgTypeCntrlNtf:
                 {
                     if ((phNciNfc_STATE_RECV_MAX > pStateCtx->CurrState) && (PHNCINFC_CORE_PKT_HEADER_LEN + 1 < pCtx->pInfo.wLength) &&
-                        (phNciNfc_e_CoreNciCoreGid == PHNCINFC_CORE_GET_GID(pCtx->pInfo.pBuff)) && 
+                        (phNciNfc_e_CoreNciCoreGid == PHNCINFC_CORE_GET_GID(pCtx->pInfo.pBuff)) &&
                         (phNciNfc_e_NciCoreInterfaceErrNtfOid == PHNCINFC_CORE_GET_OID(pCtx->pInfo.pBuff)) &&
                         (PH_NCINFC_STATUS_RF_TRANSMISSION_ERROR == pCtx->pInfo.pBuff[PHNCINFC_CORE_PKT_HEADER_LEN]))
                     {
-                        PH_LOG_NCI_WARN_STR("Received RF transmission error ntf in state %d, dropping...", pStateCtx->CurrState);
+                        PH_LOG_NCI_WARN_STR("Received RF transmission error ntf in state %d for conn id %d, dropping...",
+                                            pStateCtx->CurrState, PHNCINFC_CORE_GET_CONNID(pCtx->pInfo.pBuff));
+
+                        phNciNfc_CoreRemoveLastChainedNode(pCtx);
                         Status = 1;
                         break;
                     }

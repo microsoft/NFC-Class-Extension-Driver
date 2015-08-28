@@ -79,8 +79,8 @@ HRESULT SetNfcRadioState(__in HANDLE DeviceHandle, __in BOOLEAN SysRadioState, _
                             IOCTL_NFCRM_SET_RADIO_STATE, 
                             &setRadioState, 
                             sizeof(setRadioState), 
-                            &setRadioState, 
-                            sizeof(setRadioState), 
+                            NULL, 
+                            0, 
                             &bytesReturned, 
                             &Overlapped))
         {
@@ -132,8 +132,8 @@ HRESULT GetNfcRadioState(__in HANDLE DeviceHandle, __out BOOLEAN *MediaRadioOn)
     {
         if (!DeviceIoControl(DeviceHandle,
                             IOCTL_NFCRM_QUERY_RADIO_STATE,
-                            &queryRadioState,
-                            sizeof(queryRadioState),
+                            NULL,
+                            0,
                             &queryRadioState,
                             sizeof(queryRadioState),
                             &bytesReturned,

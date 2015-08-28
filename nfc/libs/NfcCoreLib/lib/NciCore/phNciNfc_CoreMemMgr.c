@@ -119,6 +119,7 @@ void phNciNfc_CoreUpdatePacketLen(pphNciNfc_CoreContext_t pCoreCtx,uint16_t wLen
     PH_LOG_NCI_FUNC_EXIT();
     return ;
 }
+
 void phNciNfc_CoreDeleteList(pphNciNfc_CoreContext_t pCoreCtx)
 {
     pphNciNfc_sCoreRecvBuff_List_t pList = NULL;
@@ -163,6 +164,46 @@ void phNciNfc_CoreDeleteList(pphNciNfc_CoreContext_t pCoreCtx)
 
     PH_LOG_NCI_FUNC_EXIT();
     return ;
+}
+
+void phNciNfc_CoreRemoveLastChainedNode(pphNciNfc_CoreContext_t pCoreCtx)
+{
+    pphNciNfc_sCoreRecvBuff_List_t pCurrent = NULL;
+    pphNciNfc_sCoreRecvBuff_List_t pPrevious = NULL;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+
+    if (NULL == pCoreCtx) 
+    {
+        PH_LOG_NCI_CRIT_STR("NULL Nci Core context!");
+    }
+    else if (pCoreCtx != PHNCINFC_GETNCICORECONTEXT())
+    {
+        PH_LOG_NCI_CRIT_STR("Invalid Nci Core context!");
+    }
+    else
+    {
+        /* If only the head exists, it will automatically be reused, no need to remove anything */
+        if (pCoreCtx->tReceiveInfo.wNumOfNodes > 1 && pCoreCtx->tReceiveInfo.wPayloadSize != 0)
+        {
+            pPrevious = &(pCoreCtx->tReceiveInfo.ListHead);
+            pCurrent = pPrevious->pNext;
+
+            while (NULL != pCurrent->pNext)
+            {
+                pPrevious = pCurrent;
+                pCurrent = pCurrent->pNext;
+            }
+
+            phOsalNfc_FreeMemory(pCurrent);
+            pCurrent = NULL;
+
+            pPrevious->pNext = NULL;
+            pCoreCtx->tReceiveInfo.wNumOfNodes--;
+        }
+    }
+
+    PH_LOG_NCI_FUNC_EXIT();
 }
 
 pphNciNfc_sCoreRecvBuff_List_t phNciNfc_CoreGetNewNode(pphNciNfc_CoreContext_t pCoreCtx)

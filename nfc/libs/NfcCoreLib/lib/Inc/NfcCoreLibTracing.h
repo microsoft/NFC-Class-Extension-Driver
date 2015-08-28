@@ -4,35 +4,33 @@ Copyright (c) 2012  Microsoft Corporation
 
 Module Name:
     NfcCoreLibTracing.h
-    
+
 Abstract:
     This module defines the WPP tracing macros for the NFC core library
 
 Environment:
-   User mode.
+    User mode.
 
 --*/
+
 #pragma once
 
-//
 //
 // Define the Control GUID and the component flags.
 // 696D4914-12A4-422C-A09E-E7E0EB25806A
 //
-#define WPP_CONTROL_GUIDS                                                      \
-    WPP_DEFINE_CONTROL_GUID(                                                   \
-        NfcCoreLibTraceControl, (696D4914, 12A4, 422C, A09E, E7E0EB25806A),    \
-        WPP_DEFINE_BIT(TF_NCI)                                                 \
-        WPP_DEFINE_BIT(TF_HCI)                                                 \
-        WPP_DEFINE_BIT(TF_OSAL)                                                \
-        WPP_DEFINE_BIT(TF_LIBNFC)                                              \
-        WPP_DEFINE_BIT(TF_FRI)                                                 \
-        WPP_DEFINE_BIT(TF_DNLD)                                                \
-        WPP_DEFINE_BIT(TF_RBTR)                                                \
-        WPP_DEFINE_BIT(TF_DTA)                                                 \
-        WPP_DEFINE_BIT(TF_LLCP)                                                \
-        WPP_DEFINE_BIT(TF_SNEP)                                                \
-        WPP_DEFINE_BIT(TF_NDEF)                                                \
+#define WPP_CONTROL_GUIDS                                                   \
+    WPP_DEFINE_CONTROL_GUID(                                                \
+        NfcCoreLibTraceControl, (696D4914, 12A4, 422C, A09E, E7E0EB25806A), \
+        WPP_DEFINE_BIT(TF_NCI)                                              \
+        WPP_DEFINE_BIT(TF_HCI)                                              \
+        WPP_DEFINE_BIT(TF_OSAL)                                             \
+        WPP_DEFINE_BIT(TF_LIBNFC)                                           \
+        WPP_DEFINE_BIT(TF_FRI)                                              \
+        WPP_DEFINE_BIT(TF_DTA)                                              \
+        WPP_DEFINE_BIT(TF_LLCP)                                             \
+        WPP_DEFINE_BIT(TF_SNEP)                                             \
+        WPP_DEFINE_BIT(TF_NDEF)                                             \
         )
 
 //
@@ -93,7 +91,7 @@ Environment:
 
 
 #define W32
-#define WPP_CHECK_FOR_NULL_STRING //to prevent exceptions due to NULL strings
+#define WPP_CHECK_FOR_NULL_STRING // to prevent exceptions due to NULL strings
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,28 +100,28 @@ Environment:
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-typedef struct _WPP_HEX { 
-    BYTE*  _buf; 
-    USHORT _len; 
-} WPP_HEX;  
+typedef struct _WPP_HEX {
+    BYTE*  _buf;
+    USHORT _len;
+} WPP_HEX;
 
-FORCEINLINE 
+FORCEINLINE
 WPP_HEX WppLogHex(
-    BYTE*  _buf, 
+    BYTE*  _buf,
     USHORT _len
-    ) 
-{ 
+    )
+{
     WPP_HEX hex;
     hex._buf = _buf;
-    hex._len = _len; 
-    return hex; 
+    hex._len = _len;
+    return hex;
 }
 
 // begin_wpp config
-// DEFINE_CPLX_TYPE(HEXDUMP, WPP_LOGHEXDUMP, WPP_HEX, ItemHEXDump,"s", _HEX_, 0,2); 
+// DEFINE_CPLX_TYPE(HEXDUMP, WPP_LOGHEXDUMP, WPP_HEX, ItemHEXDump,"s", _HEX_, 0,2);
 // end_wpp
 
-#define WPP_LOGHEXDUMP(x) WPP_LOGPAIR(2, &((x)._len)) WPP_LOGPAIR((x)._len, (x)._buf)  
+#define WPP_LOGHEXDUMP(x) WPP_LOGPAIR(2, &((x)._len)) WPP_LOGPAIR((x)._len, (x)._buf)
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1106,233 +1104,6 @@ WPP_HEX WppLogHex(
 // end_wpp
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// DNLD
-//
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_CRIT_STR
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_CRIT_STR, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_CRIT_STR{FLAG=TF_DNLD,LEVEL=LEVEL_CRITICAL}(MSG, ...);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_WARN_STR
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_WARN_STR, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_WARN_STR{FLAG=TF_DNLD,LEVEL=LEVEL_WARNING}(MSG, ...);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_INFO_STR
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_INFO_STR, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_INFO_STR{FLAG=TF_DNLD,LEVEL=LEVEL_INFO}(MSG, ...);
-// end_wpp
-
-
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_CRIT_U32
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_CRIT_U32, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_CRIT_U32{FLAG=TF_DNLD,LEVEL=LEVEL_CRITICAL}(VALUE);
-// USESUFFIX (PH_LOG_DNLD_CRIT_U32, " = %d", VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_WARN_U32
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_WARN_U32, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_WARN_U32{FLAG=TF_DNLD,LEVEL=LEVEL_WARNING}(VALUE);
-// USESUFFIX (PH_LOG_DNLD_WARN_U32, " = %d", VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_INFO_U32
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_INFO_U32, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_INFO_U32{FLAG=TF_DNLD,LEVEL=LEVEL_INFO}(VALUE);
-// USESUFFIX (PH_LOG_DNLD_INFO_U32, " = %d", VALUE);
-// end_wpp
-
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_CRIT_U32MSG
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_CRIT_U32MSG, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_CRIT_U32MSG{FLAG=TF_DNLD,LEVEL=LEVEL_CRITICAL}(MSG, VALUE);
-// USESUFFIX (PH_LOG_DNLD_CRIT_U32MSG, " = %d", VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_WARN_U32MSG
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_WARN_U32MSG, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_WARN_U32MSG{FLAG=TF_DNLD,LEVEL=LEVEL_WARNING}(MSG, VALUE);
-// USESUFFIX (PH_LOG_DNLD_WARN_U32MSG, " = %d", VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_INFO_U32MSG
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_INFO_U32MSG, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_INFO_U32MSG{FLAG=TF_DNLD,LEVEL=LEVEL_INFO}(MSG, VALUE);
-// USESUFFIX (PH_LOG_DNLD_INFO_U32MSG, "%s = %d", MSG, VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_CRIT_X32
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_CRIT_X32, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_CRIT_X32{FLAG=TF_DNLD,LEVEL=LEVEL_CRITICAL}(VALUE);
-// USESUFFIX (PH_LOG_DNLD_CRIT_X32, " = 0x%x", VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_WARN_X32
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_WARN_X32, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_WARN_X32{FLAG=TF_DNLD,LEVEL=LEVEL_WARNING}(VALUE);
-// USESUFFIX (PH_LOG_DNLD_WARN_X32, " = 0x%x", VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_INFO_X32
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_INFO_X32, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_INFO_X32{FLAG=TF_DNLD,LEVEL=LEVEL_INFO}(VALUE);
-// USESUFFIX (PH_LOG_DNLD_INFO_X32, " = 0x%x", VALUE);
-// end_wpp
-
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_CRIT_X32MSG
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_CRIT_X32MSG, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_CRIT_X32MSG{FLAG=TF_DNLD,LEVEL=LEVEL_CRITICAL}(MSG, VALUE);
-// USESUFFIX (PH_LOG_DNLD_CRIT_X32MSG, " = 0x%x", VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_WARN_X32MSG
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_WARN_X32MSG, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_WARN_X32MSG{FLAG=TF_DNLD,LEVEL=LEVEL_WARNING}(VALUE);
-// USESUFFIX (PH_LOG_DNLD_WARN_X32MSG, " = 0x%x", VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_INFO_X32MSG
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_INFO_X32MSG, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_INFO_X32MSG{FLAG=TF_DNLD,LEVEL=LEVEL_INFO}(MSG, VALUE);
-// USESUFFIX (PH_LOG_DNLD_INFO_X32MSG, " = 0x%x", VALUE);
-// end_wpp
-
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_CRIT_BOOL
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_CRIT_BOOL, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_CRIT_BOOL{FLAG=TF_DNLD,LEVEL=LEVEL_CRITICAL}(MSG, VALUE);
-// USESUFFIX (PH_LOG_DNLD_CRIT_BOOL, "BOOL=%x", VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_WARN_BOOL
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_WARN_BOOL, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_WARN_BOOL{FLAG=TF_DNLD,LEVEL=LEVEL_WARNING}(MSG, VALUE);
-// USESUFFIX (PH_LOG_DNLD_WARN_BOOL, "BOOL=%x", VALUE);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_INFO_BOOL
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_INFO_BOOL, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_INFO_BOOL{FLAG=TF_DNLD,LEVEL=LEVEL_INFO}(MSG, VALUE);
-// USESUFFIX (PH_LOG_DNLD_INFO_BOOL, "BOOL=%x", VALUE);
-// end_wpp
-
-
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_CRIT_EXPECT
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_CRIT_EXPECT, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_CRIT_EXPECT{FLAG=TF_DNLD,LEVEL=LEVEL_CRITICAL}(EXPECTED);
-// USESUFFIX (PH_LOG_DNLD_CRIT_EXPECT, "UNEXPECTED VALUE=%x", EXPECTED);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_WARN_EXPECT
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_WARN_EXPECT, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_WARN_EXPECT{FLAG=TF_DNLD,LEVEL=LEVEL_WARNING}(EXPECTED);
-// USESUFFIX (PH_LOG_DNLD_WARN_EXPECT, "UNEXPECTED VALUE=%x", EXPECTED);
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_INFO_EXPECT
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_INFO_EXPECT, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_INFO_EXPECT{FLAG=TF_DNLD,LEVEL=LEVEL_INFO}(EXPECTED);
-// USESUFFIX (PH_LOG_DNLD_INFO_EXPECT, "UNEXPECTED VALUE=%x", EXPECTED);
-// end_wpp
-
-/** \def PH_LOG_DNLD_HEXDATA(LEVEL,MSG,HEXDATA,DATALEN)
- *
- * Logging a stream of hexadecimal bytes
- *
- * \sa phOsalNfc_LogHexData
- */
-#define PH_LOG_DNLD_CRIT_HEXDATA(MSG,HEXDATA,DATALEN) //TODO:
-#define PH_LOG_DNLD_WARN_HEXDATA(MSG,HEXDATA,DATALEN) //TODO:
-#define PH_LOG_DNLD_INFO_HEXDATA(MSG,HEXDATA,DATALEN) //TODO:
-
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_FUNC_ENTRY
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_FUNC_ENTRY, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_FUNC_ENTRY{FLAG=TF_DNLD,LEVEL=LEVEL_VERBOSE}(...);
-// USESUFFIX (PH_LOG_DNLD_FUNC_ENTRY, "Enter");
-// end_wpp
-
-//*********************************************************
-// MACRO: PH_LOG_DNLD_FUNC_EXIT
-//
-// begin_wpp config
-// USEPREFIX (PH_LOG_DNLD_FUNC_EXIT, "%!STDPREFIX!%!FUNC!:%s", " ");
-// FUNC PH_LOG_DNLD_FUNC_EXIT{FLAG=TF_DNLD,LEVEL=LEVEL_VERBOSE}(...);
-// USESUFFIX (PH_LOG_DNLD_FUNC_EXIT, "Exit");
-// end_wpp
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 //

@@ -319,6 +319,8 @@ static void phNciNfc_CoreRecvCb(void *pContext, phTmlNfc_TransactInfo_t *pInfo)
         ptNciCoreCtx->pInfo.wLength = pInfo->wLength;
         ptNciCoreCtx->pInfo.wStatus = pInfo->wStatus;
         ptNciCoreCtx->RecvStateContext.wProcessStatus = wStatus;
+
+        /* phNciNfc_RecvStateHandler may free ptNciCoreCtx, ptNciCoreCtx->pInfo.pBuff and other data associated with ptNciCoreCtx */
         (void )phNciNfc_RecvStateHandler(ptNciCoreCtx, TrigEvt);
     }else
     {

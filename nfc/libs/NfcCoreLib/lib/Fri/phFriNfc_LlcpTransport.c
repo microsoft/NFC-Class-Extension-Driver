@@ -384,7 +384,14 @@ Handle_Discovery_IncomingFrame(
              case PHFRINFC_LLCP_TLV_TYPE_SDREQ:
                 if (sValue.length < 2)
                 {
-                   /* Erroneous request, ignore */
+                   /* Erroneous request */
+                   if (0 < sValue.length)
+                   {
+                      PH_LOG_LLCP_INFO_STR("Send SNL SDRES for this erroneous SDREQ");
+                      psTransport->nDiscoveryResSapList[psTransport->nDiscoveryResListSize] = 0;
+                      psTransport->nDiscoveryResTidList[psTransport->nDiscoveryResListSize] = sValue.buffer[0];
+                      psTransport->nDiscoveryResListSize++;
+                   }
                    break;
                 }
                 /* Decode TID */
@@ -521,19 +528,22 @@ phFriNfc_LlcpTransport__Recv_CB(
           /* Connectionless */
           case PHFRINFC_LLCP_PTYPE_UI:
              {
-                Handle_Connectionless_IncommingFrame(pLlcpTransport,
-                                                     psData,
-                                                     dsap,
-                                                     ssap);
+                 if (!pLlcpTransport->pLlcp->bDtaFlag || psData->length <= pLlcpTransport->pLlcp->sLocalParams.miu)
+                 {
+                     Handle_Connectionless_IncommingFrame(pLlcpTransport,
+                                                          psData,
+                                                          dsap,
+                                                          ssap);
+                 }
              }break;
 
           /* Service Discovery Protocol */
           case PHFRINFC_LLCP_PTYPE_SNL:
              {
-                if ((ssap == PHFRINFC_LLCP_SAP_SDP) && (dsap == PHFRINFC_LLCP_SAP_SDP))
+                if ((ssap == PHFRINFC_LLCP_SAP_SDP) && (dsap == PHFRINFC_LLCP_SAP_SDP) &&
+                    (NULL != pLlcpTransport->pLlcp) && (PHFRINFC_LLCP_VERSION == pLlcpTransport->pLlcp->version))
                 {
-                   Handle_Discovery_IncomingFrame(pLlcpTransport,
-                                                  psData);
+                   Handle_Discovery_IncomingFrame(pLlcpTransport, psData);
                 }
                 else
                 {

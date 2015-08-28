@@ -236,13 +236,6 @@ static void phLibNfc_P2pRemoteDev_SendCb(void* pContext,NFCSTATUS status,void* p
         pLibContext->CBInfo.pClientNfcIpTxCb = NULL;
         pLibContext->CBInfo.pClientNfcIpTxCntx = NULL;
         (void)phLibNfc_StateHandler(pLibContext, TrigEvent, NULL, NULL, NULL);
-        if((gpphLibNfc_Context->bDtaFlag) && (NFCSTATUS_RF_ERROR == wStatus))
-        {
-            /* Retaining the Transition flag status and Target state */
-            gpphLibNfc_Context->StateContext.Flag = phLibNfc_StateTransitionComplete;
-            gpphLibNfc_Context->StateContext.TrgtState = phLibNfc_StateInvalid;
-            gpphLibNfc_Context->StateContext.CurrState = phLibNfc_StateSend;
-        }
         if(NULL != pUpperLayerCb)
         {
             pUpperLayerCb(UpperLayerCtx,wStatus);
@@ -267,13 +260,6 @@ static void phLibNfc_P2pRemoteDev_ReceiveCb(void* pContext,NFCSTATUS status,void
         pUpperLayerCb = pLibContext->CBInfo.pClientNfcIpRxCb;
         pUpperLayerCtx = pLibContext->CBInfo.pClientNfcIpRxCntx;
         (void)phLibNfc_StateHandler(pLibContext, TrigEvent, NULL, NULL, NULL);
-        if((gpphLibNfc_Context->bDtaFlag) && (NFCSTATUS_RF_ERROR == wStatus))
-        {
-            /* Retaining the Transition flag status and Target state */
-            gpphLibNfc_Context->StateContext.Flag = phLibNfc_StateTransitionComplete;
-            gpphLibNfc_Context->StateContext.TrgtState = phLibNfc_StateInvalid;
-            gpphLibNfc_Context->StateContext.CurrState = phLibNfc_StateRecv;
-        }
         if(NULL != pUpperLayerCb)
         {
             tRecvBufferInfo.buffer = pTransInfo->pbuffer;

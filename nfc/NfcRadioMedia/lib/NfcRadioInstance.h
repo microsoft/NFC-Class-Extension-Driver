@@ -96,5 +96,8 @@ private:
     CRITICAL_SECTION m_csHandleLock;
     HANDLE m_hDevice;
     HCMNOTIFICATION m_hDevNotification;
+    PTP_WORK m_ptpRadioHandleRemoval;
+    PTP_WORK m_ptpRadioQueryRemoveCancel;
+    bool m_fReregisterEnabled;
 };
 

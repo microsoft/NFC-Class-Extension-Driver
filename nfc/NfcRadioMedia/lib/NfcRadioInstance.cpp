@@ -63,44 +63,48 @@ HRESULT CNfcRadioInstance::RegisterDevice()
     HANDLE retHandle = INVALID_HANDLE_VALUE;
 
     EnterCriticalSection(&m_csHandleLock);
-    
-    // Open a handle to the device
 
-    retHandle = CreateFile(m_deviceInstanceID, 
-                            GENERIC_READ | GENERIC_WRITE, 
-                            FILE_SHARE_READ | FILE_SHARE_WRITE, 
-                            nullptr,
-                            OPEN_EXISTING, 
-                            FILE_FLAG_OVERLAPPED, 
-                            nullptr);
-
-    if (INVALID_HANDLE_VALUE != retHandle)
+    if (m_fReregisterEnabled)
     {
-        m_hDevice = retHandle;
-    }
-    else
-    {
-        hr = HRESULT_FROM_WIN32(GetLastError());
-    }
+        // Open a handle to the device
+        retHandle = CreateFile(
+            m_deviceInstanceID,
+            GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_FLAG_OVERLAPPED,
+            nullptr);
 
-    if (SUCCEEDED(hr))
-    {        
-        CM_NOTIFY_FILTER notifyFilter = {0};  
-        HCMNOTIFICATION hDev = NULL;
-    
-        ZeroMemory(&notifyFilter, sizeof(notifyFilter));  
-        notifyFilter.cbSize = sizeof(notifyFilter);
-        notifyFilter.FilterType = CM_NOTIFY_FILTER_TYPE_DEVICEHANDLE;  
-        notifyFilter.u.DeviceHandle.hTarget = m_hDevice;  
-    
-        hr = CM_Register_Notification(&notifyFilter,  
-                                     this,  
-                                     NfcProcessDeviceChange,  
-                                     &hDev);
-    
-        if (hDev != NULL)
+        if (INVALID_HANDLE_VALUE != retHandle)
         {
-            m_hDevNotification = hDev;
+            m_hDevice = retHandle;
+        }
+        else
+        {
+            hr = HRESULT_FROM_WIN32(GetLastError());
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            CM_NOTIFY_FILTER notifyFilter = { 0 };
+            HCMNOTIFICATION hDev = NULL;
+
+            ZeroMemory(&notifyFilter, sizeof(notifyFilter));
+            notifyFilter.cbSize = sizeof(notifyFilter);
+            notifyFilter.FilterType = CM_NOTIFY_FILTER_TYPE_DEVICEHANDLE;
+            notifyFilter.u.DeviceHandle.hTarget = m_hDevice;
+
+            hr = CM_Register_Notification(
+                &notifyFilter,
+                this,
+                NfcProcessDeviceChange,
+                &hDev);
+
+            if (hDev != NULL)
+            {
+                m_hDevNotification = hDev;
+            }
         }
     }
 
@@ -109,6 +113,7 @@ HRESULT CNfcRadioInstance::RegisterDevice()
     TRACE_METHOD_EXIT(LEVEL_VERBOSE);
     return hr;
 }
+
 VOID CNfcRadioInstance::RadioQueryRemoval()
 {
     TRACE_METHOD_ENTRY(LEVEL_VERBOSE);
@@ -149,14 +154,14 @@ VOID CNfcRadioInstance::RadioHandleRemoval()
     TRACE_METHOD_ENTRY(LEVEL_VERBOSE);
 
     EnterCriticalSection(&m_csHandleLock);
-    
+
     // Unregister for device notification and close the handle
     if (NULL != m_hDevNotification)
     {
         CM_Unregister_Notification(m_hDevNotification);
-        m_hDevNotification = NULL;    
+        m_hDevNotification = NULL;
     }
-    
+
     if (NULL != m_hDevice)
     {
         CloseHandle(m_hDevice);
@@ -164,29 +169,28 @@ VOID CNfcRadioInstance::RadioHandleRemoval()
     }
 
     LeaveCriticalSection(&m_csHandleLock);
-    
+
     TRACE_METHOD_EXIT(LEVEL_VERBOSE);
 }
 
 DWORD
 CNfcRadioInstance::NfcProcessDeviceChange(
-    _In_ HCMNOTIFICATION       hNotification,          
-    _In_ PVOID                 Context,  
-    _In_ CM_NOTIFY_ACTION      Action,  
-    _In_ PCM_NOTIFY_EVENT_DATA EventData,  
-    _In_ DWORD                 EventDataSize  
-    )  
+    _In_ HCMNOTIFICATION       hNotification,
+    _In_ PVOID                 Context,
+    _In_ CM_NOTIFY_ACTION      Action,
+    _In_ PCM_NOTIFY_EVENT_DATA EventData,
+    _In_ DWORD                 EventDataSize
+    )
 {
-    UNREFERENCED_PARAMETER(hNotification);  
-    UNREFERENCED_PARAMETER(EventDataSize);  
+    UNREFERENCED_PARAMETER(hNotification);
+    UNREFERENCED_PARAMETER(EventDataSize);
     UNREFERENCED_PARAMETER(EventData);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
     
     DWORD dwResult = 0;
     CNfcRadioInstance* radioInstance = (CNfcRadioInstance*)Context;
-    PTP_WORK ptpThreadWork = NULL;
-    
+
     switch (Action)
     {
     case CM_NOTIFY_ACTION_DEVICEQUERYREMOVE:
@@ -204,55 +208,40 @@ CNfcRadioInstance::NfcProcessDeviceChange(
         {
             TRACE_LINE(LEVEL_VERBOSE, L"RemoveComplete notification for Radio Instance 0x%p", radioInstance);
         }
+
         // We want to UnregisterDevice notifications and drop the handle
         // Unregistering notifications from the callback handle causes deadlocks, so we will spin up a new thread in the default threadpool
-        ptpThreadWork = CreateThreadpoolWork( 
-                             (PTP_WORK_CALLBACK)&CNfcRadioInstance::BeginRadioHandleRemoval, 
-                             (LPVOID)radioInstance, 
-                             NULL );
-        
-        if (ptpThreadWork == NULL)
-        {   
+        if (NULL == radioInstance->m_ptpRadioHandleRemoval)
+        {
             // Failed to spin up the thread, but can't do anything about it, since doing the handle removal synchronously leads to deadlocks
-            TRACE_LINE(LEVEL_VERBOSE, L"Failed to spin up thread");
+            TRACE_LINE(LEVEL_VERBOSE, L"Failed to spin up thread for radio handle removal");
         }
         else
         {
-            ::SubmitThreadpoolWork(ptpThreadWork);
+            ::SubmitThreadpoolWork(radioInstance->m_ptpRadioHandleRemoval);
         }
+
         break;
 
     case CM_NOTIFY_ACTION_DEVICEQUERYREMOVEFAILED:
         TRACE_LINE(LEVEL_VERBOSE, L"QueryRemoveFailed notification for Radio Instance 0x%p", radioInstance);
+
         // Unregistering notifications from the callback handle causes deadlocks, so we will spin up a new thread in the default threadpool
-       
-        ptpThreadWork = CreateThreadpoolWork( 
-                             (PTP_WORK_CALLBACK)&CNfcRadioInstance::BeginRadioQueryRemoveCancel, 
-                             (LPVOID)radioInstance, 
-                             NULL );
-        
-        if (ptpThreadWork == NULL)
-        {   
+        if (NULL == radioInstance->m_ptpRadioQueryRemoveCancel)
+        {
             // Failed to spin up the thread, but can't do anything about it, since doing the handle removal synchronously leads to deadlocks
-            TRACE_LINE(LEVEL_VERBOSE, L"Failed to spin up thread");
+            TRACE_LINE(LEVEL_VERBOSE, L"Failed to spin up thread for radio query cancel");
         }
         else
         {
-            ::SubmitThreadpoolWork(ptpThreadWork);
+            ::SubmitThreadpoolWork(radioInstance->m_ptpRadioQueryRemoveCancel);
         }
+
         break;
-        
+
     default:
         TRACE_LINE(LEVEL_VERBOSE, L"Unhandled notification - %x for Radio Instance 0x%p", Action, radioInstance);
         break;
-    }
-
-
-    if (ptpThreadWork)
-    {
-        // Close the thread so that the thread space will be freed as soon as the thread finishes running
-        CloseThreadpoolWork(ptpThreadWork);
-        ptpThreadWork = NULL;
     }
 
     TRACE_FUNCTION_EXIT_DWORD(LEVEL_VERBOSE, dwResult);
@@ -263,7 +252,10 @@ CNfcRadioInstance::CNfcRadioInstance():
     m_deviceInstanceID(NULL),
     m_deviceFriendlyName(NULL),
     m_hDevice(INVALID_HANDLE_VALUE),
-    m_hDevNotification(NULL)
+    m_hDevNotification(NULL),
+    m_ptpRadioHandleRemoval(NULL),
+    m_ptpRadioQueryRemoveCancel(NULL),
+    m_fReregisterEnabled(true)
 {
     InitializeCriticalSection(&m_csHandleLock);
 }
@@ -272,13 +264,34 @@ HRESULT CNfcRadioInstance::FinalRelease()
 {
     TRACE_METHOD_ENTRY(LEVEL_VERBOSE);
 
+    EnterCriticalSection(&m_csHandleLock);
+
+    m_fReregisterEnabled = false;
+
+    LeaveCriticalSection(&m_csHandleLock);
+
     RadioHandleRemoval();
+
+    if (NULL != m_ptpRadioQueryRemoveCancel)
+    {
+        WaitForThreadpoolWorkCallbacks(m_ptpRadioQueryRemoveCancel, TRUE);
+        CloseThreadpoolWork(m_ptpRadioQueryRemoveCancel);
+        m_ptpRadioQueryRemoveCancel = NULL;
+    }
+
+    if (NULL != m_ptpRadioHandleRemoval)
+    {
+        WaitForThreadpoolWorkCallbacks(m_ptpRadioHandleRemoval, TRUE);
+        CloseThreadpoolWork(m_ptpRadioHandleRemoval);
+        m_ptpRadioHandleRemoval = NULL;
+    }
 
     m_radioManager = NULL;
 
     if (NULL != m_deviceInstanceID)
     {
         SysFreeString(m_deviceInstanceID);
+        m_deviceInstanceID = NULL;
     }
 
     if (NULL != m_deviceFriendlyName)
@@ -318,6 +331,30 @@ HRESULT CNfcRadioInstance::Init(_In_ const LPCWSTR DeviceInstanceID, _In_ const 
         }
     }
 
+    if (SUCCEEDED(hr))
+    {
+        m_ptpRadioHandleRemoval = CreateThreadpoolWork(
+            CNfcRadioInstance::BeginRadioHandleRemoval,
+            this,
+            NULL);
+        if (NULL == m_ptpRadioHandleRemoval)
+        {
+            hr = HRESULT_FROM_WIN32(GetLastError());
+        }
+    }
+
+    if (SUCCEEDED(hr))
+    {
+        m_ptpRadioQueryRemoveCancel = CreateThreadpoolWork(
+            CNfcRadioInstance::BeginRadioQueryRemoveCancel,
+            this,
+            NULL);
+        if (NULL == m_ptpRadioQueryRemoveCancel)
+        {
+            hr = HRESULT_FROM_WIN32(GetLastError());
+        }
+    }
+
     // Open device handle and register for device notifications
     if (SUCCEEDED(hr))
     {
@@ -329,6 +366,28 @@ HRESULT CNfcRadioInstance::Init(_In_ const LPCWSTR DeviceInstanceID, _In_ const 
         // Take ownership of the friendlyname at the end because any failure before this will need to un-own the friendly name
         TRACE_LINE(LEVEL_VERBOSE, "FriendlyName on Init: %S", FriendlyName);
         m_deviceFriendlyName = FriendlyName;
+    }
+    else
+    {
+        // Clean up
+
+        if (NULL != m_ptpRadioQueryRemoveCancel)
+        {
+            CloseThreadpoolWork(m_ptpRadioQueryRemoveCancel);
+            m_ptpRadioQueryRemoveCancel = NULL;
+        }
+
+        if (NULL != m_ptpRadioHandleRemoval)
+        {
+            CloseThreadpoolWork(m_ptpRadioHandleRemoval);
+            m_ptpRadioHandleRemoval = NULL;
+        }
+
+        if (NULL != m_deviceInstanceID)
+        {
+            SysFreeString(m_deviceInstanceID);
+            m_deviceInstanceID = NULL;
+        }
     }
 
     TRACE_METHOD_EXIT_HR(LEVEL_COND, hr);

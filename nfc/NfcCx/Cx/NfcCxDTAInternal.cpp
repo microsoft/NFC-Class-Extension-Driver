@@ -280,6 +280,8 @@ NfcCxDTAInterfaceLlcpAutoLinkStatusCheckCB(
 
     dtaInterface->bLlcpLinkStatusEnabled = (NFCSTATUS_SUCCESS == NfcStatus);
     if (!dtaInterface->bLlcpLinkStatusEnabled) {
+        // Generate link deactivated event for upper layer
+        NfcCxDTAInterfaceLlcpLinkStatusEvent(Context, phFriNfc_LlcpMac_eLinkDeactivated);
         TRACE_LINE(LEVEL_WARNING, "LLCP Check failed %!NFCSTATUS!", NfcStatus);
         goto Done;
     }

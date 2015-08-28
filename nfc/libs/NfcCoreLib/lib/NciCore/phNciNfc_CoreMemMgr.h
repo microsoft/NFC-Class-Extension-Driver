@@ -10,6 +10,8 @@
 #include <phNfcStatus.h>
 #include "phNciNfc_Core.h"
 
+extern void phNciNfc_CoreRemoveLastChainedNode(pphNciNfc_CoreContext_t pCoreCtx);
+
 extern pphNciNfc_sCoreRecvBuff_List_t phNciNfc_CoreGetNewNode(pphNciNfc_CoreContext_t pCoreCtx);
 
 extern NFCSTATUS phNciNfc_CoreGetDataLength(

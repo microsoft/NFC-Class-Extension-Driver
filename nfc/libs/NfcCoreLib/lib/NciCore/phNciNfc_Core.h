@@ -312,7 +312,7 @@ typedef void (*pphNciNfc_ConnCreditsNtf_t)(void* pContext, uint8_t bCredits, NFC
  *
  * \brief Maximum number of Rf interfaces supported
  */
-#define PH_NCINFC_CORE_MAX_SUP_RF_INTFS         (0x6U)
+#define PH_NCINFC_CORE_MAX_SUP_RF_INTFS         (0x8U)
 
 /**
  * \ingroup grp_nci_nfc_core

@@ -226,7 +226,7 @@ NFCSTATUS phFriNfc_LlcpTransport_ConnectionOriented_HandlePendingOperations(phFr
       result =  phFriNfc_LlcpTransport_LinkSend(psTransport,
                                    &pSocket->sLlcpHeader,
                                    NULL,
-                                   &pSocket->sSocketSendBuffer,
+                                   NULL,
                                    phFriNfc_LlcpTransport_ConnectionOriented_SendLlcp_CB,
                                    psTransport);
 
@@ -661,11 +661,13 @@ static void Handle_ConnectionFrame(phFriNfc_LlcpTransport_t      *psTransport,
    else
    {
       /* Service Name not found or Port number not found */
-      /* Send a DM (0x02) */
+      /* Send a DM 0x02/0x03 */
       status = phFriNfc_LlcpTransport_SendDisconnectMode (psTransport,
                                                           ssap,
                                                           dsap,
-                                                          PHFRINFC_LLCP_DM_OPCODE_SAP_NOT_FOUND);
+                                                          (0 != psData->length || dsap != PHFRINFC_LLCP_SAP_SDP) ? 
+                                                          PHFRINFC_LLCP_DM_OPCODE_SAP_NOT_FOUND : 
+                                                          PHFRINFC_LLCP_DM_OPCODE_CONNECT_REJECTED);
    }
    PH_LOG_LLCP_FUNC_EXIT();
 }
@@ -882,33 +884,37 @@ static void Handle_DisconnetModeFrame(phFriNfc_LlcpTransport_t      *psTransport
          switch(dmOpCode)
          {
          case PHFRINFC_LLCP_DM_OPCODE_DISCONNECTED:
+         case PHFRINFC_LLCP_DM_OPCODE_SAP_NOT_ACTIVE:
+         case PHFRINFC_LLCP_DM_OPCODE_SAP_NOT_FOUND:
+         case PHFRINFC_LLCP_DM_OPCODE_CONNECT_REJECTED:
+         case PHFRINFC_LLCP_DM_OPCODE_SAP_UNAVAILABLE:
+         case PHFRINFC_LLCP_DM_OPCODE_SERVICE_UNAVAILABLE:
+         case PHFRINFC_LLCP_DM_OPCODE_CONNECT_NOT_ACCEPTED:
+         case PHFRINFC_LLCP_DM_OPCODE_SOCKET_NOT_AVAILABLE:
             {
+               if ((phFriNfc_LlcpTransportSocket_eSocketConnecting == psLocalLlcpSocket->eSocket_State) &&
+                   (NULL != psLocalLlcpSocket->pfSocketConnect_Cb))
+               {
+                   /* Call Connect CB */
+                   psLocalLlcpSocket->pfSocketConnect_Cb(psLocalLlcpSocket->pConnectContext, dmOpCode, NFCSTATUS_FAILED);
+                   psLocalLlcpSocket->pfSocketConnect_Cb = NULL;
+               }
+               else if (NULL != psLocalLlcpSocket->pfSocketDisconnect_Cb)
+               {
+                   psLocalLlcpSocket->pfSocketDisconnect_Cb(psLocalLlcpSocket->pDisonnectContext, NFCSTATUS_SUCCESS);
+                   psLocalLlcpSocket->pfSocketDisconnect_Cb = NULL;
+               }
                /* Set the socket state to disconnected */
                psLocalLlcpSocket->eSocket_State = phFriNfc_LlcpTransportSocket_eSocketCreated;
 
-               /* Call Disconnect CB */
-               if (psLocalLlcpSocket->pfSocketDisconnect_Cb != NULL)
+               if (NULL != psLocalLlcpSocket->pSocketErrCb)
                {
-                  psLocalLlcpSocket->pfSocketDisconnect_Cb(psLocalLlcpSocket->pDisonnectContext,NFCSTATUS_SUCCESS);
-                  psLocalLlcpSocket->pfSocketDisconnect_Cb = NULL;
+                   psLocalLlcpSocket->pSocketErrCb(psLocalLlcpSocket->pContext, PHFRINFC_LLCP_ERR_DISCONNECTED);
                }
-
             }break;
-
-         case PHFRINFC_LLCP_DM_OPCODE_CONNECT_REJECTED:
-         case PHFRINFC_LLCP_DM_OPCODE_CONNECT_NOT_ACCEPTED:
-         case PHFRINFC_LLCP_DM_OPCODE_SAP_NOT_ACTIVE:
-         case PHFRINFC_LLCP_DM_OPCODE_SAP_NOT_FOUND:
-         case PHFRINFC_LLCP_DM_OPCODE_SOCKET_NOT_AVAILABLE:
+         default:
             {
-               /* Set the socket state to bound */
-               psLocalLlcpSocket->eSocket_State = phFriNfc_LlcpTransportSocket_eSocketCreated;
-               if(psLocalLlcpSocket->pfSocketConnect_Cb != NULL)
-               {
-                  /* Call Connect CB */
-                  psLocalLlcpSocket->pfSocketConnect_Cb(psLocalLlcpSocket->pConnectContext,dmOpCode,NFCSTATUS_FAILED);
-                  psLocalLlcpSocket->pfSocketConnect_Cb = NULL;
-               }
+               PH_LOG_LLCP_CRIT_STR("Unknown DM code: %d", dmOpCode);
             }break;
          }
       }

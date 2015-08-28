@@ -58,7 +58,11 @@
 #define PHNCINFC_DATA_PKT_PAYLOAD_SIZE_DEFAULT  (0xFC)
 
 /** Timer value used for invkoing temporary Ntf call back */
+#ifdef DISABLE_NFCCX_DTA
 #define PH_NCINFC_NTF_TIMEROUT                  (1000)
+#else
+#define PH_NCINFC_NTF_TIMEROUT                  (5000)
+#endif
 
 /* Dummy Destination ID for NFCC Loopback Mode */
 #define PH_NCINFC_LOOPBACK_MODE_DESTID          (0xFE)

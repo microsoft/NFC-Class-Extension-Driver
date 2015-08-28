@@ -36,6 +36,10 @@
 
 #define PHFRINFC_LLCP_SLOW_SYMMETRY                16
 
+#ifdef ENABLE_FUZZ
+void FuzzLlcpBuffer(unsigned char buffer[], int size, unsigned char **ppbuffer, DWORD *pSize);
+#endif
+
 static
 void
 phFriNfc_Llcp_Receive_CB(
@@ -336,6 +340,7 @@ phFriNfc_Llcp_Timer_CBRecv(
    /* Check current state */
    if (Llcp->state == PHFRINFC_LLCP_STATE_OPERATION_RECV)
    {
+        Llcp->MAC.bLlcpDeactivated = (phFriNfc_LlcpMac_ePeerTypeInitiator == Llcp->eRole) ? FALSE : TRUE;
         PH_LOG_LLCP_INFO_STR("No data is coming before LTO, disconnecting");
         /* No data is coming before LTO, disconnecting */
         phFriNfc_Llcp_InternalDeactivate(Llcp);
@@ -948,6 +953,8 @@ phFriNfc_Llcp_ResetLTO(
                             nDuration,
                             phFriNfc_Llcp_Timer_CBRecv,
                             Llcp);
+
+      PH_LOG_LLCP_INFO_STR("SymmTimer timer started for remote LTO %d", nDuration);
    }
    else
    {
@@ -955,7 +962,7 @@ phFriNfc_Llcp_ResetLTO(
       /* NOTE: to ensure the answer is completely sent before LTO, the
                timer is triggered _before_ LTO expiration */
       /* TODO: make sure time scope is enough, and avoid use of magic number */
-      nDuration = Llcp->sLocalParams.lto;
+      nDuration = Llcp->bDtaFlag ? 8 * (uint32_t) Llcp->sLocalParams.lto : Llcp->sLocalParams.lto;
 
       /* Reduce timeout when there is activity */
       if (Llcp->nSymmetryCounter >= PHFRINFC_LLCP_SLOW_SYMMETRY || Llcp->bDtaFlag)
@@ -965,6 +972,7 @@ phFriNfc_Llcp_ResetLTO(
                                nDuration,
                                phFriNfc_Llcp_Timer_CBSend,
                                Llcp);
+         PH_LOG_LLCP_INFO_STR("SymmTimer timer started for local LTO %d", nDuration);
       }
       else
       {
@@ -1019,7 +1027,7 @@ phFriNfc_Llcp_HandleLinkPacket(
 
       case PHFRINFC_LLCP_PTYPE_DISC:
       {
-          Llcp->MAC.bLlcpDeactivated = TRUE;
+          Llcp->MAC.bLlcpDeactivated = (phFriNfc_LlcpMac_ePeerTypeInitiator == Llcp->eRole) ? FALSE : TRUE;
          /* Handle link disconnection request */
          result = phFriNfc_Llcp_InternalDeactivate(Llcp);
          break;
@@ -1237,6 +1245,15 @@ phFriNfc_Llcp_Receive_CB(
         return;
     }
 
+#ifdef ENABLE_FUZZ
+    /// Fuzz packet before pass to parser
+    DWORD size=0;
+    PBYTE pFuzzedBuffer = NULL;
+    FuzzLlcpBuffer(psData->buffer, psData->length, &pFuzzedBuffer, &size);
+    psData->length = size;
+    psData->buffer = pFuzzedBuffer;
+#endif
+
     /* Parse header */
     phFriNfc_Llcp_Buffer2Header(psData->buffer, 0, &sPacketHeader);
 
@@ -1280,7 +1297,13 @@ phFriNfc_Llcp_Receive_CB(
 
         /* Bad State */
         case PHFRINFC_LLCP_STATE_OPERATION_SEND:
-        /*TODO handle error*/
+        {
+            if (Llcp->bDtaFlag && Llcp->MAC.bLlcpDeactivated)
+            {
+                PH_LOG_LLCP_INFO_STR("LLCP is not active, reset local LTO procedure");
+                phFriNfc_Llcp_ResetLTO(Llcp);
+            }
+        }
         break;
 
         /* Handle normal operation packets */
@@ -1324,6 +1347,8 @@ phFriNfc_Llcp_Receive_CB(
     Llcp->sRxBuffer.buffer = Llcp->pRxBuffer;
     Llcp->sRxBuffer.length = Llcp->nRxBufferLength;
     phFriNfc_LlcpMac_Receive(&Llcp->MAC, &Llcp->sRxBuffer, phFriNfc_Llcp_Receive_CB, Llcp);
+
+    PH_LOG_LLCP_FUNC_EXIT();
 }
 
 
@@ -1682,6 +1707,7 @@ phFriNfc_Llcp_Activate(
                           Llcp->state,
                           PHFRINFC_LLCP_STATE_ACTIVATION);
     Llcp->state = PHFRINFC_LLCP_STATE_ACTIVATION;
+    Llcp->MAC.bLlcpDeactivated = FALSE;
 
     wStatus = phFriNfc_LlcpMac_Activate(&Llcp->MAC);
     PH_LOG_LLCP_WARN_X32MSG("Returning:",wStatus);

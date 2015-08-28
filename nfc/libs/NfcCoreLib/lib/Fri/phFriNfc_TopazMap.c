@@ -18,7 +18,7 @@
 #define LOCK0_BYTE_VALUE                                        (0xFFU)
 
 #define LOCK1_BYTE_NUMBER                                       (0x01U)
-#define LOCK1_BYTE_VALUE                                        (0x7FU)
+#define LOCK1_BYTE_VALUE                                        (0xFFU)
 
 #define CC_RWA_BYTE_NUMBER                                      (0x03U)
 #define CC_READ_ONLY_VALUE                                      (0x0FU)
@@ -425,7 +425,6 @@ void phFriNfc_TopazMap_Process( void       *Context,
 {
 
     phFriNfc_NdefMap_t              *psNdefMap = NULL;
-    static uint8_t                  written_lock_byte = 0;
 
     psNdefMap = (phFriNfc_NdefMap_t *)Context;
 
@@ -438,38 +437,19 @@ void phFriNfc_TopazMap_Process( void       *Context,
                 if((CC_READ_ONLY_VALUE == *psNdefMap->SendRecvBuf)
                     && (PH_FRINFC_TOPAZ_VAL1 == *psNdefMap->SendRecvLength))
                 {
-                    written_lock_byte = 0;
-
-                    *psNdefMap->SendRecvBuf = PH_FRINFC_TOPAZ_CMD_READ;
-
-                    Status = phFriNfc_Tpz_H_RdBytes (psNdefMap, LOCK_BLOCK_NUMBER,
-                                                    LOCK0_BYTE_NUMBER);
-
+                    Status = phFriNfc_Tpz_H_WrAByte(psNdefMap,
+                                                    LOCK_BLOCK_NUMBER,
+                                                    LOCK0_BYTE_NUMBER,
+                                                    LOCK0_BYTE_VALUE);
                     if (NFCSTATUS_PENDING == PHNFCSTATUS(Status))
                     {
-                        psNdefMap->State = PH_FRINFC_TOPAZ_STATE_RD_LOCK0_BYTE;
+                        psNdefMap->State = PH_FRINFC_TOPAZ_STATE_WR_LOCK0_BYTE;
                     }
                 }
                 else
                 {
                     Status = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
                                         NFCSTATUS_INVALID_RECEIVE_LENGTH);
-                }
-                break;
-            }
-
-            case PH_FRINFC_TOPAZ_STATE_RD_LOCK0_BYTE:
-            {
-                if (PH_FRINFC_TOPAZ_VAL1 == *psNdefMap->SendRecvLength)
-                {
-                    Status = phFriNfc_Tpz_H_WrAByte (psNdefMap, LOCK_BLOCK_NUMBER,
-                                                LOCK0_BYTE_NUMBER,
-                                                LOCK0_BYTE_VALUE);
-
-                    if (NFCSTATUS_PENDING == PHNFCSTATUS(Status))
-                    {
-                        psNdefMap->State = PH_FRINFC_TOPAZ_STATE_WR_LOCK0_BYTE;
-                    }
                 }
                 break;
             }
@@ -479,14 +459,13 @@ void phFriNfc_TopazMap_Process( void       *Context,
                 if((LOCK0_BYTE_VALUE == *psNdefMap->SendRecvBuf)
                     && (PH_FRINFC_TOPAZ_VAL1 == *psNdefMap->SendRecvLength))
                 {
-                    *psNdefMap->SendRecvBuf = PH_FRINFC_TOPAZ_CMD_READ;
-
-                    Status = phFriNfc_Tpz_H_RdBytes (psNdefMap, LOCK_BLOCK_NUMBER,
-                                                    LOCK1_BYTE_NUMBER);
-
+                    Status = phFriNfc_Tpz_H_WrAByte (psNdefMap,
+                                            LOCK_BLOCK_NUMBER,
+                                            LOCK1_BYTE_NUMBER,
+                                            LOCK1_BYTE_VALUE);
                     if (NFCSTATUS_PENDING == PHNFCSTATUS(Status))
                     {
-                        psNdefMap->State = PH_FRINFC_TOPAZ_STATE_RD_LOCK1_BYTE;
+                        psNdefMap->State = PH_FRINFC_TOPAZ_STATE_WR_LOCK1_BYTE;
                     }
                 }
                 else
@@ -496,34 +475,15 @@ void phFriNfc_TopazMap_Process( void       *Context,
                 }
             }
 
-            case PH_FRINFC_TOPAZ_STATE_RD_LOCK1_BYTE:
-            {
-                if (PH_FRINFC_TOPAZ_VAL1 == *psNdefMap->SendRecvLength)
-                {
-                    written_lock_byte = (uint8_t)(*psNdefMap->SendRecvBuf | LOCK1_BYTE_VALUE);
-                    Status = phFriNfc_Tpz_H_WrAByte (psNdefMap, LOCK_BLOCK_NUMBER,
-                                                LOCK1_BYTE_NUMBER,
-                                                written_lock_byte);
-
-                    if (NFCSTATUS_PENDING == PHNFCSTATUS(Status))
-                    {
-                        psNdefMap->State = PH_FRINFC_TOPAZ_STATE_WR_LOCK1_BYTE;
-                    }
-                }
-                break;
-            }
-
             case PH_FRINFC_TOPAZ_STATE_WR_LOCK1_BYTE:
             {
-                if((written_lock_byte == *psNdefMap->SendRecvBuf)
+                if((LOCK1_BYTE_VALUE == *psNdefMap->SendRecvBuf)
                     && (PH_FRINFC_TOPAZ_VAL1 == *psNdefMap->SendRecvLength))
                 {
-                    written_lock_byte = 0;
                     /* Do nothing */
                 }
                 else
                 {
-                    written_lock_byte = 0;
                     Status = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
                                         NFCSTATUS_INVALID_RECEIVE_LENGTH);
                 }
@@ -726,7 +686,7 @@ static NFCSTATUS phFriNfc_Tpz_H_WrAByte(phFriNfc_NdefMap_t *NdefMap,
     NdefMap->Cmd.JewelCmd = phNfc_eJewel_Raw;
 
     /*Copy command to Send Buffer*/
-    NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0]  = PH_FRINFC_TOPAZ_CMD_WRITE_1E;
+    NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0]  = PH_FRINFC_TOPAZ_CMD_WRITE_1NE;
     index ++;
 
     /*Copy Address to  Send Buffer*/
