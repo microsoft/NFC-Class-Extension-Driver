@@ -878,7 +878,11 @@ void phNciNfc_PrintNfceeDiscoverNtfDescription(uint8_t *pBuff, uint16_t wLen)
     PH_LOG_NCI_INFO_X32MSG("Number of TLVs are", (uint32_t)pBuff[bIndex++]);
 }
 
-void phNciNfc_PrintPacketDescription(pphNciNfc_sCoreHeaderInfo_t pHeaderInfo, uint8_t *pBuff, uint16_t wLen)
+void phNciNfc_PrintPacketDescription(
+    pphNciNfc_sCoreHeaderInfo_t pHeaderInfo, 
+    uint8_t *pBuff, 
+    uint16_t wLen,
+    uint8_t bLogDataMessages)
 {
     PH_LOG_NCI_FUNC_ENTRY();
 
@@ -892,7 +896,6 @@ void phNciNfc_PrintPacketDescription(pphNciNfc_sCoreHeaderInfo_t pHeaderInfo, ui
             PH_LOG_NCI_INFO_STR("Message type: Data");
             PH_LOG_NCI_INFO_X32MSG("Conn ID:",(uint32_t)pHeaderInfo->bConn_ID);
             PH_LOG_NCI_INFO_X32MSG("Payload Length:", (uint32_t)wLen);
-            PH_LOG_NCI_INFO_HEXDUMP("Payload: %!HEXDUMP!", WppLogHex(pBuff, wLen));
         }
         break;
         case phNciNfc_e_NciCoreMsgTypeCntrlCmd:
@@ -1151,6 +1154,18 @@ void phNciNfc_PrintPacketDescription(pphNciNfc_sCoreHeaderInfo_t pHeaderInfo, ui
         break;
     }
     
+    if (pHeaderInfo->eMsgType == phNciNfc_e_NciCoreMsgTypeData)
+    {
+        if (bLogDataMessages)
+        {
+            PH_LOG_NCI_INFO_HEXDUMP("Payload: %!HEXDUMP!", WppLogHex(pBuff, wLen));
+        }
+    }
+    else
+    {
+        PH_LOG_NCI_INFO_HEXDUMP("Payload: %!HEXDUMP!", WppLogHex(pBuff, wLen));
+    }
+
     PH_LOG_NCI_INFO_STR("====================================================");
     PH_LOG_NCI_FUNC_EXIT();
 }

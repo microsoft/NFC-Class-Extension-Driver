@@ -520,12 +520,13 @@ typedef struct phNfc_tNfceeActionInfo
 
 /**
  * \ingroup grp_nci_nfc
- * \brief Hardware configuration
+ * \brief Configuration
  */
-typedef struct phNciNfc_HwConfig
+typedef struct phNciNfc_Config
 {
     uint8_t bConfigOpt;
-}phNciNfc_HwConfig_t, *pphNciNfc_HwConfig_t; /**< pointer to #phNciNfc_HwConfig_t */
+    uint8_t bLogDataMessages;
+}phNciNfc_Config_t, *pphNciNfc_Config_t; /**< pointer to #phNciNfc_Config_t */
 
 /**
  * \ingroup grp_nci_nfc
@@ -1293,7 +1294,7 @@ typedef NFCSTATUS (*pphNciNfc_RegDataCb_t)(
  * This initialises NCI SW stack and NFCC in default mode
  *
  * \param[in] pHwRef pHwRef is the Information of the Device Interface Link .
- * \param[in] pHwConfig pHwConfig is the Information required to configure the parameters
+ * \param[in] pConfig pConfig is the Information required to configure the parameters
  * \param[in] pInitNotifyCb Upper layer Notification function pointer.
  * \param[in] pContext Upper layer Context
  * \param[in] eResetType Type of reset to be performed before Init(#phNciNfc_ResetType_t)
@@ -1306,7 +1307,7 @@ typedef NFCSTATUS (*pphNciNfc_RegDataCb_t)(
  */
 extern NFCSTATUS
 phNciNfc_Initialise(void*                        pHwRef,
-                    phNciNfc_HwConfig_t*         pHwConfig,
+                    phNciNfc_Config_t*           pConfig,
                     pphNciNfc_IfNotificationCb_t pInitNotifyCb,
                     void*                        pContext,
                     phNciNfc_ResetType_t         eResetType);

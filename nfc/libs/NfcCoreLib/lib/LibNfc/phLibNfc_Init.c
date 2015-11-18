@@ -130,15 +130,16 @@ static NFCSTATUS phLibNfc_Initialize(void* pContext, NFCSTATUS status, void* pIn
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t ) pContext;
-    phNciNfc_HwConfig_t hwConfig = {0};
+    phNciNfc_Config_t config = {0};
     PH_LOG_LIBNFC_FUNC_ENTRY();
     UNUSED(status);
     UNUSED(pInfo);
 
-    hwConfig.bConfigOpt = (uint8_t)pCtx->Config.bConfigOpt;
+    config.bConfigOpt = (uint8_t)pCtx->Config.bConfigOpt;
+    config.bLogDataMessages = (uint8_t)pCtx->Config.bLogNciDataMessages;
     wStatus=phNciNfc_Initialise(
         pCtx->sHwReference.pDriverHandle,
-        &hwConfig,
+        &config,
         (pphNciNfc_IfNotificationCb_t) &phLibNfc_InternalSequence,pContext,
         phNciNfc_ResetType_KeepConfig
         );

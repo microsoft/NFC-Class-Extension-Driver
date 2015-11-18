@@ -20,7 +20,7 @@
 
 typedef struct phNciNfc_Context
 {
-    phNciNfc_HwConfig_t HwConfig;
+    phNciNfc_Config_t Config;
     phNciNfc_sInitRspParams_t InitRspParams;    /**<Structure object to #phNciNfc_sInitRspParams_t*/
     phNciNfc_ResetInfo_t ResetInfo;             /**<Structure object to #phNciNfc_ResetInfo_t*/
     phNciNfc_InitInfo_t tInitInfo;              /**<Structure object to #phNciNfc_InitInfo_t*/

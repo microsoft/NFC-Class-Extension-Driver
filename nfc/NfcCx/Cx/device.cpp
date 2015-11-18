@@ -443,6 +443,57 @@ Return Value:
 }
 
 NTSTATUS
+NfcCxFdoReadCxDriverRegistrySettings(
+    _Out_ BOOLEAN* logNciDataMessages
+)
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    WDFKEY hKey = NULL;
+    UNICODE_STRING valueName;
+    ULONG tempValue = 0;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NT_ASSERT(logNciDataMessages != NULL);
+
+    status = WdfDriverOpenParametersRegistryKey(
+        WdfGetDriver(),
+        PLUGPLAY_REGKEY_DEVICE,
+        WDF_NO_OBJECT_ATTRIBUTES,
+        &hKey);
+
+    if (!NT_SUCCESS(status)) {
+        status = STATUS_SUCCESS;
+        goto Done;
+    }
+
+    RtlInitUnicodeString(&valueName, NFCCX_REG_LOG_DATA_MESSAGES);
+    status = WdfRegistryQueryULong(
+        hKey,
+        &valueName,
+        &tempValue);
+    if (!NT_SUCCESS(status)) {
+        // Value not present, allow continuation
+        status = STATUS_SUCCESS;
+    }
+    else {
+        TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_LOG_DATA_MESSAGES, tempValue);
+        *logNciDataMessages = tempValue != 0;
+    }
+
+Done:
+
+    if (NULL != hKey) {
+        WdfRegistryClose(hKey);
+        hKey = NULL;
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
+    return status;
+}
+
+NTSTATUS
 NfcCxFdoReadPersistedDeviceRegistrySettings(
     _In_ PNFCCX_FDO_CONTEXT FdoContext
     )

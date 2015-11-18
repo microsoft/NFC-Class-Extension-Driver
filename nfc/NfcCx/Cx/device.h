@@ -48,6 +48,11 @@ typedef struct _NFCCX_FDO_CONTEXT {
     BOOLEAN SEPowerOffPolicyOverride;   // TRUE == SE radio state is off
 
     //
+    // Registry-provided config
+    //
+    BOOLEAN LogNciDataMessages;
+
+    //
     // IO Queues
     //
     WDFQUEUE DefaultQueue;
@@ -97,6 +102,11 @@ EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL NfcCxEvtSelfIoControl;
 NTSTATUS
 NfcCxFdoCreate(
     _In_ PNFCCX_FDO_CONTEXT FdoContext
+    );
+
+NTSTATUS
+NfcCxFdoReadCxDriverRegistrySettings(
+    _Out_ BOOLEAN* logNciDataMessages
     );
 
 NTSTATUS

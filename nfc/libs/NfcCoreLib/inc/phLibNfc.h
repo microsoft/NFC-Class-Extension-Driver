@@ -114,6 +114,7 @@ typedef struct phLibNfc_sConfig
     BitField_t bNfceeActionNtf:1;
     BitField_t bIsoDepPresChkCmd:1;
     BitField_t bSwitchedOnSubState:1;
+    BitField_t bLogNciDataMessages:1;
 } phLibNfc_sConfig_t, *pphLibNfc_sConfig_t;
 
 /**

@@ -30,4 +30,8 @@
 // end_wpp
 
 extern void
-phNciNfc_PrintPacketDescription(pphNciNfc_sCoreHeaderInfo_t pHeaderInfo, uint8_t *pBuff, uint16_t wLen);
+phNciNfc_PrintPacketDescription(
+    pphNciNfc_sCoreHeaderInfo_t pHeaderInfo, 
+    uint8_t *pBuff, 
+    uint16_t wLen,
+    uint8_t bLogDataMessages);

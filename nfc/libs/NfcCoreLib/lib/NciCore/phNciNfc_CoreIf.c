@@ -48,7 +48,7 @@ NFCSTATUS phNciNfc_CoreIfTxRx(pphNciNfc_CoreContext_t pCtx,
                                       sending command fails*/
             phOsalNfc_MemCopy(&(pCtx->TxInfo), pTxInfo, sizeof(phNciNfc_CoreTxInfo_t));
             /* Print the NCI packet details */
-            phNciNfc_PrintPacketDescription(&pTxInfo->tHeaderInfo, pTxInfo->Buff, pTxInfo->wLen);
+            phNciNfc_PrintPacketDescription(&pTxInfo->tHeaderInfo, pTxInfo->Buff, pTxInfo->wLen, pCtx->bLogDataMessages);
             wStatus = phNciNfc_StateHandler(pCtx, phNciNfc_EvtSendPacket);
         }
         else
@@ -87,7 +87,7 @@ NFCSTATUS phNciNfc_CoreIfTxOnly(pphNciNfc_CoreContext_t pCtx,
             pCtx->bCoreTxOnly = 1; /* Send and receive operation is in progress */
             phOsalNfc_MemCopy(&(pCtx->TxInfo), pTxInfo, sizeof(phNciNfc_CoreTxInfo_t));
             /* Print the NCI packet details */
-            phNciNfc_PrintPacketDescription(&pTxInfo->tHeaderInfo, pTxInfo->Buff, pTxInfo->wLen);
+            phNciNfc_PrintPacketDescription(&pTxInfo->tHeaderInfo, pTxInfo->Buff, pTxInfo->wLen, pCtx->bLogDataMessages);
             wStatus = phNciNfc_StateHandler(pCtx, phNciNfc_EvtSendPacket);
         }
         else

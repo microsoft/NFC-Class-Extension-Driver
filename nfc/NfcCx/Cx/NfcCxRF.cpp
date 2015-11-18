@@ -497,6 +497,7 @@ Return Value:
     rfInterface->LibConfig.bNfceeActionNtf = (FdoContext->NfcCxClientGlobal->Config.DriverFlags & NFC_CX_DRIVER_DISABLE_NFCEE_ACTION_NTF) == 0;
     rfInterface->LibConfig.bIsoDepPresChkCmd = (FdoContext->NfcCxClientGlobal->Config.DriverFlags & NFC_CX_DRIVER_ISODEP_RNAK_PRESENCE_CHK_SUPPORTED) != 0;
     rfInterface->LibConfig.bSwitchedOnSubState = (FdoContext->NfcCxClientGlobal->Config.DriverFlags & NFC_CX_DRIVER_RF_ROUTING_POWER_SUB_STATES_SUPPORTED) != 0;
+    rfInterface->LibConfig.bLogNciDataMessages = FdoContext->LogNciDataMessages;
 
     //
     // Register for below list of Protocols
@@ -2790,22 +2791,38 @@ NfcCxRFInterfaceSENtfRegister(
     _In_opt_ VOID* /*Param2*/
     )
 {
+    NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_LIBNFC_CONTEXT pLibNfcContext = RFInterface->pLibNfcContext;
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     phLibNfc_SE_NtfRegister(NfcCxRFInterfaceHandleSecureElementEvent, RFInterface);
 
     if (NfcCxRFInterfaceIsHCESupported(RFInterface)) {
-        pLibNfcContext->SEList[0].eLowPowerMode = phLibNfc_SE_LowPowerMode_Off;
-        pLibNfcContext->SEList[0].eSE_ActivationMode = phLibNfc_SE_ActModeOff;
-        pLibNfcContext->SEList[0].eSE_Type = phLibNfc_SE_Type_DeviceHost;
-        pLibNfcContext->SEList[0].hSecureElement = NULL;
         pLibNfcContext->SECount = 1;
-    }
+        pLibNfcContext->SEList[0].eLowPowerMode = phLibNfc_SE_LowPowerMode_Off;
+        pLibNfcContext->SEList[0].eSE_Type = phLibNfc_SE_Type_DeviceHost;
+        pLibNfcContext->SEList[0].hSecureElement = NULL;     
 
+        if (RFInterface->eDeviceHostInitializationState == phLibNfc_SE_ActModeVirtual)
+        {
+            NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
+
+            pLibNfcContext->SEList[0].eSE_ActivationMode = RFInterface->eDeviceHostInitializationState;
+            nfcStatus = phLibNfc_CardEmulation_NtfRegister(NfcCxRFInterfaceHandleSEDeviceHostEvent, RFInterface);
+            status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+        }
+        else
+        {
+            NT_ASSERT(RFInterface->eDeviceHostInitializationState == phLibNfc_SE_ActModeOff);
+
+            pLibNfcContext->SEList[0].eSE_ActivationMode = phLibNfc_SE_ActModeOff;
+        }
+
+        RFInterface->eDeviceHostInitializationState = phLibNfc_SE_ActModeOff;
+    }
+    
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
-    return STATUS_SUCCESS;
+    return status;
 }
 
 static VOID
@@ -3964,6 +3981,8 @@ NfcCxRFInterfaceStateInitialize(
 
     NT_ASSERT(NFCCX_IS_USER_EVENT(Event));
 
+    rfInterface->eDeviceHostInitializationState = phLibNfc_SE_ActModeOff;
+
     if (rfInterface->pLibNfcContext->EnableSEDiscovery) {
         NFCCX_CX_BEGIN_SEQUENCE_MAP(InitializeSequence)
             RF_INTERFACE_INITIALIZE_SEQUENCE
@@ -3971,6 +3990,7 @@ NfcCxRFInterfaceStateInitialize(
             LLCP_INTERFACE_CONFIG_SEQUENCE
             RF_INTERFACE_SE_NTF_REGISTER_SEQUENCE
             RF_INTERFACE_SE_ENUMERATE_SEQUENCE
+            RF_INTERFACE_SE_DISABLE_SEQUENCE
         NFCCX_CX_END_SEQUENCE_MAP()
 
         InitializeSequence[ARRAYSIZE(InitializeSequence)-1].SequenceProcess =
@@ -4113,7 +4133,19 @@ NfcCxRFInterfaceStateRecovery(
 
     NT_ASSERT(NFCCX_IS_INTERNAL_EVENT(Event));
 
-    if (rfInterface->pLibNfcContext->EnableSEDiscovery) {
+    rfInterface->eDeviceHostInitializationState = phLibNfc_SE_ActModeOff;
+
+    if (rfInterface->pLibNfcContext->EnableSEDiscovery) 
+    {
+        // Recovery needs to reset us to the state expected by the clients.
+        // If discovery was enabled and the SE was on, reset the device host to its previous state.
+        if (rfInterface->pLibNfcContext->SECount > 0
+            && rfInterface->pLibNfcContext->SEList[0].eSE_Type == phLibNfc_SE_Type_DeviceHost
+            && rfInterface->pLibNfcContext->SEList[0].eSE_ActivationMode == phLibNfc_SE_ActModeVirtual)
+        {
+            rfInterface->eDeviceHostInitializationState = rfInterface->pLibNfcContext->SEList[0].eSE_ActivationMode;
+        }
+
         NFCCX_CX_BEGIN_SEQUENCE_MAP(RecoverySequence)
             RF_INTERFACE_PRE_RECOVERY_SEQUENCE
             RF_INTERFACE_DEINITIALIZE_SEQUENCE
@@ -5082,6 +5114,7 @@ NfcCxRFInterfaceStateRfIdle(
             {
                 NFCCX_CX_BEGIN_SEQUENCE_MAP(SEEnumerateSequence)
                     RF_INTERFACE_SE_ENUMERATE_SEQUENCE
+                    RF_INTERFACE_SE_DISABLE_SEQUENCE
                 NFCCX_CX_END_SEQUENCE_MAP()
 
                 SEEnumerateSequence[ARRAYSIZE(SEEnumerateSequence)-1].SequenceProcess =

@@ -151,7 +151,7 @@ phNciNfc_CompleteDataSequence(void *pContext, NFCSTATUS wStatus)
 NFCSTATUS
 phNciNfc_Initialise(
                     void*                        pHwRef,
-                    phNciNfc_HwConfig_t*         pHwConfig,
+                    phNciNfc_Config_t*           pConfig,
                     pphNciNfc_IfNotificationCb_t pInitNotifyCb,
                     void*                        pContext,
                     phNciNfc_ResetType_t         eResetType)
@@ -160,7 +160,7 @@ phNciNfc_Initialise(
     pphNciNfc_Context_t     pNciContext = NULL;
     NFCSTATUS               wStatus = NFCSTATUS_SUCCESS;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pHwRef) || (NULL == pHwConfig) || (NULL == pInitNotifyCb))
+    if ((NULL == pHwRef) || (NULL == pConfig) || (NULL == pInitNotifyCb))
     {
         PH_LOG_NCI_CRIT_STR("Invalid input parameter");
         wStatus = NFCSTATUS_INVALID_PARAMETER;
@@ -171,7 +171,7 @@ phNciNfc_Initialise(
         if(NULL != gpphNciNfc_Context)
         {
             phOsalNfc_SetMemory(gpphNciNfc_Context, 0, sizeof(phNciNfc_Context_t));
-            phOsalNfc_MemCopy(&gpphNciNfc_Context->HwConfig, pHwConfig, sizeof(phNciNfc_HwConfig_t));
+            phOsalNfc_MemCopy(&gpphNciNfc_Context->Config, pConfig, sizeof(phNciNfc_Config_t));
 
             pNciContext = gpphNciNfc_Context;
             gpphNciNfc_CoreContext = &(pNciContext->NciCoreContext);
@@ -199,6 +199,7 @@ phNciNfc_Initialise(
         PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_InitSequence);
         pCoreContext = &(pNciContext->NciCoreContext);
         pCoreContext->pHwRef = pHwRef;
+        pCoreContext->bLogDataMessages = pNciContext->Config.bLogDataMessages;
         wStatus = phNciNfc_CoreInitialise(pCoreContext);
         if(NFCSTATUS_SUCCESS == wStatus)
         {
@@ -893,7 +894,7 @@ phNciNfc_SetConfigRfParameters(
         wStatus = phNciNfc_ValidateSetConfParams(pDiscConfigParams,&wParamsSize,&bNumParams);
         if(NFCSTATUS_SUCCESS == wStatus)
         {
-            if (pNciContext->HwConfig.bConfigOpt)
+            if (pNciContext->Config.bConfigOpt)
             {
                 pNciContext->tSetConfOptInfo.pSetConfParams =
                                 (pphNciNfc_RfDiscConfigParams_t)phOsalNfc_GetMemory(sizeof(phNciNfc_RfDiscConfigParams_t));

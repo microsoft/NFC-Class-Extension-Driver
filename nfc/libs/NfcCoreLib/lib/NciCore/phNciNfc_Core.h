@@ -917,6 +917,7 @@ typedef struct phNciNfc_CoreContext
     phNciNfc_TempInfo_t tTemp;                      /**< Temporary information to be passed to Send state machine*/
     phTmlNfc_TransactInfo_t pInfo;                  /**< Transaction info received from TML*/
     uint8_t bNciRelease;                            /**< This flag is used during NCI release */
+    uint8_t bLogDataMessages;
 }phNciNfc_CoreContext_t, *pphNciNfc_CoreContext_t;  /**< pointer to #phNciNfc_CoreContext_t */
 
 

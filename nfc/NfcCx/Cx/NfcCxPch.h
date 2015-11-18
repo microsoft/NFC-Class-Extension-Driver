@@ -91,6 +91,7 @@ DEFINE_GUID(GUID_NULL, 0,0,0,0,0,0,0,0,0,0,0);
 #define NFCCX_REG_SE_RADIO_TURNED_OFF           L"SERadioTurnedOff"
 #define NFCCX_REG_SE_FLIGHT_MODE                L"SERadioFlightMode"
 #define NFCCX_REG_SESSION_IDENTIFIER            L"SessionIdentifier"
+#define NFCCX_REG_LOG_DATA_MESSAGES             L"LogNciDataMessages"
 
 //
 // As per spec The maximum length of the 

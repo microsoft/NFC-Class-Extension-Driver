@@ -352,6 +352,12 @@ Return Value:
     fdoContext->SEPowerPolicyReferences = 0;
     fdoContext->NfcCxClientGlobal = nfcCxClientGlobal;
 
+    status = NfcCxFdoReadCxDriverRegistrySettings(&fdoContext->LogNciDataMessages);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "NfcCxFdoReadCxDriverRegistrySettings failed, %!STATUS!", status);
+        goto Done;
+    }
+
     WDF_OBJECT_ATTRIBUTES_INIT(&objectAttrib);
     objectAttrib.ParentObject = Device;
     

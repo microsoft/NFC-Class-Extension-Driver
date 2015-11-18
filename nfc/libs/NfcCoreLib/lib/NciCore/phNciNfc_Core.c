@@ -293,8 +293,16 @@ static void phNciNfc_CoreRecvCb(void *pContext, phTmlNfc_TransactInfo_t *pInfo)
 
     if((NULL != ptNciCoreCtx) && (NULL != pInfo))
     {
-        PH_LOG_NCI_INFO_HEXDUMP("Received packet<-<- : %!HEXDUMP!", 
-                                 WppLogHex((VOID*)pInfo->pBuff, (USHORT)pInfo->wLength));
+        if (ptNciCoreCtx->bLogDataMessages)
+        {
+            PH_LOG_NCI_INFO_HEXDUMP("Received packet<-<- : %!HEXDUMP!",
+                WppLogHex((VOID*)pInfo->pBuff, (USHORT)pInfo->wLength));
+        }
+        else
+        {
+            PH_LOG_NCI_INFO_X32MSG("Received packet with length : ", pInfo->wLength);
+        }
+
         if(PHNCINFC_GETNCICORECONTEXT() == ptNciCoreCtx)
         {
             pRecvStateContext = &(ptNciCoreCtx->RecvStateContext);
@@ -432,8 +440,16 @@ NFCSTATUS phNciNfc_CoreSend(pphNciNfc_CoreContext_t pCtx)
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL != pCtx)
     {
-        PH_LOG_NCI_INFO_HEXDUMP("Sending packet->-> %!HEXDUMP!", 
-                                 WppLogHex((VOID*)pCtx->tSendInfo.aSendPktBuff, (USHORT)pCtx->tSendInfo.dwSendlength));
+        if (pCtx->bLogDataMessages)
+        {
+            PH_LOG_NCI_INFO_HEXDUMP("Sending packet->-> %!HEXDUMP!",
+                WppLogHex((VOID*)pCtx->tSendInfo.aSendPktBuff, (USHORT)pCtx->tSendInfo.dwSendlength));
+        }
+        else
+        {
+            PH_LOG_NCI_INFO_X32MSG("Sending packet with length: ", pCtx->tSendInfo.dwSendlength);
+        }
+
         wStatus = phTmlNfc_Write(pCtx->pHwRef, pCtx->tSendInfo.aSendPktBuff,
                                     (uint16_t)pCtx->tSendInfo.dwSendlength,
                                     (pphTmlNfc_TransactCompletionCb_t)&phNciNfc_CoreSendCb,
@@ -493,10 +509,7 @@ NFCSTATUS phNciNfc_CoreBuildDataPkt(pphNciNfc_CoreContext_t pContext, pphNciNfc_
                     Len);
                 /*Update pkt Info for Ref*/
                 pContext->tSendInfo.dwSendlength = Len + PHNCINFC_CORE_PKT_HEADER_LEN;
-                PH_LOG_NCI_INFO_HEXDUMP("Sending packet->-> %!HEXDUMP!", 
-                                         WppLogHex((VOID*)pContext->tSendInfo.aSendPktBuff, 
-                                                    (USHORT)pContext->tSendInfo.dwSendlength));
-
+                PH_LOG_NCI_INFO_X32MSG("Sending packet with length: ", pContext->tSendInfo.dwSendlength);
             }
             else
             {

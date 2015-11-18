@@ -339,7 +339,7 @@ phNciNfc_CoreRecvManager(void *pCtx,
 
             if(NFCSTATUS_SUCCESS == wStat)
             {
-                phNciNfc_PrintPacketDescription(pHdrInfo, tTransInfo.pbuffer, tTransInfo.wLength);
+                phNciNfc_PrintPacketDescription(pHdrInfo, tTransInfo.pbuffer, tTransInfo.wLength, pCoreCtx->bLogDataMessages);
                 wStat = phNciNfc_CoreInvokeCb(pRegList,wStatus,&tRegInfo,eMsgType,&tTransInfo);
             }
             /* Free memory that had been allocated */

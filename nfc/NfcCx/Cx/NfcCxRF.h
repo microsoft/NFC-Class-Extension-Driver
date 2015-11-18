@@ -132,6 +132,11 @@ typedef struct _NFCCX_RF_INTERFACE {
     UCHAR uiBailout; 
 
     //
+    // Dynamic Configuration. May have different state based on initial initialization or recovery initialization.
+    //
+    phLibNfc_eSE_ActivationMode eDeviceHostInitializationState;
+
+    //
     // Send/Receive buffers
     //
     phNfc_sTransceiveInfo_t sTransceiveBuffer;
@@ -496,9 +501,9 @@ FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfacePostRecovery;
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfacePreSEEnumerate) \
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSEEnumerate) \
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfacePostSEEnumerate) \
-    NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSetDefaultRoutingTable) \
-    NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceDisableSecureElements)
+    NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSetDefaultRoutingTable)
 
+#define RF_INTERFACE_SE_DISABLE_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceDisableSecureElements)
 #define RF_INTERFACE_SE_SET_MODE_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSESetModeConfig)
 #define RF_INTERFACE_SE_SET_ROUTING_MODE_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceConfigureRoutingTable)
 
