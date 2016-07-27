@@ -4,12 +4,12 @@ Copyright (c) Microsoft Corporation.  All Rights Reserved
 
 Module Name:
 
-    NfcCxSE.h
+    NfcCxSE.cpp
 
 Abstract:
 
     SE Interface declaration
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -1051,7 +1051,7 @@ Return Value:
     endpointList = (PSECURE_ELEMENT_ENDPOINT_LIST)OutputBuffer;
 
     if (0 != InputBufferLength) {
-        TRACE_LINE(LEVEL_ERROR, "Input buffer should be NULL for EnumEndpoints");
+        TRACE_LINE(LEVEL_ERROR, "Input buffer must be NULL");
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
@@ -1141,7 +1141,7 @@ Return Value:
     }
 
     if (0 != InputBufferLength) {
-        TRACE_LINE(LEVEL_ERROR, "Input buffer should be NULL for GetNextSubscribedMessage");
+        TRACE_LINE(LEVEL_ERROR, "Input buffer must be NULL");
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
@@ -1283,7 +1283,7 @@ Return Value:
     eventInfo = (PSECURE_ELEMENT_EVENT_SUBSCRIPTION_INFO)InputBuffer;
 
     if (0 != OutputBufferLength) {
-        TRACE_LINE(LEVEL_ERROR, "Output buffer should be NULL for SubscribeForEvent");
+        TRACE_LINE(LEVEL_ERROR, "Output buffer must be NULL");
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
@@ -1385,7 +1385,13 @@ Return Value:
     }
 
     if (0 != OutputBufferLength) {
-        TRACE_LINE(LEVEL_ERROR, "Output buffer should be NULL for SetCardEmulationMode");
+        TRACE_LINE(LEVEL_ERROR, "Output buffer must be NULL");
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    if (!NfcCxSEInterfaceValidateEmulationMode(pMode->eMode)) {
+        TRACE_LINE(LEVEL_ERROR, "Invalid SE emulation mode %d", pMode->eMode);
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
@@ -1453,7 +1459,7 @@ Return Value:
     rfInterface = NfcCxFileObjectGetFdoContext(FileContext)->RFInterface;
 
     if (0 != InputBufferLength) {
-        TRACE_LINE(LEVEL_ERROR, "Input buffer should be NULL for NFCC Capabilities");
+        TRACE_LINE(LEVEL_ERROR, "Input buffer must be NULL");
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
@@ -1528,7 +1534,8 @@ Return Value:
 
     UNREFERENCED_PARAMETER(InputBuffer);
 
-    if (InputBufferLength != 0) {
+    if (0 != InputBufferLength) {
+        TRACE_LINE(LEVEL_ERROR, "Input buffer must be NULL");
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
@@ -1590,21 +1597,20 @@ Return Value:
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     UNREFERENCED_PARAMETER(Request);
-    UNREFERENCED_PARAMETER(InputBufferLength);
     UNREFERENCED_PARAMETER(OutputBuffer);
 
     rfInterface = NfcCxFileObjectGetFdoContext(FileContext)->RFInterface;
 
     if (0 != OutputBufferLength) {
-        TRACE_LINE(LEVEL_ERROR, "Ouput buffer should be NULL for Set Routing Table");
+        TRACE_LINE(LEVEL_ERROR, "Ouput buffer must be NULL");
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
 
     if (expectedBufferLength > InputBufferLength) {
-        TRACE_LINE(LEVEL_ERROR, "Expected input buffer length (%d) is greater than input buffer length (%d)",
+        TRACE_LINE(LEVEL_ERROR, "Expected input buffer length (%lu) is greater than input buffer length (%Iu)",
                    expectedBufferLength,
-                   (int) InputBufferLength);
+                   InputBufferLength);
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
@@ -1686,7 +1692,7 @@ Return Value:
     }
 
     if (0 != InputBufferLength) {
-        TRACE_LINE(LEVEL_ERROR, "Input buffer should be NULL");
+        TRACE_LINE(LEVEL_ERROR, "Input buffer must be NULL");
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
@@ -1700,7 +1706,7 @@ Return Value:
         //
         PLIST_ENTRY ple = FileContext->RoleParameters.SEManager.PacketQueue.Flink;
         ULONG usedBufferSize = 0;
-        CNFCPayload * pBuffer = CNFCPayload::FromListEntry(ple);
+        CNFCPayload* pBuffer = CNFCPayload::FromListEntry(ple);
 
         //
         // Complete the request
@@ -1768,7 +1774,7 @@ Done:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1805,6 +1811,7 @@ Return Value:
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_RF_INTERFACE rfInterface = NfcCxFileObjectGetFdoContext(FileContext)->RFInterface;
     PSECURE_ELEMENT_HCE_DATA_PACKET pDataPacket = (PSECURE_ELEMENT_HCE_DATA_PACKET)InputBuffer;
+    DWORD cbExpectedInputSize = 0;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -1823,8 +1830,21 @@ Return Value:
         goto Done;
     }
 
-    if ((0 != OutputBufferLength) ||
-        (pDataPacket->cbPayload + sizeof(DWORD) != InputBufferLength)) {
+    if (0 != OutputBufferLength) {
+        TRACE_LINE(LEVEL_ERROR, "Output buffer must be NULL");
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    if (0 == pDataPacket->cbPayload) {
+        TRACE_LINE(LEVEL_ERROR, "Payload size cannot be 0");
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    cbExpectedInputSize = SECURE_ELEMENT_HCE_DATA_PACKET_HEADER + pDataPacket->cbPayload;
+    if (cbExpectedInputSize != InputBufferLength) {
+        TRACE_LINE(LEVEL_ERROR, "Invalid input buffer size. Expected: %lu, Actual: %Iu", cbExpectedInputSize, InputBufferLength);
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
@@ -1834,7 +1854,7 @@ Return Value:
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1929,11 +1949,11 @@ Return Value:
 
     if (OutputBufferLength < requiredBufferSize) {
         status = STATUS_BUFFER_OVERFLOW;
-        TRACE_LINE(LEVEL_ERROR, "Insufficient buffer size, provided 0x%I64x, required 0x%I64x", OutputBufferLength, requiredBufferSize);
+        TRACE_LINE(LEVEL_ERROR, "Insufficient buffer size, provided %lu, required %lu", OutputBufferLength, requiredBufferSize);
         goto Done;
     }
 
-    CopyMemory((((PUCHAR)OutputBuffer) + 4), Data, DataLength);
+    CopyMemory(((PUCHAR)OutputBuffer) + sizeof(ULONG), Data, DataLength);
     *BufferUsed = requiredBufferSize;
 
 Done:
@@ -2176,7 +2196,7 @@ Return Value:
                                            &actualSize);
 
     TRACE_LINE(LEVEL_INFO,
-        "Completing request %p, with %!STATUS!, 0x%I64x, required size 0x%I64x", wdfRequest, status, actualSize, *(DWORD*) pOutBuffer);
+        "Completing request %p, with %!STATUS!, bytes returned %lu, required size %lu", wdfRequest, status, actualSize, *(DWORD*)pOutBuffer);
 
     WdfRequestCompleteWithInformation(wdfRequest, status, actualSize);
     wdfRequest = NULL;
@@ -2493,6 +2513,64 @@ Done:
     return status;
 }
 
+static BOOLEAN
+NfcCxSEValidRoutingTechnology(
+    _In_ BYTE Technology
+    )
+/*++
+
+Routine Description:
+
+    Checks the routing technology to see whether it is valid or not based on the
+    NCI 1.0 spec, section 6.3.2.
+
+Arguments:
+
+    Technology - The routing technology to check.
+
+Return Value:
+
+    BOOLEAN - TRUE if the routing technology is valid, FALSE otherwise.
+
+--*/
+{
+    if ((Technology >= 0x04 && Technology <= 0x7F) || Technology == 0xFF) {
+        // RFU
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+static BOOLEAN
+NfcCxSEValidRoutingProtocol(
+    _In_ BYTE Protocol
+    )
+/*++
+
+Routine Description:
+
+    Checks the routing protocol to see whether it is valid or not based on the
+    NCI 1.0 spec, section 6.3.2.
+
+Arguments:
+
+    Protocol - The routing protocol to check.
+
+Return Value:
+
+    BOOLEAN - TRUE if the routing protocol is valid, FALSE otherwise.
+
+--*/
+{
+    if ((Protocol >= 0x06 && Protocol <= 0x7F) || Protocol == 0xFF) {
+        // RFU
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 NTSTATUS
 NfcCxSEInterfaceValidateRoutingTable(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
@@ -2502,16 +2580,17 @@ NfcCxSEInterfaceValidateRoutingTable(
 
 Routine Description:
 
-    This internal helper routine is used to perform light validation of the 
-    routing table before it is sent to libnfc. Libnfc does validate other 
+    This internal helper routine is used to perform light validation of the
+    routing table before it is sent to libnfc. Libnfc does validate other
     NCI requirement as uniqueness of the route protocol, technology, and aid
     route entries. It also validate the ranges for aid lengths, technology,
     and protocol.
 
-    This routine makes sure that there are no nfc-dep routing rule. 
+    This routine makes sure that there are no nfc-dep routing rule.
     Also, make sure that AID length is OK
 
 Arguments:
+
     RFInterface - The pointer to RF interface
     pRoutingTable - Route table to be validate
 
@@ -2539,15 +2618,21 @@ Return Value:
         goto Done;
     }
 
-    for (USHORT i = 0; (i < pRoutingTable->NumberOfEntries); i++) {
+    for (DWORD i = 0; i < pRoutingTable->NumberOfEntries; i++) {
         switch (pRoutingTable->TableEntries[i].eRoutingType) {
         case RoutingTypeTech:
+            if (!NfcCxSEValidRoutingTechnology(pRoutingTable->TableEntries[i].TechRoutingInfo.eRfTechType)) {
+                status = STATUS_INVALID_PARAMETER;
+                TRACE_LINE(LEVEL_ERROR, "Invalid technology = %u", pRoutingTable->TableEntries[i].TechRoutingInfo.eRfTechType);
+                goto Done;
+            }
             cbRoutingTable += NCI_TECH_ROUTING_ENTRY_SIZE;
             break;
         case RoutingTypeProtocol:
-            if (pRoutingTable->TableEntries[i].ProtoRoutingInfo.eRfProtocolType == phNfc_RfProtocolsNfcDepProtocol) {
+            if (pRoutingTable->TableEntries[i].ProtoRoutingInfo.eRfProtocolType == phNfc_RfProtocolsNfcDepProtocol ||
+                !NfcCxSEValidRoutingProtocol(pRoutingTable->TableEntries[i].ProtoRoutingInfo.eRfProtocolType)) {
                 status = STATUS_INVALID_PARAMETER;
-                TRACE_LINE(LEVEL_ERROR, "Invalid NFC-DEP protocol route");
+                TRACE_LINE(LEVEL_ERROR, "Invalid protocol = %u", pRoutingTable->TableEntries[i].ProtoRoutingInfo.eRfProtocolType);
                 goto Done;
             }
             cbRoutingTable += NCI_PROTO_ROUTING_ENTRY_SIZE;
@@ -2556,7 +2641,7 @@ Return Value:
             if ((pRoutingTable->TableEntries[i].AidRoutingInfo.cbAid < ISO_7816_MINIMUM_AID_LENGTH) ||
                 (pRoutingTable->TableEntries[i].AidRoutingInfo.cbAid > ISO_7816_MAXIMUM_AID_LENGTH)) {
                 status = STATUS_INVALID_PARAMETER;
-                TRACE_LINE(LEVEL_ERROR, "Invalid AID route size = %d", pRoutingTable->TableEntries[i].AidRoutingInfo.cbAid);
+                TRACE_LINE(LEVEL_ERROR, "Invalid AID route size = %lu", pRoutingTable->TableEntries[i].AidRoutingInfo.cbAid);
                 goto Done;
             }
             cbRoutingTable += NCI_AID_ROUTING_ENTRY_SIZE(pRoutingTable->TableEntries[i].AidRoutingInfo.cbAid);

@@ -53,7 +53,8 @@ _Requires_lock_held_(FdoContext->PowerPolicyWaitLock)
 NTSTATUS
 NfcCxPowerAcquireFdoContextReferenceLocked(
     _In_ PNFCCX_FDO_CONTEXT FdoContext,
-    _In_ PNFCCX_FILE_CONTEXT FileContext
+    _In_ PNFCCX_FILE_CONTEXT FileContext,
+    _Out_ BOOLEAN* pReferenceTaken
     );
 
 _Requires_lock_held_(FdoContext->PowerPolicyWaitLock)

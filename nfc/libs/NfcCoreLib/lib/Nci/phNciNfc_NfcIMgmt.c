@@ -49,6 +49,7 @@ phNciNfc_NfcIPollInit(
                 switch(pRemDevInf->eRFTechMode)
                 {
                     case phNciNfc_NFCA_Poll:
+                    case phNciNfc_NFCA_Kovio_Poll:
                     case phNciNfc_NFCA_Active_Poll:
                         wStatus = phNciNfc_NfcDepPollRdrAInit(pRemDevInf,pBuff,wLen);
                     break;

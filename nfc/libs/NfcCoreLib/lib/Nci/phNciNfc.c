@@ -354,13 +354,17 @@ NFCSTATUS phNciNfc_StartDiscovery(void* pNciHandle,
             bNoofConfigs++;
         }
         /* Check whether Polling loop to be enabled for Listen NFC-F Technology */
-
         if(pPollConfig->PollNfcAActive)
         {
             bNoofConfigs++;
         }
         /* Check whether Polling loop to be enabled for Listen NFC-F Technology */
         if(pPollConfig->PollNfcFActive)
+        {
+            bNoofConfigs++;
+        }
+        /* Check whether Polling loop to be enabled for Kovio Technology */
+        if (pPollConfig->EnableKovio)
         {
             bNoofConfigs++;
         }
@@ -1404,12 +1408,12 @@ phNciNfc_Transceive(  void*                               pNciHandle,
     }
     else
     {
-        PH_LOG_NCI_INFO_U32MSG("Transceive timeout passed",psTransceiveInfo->wTimeout);
-        if(psTransceiveInfo->wTimeout < PHNCINFC_NCI_TRANSCEIVE_TIMEOUT)
+        if(psTransceiveInfo->wTimeout == 0)
         {
-            PH_LOG_NCI_WARN_STR("Using default timeout as input timeout is less");
             psTransceiveInfo->wTimeout = PHNCINFC_NCI_TRANSCEIVE_TIMEOUT;
         }
+
+        PH_LOG_NCI_INFO_U32MSG("Timeout for transceive", psTransceiveInfo->wTimeout);
 
         wTransceiveStatus = phNciNfc_GetConnId(pDevicehandle,&bConnId);
         if(NFCSTATUS_SUCCESS == wTransceiveStatus)

@@ -149,14 +149,19 @@ typedef enum
 /**
 *\ingroup grp_lib_nfc
 *
-*\brief Defines snep server type
+*\brief Defines snep config data
 */
-typedef struct phLibNfc_SnepServerConfig
+typedef struct phLibNfc_SnepConfig
 {
     phLibNfc_SnepServer_type_t SnepServerType;  /**< SNEP Server type to be Initialized */
     phNfc_sData_t *SnepServerName;              /**< SNEP Service name for Non Default servers */
     phLibNfc_Llcp_sSocketOptions_t sOptions;    /**< LLCP Socket Options */
-}phLibNfc_SnepConfig_t, *pphLibNfc_SnepConfig_t;
+    bool_t bDtaFlag;                            /**< DTA mode flag */
+} phLibNfc_SnepConfig_t, *pphLibNfc_SnepConfig_t;
+
+/* Forward declare phLibNfc_SnepServerSession_t so that phLibNfc_SnepServerConnection_t can have a
+   reference to it */
+typedef struct SnepServerSession phLibNfc_SnepServerSession_t, *pphLibNfc_SnepServerSession_t;
 
 /**
 *\ingroup grp_lib_nfc
@@ -165,6 +170,7 @@ typedef struct phLibNfc_SnepServerConfig
 */
 typedef struct SnepServerConnection
 {
+    phLibNfc_SnepServerSession_t* pServerSession; /**< Back link to the server session that manages this connection */
     phLibNfc_Handle hSnepServerConnHandle;  /**< SNEP Server Data link connection Handle */
     phLibNfc_Handle hRemoteDevHandle;       /**< Remote device Handle for peer device */
     uint8_t         SnepServerVersion;          /**< SNEP protocol version supported by Server */
@@ -175,15 +181,14 @@ typedef struct SnepServerConnection
     void*                   pContextForPutCb;
     pphLibNfc_SnepGet_ntf_t pGetNtfCb;      /**< Get Notification to upper layer */
     phNfc_sData_t sConnWorkingBuffer;       /**< Working buffer for LLCP connection */
-    phNfc_sData_t *pSnepWorkingBuffer;       /**< Working buffer for SNEP connection */
+    phNfc_sData_t *pSnepWorkingBuffer;      /**< Working buffer for SNEP connection */
     void*                   pContextForGetCb;
     sendResponseDataContext_t responseDataContext; /* context of data transfer transaction */
     uint32_t            iMiu;  /**< Local MIU for DLC connection */
     uint32_t            iRemoteMiu;  /**< Remote MIU for DLC connection */
     phLibNfc_SnepServer_status_t ServerConnectionState; /**< Connection Status */
     void *pConnectionContext;               /**< Connection Context */
-
-}phLibNfc_SnepServerConnection_t, *pphLibNfc_SnepServerConnection_t;
+} phLibNfc_SnepServerConnection_t, *pphLibNfc_SnepServerConnection_t;
 
 /**
 *\ingroup grp_lib_nfc
@@ -202,21 +207,20 @@ typedef struct SnepServerSession
     uint8_t CurrentConnCnt;                     /**< Current connection count */
     pphLibNfc_SnepConn_ntf_t pConnectionCb;     /**< Connection notification callback */
     void *pListenContext;                       /**< Server Listen Context */
-
-}phLibNfc_SnepServerSession_t, *pphLibNfc_SnepServerSession_t;
+    bool_t bDtaFlag;                            /**< DTA mode flag */
+} phLibNfc_SnepServerSession_t, *pphLibNfc_SnepServerSession_t;
 
 
 /**
 *\ingroup grp_lib_nfc
 *
-*\brief SNEP Server context.Maintains all active snep server entries
+*\brief SNEP Server context. Maintains all active snep server entries
 */
 typedef struct SnepServerContext
 {
     phLibNfc_SnepServerSession_t *pServerSession[MAX_SNEP_SERVER_CNT];  /**< SNEP server sessions */
     uint8_t CurrentServerCnt;                          /**< Currently registered SNEP servers */
-
-}phLibNfc_SnepServerContext_t, *pphLibNfc_SnepServerContext_t;
+} phLibNfc_SnepServerContext_t, *pphLibNfc_SnepServerContext_t;
 
 /**
 *\ingroup grp_lib_nfc
@@ -227,18 +231,19 @@ typedef struct SnepClientSession
 {
     phLibNfc_Handle                 hSnepClientHandle; /**< SNEP Client Data link connection Handle */
     phLibNfc_Handle                 hRemoteDevHandle;  /**< Remote device Handle for peer device */
-    uint32_t                        iMiu;  /**< Local MIU for DLC connection */
-    uint32_t                        iRemoteMiu;  /**< Remote MIU for DLC connection */
+    uint32_t                        iMiu;              /**< Local MIU for DLC connection */
+    uint32_t                        iRemoteMiu;        /**< Remote MIU for DLC connection */
     uint8_t                         SnepClientVersion; /**< SNEP protocol version supported by Client */
     phNfc_sData_t                   sWorkingBuffer;    /**< Working buffer for LLCP socket */
-    phLibNfc_SnepClient_status_t    Client_state;  /**< SNEP Client status */
-    pphLibNfc_SnepConn_ntf_t pConnectionCb;     /**< Connection notification callback */
-    void *pClientContext;                       /**< Client Connect Context */
-    pphLibNfc_SnepReqCb_t           pReqCb;     /**< Put callback & associated context*/
+    phLibNfc_SnepClient_status_t    Client_state;      /**< SNEP Client status */
+    pphLibNfc_SnepConn_ntf_t        pConnectionCb;     /**< Connection notification callback */
+    void                            *pClientContext;   /**< Client Connect Context */
+    pphLibNfc_SnepReqCb_t           pReqCb;            /**< Put callback & associated context*/
     void                            *pReqCbContext;
     putGetDataContext_t             putGetDataContext;
-    uint32_t                        acceptableLength; /* set during init */
-}phLibNfc_SnepClientSession_t, *pphLibNfc_SnepClientSession_t;
+    uint32_t                        acceptableLength;  /* set during init */
+    bool_t                          bDtaFlag;          /**< DTA mode flag */
+} phLibNfc_SnepClientSession_t, *pphLibNfc_SnepClientSession_t;
 
 /**
 *\ingroup grp_lib_nfc
@@ -249,7 +254,7 @@ typedef struct SnepClientContext
 {
     phLibNfc_SnepClientSession_t *pClientSession[MAX_SNEP_CLIENT_CNT];  /**< SNEP Client sessions */
     uint8_t CurrentClientCnt;                                           /**< Currently registered SNEP Clients */
-}phLibNfc_SnepClientContext_t, *pphLibNfc_SnepClientContext_t;
+} phLibNfc_SnepClientContext_t, *pphLibNfc_SnepClientContext_t;
 
 /**
 * \ingroup grp_lib_nfc

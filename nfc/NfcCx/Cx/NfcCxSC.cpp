@@ -4,12 +4,12 @@ Copyright (c) Microsoft Corporation.  All Rights Reserved
 
 Module Name:
 
-    NfcCxSC.h
+    NfcCxSC.cpp
 
 Abstract:
 
     SC Interface implementation
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -19,6 +19,11 @@ Environment:
 #include "NfcCxPch.h"
 
 #include "NfcCxSC.tmh"
+
+// TODO: Temporarily define this here until we get ScDeviceEnum.h published
+// {D6B5B883-18BD-4B4D-B2EC-9E38AFFEDA82}, 2, DEVPROP_TYPE_BYTE
+DEFINE_DEVPROPKEY(DEVPKEY_Device_ReaderKind,
+    0xD6B5B883, 0x18BD, 0x4B4D, 0xB2, 0xEC, 0x9E, 0x38, 0xAF, 0xFE, 0xDA, 0x82, 0x02);
 
 typedef struct _NFCCX_SC_DISPATCH_ENTRY {
     ULONG IoControlCode;
@@ -58,7 +63,7 @@ static const DWORD SCReaderCurrentBwt = 4;
 
 NFCCX_SC_DISPATCH_ENTRY 
 g_ScDispatch [] = {
-    { IOCTL_SMARTCARD_GET_ATTRIBUTE,        TRUE,   FALSE,  sizeof(DWORD),                     0,                                NfcCxSCInterfaceDispatchGetAttribute },
+    { IOCTL_SMARTCARD_GET_ATTRIBUTE,        TRUE,   FALSE,  sizeof(DWORD),                     sizeof(BYTE),                     NfcCxSCInterfaceDispatchGetAttribute },
     { IOCTL_SMARTCARD_SET_ATTRIBUTE,        FALSE,  FALSE,  sizeof(DWORD),                     0,                                NfcCxSCInterfaceDispatchSetAttribute },
     { IOCTL_SMARTCARD_GET_STATE,            FALSE,  FALSE,  0,                                 sizeof(DWORD),                    NfcCxSCInterfaceDispatchGetState },
     { IOCTL_SMARTCARD_POWER,                FALSE,  FALSE,  sizeof(DWORD),                     0,                                NfcCxSCInterfaceDispatchSetPower },
@@ -139,7 +144,7 @@ Return Value:
     scInterface->FdoContext = DeviceContext;
 
     //
-    // Setup the lock and manual IO queue
+    // Setup the locks and manual IO queue
     //
     WDF_OBJECT_ATTRIBUTES_INIT(&objectAttrib);
     objectAttrib.ParentObject = scInterface->FdoContext->Device;
@@ -148,6 +153,13 @@ Return Value:
                                 &scInterface->SmartCardLock);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to create the SmartCard WaitLock, %!STATUS!", status);
+        goto Done;
+    }
+
+    status = WdfWaitLockCreate(&objectAttrib,
+                               &scInterface->AtrLock);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to create the ATR WaitLock, %!STATUS!", status);
         goto Done;
     }
 
@@ -229,7 +241,7 @@ Return Value:
 
 --*/
 {
-    DECLARE_CONST_UNICODE_STRING(ref, SMARTCARD_READER_NAMESPACE);
+    DECLARE_CONST_UNICODE_STRING(nfcScReaderReference, SMARTCARD_READER_NAMESPACE);
 
     //
     // Since the lock and queue objects are parented to the device,
@@ -240,8 +252,8 @@ Return Value:
         // Disable the SmartCard Reader interface
         //
         WdfDeviceSetDeviceInterfaceState(ScInterface->FdoContext->Device,
-                                         (LPGUID) &GUID_DEVINTERFACE_SMARTCARD_READER,
-                                         &ref,
+                                         &GUID_DEVINTERFACE_SMARTCARD_READER,
+                                         &nfcScReaderReference,
                                          FALSE);
 
         TRACE_LINE(LEVEL_VERBOSE, "SmartCard Reader interface disabled");
@@ -288,41 +300,50 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_FDO_CONTEXT fdoContext = ScInterface->FdoContext;
-    DECLARE_CONST_UNICODE_STRING(ref, SMARTCARD_READER_NAMESPACE);
+    WDF_DEVICE_INTERFACE_PROPERTY_DATA nfcScReaderData;
+    BYTE readerKind = 0;
+    DECLARE_CONST_UNICODE_STRING(nfcScReaderReference, SMARTCARD_READER_NAMESPACE);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     if (fdoContext->NfpRadioState) {
         //
-        // Publish the SmartCard Reader interface
+        // Publish the NFC smart card reader interface
         //
         if (!ScInterface->InterfaceCreated) {
-            status = WdfDeviceCreateDeviceInterface(
-                            fdoContext->Device,
-                            (LPGUID) &GUID_DEVINTERFACE_SMARTCARD_READER,
-                            &ref);
+            status = WdfDeviceCreateDeviceInterface(fdoContext->Device,
+                                                    &GUID_DEVINTERFACE_SMARTCARD_READER,
+                                                    &nfcScReaderReference);
             if (!NT_SUCCESS(status)) {
-                TRACE_LINE(LEVEL_ERROR, "Failed to create the SmartCard Reader device interface, %!STATUS!", status);
+                TRACE_LINE(LEVEL_ERROR, "Failed to create the NFC smart card reader device interface, %!STATUS!", status);
                 goto Done;
             }
 
-            WdfDeviceSetDeviceInterfaceState(fdoContext->Device,
-                                             (LPGUID) &GUID_DEVINTERFACE_SMARTCARD_READER,
-                                             &ref,
-                                             TRUE);
+            WDF_DEVICE_INTERFACE_PROPERTY_DATA_INIT(&nfcScReaderData,
+                                                    &GUID_DEVINTERFACE_SMARTCARD_READER,
+                                                    &DEVPKEY_Device_ReaderKind);
+            nfcScReaderData.ReferenceString = &nfcScReaderReference;
+            readerKind = ABI::Windows::Devices::SmartCards::SmartCardReaderKind_Nfc;
+            status = WdfDeviceAssignInterfaceProperty(fdoContext->Device,
+                                                      &nfcScReaderData,
+                                                      DEVPROP_TYPE_BYTE,
+                                                      sizeof(readerKind),
+                                                      &readerKind);
+            if (!NT_SUCCESS(status)) {
+                TRACE_LINE(LEVEL_ERROR, "Failed to assign property for the NFC smart card reader device interface, %!STATUS!", status);
+                goto Done;
+            }
 
             ScInterface->InterfaceCreated = TRUE;
-
-        } else {
-            WdfDeviceSetDeviceInterfaceState(fdoContext->Device,
-                                             (LPGUID) &GUID_DEVINTERFACE_SMARTCARD_READER,
-                                             &ref,
-                                             TRUE);
         }
+
+        WdfDeviceSetDeviceInterfaceState(fdoContext->Device,
+                                         &GUID_DEVINTERFACE_SMARTCARD_READER,
+                                         &nfcScReaderReference,
+                                         TRUE);
     }
 
 Done:
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 
     return status;
@@ -349,17 +370,15 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    DECLARE_CONST_UNICODE_STRING(ref, SMARTCARD_READER_NAMESPACE);
+    DECLARE_CONST_UNICODE_STRING(nfcScReaderReference, SMARTCARD_READER_NAMESPACE);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     if (ScInterface->InterfaceCreated) {
-
-        WdfDeviceSetDeviceInterfaceState(
-                        ScInterface->FdoContext->Device,
-                        (LPGUID) &GUID_DEVINTERFACE_SMARTCARD_READER,
-                        &ref,
-                        FALSE);
+        WdfDeviceSetDeviceInterfaceState(ScInterface->FdoContext->Device,
+                                         &GUID_DEVINTERFACE_SMARTCARD_READER,
+                                         &nfcScReaderReference,
+                                         FALSE);
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -546,7 +565,7 @@ Routine Description:
 
 Arguments:
 
-    FileContext - The File context
+    FileContext - The File context.
     Request - Handle to a framework request object.
     OutputBufferLength - Length of the output buffer associated with the request.
     InputBufferLength - Length of the input buffer associated with the request.
@@ -554,14 +573,14 @@ Arguments:
 
 Return Value:
 
-  NTSTATUS.
+    NTSTATUS.
 
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_FDO_CONTEXT fdoContext;
-    WDFMEMORY outMem = {0};
-    WDFMEMORY inMem = {0};
+    PNFCCX_FDO_CONTEXT fdoContext = NULL;
+    WDFMEMORY outMem = NULL;
+    WDFMEMORY inMem = NULL;
     PVOID     inBuffer = NULL;
     PVOID     outBuffer = NULL;
     size_t    sizeInBuffer = 0;
@@ -592,6 +611,7 @@ Return Value:
             TRACE_LINE(LEVEL_ERROR, "Failed WdfRequestForwardToIoQueue, %!STATUS!", status);
             goto Done;
         }
+
         status = STATUS_PENDING;
         goto Done;
     }
@@ -606,6 +626,7 @@ Return Value:
             TRACE_LINE(LEVEL_ERROR, "Failed WdfDeviceStopIdle, %!STATUS!", status);
             goto Done;
         }
+
         releasePowerReference = TRUE;
     }
 
@@ -614,7 +635,7 @@ Return Value:
     //
     if (0 != OutputBufferLength) {
         status = WdfRequestRetrieveOutputMemory(Request, &outMem);
-        if(!NT_SUCCESS(status) ) {
+        if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to retrieve the output buffer, %!STATUS!", status);
             goto Done;
         }
@@ -626,7 +647,7 @@ Return Value:
 
     if (0 != InputBufferLength) {
         status = WdfRequestRetrieveInputMemory(Request, &inMem);
-        if(!NT_SUCCESS(status) ) {
+        if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to retrieve the input buffer, %!STATUS!", status);
             goto Done;
         }
@@ -962,7 +983,7 @@ Routine Description:
 Arguments:
 
     ScInterface - A pointer to the SCInterface
-    
+
 Return Value:
 
     VOID
@@ -985,7 +1006,7 @@ Return Value:
 
     ScInterface->SmartCardConnected = FALSE;
     ScInterface->SessionEstablished = FALSE;
-    
+
     RtlZeroMemory(&ScInterface->RemoteDeviceInfo, sizeof(phNfc_sRemoteDevInformation_t));
 
     if (NULL != ScInterface->StorageCard) {
@@ -1004,6 +1025,46 @@ Return Value:
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+}
+
+BOOL
+NfcCxSCInterfaceCheckIfDriverDiscoveryEnabled(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+    )
+/*++
+
+Routine Description:
+
+    This routine determines if there is a smartcard discovery client available
+
+Arguments:
+
+    ScInterface - A pointer to the SCInterface
+    
+Return Value:
+
+    TRUE - A discovery client is active
+    FALSE - A discovery client isn't active
+    
+--*/
+{
+    BOOL fEnabled = FALSE;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    if (!ScInterface->FdoContext->NfpRadioState) {
+        goto Done;
+    }
+
+    WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
+    fEnabled = (ScInterface->CurrentClient != NULL) ? TRUE : FALSE;
+    WdfWaitLockRelease(ScInterface->SmartCardLock);
+
+Done:
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+
+    return fEnabled;
 }
 
 //
@@ -1053,8 +1114,8 @@ Return Value:
     //
     // Buffer validated by the validation method
     //
-    _Analysis_assume_(sizeof(DWORD) <= InputBufferLength);
-    _Analysis_assume_(sizeof(DWORD) <= OutputBufferLength);
+    _Analysis_assume_(sizeof(BYTE) <= OutputBufferLength);
+
 
     scInterface = NfcCxFdoGetContext(Device)->SCInterface;
 
@@ -1069,8 +1130,8 @@ Return Value:
                             scInterface,
                             g_ScAttributeDispatch[TableEntry].pbResultBuffer,
                             g_ScAttributeDispatch[TableEntry].cbResultBuffer,
-                            (PBYTE)OutputBuffer, 
-                            (size_t*)&cbOutputBuffer);
+                            (PBYTE)OutputBuffer,
+                            &cbOutputBuffer);
 
             if (g_ScAttributeDispatch[TableEntry].fRequireLock) {
                 WdfWaitLockRelease(scInterface->SmartCardLock);
@@ -1079,13 +1140,13 @@ Return Value:
             break;
         }
     }
-    
+
     if (NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_INFO,
             "Completing request %p, with %!STATUS!, 0x%I64x", Request, status, cbOutputBuffer);
         WdfRequestCompleteWithInformation(Request, status, cbOutputBuffer);
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1093,7 +1154,7 @@ Return Value:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1577,19 +1638,19 @@ Arguments:
 
     Device - Handle to a framework device object.
     Request - Handle to a framework request object.
-    InputBuffer - The input buffer
+    InputBuffer - The input buffer.
     InputBufferLength - Length of the input buffer.
     OutputBufferLength - Length of the output buffer associated with the request.
-    OuptutBuffer - The output buffer
+    OuptutBuffer - The output buffer.
 
 Return Value:
 
-  NTSTATUS.
+    NTSTATUS.
 
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_SC_INTERFACE scInterface;
+    PNFCCX_SC_INTERFACE scInterface = NULL;
     DWORD cbInputBuffer = 0;
     DWORD cbOutputBuffer = 0;
     DWORD cbOutputBufferUsed = 0;
@@ -1600,7 +1661,7 @@ Return Value:
 
     //
     // Buffer size is validated at dispatch time.
-    // 
+    //
     _Analysis_assume_(DWORD_MAX >= InputBufferLength);
     _Analysis_assume_(DWORD_MAX >= OutputBufferLength);
 
@@ -1634,7 +1695,7 @@ Return Value:
     WdfWaitLockRelease(scInterface->SmartCardLock);
 
     // Check if it is a load key command
-    if (NfcCxSCInterfaceValidateLoadKeyCommand((PBYTE)InputBuffer + sizeof(SCARD_IO_REQUEST), 
+    if (NfcCxSCInterfaceValidateLoadKeyCommand((PBYTE)InputBuffer + sizeof(SCARD_IO_REQUEST),
                                                cbInputBuffer - sizeof(SCARD_IO_REQUEST))) {
         BYTE Sw1Sw2[DEFAULT_APDU_STATUS_SIZE] = {0};
 
@@ -1652,10 +1713,10 @@ Return Value:
 
         WdfWaitLockRelease(scInterface->SmartCardLock);
 
-        status = NfcCxSCInterfaceCopyResponseData(OutputBuffer, 
-                                                  cbOutputBuffer, 
-                                                  Sw1Sw2, 
-                                                  (DWORD)sizeof(Sw1Sw2), 
+        status = NfcCxSCInterfaceCopyResponseData(OutputBuffer,
+                                                  cbOutputBuffer,
+                                                  Sw1Sw2,
+                                                  sizeof(Sw1Sw2),
                                                   &cbResponseBuffer);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to construct response buffer, %!STATUS!", status);
@@ -1685,10 +1746,10 @@ Return Value:
         cbOutputBufferUsed += cbResponseBuffer;
     }
 
-Done: 
+Done:
     if (NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_INFO,
-            "Completing request %p, with %!STATUS!, 0x%I64x", Request, status, cbOutputBufferUsed);
+            "Completing request %p, with %!STATUS!, output buffer used = %lu", Request, status, cbOutputBufferUsed);
         WdfRequestCompleteWithInformation(Request, status, cbOutputBufferUsed);
         //
         // Since we have completed the request here, 
@@ -1699,7 +1760,7 @@ Done:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1810,7 +1871,6 @@ NfcCxSCInterfaceCopyToBuffer(
     *pcbOutputBuffer = cbAttributeValue;
 
 Done:
-
     return status;
 }
 
@@ -1945,6 +2005,7 @@ Done:
 }
 
 _Requires_lock_not_held_(ScInterface->SmartCardLock)
+_Requires_lock_not_held_(ScInterface->AtrLock)
 NTSTATUS
 NfcCxSCInterfaceDispatchAttributeAtr(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
@@ -1973,9 +2034,12 @@ Return Value:
 
 --*/
 {
+    static const DWORD PositionOfNN = 13;
     NTSTATUS status = STATUS_SUCCESS;
+    BOOLEAN isStorageCard = FALSE;
     DWORD cbOutputBufferUsed = 0;
-    const DWORD PositionOfNN = 13;
+    BOOLEAN requiresULCheck = FALSE;
+    StorageCardManager* pStorageCard = NULL;
 
     UNREFERENCED_PARAMETER(pbResultBuffer);
     UNREFERENCED_PARAMETER(cbResultBuffer);
@@ -1985,50 +2049,84 @@ Return Value:
     // Buffer size is validated at dispatch time
     _Analysis_assume_(DWORD_MAX >= *pcbOutputBuffer);
 
+    WdfWaitLockAcquire(ScInterface->AtrLock, NULL);
+
     WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
 
     if (!ScInterface->SmartCardConnected) {
+        WdfWaitLockRelease(ScInterface->SmartCardLock);
         TRACE_LINE(LEVEL_ERROR, "SmartCard not connected");
         status = STATUS_INVALID_DEVICE_STATE;
-        WdfWaitLockRelease(ScInterface->SmartCardLock);
         goto Done;
     }
 
-    status = NfcCxSCInterfaceGetAtrLocked(ScInterface, 
-                                          pbOutputBuffer, 
-                                          (DWORD)*pcbOutputBuffer, 
+    isStorageCard = NfcCxSCInterfaceIsStorageCardConnected(ScInterface);
+
+    if (isStorageCard) {
+        NT_ASSERT(ScInterface->StorageCard != NULL);
+        if (ScInterface->StorageCard->AtrCached()) {
+            TRACE_LINE(LEVEL_INFO, "Using cached ATR");
+            status = ScInterface->StorageCard->GetCachedAtr(pbOutputBuffer,
+                                                            (DWORD)*pcbOutputBuffer,
+                                                            &cbOutputBufferUsed);
+            if (NT_SUCCESS(status)) {
+                *pcbOutputBuffer = cbOutputBufferUsed;
+            }
+
+            WdfWaitLockRelease(ScInterface->SmartCardLock);
+            goto Done;
+        }
+    }
+
+    status = NfcCxSCInterfaceGetAtrLocked(ScInterface,
+                                          pbOutputBuffer,
+                                          (DWORD)*pcbOutputBuffer,
                                           &cbOutputBufferUsed);
     if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to get the ATR string, %!STATUS!", status);
         WdfWaitLockRelease(ScInterface->SmartCardLock);
+        TRACE_LINE(LEVEL_ERROR, "Failed to get the ATR string, %!STATUS!", status);
         goto Done;
+    }
+
+    if (isStorageCard) {
+        if (cbOutputBufferUsed > (PositionOfNN + 1) &&
+            pbOutputBuffer[PositionOfNN] == 0x00 &&
+            pbOutputBuffer[PositionOfNN + 1] == PCSC_NN_MIFARE_UL) {
+            requiresULCheck = TRUE;
+
+            pStorageCard = ScInterface->StorageCard;
+            pStorageCard->AddRef();
+        }
+        else {
+            ScInterface->StorageCard->CacheAtr(pbOutputBuffer, cbOutputBufferUsed);
+        }
     }
 
     WdfWaitLockRelease(ScInterface->SmartCardLock);
 
-    // Check if the NN bytes are 0x0003, do extra check to distinguish between Mifare UL and ULC
+    // If the NN bytes are 0x0003, do an extra check to distinguish between Mifare UL and ULC
     // Note: do not lock the DetectULC since it will be transmiting data through RF interface
-    
-    if (cbOutputBufferUsed > (PositionOfNN + 1) &&
-        pbOutputBuffer[PositionOfNN] == 0x00 &&
-        pbOutputBuffer[PositionOfNN + 1] == PCSC_NN_MIFARE_UL) {
+    if (requiresULCheck) {
         if (NfcCxSCInterfaceDetectMifareULC(ScInterface)) {
-            //
-            // Mifare ULC
-            //
             pbOutputBuffer[PositionOfNN] = 0x00;
             pbOutputBuffer[PositionOfNN + 1] = PCSC_NN_MIFARE_ULC;
-            pbOutputBuffer[cbOutputBufferUsed - 1] = NfcCxSCInterfaceComputeChecksum(pbOutputBuffer, cbOutputBufferUsed-1);
+            pbOutputBuffer[cbOutputBufferUsed - 1] = NfcCxSCInterfaceComputeChecksum(pbOutputBuffer, cbOutputBufferUsed - 1);
         }
-        else {
-            // Reset the connected remote device to clear the Mifare key and authentication session
-            status = NfcCxSCInterfaceResetCard(ScInterface);
-        }
+
+        WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
+        pStorageCard->CacheAtr(pbOutputBuffer, cbOutputBufferUsed);
+        pStorageCard->Release();
+        pStorageCard = NULL;
+        WdfWaitLockRelease(ScInterface->SmartCardLock);
+
+        // Reset the card to prevent it from becoming unresponsive
+        status = NfcCxSCInterfaceResetCard(ScInterface);
     }
 
     *pcbOutputBuffer = cbOutputBufferUsed;
 
 Done:
+    WdfWaitLockRelease(ScInterface->AtrLock);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
@@ -2255,7 +2353,7 @@ Return Value:
         goto Done;
     }
 
-    CopyMemory((((PUCHAR)OutputBuffer) + sizeof(SCARD_IO_REQUEST)), Data, DataLength);
+    CopyMemory(((PUCHAR)OutputBuffer) + sizeof(SCARD_IO_REQUEST), Data, DataLength);
     *BufferUsed = requiredBufferSize;
 
 Done:
@@ -2331,49 +2429,48 @@ Arguments:
 
 Return Value:
 
-  NTSTATUS.
+    NTSTATUS.
 
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    phNfc_eRemDevType_t deviceType = phNfc_eUnknown_DevType;
-    DWORD sak = 0;
+    BOOLEAN isStorageCard = FALSE;
     PcscInsByte command = (PcscInsByte)0x00;
     BYTE intermediateBuffer[COMMAND_BUFFER_SIZE] = {0};
     DWORD cbIntermediateBuffer = 0;
     StorageCardManager* pStorageCard = NULL;
-    
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     *BytesTransferred = 0;
-    
+
     WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
-    status = NfcCxSCInterfaceGetDeviceTypeLocked(ScInterface, 
-                                                 &deviceType, 
-                                                 &sak);
-    if(!NT_SUCCESS(status) ) {
+
+    if (!ScInterface->SmartCardConnected) {
         WdfWaitLockRelease(ScInterface->SmartCardLock);
-        TRACE_LINE(LEVEL_ERROR, "Failed to get device type, %!STATUS!", status);
+        TRACE_LINE(LEVEL_ERROR, "SmartCard not connected");
+        status = STATUS_INVALID_DEVICE_STATE;
         goto Done;
     }
+
+    isStorageCard = NfcCxSCInterfaceIsStorageCardConnected(ScInterface);
+
     WdfWaitLockRelease(ScInterface->SmartCardLock);
 
-    if (deviceType == phLibNfc_eISO14443_4A_PICC ||
-        deviceType == phLibNfc_eISO14443_4B_PICC) {
-
-        TRACE_LINE(LEVEL_INFO, " Transmit: Card TypeA/TypeB");
+    if (!isStorageCard) {
+        TRACE_LINE(LEVEL_INFO, "Transmit: Card TypeA/TypeB");
         status = NfcCxSCInterfaceTransmitRawData(ScInterface,
-                                                InputBuffer,
-                                                InputBufferLength,
-                                                OutputBuffer,
-                                                OutputBufferLength,
-                                                BytesTransferred,
-                                                DEFAULT_14443_4_TRANSCEIVE_TIMEOUT);
+                                                 InputBuffer,
+                                                 InputBufferLength,
+                                                 OutputBuffer,
+                                                 OutputBufferLength,
+                                                 BytesTransferred,
+                                                 DEFAULT_14443_4_TRANSCEIVE_TIMEOUT);
     }
     else {
         ApduResult apduStatus = RESULT_SUCCESS;
         pStorageCard = NfcCxAcquireStorageCardManagerReference(ScInterface);
-        
+
         if (pStorageCard == NULL) {
             status = STATUS_INVALID_DEVICE_STATE;
             TRACE_LINE(LEVEL_ERROR, "SmartCard connection lost");
@@ -2407,7 +2504,7 @@ Return Value:
             TRACE_LINE(LEVEL_ERROR, "GetCommandFromAPDU failed (%d)", apduStatus);
         }
         else {
-            switch(command)
+            switch (command)
             {
                 case PcscGetDataCmd:
                 {
@@ -2425,12 +2522,12 @@ Return Value:
 
                 case PcscReadCmd:
                 {
-                    apduStatus = pStorageCard->ReadBinary(InputBuffer, 
+                    apduStatus = pStorageCard->ReadBinary(InputBuffer,
                                                           InputBufferLength,
                                                           intermediateBuffer,
                                                           sizeof(intermediateBuffer),
                                                           &cbIntermediateBuffer);
-                    if(RESULT_SUCCESS != apduStatus) {
+                    if (RESULT_SUCCESS != apduStatus) {
                         TRACE_LINE(LEVEL_ERROR, " ReadBinary failed (%d)", apduStatus);
                         break;
                     }
@@ -2445,7 +2542,7 @@ Return Value:
 
                 case PcscWriteCmd:
                 {
-                    apduStatus = pStorageCard->UpdateBinary(InputBuffer, 
+                    apduStatus = pStorageCard->UpdateBinary(InputBuffer,
                                                             InputBufferLength,
                                                             intermediateBuffer,
                                                             sizeof(intermediateBuffer),
@@ -2482,8 +2579,8 @@ Return Value:
                     }
 
                     apduStatus = pStorageCard->GetGeneralAuthenticateCommand(ScInterface->StorageCardKey,
-                                                                             InputBuffer, 
-                                                                             InputBufferLength, 
+                                                                             InputBuffer,
+                                                                             InputBufferLength,
                                                                              intermediateBuffer,
                                                                              sizeof(intermediateBuffer),
                                                                              &cbIntermediateBuffer);
@@ -2612,11 +2709,11 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     size_t cbOutputBuffer = 0;
-    
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     *BytesTransferred = 0;
-   
+
     status = NfcCxRFInterfaceTransmit(ScInterface->FdoContext->RFInterface,
                                       InputBuffer,
                                       InputBufferLength,
@@ -2676,7 +2773,7 @@ Return Value:
         goto Done;
     }
 
-    status = NfcCxSCInterfaceGetDeviceUidLocked(ScInterface, 
+    status = NfcCxSCInterfaceGetDeviceUidLocked(ScInterface,
                                                 &pUid,
                                                 &cbUidLength);
     if (!NT_SUCCESS(status)) {
@@ -2685,19 +2782,15 @@ Return Value:
     }
 
     status = NfcCxSCInterfaceGetAtrLocked(ScInterface,
-                                          Atr, 
-                                          sizeof(Atr), 
+                                          Atr,
+                                          sizeof(Atr),
                                           &cbAtrLength);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to get the ATR string, %!STATUS!", status);
         goto Done;
     }
 
-    status = NfcCxSCInterfaceGetDeviceTypeLocked(ScInterface, 
-                                                 &deviceType, 
-                                                 &sak);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to get device type, %!STATUS!", status);
+    if (!NfcCxSCInterfaceIsStorageCardConnected(ScInterface)) {
         goto Done;
     }
 
@@ -2706,21 +2799,11 @@ Return Value:
         goto Done;
     }
 
-    switch (deviceType)
-    {
-        case phLibNfc_eJewel_PICC:
-        case phLibNfc_eMifare_PICC:
-        case phLibNfc_eFelica_PICC:
-        case phLibNfc_eISO15693_PICC:
-        {
-            ScInterface->StorageCard = StorageCardManager::Create(deviceType, sak, ScInterface);
-            break;
-        }
+    NfcCxSCInterfaceGetDeviceTypeLocked(ScInterface,
+                                        &deviceType,
+                                        &sak);
 
-        default:
-            goto Done;
-    }
-
+    ScInterface->StorageCard = StorageCardManager::Create(deviceType, sak, ScInterface);
     if (NULL == ScInterface->StorageCard) {
         TRACE_LINE(LEVEL_ERROR, "Failed to allocate the storage class");
         status = STATUS_INSUFFICIENT_RESOURCES;
@@ -2763,25 +2846,25 @@ Routine Description:
     This routine loads the key
 
 Arguments:
-    
-    InputBuffer - The input buffer
+
+    InputBuffer - The input buffer.
     InputBufferLength - Length of the input buffer.
 
 Return Value:
 
-  BOOL.
+    BOOL.
 
 --*/
 {
     BOOL fLoadKey = FALSE;
-    
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     if (InputBufferLength < MIN_APDU_HEADER) {
         TRACE_LINE(LEVEL_ERROR, "Invalid APDU buffer size");
         goto Done;
     }
-   
+
     PPcscCommandApduInfo cmdApdu = (PPcscCommandApduInfo)InputBuffer;
     if(0xFF == cmdApdu->Cla && PcscMifareLoadAuthKeyCmd == cmdApdu->Ins) {
         TRACE_LINE(LEVEL_INFO, "Command APDU is Load Key");
@@ -2818,7 +2901,7 @@ Arguments:
 
 Return Value:
 
-  NTSTATUS.
+    NTSTATUS.
 
 --*/
 {
@@ -2867,7 +2950,7 @@ Arguments:
 
 Return Value:
 
-  NTSTATUS.
+    NTSTATUS.
 
 --*/
 {
@@ -3029,7 +3112,7 @@ NfcCxSCInterfaceGetAtrLocked(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
     _Out_writes_bytes_to_(OutputBufferLength, *ByteCopied) PBYTE OutputBuffer,
     _In_ DWORD OutputBufferLength,
-    _Out_ DWORD* ByteCopied
+    _Out_ DWORD* BytesCopied
     )
 /*++
 
@@ -3042,7 +3125,7 @@ Arguments:
     ScInterface - The SmartCard reader Interface
     OutputBuffer - Pointer to the buffer to be filled
     OutputBufferLength - Length of the output buffer
-    ByteCopied - Pointer to the length of the buffer used
+    BytesCopied - Pointer to the length of the buffer used
 
 Return Value:
 
@@ -3066,7 +3149,7 @@ Return Value:
         case phLibNfc_eISO14443_4A_PICC:
         {
             // Inital Header
-            Output[index++] = PCSC_ATR_INIT_HEADER; 
+            Output[index++] = PCSC_ATR_INIT_HEADER;
             Output[index++] = PCSC_ATR_T0 | ((pRemDev->RemoteDevInfo.Iso14443A_Info.AppDataLength) & PCSC_ATR_T0_MASK);
             Output[index++] = PCSC_ATR_TD1; // TD1
             Output[index++] = PCSC_ATR_TD2; // TD2
@@ -3076,9 +3159,9 @@ Return Value:
                 status = STATUS_BUFFER_TOO_SMALL;
                 goto Done;
             }
-            RtlCopyMemory(Output + index, 
-                          pRemDev->RemoteDevInfo.Iso14443A_Info.AppData, 
-                          pRemDev->RemoteDevInfo.Iso14443A_Info.AppDataLength);
+            RtlCopyMemory(Output + index,
+                pRemDev->RemoteDevInfo.Iso14443A_Info.AppData,
+                pRemDev->RemoteDevInfo.Iso14443A_Info.AppDataLength);
 
             index += pRemDev->RemoteDevInfo.Iso14443A_Info.AppDataLength;
 
@@ -3097,7 +3180,7 @@ Return Value:
         case phLibNfc_eISO14443_4B_PICC:
         {
             // Inital Header
-            Output[index++] = PCSC_ATR_INIT_HEADER; 
+            Output[index++] = PCSC_ATR_INIT_HEADER;
             Output[index++] = PCSC_ATR_T0 | ((PHNFC_APP_DATA_B_LENGTH + PHNFC_PROT_INFO_B_LENGTH + 1) & PCSC_ATR_T0_MASK);
             Output[index++] = PCSC_ATR_TD1; // TD1
             Output[index++] = PCSC_ATR_TD2; // TD2
@@ -3106,9 +3189,9 @@ Return Value:
                 status = STATUS_BUFFER_TOO_SMALL;
                 goto Done;
             }
-            RtlCopyMemory(Output + index, 
-                          pRemDev->RemoteDevInfo.Iso14443B_Info.AtqB.AtqResInfo.AppData, 
-                          PHNFC_APP_DATA_B_LENGTH);
+            RtlCopyMemory(Output + index,
+                pRemDev->RemoteDevInfo.Iso14443B_Info.AtqB.AtqResInfo.AppData,
+                PHNFC_APP_DATA_B_LENGTH);
 
             index += PHNFC_APP_DATA_B_LENGTH;
 
@@ -3117,9 +3200,9 @@ Return Value:
                 goto Done;
             }
 
-            RtlCopyMemory(Output + index, 
-                          pRemDev->RemoteDevInfo.Iso14443B_Info.AtqB.AtqResInfo.ProtInfo, 
-                          PHNFC_PROT_INFO_B_LENGTH);
+            RtlCopyMemory(Output + index,
+                pRemDev->RemoteDevInfo.Iso14443B_Info.AtqB.AtqResInfo.ProtInfo,
+                PHNFC_PROT_INFO_B_LENGTH);
 
             index += PHNFC_PROT_INFO_B_LENGTH;
 
@@ -3135,26 +3218,26 @@ Return Value:
         case phLibNfc_eJewel_PICC:
         {
             // Inital Header
-            Output[index++] = PCSC_ATR_INIT_HEADER; 
+            Output[index++] = PCSC_ATR_INIT_HEADER;
 
-            //15 bytes T0 header
-            Output[index++] = PCSC_ATR_T0 | PCSC_ATR_T0_MASK;  
+            // 15 bytes T0 header
+            Output[index++] = PCSC_ATR_T0 | PCSC_ATR_T0_MASK;
             Output[index++] = PCSC_ATR_TD1; // TD1
             Output[index++] = PCSC_ATR_TD2; // TD2
             Output[index++] = PCSC_ATR_STORAGE_CARD_T1; // T1
             Output[index++] = PCSC_ATR_STORAGE_CARD_PRESENCE_INDICATOR; // Application Identifier Presence Indicator
             Output[index++] = PCSC_ATR_STORAGE_CARD_HIST_BYTES_LENGTH; // Length
 
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID0; //RID 0
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID1; //RID 1
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID2; //RID 2
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID3; //RID 3
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID4; //RID 4
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID0; // RID 0
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID1; // RID 1
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID2; // RID 2
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID3; // RID 3
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID4; // RID 4
 
-             //7 Bytes PIX
-            Output[index++] = 0x00; //1 Byte of SS
+             // 7 Bytes PIX
+            Output[index++] = 0x00; // 1 Byte of SS
 
-            if (HINIBBLE(pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0) != 4) { //2 Bytes for Card Name
+            if (HINIBBLE(pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0) != 4) { // 2 Bytes for Card Name
                 //
                 // Jewel
                 //
@@ -3169,7 +3252,7 @@ Return Value:
                 Output[index++] = PSCS_NN_TOPAZ;
             }
 
-            Output[index++] = 0x00; //4 Bytes for RFU
+            Output[index++] = 0x00; // 4 Bytes for RFU
             Output[index++] = 0x00;
             Output[index++] = 0x00;
             Output[index++] = 0x00;
@@ -3184,27 +3267,27 @@ Return Value:
         case phLibNfc_eFelica_PICC:
         {
             // Inital Header
-            Output[index++] = PCSC_ATR_INIT_HEADER; 
+            Output[index++] = PCSC_ATR_INIT_HEADER;
 
-            //15 bytes T0 header
-            Output[index++] = PCSC_ATR_T0 | PCSC_ATR_T0_MASK;  
+            // 15 bytes T0 header
+            Output[index++] = PCSC_ATR_T0 | PCSC_ATR_T0_MASK;
             Output[index++] = PCSC_ATR_TD1; // TD1
             Output[index++] = PCSC_ATR_TD2; // TD2
             Output[index++] = PCSC_ATR_STORAGE_CARD_T1; // T1
             Output[index++] = PCSC_ATR_STORAGE_CARD_PRESENCE_INDICATOR; // Application Identifier Presence Indicator
             Output[index++] = PCSC_ATR_STORAGE_CARD_HIST_BYTES_LENGTH; // Length
 
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID0; //RID 0
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID1; //RID 1
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID2; //RID 2
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID3; //RID 3
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID4; //RID 4
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID0; // RID 0
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID1; // RID 1
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID2; // RID 2
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID3; // RID 3
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID4; // RID 4
 
-            //7 Bytes PIX
-            Output[index++] = PSCS_ATR_SS_FELICA; //1 Byte of SS
-            Output[index++] = 0x00; //2 Bytes for Card Name
+            // 7 Bytes PIX
+            Output[index++] = PSCS_ATR_SS_FELICA; // 1 Byte of SS
+            Output[index++] = 0x00; // 2 Bytes for Card Name
             Output[index++] = PCSC_NN_FELICA;
-            Output[index++] = 0x00; //4 Bytes for RFU
+            Output[index++] = 0x00; // 4 Bytes for RFU
             Output[index++] = 0x00;
             Output[index++] = 0x00;
             Output[index++] = 0x00;
@@ -3219,68 +3302,68 @@ Return Value:
         case phLibNfc_eMifare_PICC:
         {
             // Inital Header
-            Output[index++] = PCSC_ATR_INIT_HEADER; 
+            Output[index++] = PCSC_ATR_INIT_HEADER;
 
-            //15 bytes T0 header
-            Output[index++] = PCSC_ATR_T0 | PCSC_ATR_T0_MASK;  
+            // 15 bytes T0 header
+            Output[index++] = PCSC_ATR_T0 | PCSC_ATR_T0_MASK;
             Output[index++] = PCSC_ATR_TD1; // TD1
             Output[index++] = PCSC_ATR_TD2; // TD2
             Output[index++] = PCSC_ATR_STORAGE_CARD_T1; // T1
             Output[index++] = PCSC_ATR_STORAGE_CARD_PRESENCE_INDICATOR; // Application Identifier Presence Indicator
             Output[index++] = PCSC_ATR_STORAGE_CARD_HIST_BYTES_LENGTH; // Length
 
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID0; //RID 0
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID1; //RID 1
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID2; //RID 2
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID3; //RID 3
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID4; //RID 4
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID0; // RID 0
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID1; // RID 1
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID2; // RID 2
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID3; // RID 3
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID4; // RID 4
 
-            //7 Bytes PIX
-            Output[index++] = PSCS_ATR_SS_14443A_3; //1 Byte of SS
+            // 7 Bytes PIX
+            Output[index++] = PSCS_ATR_SS_14443A_3; // 1 Byte of SS
 
-            if(pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_UL) {
+            if (pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_UL) {
                 //
                 // Mifare UL
                 //
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_MIFARE_UL;
             }
-            else if(pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_STD_1K) {
+            else if (pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_STD_1K) {
                 //
-                //Mifare Classic 1K
+                // Mifare Classic 1K
                 //
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_MIFARE_STD_1K;
             }
-            else if(pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_MINI) {
+            else if (pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_MINI) {
                 //
                 // Mifare Mini
                 //
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_MIFARE_MINI;
             }
-            else if(pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_PLUS_SL2_2K) {
+            else if (pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_PLUS_SL2_2K) {
                 //
                 // Mifare Plus X SL2 2K
                 //
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_MIFARE_PLUS_SL2_2K;
             }
-            else if(pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_PLUS_SL2_4K) {
+            else if (pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_PLUS_SL2_4K) {
                 //
                 // Mifare Plus X SL2 4K
                 //
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_MIFARE_PLUS_SL2_4K;
             }
-            else if(pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_STD_4K) {
+            else if (pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_STD_4K) {
                 //
                 // Mifare Classic 4K
                 //
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_MIFARE_STD_4K;
             }
-            else if(pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_JCOP_MULTI_PROTOCOL) {
+            else if (pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_JCOP_MULTI_PROTOCOL) {
                 //
                 // JCOP-Multi Protocol Tag
                 // Exposing as Mifare Classic 1K 
@@ -3288,7 +3371,7 @@ Return Value:
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_MIFARE_STD_1K;
             }
-            else if(pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_SMARTMX_MULTI_PROTOCOL) {
+            else if (pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_SMARTMX_MULTI_PROTOCOL) {
                 //
                 // SmartMx-Multi Protocol Tag
                 // Exposing as Mifare Classic 4K
@@ -3302,7 +3385,7 @@ Return Value:
                 Output[index++] = PCSC_NN_NO_INFO;
             }
 
-            Output[index++] = 0x00; //4 Bytes for RFU
+            Output[index++] = 0x00; // 4 Bytes for RFU
             Output[index++] = 0x00;
             Output[index++] = 0x00;
             Output[index++] = 0x00;
@@ -3317,26 +3400,26 @@ Return Value:
         case phLibNfc_eISO15693_PICC:
         {
             // Inital Header
-            Output[index++] = PCSC_ATR_INIT_HEADER; 
+            Output[index++] = PCSC_ATR_INIT_HEADER;
 
-            //15 bytes T0 header
-            Output[index++] = PCSC_ATR_T0 | PCSC_ATR_T0_MASK;  
+            // 15 bytes T0 header
+            Output[index++] = PCSC_ATR_T0 | PCSC_ATR_T0_MASK;
             Output[index++] = PCSC_ATR_TD1; // TD1
             Output[index++] = PCSC_ATR_TD2; // TD2
             Output[index++] = PCSC_ATR_STORAGE_CARD_T1; // T1
             Output[index++] = PCSC_ATR_STORAGE_CARD_PRESENCE_INDICATOR; // Application Identifier Presence Indicator
             Output[index++] = PCSC_ATR_STORAGE_CARD_HIST_BYTES_LENGTH; // Length
 
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID0; //RID 0
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID1; //RID 1
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID2; //RID 2
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID3; //RID 3
-            Output[index++] = PCSC_ATR_STORAGE_CARD_RID4; //RID 4
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID0; // RID 0
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID1; // RID 1
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID2; // RID 2
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID3; // RID 3
+            Output[index++] = PCSC_ATR_STORAGE_CARD_RID4; // RID 4
 
-            //7 Bytes PIX
-            Output[index++] = PSCS_ATR_SS_ISO15693_4; //1 Byte of SS
+            // 7 Bytes PIX
+            Output[index++] = PSCS_ATR_SS_ISO15693_4; // 1 Byte of SS
 
-            //2 Bytes for Card Name
+            // 2 Bytes for Card Name
             if (pRemDev->RemoteDevInfo.Iso15693_Info.Uid[6] == ISO15693_MANUFACTURER_NXP)
             {
                 if (pRemDev->RemoteDevInfo.Iso15693_Info.Uid[5] == ISO15693_UIDBYTE_5_VALUE_SLI_X ||
@@ -3356,7 +3439,7 @@ Return Value:
                 Output[index++] = PCSC_NN_NO_INFO;
             }
 
-            Output[index++] = 0x00; //4 Bytes for RFU
+            Output[index++] = 0x00; // 4 Bytes for RFU
             Output[index++] = 0x00;
             Output[index++] = 0x00;
             Output[index++] = 0x00;
@@ -3369,20 +3452,19 @@ Return Value:
         }
 
         default:
-        {
             status = STATUS_NOT_SUPPORTED;
             break;
-        }
     }
 
     if (NT_SUCCESS(status)) {
         if (OutputBufferLength < cbBytesUsed) {
+            TRACE_LINE(LEVEL_ERROR, "Output buffer size is too small. Size = %lu, required size = %lu", OutputBufferLength, cbBytesUsed);
             status = STATUS_BUFFER_TOO_SMALL;
             goto Done;
         }
 
         RtlCopyMemory(OutputBuffer, Output, cbBytesUsed);
-        *ByteCopied = cbBytesUsed;
+        *BytesCopied = cbBytesUsed;
     }
 
 Done:
@@ -3453,7 +3535,7 @@ Return Value:
 }
 
 _Requires_lock_held_(ScInterface->SmartCardLock)
-NTSTATUS
+VOID
 NfcCxSCInterfaceGetDeviceTypeLocked(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
     _Out_ phNfc_eRemDevType_t* pDevType,
@@ -3463,7 +3545,7 @@ NfcCxSCInterfaceGetDeviceTypeLocked(
 
 Routine Description:
 
-    This routine is called from the SmartCard module to retrieve the ICC type of the remote device
+    Retrieves the ICC type and SAK of the remote device.
 
 Arguments:
 
@@ -3477,16 +3559,35 @@ Return Value:
 
 --*/
 {
-    NTSTATUS status = STATUS_SUCCESS;
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
     *pDevType = ScInterface->RemoteDeviceInfo.RemDevType;
     *pSak = (DWORD)ScInterface->RemoteDeviceInfo.RemoteDevInfo.Iso14443A_Info.Sak;
+}
 
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+_Requires_lock_held_(ScInterface->SmartCardLock)
+BOOLEAN
+NfcCxSCInterfaceIsStorageCardConnected(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+    )
+/*++
 
-    return status;
+Routine Description:
+
+    Determines if the connected smart card is a storage card or not.
+
+Arguments:
+
+    ScInterface - The SC Interface
+
+Return Value:
+
+    TRUE if the connected smart card is a storage card, FALSE otherwise
+
+--*/
+{
+    NT_ASSERT(ScInterface->SmartCardConnected);
+
+    return (ScInterface->RemoteDeviceInfo.RemDevType == phLibNfc_eISO14443_4A_PICC ||
+        ScInterface->RemoteDeviceInfo.RemDevType == phLibNfc_eISO14443_4B_PICC) ? FALSE : TRUE;
 }
 
 _Requires_lock_held_(ScInterface->SmartCardLock)
@@ -3552,37 +3653,41 @@ NfcCxSCInterfaceDetectMifareULC(
 
 Routine Description:
 
-    This routine detect if the card connected is Mifare UL or ULC.
+    This routine detects if the card connected is Mifare UL or ULC.
 
 Arguments:
 
-    ScInterface - The SC Interface
+    ScInterface - The SC Interface.
 
 Return Value:
 
-    TRUE if Mifare ULC, FALSE if Mifare UL
+    TRUE if the card is Mifare ULC, FALSE if Mifare UL.
 
 --*/
 {
-    NTSTATUS status;
     BOOLEAN fResult = FALSE;
-    BYTE detectCmd[2] = {0};
-    BYTE resultBuffer[MIFARE_UL_READ_BUFFER_SIZE] = {0};
+    NTSTATUS status = STATUS_SUCCESS;
     DWORD returnBufferSize = 0;
+    BYTE resultBuffer[256] = {0};
+    BYTE authenticateCmd[] = { 0x1A, 0x00 };
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    detectCmd[0] = phNfc_eMifareRead16;
-    detectCmd[1] = MIFARE_UL_NUMBER_OF_PAGES; // Read page that does not exist on Mifare UL
-
+    // Send an AUTHENTICATE command. Since Mifare ULC supports encryption and UL doesn't, the
+    // command will succeed for ULC and fail for UL.
     status = NfcCxSCInterfaceTransmitRawData(ScInterface,
-                                             detectCmd, 
-                                             (DWORD)sizeof(detectCmd), 
-                                             resultBuffer, 
-                                             (DWORD)sizeof(resultBuffer), 
-                                             &returnBufferSize);
+                                             authenticateCmd,
+                                             sizeof(authenticateCmd),
+                                             resultBuffer,
+                                             sizeof(resultBuffer),
+                                             &returnBufferSize,
+                                             MIFARE_UL_AUTHENTICATE_RESPONSE_TIMEOUT);
+    TRACE_LINE(LEVEL_INFO,
+               L"AUTHENTICATE command returned status = %!STATUS! and buffer size = %lu",
+               status,
+               returnBufferSize);
 
-    if (NT_SUCCESS(status) && returnBufferSize == 16) {
+    if (NT_SUCCESS(status) && returnBufferSize == MIFARE_UL_AUTHENTICATE_RESPONSE_BUFFER_SIZE) {
         fResult = TRUE;
     }
 
@@ -3599,7 +3704,7 @@ NfcCxSCInterfaceResetCard(
 
 Routine Description:
 
-    This routine warm reset the smart card
+    This routine warm resets the smart card
 
 Arguments:
 

@@ -293,22 +293,24 @@ static void phNciNfc_CoreRecvCb(void *pContext, phTmlNfc_TransactInfo_t *pInfo)
 
     if((NULL != ptNciCoreCtx) && (NULL != pInfo))
     {
-        if (ptNciCoreCtx->bLogDataMessages)
-        {
-            PH_LOG_NCI_INFO_HEXDUMP("Received packet<-<- : %!HEXDUMP!",
-                WppLogHex((VOID*)pInfo->pBuff, (USHORT)pInfo->wLength));
-        }
-        else
-        {
-            PH_LOG_NCI_INFO_X32MSG("Received packet with length : ", pInfo->wLength);
-        }
-
         if(PHNCINFC_GETNCICORECONTEXT() == ptNciCoreCtx)
         {
+            if (ptNciCoreCtx->bLogDataMessages)
+            {
+                PH_LOG_NCI_INFO_HEXDUMP("Received packet<-<- : %!HEXDUMP!",
+                    WppLogHex((VOID*)pInfo->pBuff, (USHORT)pInfo->wLength));
+            }
+            else
+            {
+                PH_LOG_NCI_INFO_X32MSG("Received packet with length : ", pInfo->wLength);
+            }
+
             pRecvStateContext = &(ptNciCoreCtx->RecvStateContext);
             wStatus = phNciNfc_CoreRecvConvertStatus2Evt(pInfo->wStatus, &TrigEvt);
         }else
         {
+            PH_LOG_NCI_INFO_X32MSG("Received packet with length : ", pInfo->wLength);
+
             wStatus = NFCSTATUS_INVALID_PARAMETER;
             UNREFERENCED_PARAMETER(wStatus);
             goto Done;

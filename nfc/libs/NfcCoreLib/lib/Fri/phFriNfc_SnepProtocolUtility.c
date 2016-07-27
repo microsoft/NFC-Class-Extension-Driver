@@ -11,7 +11,7 @@
 
 #include "phFriNfc_SnepProtocolUtility.tmh"
 
-phOsalNfc_Message_t    Message = {0};
+phOsalNfc_Message_t Message = {0};
 
 NFCSTATUS phLibNfc_SnepProtocolReq (pphLibNfc_SnepClientSession_t pClientSessionContext)
 {
@@ -30,8 +30,9 @@ NFCSTATUS phLibNfc_SnepProtocolReq (pphLibNfc_SnepClientSession_t pClientSession
         }
 
         memcpy(pClientSessionContext->putGetDataContext.pProcessingBuffer->buffer,
-               pClientSessionContext->putGetDataContext.pSnepPacket->buffer, pClientSessionContext->iRemoteMiu);
-        
+               pClientSessionContext->putGetDataContext.pSnepPacket->buffer,
+               pClientSessionContext->iRemoteMiu);
+
         pClientSessionContext->putGetDataContext.iDataSent = pClientSessionContext->iRemoteMiu;
 
         ret = phLibNfc_Llcp_Send( pClientSessionContext->hRemoteDevHandle,
@@ -75,9 +76,12 @@ NFCSTATUS phLibNfc_SnepProtocolSendResponse (pphLibNfc_SnepServerConnection_t pS
             ret = NFCSTATUS_BUFFER_TOO_SMALL;
             goto Done;
         }
+
         memcpy(pSnepServerConnection->responseDataContext.pProcessingBuffer->buffer,
-               pSnepServerConnection->responseDataContext.pSnepPacket->buffer, pSnepServerConnection->iRemoteMiu);
-        
+               pSnepServerConnection->responseDataContext.pSnepPacket->buffer,
+               pSnepServerConnection->iRemoteMiu);
+
+        pSnepServerConnection->responseDataContext.pProcessingBuffer->length = pSnepServerConnection->iRemoteMiu;
         pSnepServerConnection->responseDataContext.iDataSent = pSnepServerConnection->iRemoteMiu;
 
         ret = phLibNfc_Llcp_Send( pSnepServerConnection->hRemoteDevHandle,
@@ -352,10 +356,11 @@ void LlcpSocketSendResponseCb (void *pContext, NFCSTATUS status)
 phNfc_sData_t* phLibNfc_PrepareSnepPacket(phLibNfc_SnepPacket_t packetType, phNfc_sData_t *pData,
                                           uint8_t version, uint32_t acceptableLength)
 {
-    phNfc_sData_t*pSnepPacket = NULL;
+    phNfc_sData_t *pSnepPacket = NULL;
     uint8_t *pSnepPktTraverse = NULL;
     uint8_t *pBuffer=0;
     uint32_t iSnepPacketSize = 0;
+    uint32_t dwSnepPayloadLen = 0x00;
 
     PH_LOG_SNEP_FUNC_ENTRY();
 
@@ -372,6 +377,7 @@ phNfc_sData_t* phLibNfc_PrepareSnepPacket(phLibNfc_SnepPacket_t packetType, phNf
     {
         iSnepPacketSize += SNEP_REQUEST_ACCEPTABLE_LENGTH_SIZE;
     }
+
     pSnepPacket = phOsalNfc_GetMemory(sizeof(phNfc_sData_t));
     if (NULL != pSnepPacket)
     {
@@ -393,8 +399,18 @@ phNfc_sData_t* phLibNfc_PrepareSnepPacket(phLibNfc_SnepPacket_t packetType, phNf
 
         if (NULL != pData)
         {
-            /* Big endian length */
-            pBuffer = (uint8_t*)&(pData->length);
+            /* Update the snep payload length including the Acceptable length */
+            if (phLibNfc_SnepGet == packetType)
+            {
+                dwSnepPayloadLen = pData->length + SNEP_REQUEST_ACCEPTABLE_LENGTH_SIZE;
+                pBuffer = (uint8_t*)(&dwSnepPayloadLen);
+            }
+            else
+            {
+                /* Big endian length */
+                pBuffer = (uint8_t*)(&pData->length);
+            }
+
             *pSnepPktTraverse = pBuffer[3];
             pSnepPktTraverse++;
             *pSnepPktTraverse = pBuffer[2];
@@ -435,17 +451,39 @@ phNfc_sData_t* phLibNfc_PrepareSnepPacket(phLibNfc_SnepPacket_t packetType, phNf
             pSnepPacket = NULL;
         }
     }
+
     PH_LOG_SNEP_FUNC_EXIT();
     return pSnepPacket;
 }
 
-void LlcpSocketRecvCbForRspContinue (void* pContext,
-                                     NFCSTATUS status)
+void LlcpSocketRecvCbForInvalidResponse(void* pContext, NFCSTATUS status)
+{
+    pphLibNfc_SnepClientSession_t pClientSessionContext = NULL;
+
+    PH_LOG_SNEP_FUNC_ENTRY();
+
+    if (NULL != pContext)
+    {
+        PH_LOG_SNEP_INFO_X32MSG("Status: ", status);
+        pClientSessionContext = (pphLibNfc_SnepClientSession_t)pContext;
+        if (pClientSessionContext->putGetDataContext.bContinueReceived)
+        {
+            /* We have received an erroneous response while sending fragments
+            is in progress. Invoke upper layer with REJECT */
+            PH_LOG_SNEP_INFO_STR("Error: Received an erroneous response while send in progress");
+            phLibNfc_Llcp_CancelPendingSend(pClientSessionContext->hRemoteDevHandle,
+                                            pClientSessionContext->hSnepClientHandle);
+        }
+    }
+
+    PH_LOG_SNEP_FUNC_EXIT();
+}
+
+void LlcpSocketRecvCbForRspContinue(void* pContext, NFCSTATUS status)
 {
     uint8_t *pSnepPktTraverse = NULL;
     pphLibNfc_SnepClientSession_t pClientSessionContext = (pphLibNfc_SnepClientSession_t)pContext;
-
-    PHNFC_UNUSED_VARIABLE(status);
+    NFCSTATUS returnValue = NFCSTATUS_SUCCESS;
 
     PH_LOG_SNEP_FUNC_ENTRY();
 
@@ -455,13 +493,32 @@ void LlcpSocketRecvCbForRspContinue (void* pContext,
     {
         if (areVersionsCompatible(pClientSessionContext->SnepClientVersion, *pSnepPktTraverse))
         {
+            /* Check if server erroneously sends any packet.
+               Cb will be invoked when packets are received erroneously from server */
+            if (FALSE != pClientSessionContext->bDtaFlag)
+            {
+                returnValue = phLibNfc_Llcp_Recv(pClientSessionContext->hRemoteDevHandle,
+                                                 pClientSessionContext->hSnepClientHandle,
+                                                 pClientSessionContext->putGetDataContext.pProcessingBuffer,
+                                                 LlcpSocketRecvCbForInvalidResponse,
+                                                 pClientSessionContext);
+
+                PH_LOG_SNEP_INFO_X32MSG("phLibNfc_Llcp_Recv status: ", returnValue);
+
+                if (NFCSTATUS_PENDING != returnValue)
+                {
+                    phLibNfc_ClearMemNCallCb(pClientSessionContext, returnValue, NULL);
+                    pClientSessionContext->pReqCb = NULL;
+                }
+            }
+
             pClientSessionContext->putGetDataContext.bContinueReceived = TRUE;
-            SnepSocketSendCb (pClientSessionContext, NFCSTATUS_SUCCESS);
+            SnepSocketSendCb(pClientSessionContext, NFCSTATUS_SUCCESS);
         }
         else
         {
             pClientSessionContext->putGetDataContext.bWaitForContinue = FALSE;
-            phLibNfc_ClearMemNCallCb(pClientSessionContext, SNEP_RESPONSE_UNSUPPORTED_VERSION,NULL);
+            phLibNfc_ClearMemNCallCb(pClientSessionContext, SNEP_RESPONSE_UNSUPPORTED_VERSION, NULL);
         }
 
     }
@@ -472,22 +529,48 @@ void LlcpSocketRecvCbForRspContinue (void* pContext,
         {
             PH_LOG_SNEP_CRIT_STR("LlcpSocketRecvCbForRspContinue: ***did not receive continue");
             /* SNEP_RESPONSE_REJECT will be received in this path */
-            phLibNfc_ClearMemNCallCb(pClientSessionContext, GetNfcStatusFromSnepResponse(pSnepPktTraverse[SNEP_VERSION_LENGTH]),
-            NULL);
+            phLibNfc_ClearMemNCallCb(pClientSessionContext,
+                                     GetNfcStatusFromSnepResponse(pSnepPktTraverse[SNEP_VERSION_LENGTH]),
+                                     NULL);
         }
         else
         {
-            phLibNfc_ClearMemNCallCb(pClientSessionContext, SNEP_RESPONSE_UNSUPPORTED_VERSION,NULL);
+            phLibNfc_ClearMemNCallCb(pClientSessionContext, SNEP_RESPONSE_UNSUPPORTED_VERSION, NULL);
         }
     }
     PH_LOG_SNEP_FUNC_EXIT();
 }
 
-void LlcpSocketRecvCbForReqContinue (void* pContext,
-                                     NFCSTATUS status)
+void LlcpSocketRecvCbForInvalidRequest(void* pContext, NFCSTATUS status)
+{
+    pphLibNfc_SnepServerConnection_t pSnepServerConnection = NULL;
+
+    PH_LOG_SNEP_FUNC_ENTRY();
+
+    if (NULL != pContext)
+    {
+        PH_LOG_SNEP_INFO_X32MSG("Status: ", status);
+        pSnepServerConnection = (pphLibNfc_SnepServerConnection_t)pContext;
+        if (pSnepServerConnection->responseDataContext.bContinueReceived)
+        {
+            /* We have received an invalid message from Client.
+               Invoke upper layer with Invalid protocol data */
+            PH_LOG_SNEP_CRIT_STR("Error: Received a packet while sending fragments in progress");
+
+            phLibNfc_Llcp_CancelPendingSend(pSnepServerConnection->hRemoteDevHandle,
+                                            pSnepServerConnection->hSnepServerConnHandle);
+        }
+    }
+
+    PH_LOG_SNEP_FUNC_EXIT();
+}
+
+void LlcpSocketRecvCbForReqContinue(void* pContext, NFCSTATUS status)
 {
     uint8_t *pSnepPktTraverse = NULL;
+    NFCSTATUS returnValue = NFCSTATUS_SUCCESS;
     pphLibNfc_SnepServerConnection_t pSnepServerConnection = (pphLibNfc_SnepServerConnection_t)pContext;
+    phLibNfc_SnepServerSession_t* pServerSession = NULL;
 
     PHNFC_UNUSED_VARIABLE(status);
 
@@ -497,16 +580,35 @@ void LlcpSocketRecvCbForReqContinue (void* pContext,
     {
         if (areVersionsCompatible(pSnepServerConnection->SnepServerVersion, *pSnepPktTraverse))
         {
+            pServerSession = pSnepServerConnection->pServerSession;
+
+            /* Check if we receive any packets from client erroneously.
+               Cb will be invoked when any erroneous packet is received */
+            if (FALSE != pServerSession->bDtaFlag)
+            {
+                returnValue = phLibNfc_Llcp_Recv(pSnepServerConnection->hRemoteDevHandle,
+                                                 pSnepServerConnection->hSnepServerConnHandle,
+                                                 pSnepServerConnection->responseDataContext.pProcessingBuffer,
+                                                 LlcpSocketRecvCbForInvalidRequest,
+                                                 pSnepServerConnection);
+                if (NFCSTATUS_PENDING != returnValue)
+                {
+                    phLibNfc_ClearMemNCallResponseCb(pSnepServerConnection, returnValue);
+                }
+            }
+
             pSnepServerConnection->responseDataContext.bContinueReceived = TRUE;
-            LlcpSocketSendResponseCb (pSnepServerConnection, NFCSTATUS_SUCCESS);
+            LlcpSocketSendResponseCb(pSnepServerConnection, NFCSTATUS_SUCCESS);
         }
         else
         {
             pSnepServerConnection->responseDataContext.bWaitForContinue = FALSE;
             /* send Reject, in completion reset context and restart read */
-            phLibNfc_SnepProtocolSrvSendResponse (pSnepServerConnection->hSnepServerConnHandle,
-            NULL, NFCSTATUS_SNEP_RESPONSE_UNSUPPORTED_VERSION, SnepSrvSendcompleteInternal,
-            pSnepServerConnection);
+            phLibNfc_SnepProtocolSrvSendResponse(pSnepServerConnection->hSnepServerConnHandle,
+                                                 NULL,
+                                                 NFCSTATUS_SNEP_RESPONSE_UNSUPPORTED_VERSION,
+                                                 SnepSrvSendcompleteInternal,
+                                                 pSnepServerConnection);
         }
     }
     else if (SNEP_REQUEST_REJECT == pSnepPktTraverse[SNEP_VERSION_LENGTH])
@@ -521,17 +623,21 @@ void LlcpSocketRecvCbForReqContinue (void* pContext,
 
             phLibNfc_ClearMemNCallResponseCb(pSnepServerConnection, NFCSTATUS_SNEP_RESPONSE_UNSUPPORTED_VERSION);
             /* send Reject, in completion reset context and restart read */
-            phLibNfc_SnepProtocolSrvSendResponse (pSnepServerConnection->hSnepServerConnHandle,
-            NULL, NFCSTATUS_SNEP_RESPONSE_UNSUPPORTED_VERSION, SnepSrvSendcompleteInternal,
-            pSnepServerConnection);
+            phLibNfc_SnepProtocolSrvSendResponse(pSnepServerConnection->hSnepServerConnHandle,
+                                                 NULL,
+                                                 NFCSTATUS_SNEP_RESPONSE_UNSUPPORTED_VERSION,
+                                                 SnepSrvSendcompleteInternal,
+                                                 pSnepServerConnection);
         }
     }
     else
     {
         phLibNfc_ClearMemNCallResponseCb(pSnepServerConnection, NFCSTATUS_SNEP_INVALID_PROTOCOL_DATA);
-        phLibNfc_SnepProtocolSrvSendResponse (pSnepServerConnection->hSnepServerConnHandle,
-        NULL, NFCSTATUS_SNEP_RESPONSE_BAD_REQUEST, SnepSrvSendcompleteInternal,
-        pSnepServerConnection);
+        phLibNfc_SnepProtocolSrvSendResponse(pSnepServerConnection->hSnepServerConnHandle,
+                                             NULL,
+                                             NFCSTATUS_SNEP_RESPONSE_BAD_REQUEST,
+                                             SnepSrvSendcompleteInternal,
+                                             pSnepServerConnection);
     }
     PH_LOG_SNEP_FUNC_EXIT();
 }
@@ -552,10 +658,13 @@ NFCSTATUS CollectReply(pphLibNfc_SnepClientSession_t pClientSessionContext)
     if (NFCSTATUS_PENDING != ret &&
         NFCSTATUS_SUCCESS != ret)
     {
-        phLibNfc_ClearMemNCallCb(pClientSessionContext, ret, NULL);
+        if (FALSE == pClientSessionContext->bDtaFlag)
+        {
+            phLibNfc_ClearMemNCallCb(pClientSessionContext, ret, NULL);
+        }
     } else if (NFCSTATUS_SUCCESS == ret)
     {
-        /* sometimes receive call returns success, so call again*/
+        /* sometimes receive call returns success, so call again */
         ret = phLibNfc_Llcp_Recv( pClientSessionContext->hRemoteDevHandle,
                               pClientSessionContext->hSnepClientHandle,
                               pClientSessionContext->putGetDataContext.pProcessingBuffer,
@@ -620,15 +729,15 @@ void LlcpSocketRecvCbForRecvBegin(void* pContext,
                 NULL != pClientSessionContext->putGetDataContext.pReqResponse->buffer)
             {
                 pClientSessionContext->putGetDataContext.pReqResponse->length = iInfoLength;
-                if (((iInfoLength + SNEP_HEADER_SIZE) <= pClientSessionContext->iMiu) && 
-                    ((NULL != pSnepReqPktTraverse) && (SNEP_REQUEST_PUT == pSnepReqPktTraverse[SNEP_VERSION_LENGTH]) ||
-                    ((iInfoLength - SNEP_HEADER_SIZE) == pClientSessionContext->putGetDataContext.pProcessingBuffer->length)))
+                if (iInfoLength + SNEP_HEADER_SIZE <= pClientSessionContext->iMiu &&
+                    ((NULL != pSnepReqPktTraverse && SNEP_REQUEST_PUT == pSnepReqPktTraverse[SNEP_VERSION_LENGTH]) ||
+                    iInfoLength == pClientSessionContext->putGetDataContext.pProcessingBuffer->length - SNEP_HEADER_SIZE))
                 {
                     pClientSessionContext->putGetDataContext.pReqResponse->length = iInfoLength;
                     memcpy(pClientSessionContext->putGetDataContext.pReqResponse->buffer, pSnepPktTraverse + SNEP_HEADER_SIZE, iInfoLength);
-                    phLibNfc_ClearMemNCallCb (pClientSessionContext,
-                                              GetNfcStatusFromSnepResponse(pSnepPktTraverse[SNEP_VERSION_LENGTH]),
-                                              pClientSessionContext->putGetDataContext.pReqResponse);
+                    phLibNfc_ClearMemNCallCb(pClientSessionContext,
+                                             GetNfcStatusFromSnepResponse(pSnepPktTraverse[SNEP_VERSION_LENGTH]),
+                                             pClientSessionContext->putGetDataContext.pReqResponse);
                 }
                 else
                 {
@@ -670,7 +779,6 @@ NFCSTATUS GetNfcStatusFromSnepResponse(uint8_t snepCode)
     switch(snepCode)
     {
     case SNEP_RESPONSE_CONTINUE:
-        PH_LOG_SNEP_FUNC_ENTRY();
         ret = NFCSTATUS_SNEP_RESPONSE_CONTINUE;
         break;
     case SNEP_RESPONSE_SUCCESS:

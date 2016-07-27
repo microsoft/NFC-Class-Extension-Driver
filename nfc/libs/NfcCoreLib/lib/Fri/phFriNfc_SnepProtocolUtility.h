@@ -26,11 +26,13 @@ void LlcpSocketSendResponseCb (void *pContext, NFCSTATUS status);
 phNfc_sData_t* phLibNfc_PrepareSnepPacket(phLibNfc_SnepPacket_t packetType, phNfc_sData_t *pData,
                                           uint8_t version, uint32_t acceptableLength);
 
-void LlcpSocketRecvCbForRspContinue (void* pContext,
-                                     NFCSTATUS status);
+void LlcpSocketRecvCbForRspContinue(void* pContext, NFCSTATUS status);
 
-void LlcpSocketRecvCbForReqContinue (void* pContext,
-                                     NFCSTATUS status);
+void LlcpSocketRecvCbForInvalidResponse(void* pContext, NFCSTATUS status);
+
+void LlcpSocketRecvCbForInvalidRequest(void* pContext, NFCSTATUS status);
+
+void LlcpSocketRecvCbForReqContinue(void* pContext, NFCSTATUS status);
 
 NFCSTATUS CollectReply(pphLibNfc_SnepClientSession_t pClientSessionContext);
 

@@ -337,3 +337,22 @@ phFriNfc_Llcp_Recv(
     _In_ phFriNfc_Llcp_Recv_CB_t pfRecv_CB,
     _In_ void                    *pContext
     );
+
+/*!
+* \brief <b>Cancel the pending send operations, if an Invalid response is received for previous Send</b>.
+*
+* This function is implemented for SNEP DTA test cases TC_C_PUT_BI_01 & TC_S_RET_BI_01.
+* This function is called to cancel the pending send Fragment at Fri layer, in case an Invalid response(2nd CONTINUE Request/Response)
+* is received.
+*
+* \param[in]  Llcp                            A pointer to a LlcpSocket created.
+*
+* \retval #NFCSTATUS_ABORTED                  Send Operation aborted successful.
+* \retval #NFCSTATUS_INVALID_PARAMETER        One or more of the supplied parameters
+*                                             could not be properly interpreted.
+* \retval #NFCSTATUS_NOT_ALLOWED              Any other Operation is not allowed.
+*/
+NFCSTATUS
+phFriNfc_Llcp_CancelPendingSend(
+    _In_ phFriNfc_Llcp_t *Llcp
+    );

@@ -991,7 +991,11 @@ static NFCSTATUS phLibNfc_StartNfceeDisc(void* pContext, NFCSTATUS status, void*
 static NFCSTATUS phLibNfc_ProcessStartNfceeDiscRsp(void* pContext, NFCSTATUS wStatus, void* pInfo)
 {
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t) pContext;
+
+    // Warning C4311: 'type cast': pointer truncation from 'void *' to 'uint32_t'
+#pragma warning(suppress:4311)
     uint32_t dwNfceeCount = (uint32_t)pInfo;
+
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if ((NULL != pCtx) && (NFCSTATUS_SUCCESS == wStatus))
     {

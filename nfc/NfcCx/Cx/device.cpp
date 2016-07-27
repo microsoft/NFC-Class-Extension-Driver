@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     Cx Device implementation.
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -19,33 +19,33 @@ Environment:
 #include "NfcCxPch.h"
 #include "device.tmh"
 
-NFCCX_DDI_MODULE g_NfcCxDdiModules [] = 
+NFCCX_DDI_MODULE g_NfcCxDdiModules [] =
 {
     {L"RadioMedia",
         FALSE, //IsNullFileObjectOk
         FALSE, //IsAppContainerAllowed
-        NfcCxPowerIsIoctlSupported, 
+        NfcCxPowerIsIoctlSupported,
         NfcCxPowerIoDispatch
     },
     {L"NFP",
         FALSE, //IsNullFileObjectOk
         TRUE,  //IsAppContainerAllowed
-        NfcCxNfpInterfaceIsIoctlSupported, 
+        NfcCxNfpInterfaceIsIoctlSupported,
         NfcCxNfpInterfaceIoDispatch
     },
     {L"SecureElement",
         FALSE, //IsNullFileObjectOk
         FALSE,  //IsAppContainerAllowed
-        NfcCxSEInterfaceIsIoctlSupported, 
+        NfcCxSEInterfaceIsIoctlSupported,
         NfcCxSEInterfaceIoDispatch
     },
     {L"SmartCard",
         FALSE, //IsNullFileObjectOk
         TRUE,  //IsAppContainerAllowed
-        NfcCxSCInterfaceIsIoctlSupported, 
+        NfcCxSCInterfaceIsIoctlSupported,
         NfcCxSCInterfaceIoDispatch
     },
-    { L"DTA",
+    {L"DTA",
         FALSE, //IsNullFileObjectOk
         TRUE, //IsAppContainerAllowed
         NfcCxDTAInterfaceIsIoctlSupported,
@@ -356,7 +356,7 @@ Return Value:
     NTSTATUS status = STATUS_SUCCESS;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     //
     // Stop RF
     //
@@ -444,8 +444,8 @@ Return Value:
 
 NTSTATUS
 NfcCxFdoReadCxDriverRegistrySettings(
-    _Out_ BOOLEAN* logNciDataMessages
-)
+    _Out_ BOOLEAN* pLogNciDataMessages
+    )
 {
     NTSTATUS status = STATUS_SUCCESS;
     WDFKEY hKey = NULL;
@@ -454,7 +454,7 @@ NfcCxFdoReadCxDriverRegistrySettings(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    NT_ASSERT(logNciDataMessages != NULL);
+    NT_ASSERT(pLogNciDataMessages != NULL);
 
     status = WdfDriverOpenParametersRegistryKey(
         WdfGetDriver(),
@@ -463,11 +463,17 @@ NfcCxFdoReadCxDriverRegistrySettings(
         &hKey);
 
     if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_INFO, "No settings");
         status = STATUS_SUCCESS;
         goto Done;
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_LOG_DATA_MESSAGES);
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_LOG_DATA_MESSAGES);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_LOG_DATA_MESSAGES, status);
+        goto Done;
+    }
+
     status = WdfRegistryQueryULong(
         hKey,
         &valueName,
@@ -475,10 +481,9 @@ NfcCxFdoReadCxDriverRegistrySettings(
     if (!NT_SUCCESS(status)) {
         // Value not present, allow continuation
         status = STATUS_SUCCESS;
-    }
-    else {
+    } else {
         TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_LOG_DATA_MESSAGES, tempValue);
-        *logNciDataMessages = tempValue != 0;
+        *pLogNciDataMessages = tempValue != 0;
     }
 
 Done:
@@ -486,6 +491,200 @@ Done:
     if (NULL != hKey) {
         WdfRegistryClose(hKey);
         hKey = NULL;
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
+    return status;
+}
+
+NTSTATUS
+NfcCxFdoReadCxDeviceVolatileRegistrySettings(
+    _In_ WDFDEVICE Device,
+    _Out_ ULONG* pNumDriverRestarts
+    )
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    WDFKEY parametersKey = NULL;
+    WDFKEY volatileSubKey = NULL;
+    UNICODE_STRING volatileSubKeyName;
+    UNICODE_STRING valueName;
+    ULONG tempValue = 0;
+    ULONG disposition = 0;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NT_ASSERT(pNumDriverRestarts != NULL);
+
+    status = WdfDeviceOpenRegistryKey(
+        Device,
+        PLUGPLAY_REGKEY_DRIVER | WDF_REGKEY_DRIVER_SUBKEY,
+        GENERIC_ALL,
+        WDF_NO_OBJECT_ATTRIBUTES,
+        &parametersKey);
+
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_WARNING, "Failed to open parent reg key: %!STATUS!", status);
+        status = STATUS_SUCCESS;
+        goto Done;
+    }
+
+    status = RtlUnicodeStringInit(&volatileSubKeyName, NFCCX_REG_VOLATILE_SUB_KEY_NAME);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_VOLATILE_SUB_KEY_NAME, status);
+        goto Done;
+    }
+
+    status = WdfRegistryCreateKey(
+        parametersKey,
+        &volatileSubKeyName,
+        KEY_QUERY_VALUE | KEY_SET_VALUE,
+        REG_OPTION_VOLATILE,
+        &disposition,
+        WDF_NO_OBJECT_ATTRIBUTES,
+        &volatileSubKey);
+
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_WARNING, "Failed to create a volatile reg key: %!STATUS!", status);
+        status = STATUS_SUCCESS;
+        goto Done;
+    }
+
+    if (disposition == REG_CREATED_NEW_KEY) {
+        // If the volatile reg key we created was a new key, then the phone must have restarted and
+        // cleared the old volatile reg key. In that case, create the values under the key with
+        // default settings
+        TRACE_LINE(LEVEL_INFO, "Created new volatile reg key. Setting default values");
+
+        status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NUM_DRIVER_RESTARTS);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NUM_DRIVER_RESTARTS, status);
+            goto Done;
+        }
+
+        status = WdfRegistryAssignULong(
+            volatileSubKey,
+            &valueName,
+            0);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_WARNING, "Failed to set value %S: %!STATUS!", NFCCX_REG_NUM_DRIVER_RESTARTS, status);
+            status = STATUS_SUCCESS;
+        } else {
+            TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_NUM_DRIVER_RESTARTS, 0);
+            *pNumDriverRestarts = 0;
+        }
+    } else {
+        NT_ASSERT(disposition == REG_OPENED_EXISTING_KEY);
+
+        status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NUM_DRIVER_RESTARTS);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NUM_DRIVER_RESTARTS, status);
+            goto Done;
+        }
+
+        status = WdfRegistryQueryULong(
+            volatileSubKey,
+            &valueName,
+            &tempValue);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_WARNING, "Failed to get value %S: %!STATUS!", NFCCX_REG_NUM_DRIVER_RESTARTS, status);
+            status = STATUS_SUCCESS;
+        } else {
+            TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_NUM_DRIVER_RESTARTS, tempValue);
+            *pNumDriverRestarts = tempValue;
+        }
+    }
+
+Done:
+
+    if (NULL != parametersKey) {
+        WdfRegistryClose(parametersKey);
+        parametersKey = NULL;
+    }
+
+    if (NULL != volatileSubKey) {
+        WdfRegistryClose(volatileSubKey);
+        volatileSubKey = NULL;
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
+    return status;
+}
+
+NTSTATUS
+NfcCxFdoWriteCxDeviceVolatileRegistrySettings(
+    _In_ WDFDEVICE Device,
+    _In_ ULONG* pNumDriverRestarts
+    )
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    WDFKEY parametersKey = NULL;
+    WDFKEY volatileSubKey = NULL;
+    UNICODE_STRING volatileSubKeyName;
+    UNICODE_STRING valueName;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NT_ASSERT(pNumDriverRestarts != NULL);
+
+    status = WdfDeviceOpenRegistryKey(
+        Device,
+        PLUGPLAY_REGKEY_DRIVER | WDF_REGKEY_DRIVER_SUBKEY,
+        GENERIC_ALL,
+        WDF_NO_OBJECT_ATTRIBUTES,
+        &parametersKey);
+
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to open parent reg key: %!STATUS!", status);
+        goto Done;
+    }
+
+    status = RtlUnicodeStringInit(&volatileSubKeyName, NFCCX_REG_VOLATILE_SUB_KEY_NAME);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_VOLATILE_SUB_KEY_NAME, status);
+        goto Done;
+    }
+
+    status = WdfRegistryOpenKey(
+        parametersKey,
+        &volatileSubKeyName,
+        KEY_SET_VALUE,
+        WDF_NO_OBJECT_ATTRIBUTES,
+        &volatileSubKey);
+
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to open the volatile reg key: %!STATUS!", status);
+        goto Done;
+    }
+
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NUM_DRIVER_RESTARTS);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NUM_DRIVER_RESTARTS, status);
+        goto Done;
+    }
+
+    status = WdfRegistryAssignULong(
+        volatileSubKey,
+        &valueName,
+        *pNumDriverRestarts);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to set value %S: %!STATUS!", NFCCX_REG_NUM_DRIVER_RESTARTS, status);
+        goto Done;
+    } else {
+        TRACE_LINE(LEVEL_INFO, "Set %S to %d", NFCCX_REG_NUM_DRIVER_RESTARTS, *pNumDriverRestarts);
+    }
+
+Done:
+
+    if (NULL != parametersKey) {
+        WdfRegistryClose(parametersKey);
+        parametersKey = NULL;
+    }
+
+    if (NULL != volatileSubKey) {
+        WdfRegistryClose(volatileSubKey);
+        volatileSubKey = NULL;
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -535,7 +734,12 @@ Return Value:
         goto Done;
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_NFC_RADIO_TURNED_OFF);
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NFC_RADIO_TURNED_OFF);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NFC_RADIO_TURNED_OFF, status);
+        goto Done;
+    }
+
     status = WdfRegistryQueryULong(
                             hKey,
                             &valueName,
@@ -548,7 +752,12 @@ Return Value:
         FdoContext->NfpPowerOffPolicyOverride = (tempValue != 0);
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_NFC_FLIGHT_MODE);
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NFC_FLIGHT_MODE);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NFC_FLIGHT_MODE, status);
+        goto Done;
+    }
+
     status = WdfRegistryQueryULong(
                             hKey,
                             &valueName,
@@ -561,7 +770,12 @@ Return Value:
         FdoContext->NfpPowerOffSystemOverride = (tempValue != 0);
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_SE_RADIO_TURNED_OFF);
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SE_RADIO_TURNED_OFF);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SE_RADIO_TURNED_OFF, status);
+        goto Done;
+    }
+
     status = WdfRegistryQueryULong(
                             hKey,
                             &valueName,
@@ -574,7 +788,12 @@ Return Value:
         FdoContext->SEPowerOffPolicyOverride = (tempValue != 0);
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_SE_FLIGHT_MODE);
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SE_FLIGHT_MODE);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SE_FLIGHT_MODE, status);
+        goto Done;
+    }
+
     status = WdfRegistryQueryULong(
                             hKey,
                             &valueName,
@@ -587,7 +806,12 @@ Return Value:
         FdoContext->SEPowerOffSystemOverride = (tempValue != 0);
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_SESSION_IDENTIFIER);
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SESSION_IDENTIFIER);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SESSION_IDENTIFIER, status);
+        goto Done;
+    }
+
     status = WdfRegistryQueryUnicodeString(
                             hKey,
                             &valueName,
@@ -602,7 +826,7 @@ Return Value:
         //
         // Convert the string back into a guid
         //
-        status = NfcCxGuidFromUnicodeString(&guidValueString, 
+        status = NfcCxGuidFromUnicodeString(&guidValueString,
                                             &FdoContext->RFInterface->SessionId);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_WARNING, "Failed to read the GUID value, %!STATUS!", status);
@@ -652,7 +876,7 @@ Return Value:
 
     ZeroMemory(&valueName, sizeof(valueName));
 
-    status = WdfDeviceOpenRegistryKey (
+    status = WdfDeviceOpenRegistryKey(
                             FdoContext->Device,
                             PLUGPLAY_REGKEY_DEVICE | WDF_REGKEY_DEVICE_SUBKEY,
                             GENERIC_ALL & ~(GENERIC_WRITE | KEY_CREATE_SUB_KEY | WRITE_DAC),
@@ -664,52 +888,77 @@ Return Value:
         goto Done;
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_NFC_RADIO_TURNED_OFF);
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NFC_RADIO_TURNED_OFF);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NFC_RADIO_TURNED_OFF, status);
+        goto Done;
+    }
+
     tempValue = (FdoContext->NfpPowerOffPolicyOverride) ? 1 : 0;
     status = WdfRegistryAssignULong(
                             hKey,
                             &valueName,
                             tempValue);
     if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d", NFCCX_REG_NFC_RADIO_TURNED_OFF, tempValue);
+        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d, %!STATUS!", NFCCX_REG_NFC_RADIO_TURNED_OFF, tempValue, status);
         goto Done;
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_NFC_FLIGHT_MODE);
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NFC_FLIGHT_MODE);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NFC_FLIGHT_MODE, status);
+        goto Done;
+    }
+
     tempValue = (FdoContext->NfpPowerOffSystemOverride) ? 1 : 0;
     status = WdfRegistryAssignULong(
                             hKey,
                             &valueName,
                             tempValue);
     if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d", NFCCX_REG_NFC_FLIGHT_MODE, tempValue);
+        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d, %!STATUS!", NFCCX_REG_NFC_FLIGHT_MODE, tempValue, status);
         goto Done;
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_SE_RADIO_TURNED_OFF);
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SE_RADIO_TURNED_OFF);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SE_RADIO_TURNED_OFF, status);
+        goto Done;
+    }
+
     tempValue = (FdoContext->SEPowerOffPolicyOverride) ? 1 : 0;
     status = WdfRegistryAssignULong(
                             hKey,
                             &valueName,
                             tempValue);
     if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d", NFCCX_REG_SE_RADIO_TURNED_OFF, tempValue);
+        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d, %!STATUS!", NFCCX_REG_SE_RADIO_TURNED_OFF, tempValue, status);
         goto Done;
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_SE_FLIGHT_MODE);
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SE_FLIGHT_MODE);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SE_FLIGHT_MODE, status);
+        goto Done;
+    }
+
     tempValue = (FdoContext->SEPowerOffSystemOverride) ? 1 : 0;
     status = WdfRegistryAssignULong(
                             hKey,
                             &valueName,
                             tempValue);
     if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d", NFCCX_REG_SE_FLIGHT_MODE, tempValue);
+        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d, %!STATUS!", NFCCX_REG_SE_FLIGHT_MODE, tempValue, status);
         goto Done;
     }
 
-    RtlInitUnicodeString(&valueName, NFCCX_REG_SESSION_IDENTIFIER);
-    status = RtlUnicodeStringPrintf(&guidValueString, STR_GUID_FMTW, EXPAND_GUID(&FdoContext->RFInterface->SessionId));
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SESSION_IDENTIFIER);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SESSION_IDENTIFIER, status);
+        goto Done;
+    }
+
+    status = NfcCxUnicodeStringFromGuid(FdoContext->RFInterface->SessionId, &guidValueString);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to convert the guid to a string, %!STATUS!", status);
         goto Done;
@@ -720,7 +969,7 @@ Return Value:
                             &valueName,
                             &guidValueString);
     if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %S", NFCCX_REG_SESSION_IDENTIFIER, guidValueString.Buffer);
+        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %S, %!STATUS!", NFCCX_REG_SESSION_IDENTIFIER, guidValueString.Buffer, status);
         goto Done;
     }
 
@@ -737,7 +986,7 @@ Done:
 }
 
 VOID
-NfcCxEvtDefaultIoControl (
+NfcCxEvtDefaultIoControl(
     _In_ WDFQUEUE      Queue,
     _In_ WDFREQUEST    Request,
     _In_ size_t        OutputBufferLength,
@@ -829,7 +1078,7 @@ Return Value:
     }
 
 Done:
- 
+
     if (STATUS_PENDING != status) {
         WdfRequestComplete(Request, status);
     }
@@ -838,7 +1087,7 @@ Done:
 }
 
 VOID
-NfcCxEvtSelfIoControl (
+NfcCxEvtSelfIoControl(
     _In_ WDFQUEUE      Queue,
     _In_ WDFREQUEST    Request,
     _In_ size_t        OutputBufferLength,

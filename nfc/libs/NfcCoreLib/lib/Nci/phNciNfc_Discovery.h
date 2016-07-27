@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <phNciNfc.h>
+#include "phNciNfc.h"
 
 /** Length of Discover Response from NFCC */
 #define PHNCINFC_DISC_RESP_LEN              (0x01)

@@ -18,11 +18,6 @@ Abstract:
 #define STR_GUID_FMTW       L"{%08lx-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x}"
 #define STR_GUID_LENGTH     ARRAYSIZE(L"{00000000-0000-0000-0000-000000000000}")
 
-#define EXPAND_GUID(pg)                                                 \
-    (pg)->Data1, (pg)->Data2, (pg)->Data3,                              \
-    (pg)->Data4[0], (pg)->Data4[1], (pg)->Data4[2], (pg)->Data4[3],     \
-    (pg)->Data4[4], (pg)->Data4[5], (pg)->Data4[6], (pg)->Data4[7]
-
 NFCSTATUS
 NfcCxNfcStatusFromNtStatus(
     _In_ NTSTATUS Status
@@ -37,6 +32,20 @@ NTSTATUS
 NfcCxGuidFromUnicodeString(
     _In_ PCUNICODE_STRING GuidString,
     _Out_ GUID* Guid
+    );
+
+NTSTATUS
+NfcCxUnicodeStringFromGuid(
+    _In_ REFGUID Guid,
+    _Out_ PUNICODE_STRING GuidString
+    );
+
+NTSTATUS
+NfcCxWideStringToNarrowString(
+    _In_ size_t cchWideStr,
+    _In_reads_z_(cchWideStr) PCWSTR WideStr,
+    _Out_ size_t* cchNarrowStr,
+    _Out_writes_z_(*cchNarrowStr) PSTR* NarrowStr
     );
 
 class CNFCPayload

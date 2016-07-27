@@ -336,6 +336,7 @@ phNciNfc_UpdateRemDevInfo(pphNciNfc_RemoteDevInformation_t pRemDevInf,
             switch(pRemDevInf->eRFTechMode)
             {
                 case phNciNfc_NFCA_Poll:
+                case phNciNfc_NFCA_Kovio_Poll:
                 case phNciNfc_NFCA_Active_Poll:
                     wStatus = phNciNfc_RdrAInit(pRemDevInf,pBuff,wLen);
                 break;

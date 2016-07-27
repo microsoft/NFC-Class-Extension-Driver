@@ -402,7 +402,7 @@ NfcCxDTAInterfaceDispatchRequest(
 VOID
 NfcCxDTAPostLibNfcThreadMessage(
     _Inout_ PVOID DTAInterface,
-    _In_ DWORD Message,
+    _In_ UINT32 Message,
     _In_ UINT_PTR Param1,
     _In_ UINT_PTR Param2,
     _In_ UINT_PTR Param3,
@@ -412,7 +412,7 @@ NfcCxDTAPostLibNfcThreadMessage(
 VOID
 NfcCxDTAInterfaceLibNfcMessageHandler(
     _In_ PVOID Context,
-    _In_ DWORD Message,
+    _In_ UINT32 Message,
     _In_ UINT_PTR Param1,
     _In_ UINT_PTR Param2,
     _In_ UINT_PTR Param3,

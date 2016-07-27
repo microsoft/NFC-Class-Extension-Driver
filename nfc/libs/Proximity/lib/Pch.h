@@ -2,7 +2,7 @@
 
 Copyright (c) Microsoft Corporation.  All rights reserved.
 
-Module Name: 
+Module Name:
 
     Pch.h
 
@@ -14,13 +14,13 @@ Abstract:
 
 #pragma once
 
-#include <nt.h>
-#include <ntrtl.h>
-#include <nturtl.h>
-#include <ntintsafe.h>
-#include <ntstrsafe.h>
 #include <windows.h>
+#include <ntstatus.h>
 #include <ntassert.h>
+#include <ntintsafe.h>
+#include <strsafe.h>
+
+#include <WdmLinkedList.h>
 
 //
 // LibNfc Headers
@@ -33,10 +33,6 @@ extern "C" {
 
 #include "NfcProximityBuffer.h"
 
-#define MAX_USHORT         ((USHORT)0xFFFF)
-#define MAX_ULONG          ((ULONG)0xFFFFFFFF)
-
-//
 //
 // Define the Control GUID and a DUMMY flag.
 // The DUMMY flag is just needed as an entry point into the WPP control

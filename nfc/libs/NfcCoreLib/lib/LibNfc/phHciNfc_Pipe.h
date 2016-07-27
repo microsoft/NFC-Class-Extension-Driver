@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <phHciNfc_Interface.h>
+#include "phHciNfc_Interface.h"
 
 #define PHHCINFC_PIPE_ADMIN_PIPEID          0x01U
 

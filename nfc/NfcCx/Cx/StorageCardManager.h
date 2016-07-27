@@ -56,6 +56,22 @@ public:
     }
 
 public:
+    BOOLEAN
+    AtrCached();
+
+    NTSTATUS
+    GetCachedAtr(
+                 _Out_writes_bytes_to_(cbBufferSize, *pcbReturnBufferSize) BYTE* pbBuffer,
+                 _In_ DWORD cbBufferSize,
+                 _Out_ DWORD* pcbReturnBufferSize
+                 );
+
+    void
+    CacheAtr(
+             _In_reads_bytes_(cbAtr) const BYTE* pbAtr,
+             _In_ DWORD cbAtr
+             );
+
     ApduResult
     ValidateParameters(
                         _In_opt_ BYTE *dataBuffer,
@@ -266,4 +282,8 @@ protected:
     PNFCCX_SC_INTERFACE     m_pScInterface;
     IStorageClass *         m_pStorageClass;
     BOOLEAN                 m_fTransparentSession;
+
+private:
+    BYTE                    m_rgbAtr[PHNFC_MAX_ATR_LENGTH];
+    DWORD                   m_cbAtr;
 };

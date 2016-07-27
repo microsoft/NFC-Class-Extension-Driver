@@ -342,7 +342,12 @@ Return Value:
                                 StateInterface->CurrentState, Event, StateInterface->TransitionFlag);
 
         if (NFCCX_IS_USER_EVENT(Event)) {
-            ResetEvent(StateInterface->hUserEventCompleted);
+            TRACE_LINE(LEVEL_VERBOSE, "ResetEvent, handle %p", StateInterface->hUserEventCompleted);
+            if (!ResetEvent(StateInterface->hUserEventCompleted))
+            {
+                NTSTATUS eventStatus = NTSTATUS_FROM_WIN32(GetLastError());
+                TRACE_LINE(LEVEL_ERROR, "ResetEvent with handle %p failed, %!STATUS!", StateInterface->hUserEventCompleted, eventStatus);
+            }
 
             if (StateInterface->TransitionFlag == NfcCxTransitionIdle) {
                 StateInterface->CurrentUserEvent = Event;
@@ -369,7 +374,13 @@ Return Value:
                     }
                     else if (StateInterface->CurrentUserEvent != NfcCxEventInvalid) {
                         StateInterface->CurrentUserEvent = NfcCxEventInvalid;
-                        SetEvent(StateInterface->hUserEventCompleted);
+                        
+                        TRACE_LINE(LEVEL_VERBOSE, "SetEvent, handle %p", StateInterface->hUserEventCompleted);
+                        if (!SetEvent(StateInterface->hUserEventCompleted))
+                        {
+                            NTSTATUS eventStatus = NTSTATUS_FROM_WIN32(GetLastError());
+                            TRACE_LINE(LEVEL_ERROR, "SetEvent with handle %p failed, %!STATUS!", StateInterface->hUserEventCompleted, eventStatus);
+                        }
                     }
                 }
             }
@@ -400,7 +411,13 @@ Return Value:
                 }
                 else if (StateInterface->CurrentUserEvent != NfcCxEventInvalid) {
                     StateInterface->CurrentUserEvent = NfcCxEventInvalid;
-                    SetEvent(StateInterface->hUserEventCompleted);
+
+                    TRACE_LINE(LEVEL_VERBOSE, "SetEvent, handle %p", StateInterface->hUserEventCompleted);
+                    if (!SetEvent(StateInterface->hUserEventCompleted))
+                    {
+                        NTSTATUS eventStatus = NTSTATUS_FROM_WIN32(GetLastError());
+                        TRACE_LINE(LEVEL_ERROR, "SetEvent with handle %p failed, %!STATUS!", StateInterface->hUserEventCompleted, eventStatus);
+                    }
                 }
             }
         }
@@ -446,5 +463,6 @@ Return Value:
 
 --*/
 {
+    TRACE_LINE(LEVEL_VERBOSE, "Wait on user event, handle %p", StateInterface->hUserEventCompleted);
     return WaitForSingleObject(StateInterface->hUserEventCompleted, Timeout);
 }

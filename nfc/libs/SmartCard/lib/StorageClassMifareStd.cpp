@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     Storage card Mifare Classic implementation
-    
+
 Environment:
 
     User mode
@@ -31,7 +31,7 @@ ApduResult StorageClassMifareStd::GetDataCommand(
                                               _In_ DWORD cbSize,
                                               _Out_writes_bytes_to_(cbOutBufferSize, *cbReturnBufferSize) BYTE *pbOutBuffer,
                                               _In_ DWORD cbOutBufferSize,
-                                              _Out_ DWORD *cbReturnBufferSize   
+                                              _Out_ DWORD *cbReturnBufferSize
                                              )
 {
     ApduResult retValue = RESULT_SUCCESS;
@@ -64,7 +64,7 @@ ApduResult StorageClassMifareStd::GetDataCommand(
             if (uidLength > cmdApdu->Lc) {
                 m_IsLesserLeLc = TRUE;
             }
-            else if (uidLength < cmdApdu->Lc) {               
+            else if (uidLength < cmdApdu->Lc) {
                 if (cmdApdu->Lc > cbOutBufferSize) {
                     RtlZeroMemory(pbOutBuffer, cbOutBufferSize);
                     *cbReturnBufferSize = cbOutBufferSize;
@@ -243,7 +243,7 @@ StorageClassMifareStd::UpdateBinary(
         retValue = RESULT_INVALID_PARAM;
         goto Done;
     }
-    
+
     retValue = ValidateUpdateBinaryParameters(cmdApdu->P1, cmdApdu->P2, cmdApdu->Lc);
     if((RESULT_SUCCESS == retValue) || (RESULT_LE_LESSER == retValue)) {
 
@@ -299,7 +299,7 @@ StorageClassMifareStd::PrepareTransceiveForUpdate(
 {
     DWORD size = 0;
     ApduResult retValue = RESULT_INVALID_PARAM;
-    
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     TRACE_LINE(LEVEL_INFO, " (LC 0x%02x) (P2 0x%02x)", pPcscCmdApdu->Lc, pPcscCmdApdu->P2);
@@ -372,13 +372,13 @@ StorageClassMifareStd::PrepareTransceiveForGeneralAuthenticate(
                                                                 _In_ DWORD cbSize,
                                                                 _Out_writes_bytes_to_(cbOutBufferSize, *cbReturnBufferSize) BYTE *pbOutBuffer,
                                                                 _In_ DWORD cbOutBufferSize,
-                                                                _Out_ DWORD *cbReturnBufferSize  
+                                                                _Out_ DWORD *cbReturnBufferSize
                                                                 )
 {
     DWORD size = 0;
     ApduResult retValue = RESULT_SUCCESS;
     PPcscCommandApduInfo cmdApdu = (PPcscCommandApduInfo)pbDataBuffer;
-    PPcscAuthentication authData = NULL; 
+    PPcscAuthentication authData = NULL;
     BYTE keyData[7];
     BYTE uidLength = 0;
     BYTE *uid = NULL;
@@ -431,7 +431,7 @@ StorageClassMifareStd::PrepareTransceiveForGeneralAuthenticate(
 
         RtlCopyMemory(parsedAuthCmd + size, keyData, KEYSIZE);
         size += KEYSIZE;
-       
+
         if (size <= cbOutBufferSize) {
             RtlCopyMemory(pbOutBuffer, parsedAuthCmd, size);
             *cbReturnBufferSize = size;
@@ -450,7 +450,7 @@ StorageClassMifareStd::GetGeneralAuthenticateCommand(
                                                     _In_ DWORD cbSize,
                                                     _Out_writes_bytes_to_(cbOutBufferSize, *cbReturnBufferSize) BYTE *pbOutBuffer,
                                                     _In_ DWORD cbOutBufferSize,
-                                                    _Out_ DWORD *cbReturnBufferSize 
+                                                    _Out_ DWORD *cbReturnBufferSize
                                                     )
 {
     ApduResult retValue = RESULT_SUCCESS;
@@ -458,7 +458,7 @@ StorageClassMifareStd::GetGeneralAuthenticateCommand(
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     *cbReturnBufferSize = 0;
-    
+
     if (!m_IsAuthSupported) {
         retValue = RESULT_NOT_SUPPORTED; //6983
     }
@@ -466,11 +466,11 @@ StorageClassMifareStd::GetGeneralAuthenticateCommand(
         retValue = ValidateGeneralAuthenticateParameters(pbDataBuffer, cbSize);
         if(RESULT_SUCCESS == retValue) {
             retValue = PrepareTransceiveForGeneralAuthenticate(
-                (LoadKey*)getLoadKey, 
-                pbDataBuffer, 
-                cbSize, 
-                pbOutBuffer, 
-                cbOutBufferSize, 
+                (LoadKey*)getLoadKey,
+                pbDataBuffer,
+                cbSize,
+                pbOutBuffer,
+                cbOutBufferSize,
                 cbReturnBufferSize);
         }
     }
@@ -487,7 +487,7 @@ StorageClassMifareStd::UpdateResponseCodeToResponseBuffer(
                                                           _Inout_updates_bytes_(DEFAULT_APDU_STATUS_SIZE) BYTE Sw1Sw2Return[],
                                                           _Inout_updates_bytes_to_(cbOutBufferSize, *cbReturnBufferSize) BYTE *pbOutBuffer,
                                                           _In_ DWORD cbOutBufferSize,
-                                                          _Out_ DWORD *cbReturnBufferSize                                                          
+                                                          _Out_ DWORD *cbReturnBufferSize
                                                           )
 {
     PBYTE pbOutBufferStatus = NULL;
@@ -509,7 +509,7 @@ StorageClassMifareStd::UpdateResponseCodeToResponseBuffer(
         cbOutBufferSize < tempMaxSize) {
         Sw1Sw2[0] = 0x6C;
         Sw1Sw2[1] = (BYTE)cbSize;
-        
+
         RtlCopyMemory(pbOutBuffer, Sw1Sw2, DEFAULT_APDU_STATUS_SIZE);
         *cbReturnBufferSize = DEFAULT_APDU_STATUS_SIZE;
 
@@ -559,7 +559,7 @@ StorageClassMifareStd::HandleIncDecCommand(
                                             _In_ DWORD cbSize,
                                             _Out_writes_bytes_to_(cbOutBufferSize, *cbReturnBufferSize) BYTE *pbOutBuffer,
                                             _In_ DWORD cbOutBufferSize,
-                                            _Out_ DWORD *cbReturnBufferSize  
+                                            _Out_ DWORD *cbReturnBufferSize
                                             )
 {
     ApduResult retValue = RESULT_SUCCESS;
@@ -577,10 +577,10 @@ StorageClassMifareStd::HandleIncDecCommand(
     TRACE_LINE(LEVEL_INFO, "cmdApdu->Lc = %02x\n", cmdApdu->Lc);
 
     retValue = ParseIncDecDataAndDoTransceive(
-        cmdApdu->DataIn, 
-        cmdApdu->Lc, 
-        pbOutBuffer, 
-        cbOutBufferSize, 
+        cmdApdu->DataIn,
+        cmdApdu->Lc,
+        pbOutBuffer,
+        cbOutBufferSize,
         cbReturnBufferSize);
 
 Done:
@@ -590,317 +590,169 @@ Done:
 
 ApduResult
 StorageClassMifareStd::ParseIncDecDataAndDoTransceive(
-                                                _In_reads_bytes_(cbSize) const BYTE *pbDataBuffer,
-                                                _In_ DWORD cbSize,
-                                                _Out_writes_bytes_to_(cbOutBufferSize, *cbReturnBufferSize) BYTE *pbOutBuffer,
-                                                _In_ DWORD cbOutBufferSize,
-                                                _Out_ DWORD *cbReturnBufferSize 
-                                               )
+                                                      _In_reads_bytes_(cbSize) const BYTE *pbDataBuffer,
+                                                      _In_ DWORD cbSize,
+                                                      _Out_writes_bytes_to_(cbOutBufferSize, *cbReturnBufferSize) BYTE *pbOutBuffer,
+                                                      _In_ DWORD cbOutBufferSize,
+                                                      _Out_ DWORD *cbReturnBufferSize
+                                                      )
 {
+    static const DWORD c_blockAddressLength = 1;
+    static const DWORD c_operandLength = 4;
     ApduResult retValue = RESULT_SUCCESS;
-    BYTE outData[10] = {0};
-    BYTE restoreData[10] = {0};
-    BYTE transferCmd[3] = {0};
-    BOOL outDataFlag = FALSE;
-    BOOL restoreDataFlag = FALSE;
-    BYTE blockAddress = 0;
-    DWORD dataLen = cbSize;
-    DWORD count = 0;
-    DWORD loopIndex = 0;
-    DWORD transceiveInputSize = 0;
-    static const DWORD INC_DEC_ARRAY_SIZE = 25;
+    BYTE outData[6] = {};
+    BYTE transferData[2] = {};
+    DWORD index = 0;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     *cbReturnBufferSize = 0;
 
-    while (((count + 2) < dataLen) && (retValue == RESULT_SUCCESS)) {
-        //to break the loop
-        retValue = RESULT_COMMAND_INCOMPATIBLE; 
+    while (index < cbSize && retValue == RESULT_SUCCESS) {
+        BYTE incDecCmd = 0;
+        DWORD cmdLength = 0;
+        DWORD loopIndex = 0;
+        const BYTE* incDecBuffer = nullptr;
 
-        //Decrement check
-        if (pbDataBuffer[count] == DecrementCmd) {
-            //Count+1 contains length
-            DWORD decLen = pbDataBuffer[count + 1]; 
-            unsigned char decArray[INC_DEC_ARRAY_SIZE];
+        // To break the loop
+        retValue = RESULT_COMMAND_INCOMPATIBLE;
 
-            if (INC_DEC_ARRAY_SIZE > decLen) {
-                RtlZeroMemory(decArray, sizeof(decArray));
-                //Count + 2 contains Decrement Parameters
-                RtlCopyMemory(decArray, &pbDataBuffer[count + 2], decLen); 
+        if (pbDataBuffer[index] == DecrementCmd) {
+            incDecCmd = phNfc_eMifareDec;
+        }
+        else if (pbDataBuffer[index] == IncrementCmd) {
+            incDecCmd = phNfc_eMifareInc;
+        }
+        else {
+            TRACE_LINE(LEVEL_INFO, "Invalid increment/decrement command: %u", pbDataBuffer[index]);
+            retValue = RESULT_COMMAND_INCOMPATIBLE;
+            break;
+        }
 
-                for (loopIndex = 0; loopIndex < decLen; loopIndex++) {
-                    //Destination Block
-                    if (decArray[loopIndex] == BlkAddressCmd) {
-                        //Validate the Destination Block Address Length
-                        if (decArray[loopIndex + 1] == 1) {
-                            //Proximity - Decrement Tag Value
-                            outData[0] = phNfc_eMifareDec;
-                            //Copy the Block Address
-                            outData[1] = decArray[loopIndex + 2]; 
-                            outDataFlag = TRUE;
-                            loopIndex += 3;
-                            TRACE_LINE(LEVEL_INFO, "Decrement Tag Value\n");
-                        }
-                    }
+        if (index + 1 >= cbSize) {
+            TRACE_LINE(LEVEL_INFO, "Failed to get increment/decrement command length");
+            retValue = RESULT_COMMAND_INCOMPATIBLE;
+            break;
+        }
 
-                    if (decArray[loopIndex] == BlkAddressCmd) {
-                        //Validate the Restore Destination Block Address Length
-                        if(decArray[loopIndex + 1] == 1) {
-                            //Proximity - Restore Tag Value
-                            restoreData[0] = phNfc_eMifareRestore;
-                            //Copy the Restore Block Address
-                            restoreData[1] = decArray[loopIndex + 2]; 
-                            restoreDataFlag = TRUE;
-                            loopIndex += 3;
-                            TRACE_LINE(LEVEL_INFO, "Restore Tag Value\n");
-                        }
-                    }
+        cmdLength = pbDataBuffer[++index];
+        if (cmdLength == 0 || index + cmdLength >= cbSize) {
+            TRACE_LINE(LEVEL_INFO, "Invalid increment/decrement command length: %lu", cmdLength);
+            retValue = RESULT_COMMAND_INCOMPATIBLE;
+            break;
+        }
 
-                    if ((outDataFlag == FALSE) && (restoreDataFlag == FALSE)) {
-                        TRACE_LINE(LEVEL_INFO, "Invalid Decrement Block Address\n");
-                        retValue = RESULT_INVALID_BLOCK_ADDRESS;
-                        break;
-                    }
+        incDecBuffer = &pbDataBuffer[++index];
+        while (loopIndex < cmdLength) {
+            bool restore = false;
+            BYTE incDecDest = 0;
+            BYTE restoreDest = 0;
 
-                    if (decArray[loopIndex] == BlkValueCmd) {
-                        if (outDataFlag == TRUE) {
-                            // Save the block address before MifareTransceive
-                            blockAddress = outData[1];
+            // Destination Block
+            if (loopIndex + 1 + c_blockAddressLength >= cmdLength ||
+                incDecBuffer[loopIndex] != BlkAddressCmd ||
+                incDecBuffer[loopIndex + 1] != c_blockAddressLength) {
+                TRACE_LINE(LEVEL_INFO, "Invalid block address");
+                retValue = RESULT_INVALID_BLOCK_ADDRESS;
+                break;
+            }
 
-                            //4 bytes Data
-                            RtlCopyMemory(&outData[2], &decArray[loopIndex + 2], 4); 
-                            TRACE_LINE(LEVEL_INFO, "Decrement Tag Data copied\n");
+            incDecDest = incDecBuffer[loopIndex + 2];
+            loopIndex += 2 + c_blockAddressLength;
 
-                            outDataFlag = FALSE;
-                            //Send the Decrement Data, if fail return the error information
-                            transceiveInputSize = 6;
-                            retValue = MifareTransceive(outData, 
-                                                        transceiveInputSize, 
-                                                        pbOutBuffer, 
-                                                        cbOutBufferSize, 
-                                                        cbReturnBufferSize);
-
-                            if (retValue == RESULT_SUCCESS) {
-                                //Transfer Command - to store the value in destination Block
-                                TRACE_LINE(LEVEL_INFO, "MifareTransceive Transfer Command for Decrement Txn\n");
-                                transceiveInputSize = 2;
-                                RtlZeroMemory(transferCmd, sizeof(transferCmd));
-                                transferCmd[0] = phNfc_eMifareTransfer;
-                                transferCmd[1] = blockAddress;
-                                retValue = MifareTransceive(transferCmd, 
-                                                            transceiveInputSize, 
-                                                            pbOutBuffer, 
-                                                            cbOutBufferSize, 
-                                                            cbReturnBufferSize);
-
-                                if(retValue != RESULT_SUCCESS) {
-                                    TRACE_LINE(LEVEL_INFO, "Mifare Decrement-Transfer Command Failed \n");
-                                    retValue = RESULT_SECURITY_STATUS_NOT_SATISFIED;
-                                    break;
-                                }
-                            }
-                            else {
-                                TRACE_LINE(LEVEL_INFO, "Mifare Decrement Txn Failed\n");
-                                retValue = RESULT_MEMORY_FAILURE;
-                                break;
-                            }
-                        }
-
-                        if (restoreDataFlag == TRUE) {
-                            // Save the block address before MifareTransceive
-                            blockAddress = restoreData[1];
-
-                            RtlCopyMemory(&restoreData[2], &decArray[loopIndex + 2], 4);
-                            TRACE_LINE(LEVEL_INFO, "Restore Tag Data copied\n");
-
-                            restoreDataFlag = FALSE;
-                            //Send the Restore Data, if fail return the error information
-                            transceiveInputSize = 6;
-                            retValue = MifareTransceive(restoreData, 
-                                                        transceiveInputSize, 
-                                                        pbOutBuffer, 
-                                                        cbOutBufferSize, 
-                                                        cbReturnBufferSize);
-
-                            if (retValue == RESULT_SUCCESS) {
-                                //Transfer Command - to store the value in destination Block
-                                TRACE_LINE(LEVEL_INFO, "MifareTransceive Transfer Command for Decrement-Restore Txn\n");
-                                transceiveInputSize = 2;
-                                RtlZeroMemory(transferCmd, sizeof(transferCmd));
-                                transferCmd[0] = phNfc_eMifareTransfer;
-                                transferCmd[1] = blockAddress;
-                                retValue = MifareTransceive(transferCmd, 
-                                                            transceiveInputSize, 
-                                                            pbOutBuffer, 
-                                                            cbOutBufferSize, 
-                                                            cbReturnBufferSize);
-
-                                if (retValue != RESULT_SUCCESS) {
-                                    TRACE_LINE(LEVEL_INFO, "Mifare DecrementRestore-Transfer Command Failed \n");
-                                    retValue = RESULT_SECURITY_STATUS_NOT_SATISFIED;
-                                    break;
-                                }
-                            }
-                            else {
-                                TRACE_LINE(LEVEL_INFO, "MifareTransceive DEC-Restore Txn Failed\n");
-                                retValue = RESULT_MEMORY_FAILURE;
-                                break;
-                            }
-                        }
-                        loopIndex += 6;
-                        TRACE_LINE(LEVEL_INFO, "Decrement Loop\n");
-                    }
-                    else {
-                        // if fail return the error information
-                        TRACE_LINE(LEVEL_INFO, "Wrong Decrement Data, return with error information\n");
-                        retValue = RESULT_COMMAND_NOT_ALLOWED;
-                        break;
-                    }
+            if (loopIndex + 1 + c_blockAddressLength < cmdLength &&
+                incDecBuffer[loopIndex] == BlkAddressCmd) {
+                if (incDecBuffer[loopIndex + 1] != c_blockAddressLength) {
+                    TRACE_LINE(LEVEL_INFO, "Invalid restore block address");
+                    retValue = RESULT_INVALID_BLOCK_ADDRESS;
+                    break;
                 }
-                count += (loopIndex + 1);
+
+                restore = true;
+                restoreDest = incDecBuffer[loopIndex + 2];
+                loopIndex += 2 + c_blockAddressLength;
+            }
+
+            if (loopIndex + 1 + c_operandLength >= cmdLength ||
+                incDecBuffer[loopIndex] != BlkValueCmd ||
+                incDecBuffer[loopIndex + 1] != c_operandLength) {
+                TRACE_LINE(LEVEL_INFO, "Invalid increment/decrement value");
+                retValue = RESULT_COMMAND_NOT_ALLOWED;
+                break;
+            }
+
+            outData[0] = incDecCmd;
+            outData[1] = incDecDest;
+            RtlCopyMemory(&outData[2], &incDecBuffer[loopIndex + 2], c_operandLength);
+            loopIndex += 2 + c_operandLength;
+            TRACE_LINE(LEVEL_INFO, "Increment/decrement (command = 0x%02X) value at block 0x%02X", incDecCmd, incDecDest);
+            retValue = MifareTransceive(outData,
+                                        sizeof(outData),
+                                        pbOutBuffer,
+                                        cbOutBufferSize,
+                                        cbReturnBufferSize);
+
+            if (retValue != RESULT_SUCCESS) {
+                TRACE_LINE(LEVEL_INFO, "Increment/decrement command failed: %d", retValue);
+                retValue = RESULT_MEMORY_FAILURE;
+                break;
+            }
+
+            // Transfer Command - store the value in destination block
+            transferData[0] = phNfc_eMifareTransfer;
+            transferData[1] = incDecDest;
+            TRACE_LINE(LEVEL_INFO, "Transfer incremented/decremented value to block 0x%02X", incDecDest);
+            retValue = MifareTransceive(transferData,
+                                        sizeof(transferData),
+                                        pbOutBuffer,
+                                        cbOutBufferSize,
+                                        cbReturnBufferSize);
+
+            if (retValue != RESULT_SUCCESS) {
+                TRACE_LINE(LEVEL_INFO, "Transfer command for increment/decrement failed: %d", retValue);
+                retValue = RESULT_SECURITY_STATUS_NOT_SATISFIED;
+                break;
+            }
+
+            if (restore) {
+                // Restore the block that we just transferred the result of the increment/decrement
+                // command to
+                ZeroMemory(outData, sizeof(outData));
+                outData[0] = phNfc_eMifareRestore;
+                outData[1] = incDecDest;
+                // Last 4 bytes of outData are zeroed out for the operand
+                TRACE_LINE(LEVEL_INFO, "Restore value at block 0x%02X", incDecDest);
+                retValue = MifareTransceive(outData,
+                                            sizeof(outData),
+                                            pbOutBuffer,
+                                            cbOutBufferSize,
+                                            cbReturnBufferSize);
+
+                if (retValue != RESULT_SUCCESS) {
+                    TRACE_LINE(LEVEL_INFO, "Restore command failed: %d", retValue);
+                    retValue = RESULT_MEMORY_FAILURE;
+                    break;
+                }
+
+                // Transfer Command - store the value in destination block
+                transferData[0] = phNfc_eMifareTransfer;
+                transferData[1] = restoreDest;
+                TRACE_LINE(LEVEL_INFO, "Transfer restored value to block 0x%02X", restoreDest);
+                retValue = MifareTransceive(transferData,
+                                            sizeof(transferData),
+                                            pbOutBuffer,
+                                            cbOutBufferSize,
+                                            cbReturnBufferSize);
+
+                if (retValue != RESULT_SUCCESS) {
+                    TRACE_LINE(LEVEL_INFO, "Transfer command for restore failed: %d", retValue);
+                    retValue = RESULT_SECURITY_STATUS_NOT_SATISFIED;
+                    break;
+                }
             }
         }
-        //Increment Check
-        else if (pbDataBuffer[count] == IncrementCmd) {
-            DWORD incLen = pbDataBuffer[count + 1]; //Count+1 contains length
-            unsigned char incArray[INC_DEC_ARRAY_SIZE];
 
-            if (INC_DEC_ARRAY_SIZE > incLen) {
-                RtlZeroMemory(incArray, sizeof(incArray));
-                //Count+2 contains Decrement Parameters
-                RtlCopyMemory(incArray, &pbDataBuffer[count+2], incLen); 
-
-                for (loopIndex = 0; loopIndex < incLen; loopIndex++) {
-                    //Destination Block
-                    if (incArray[loopIndex] == BlkAddressCmd) {
-                        //Validate the Destination Block Address Length
-                        if (incArray[loopIndex + 1] == 1) {
-                            //Proximity - Increment Tag Value
-                            outData[0] = phNfc_eMifareInc;
-                            //Copy the Block Address
-                            outData[1] = incArray[loopIndex + 2]; 
-                            outDataFlag = TRUE;
-                            loopIndex += 3;
-                            TRACE_LINE(LEVEL_INFO, "Increment Tag Value\n");
-                        }
-                    }
-
-                    if (incArray[loopIndex] == BlkAddressCmd) {
-                        //Validate the Restore Destination Block Address Length
-                        if (incArray[loopIndex + 1] == 1) {
-                            //Proximity - Restore Tag Value
-                            restoreData[0] = phNfc_eMifareRestore;
-                            //Copy the Restore Block Address
-                            restoreData[1] = incArray[loopIndex + 2]; 
-                            restoreDataFlag = TRUE;
-                            loopIndex += 3;
-                            TRACE_LINE(LEVEL_INFO, "Restore Tag Value\n");
-                        }
-                    }
-
-                    if ((outDataFlag == FALSE) && (restoreDataFlag == FALSE)) {
-                        TRACE_LINE(LEVEL_INFO, "Invalid Increment Block Address\n");
-                        retValue = RESULT_INVALID_BLOCK_ADDRESS;
-                        break;
-                    }
-
-                    if (incArray[loopIndex] == BlkValueCmd) {
-                        if (outDataFlag == TRUE) {
-                            // Save the block address before MifareTransceive
-                            blockAddress = outData[1];
-
-                            RtlCopyMemory(&outData[2], &incArray[loopIndex + 2], 4);
-                            TRACE_LINE(LEVEL_INFO, "Increment Tag Data copied\n");
-
-                            outDataFlag = FALSE;
-                            //Send the Increment Data, if fail return the error information
-                            transceiveInputSize = 6;
-                            retValue = MifareTransceive(outData, 
-                                                        transceiveInputSize, 
-                                                        pbOutBuffer, 
-                                                        cbOutBufferSize, 
-                                                        cbReturnBufferSize);
-
-                            if (retValue == RESULT_SUCCESS) {
-                                //Transfer Command - to store the value in destination Block
-                                TRACE_LINE(LEVEL_INFO, "MifareTransceive Transfer Command for Increment Txn\n");
-                                transceiveInputSize = 2;
-                                RtlZeroMemory(transferCmd, sizeof(transferCmd));
-                                transferCmd[0] = phNfc_eMifareTransfer;
-                                transferCmd[1] = blockAddress;
-                                retValue = MifareTransceive(transferCmd, 
-                                                            transceiveInputSize, 
-                                                            pbOutBuffer, 
-                                                            cbOutBufferSize, 
-                                                            cbReturnBufferSize);
-
-                                if(retValue != RESULT_SUCCESS) {
-                                    TRACE_LINE(LEVEL_INFO, "Mifare Increment-Transfer Command Failed \n");
-                                    retValue = RESULT_SECURITY_STATUS_NOT_SATISFIED;
-                                    break;
-                                }
-                            }
-                            else {
-                                TRACE_LINE(LEVEL_INFO, "Mifare Increment Txn Failed\n");
-                                retValue = RESULT_MEMORY_FAILURE;
-                                break;
-                            }
-                        }
-
-                        if (restoreDataFlag == TRUE) {
-                            // Save the block address before MifareTransceive
-                            blockAddress = restoreData[1];
-
-                            RtlCopyMemory(&restoreData[2], &incArray[loopIndex + 2], 4);
-                            TRACE_LINE(LEVEL_INFO, "Restore Tag Data copied\n");
-
-                            restoreDataFlag = FALSE;
-                            //Send the Restore Data, if fail return the error information
-                            transceiveInputSize = 6;
-                            retValue = MifareTransceive(restoreData, 
-                                                        transceiveInputSize, 
-                                                        pbOutBuffer, 
-                                                        cbOutBufferSize, 
-                                                        cbReturnBufferSize);
-
-                            if (retValue == RESULT_SUCCESS) {
-                                //Transfer Command - to store the value in destination Block
-                                TRACE_LINE(LEVEL_INFO, "MifareTransceive Transfer Command for Increment-Restore Txn\n");
-                                transceiveInputSize = 2;
-                                RtlZeroMemory(transferCmd, sizeof(transferCmd));
-                                transferCmd[0] = phNfc_eMifareTransfer;
-                                transferCmd[1] = blockAddress;
-                                retValue = MifareTransceive(transferCmd, 
-                                                            transceiveInputSize, 
-                                                            pbOutBuffer, 
-                                                            cbOutBufferSize, 
-                                                            cbReturnBufferSize);
-
-                                if (retValue != RESULT_SUCCESS) {
-                                    TRACE_LINE(LEVEL_INFO, "Mifare IncrementRestore-Transfer Command Failed \n");
-                                    retValue = RESULT_SECURITY_STATUS_NOT_SATISFIED;
-                                    break;
-                                }
-                            }
-                            else {
-                                TRACE_LINE(LEVEL_INFO, "MifareTransceive INC-Restore Txn Failed\n");
-                                retValue = RESULT_MEMORY_FAILURE;
-                                break;
-                            }
-                        }
-                        loopIndex += 6;
-                        TRACE_LINE(LEVEL_INFO, "Increment Loop\n");
-                    }
-                    else {
-                        TRACE_LINE(LEVEL_INFO, "Wrong Increment Data, return with error information\n"); //if fail return the error information
-                        retValue = RESULT_COMMAND_NOT_ALLOWED;
-                        break;
-                    }
-                }
-                count += (loopIndex + 1);
-            }
-        }
+        index += cmdLength;
     }
 
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);

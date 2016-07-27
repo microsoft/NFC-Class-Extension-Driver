@@ -65,8 +65,8 @@ Return Value:
 
 NTSTATUS
 NfcCxGuidFromUnicodeString(
-    __in PCUNICODE_STRING GuidString,
-    __out GUID* Guid
+    _In_ PCUNICODE_STRING GuidString,
+    _Out_ GUID* Guid
     )
 {
     NTSTATUS status = STATUS_SUCCESS;
@@ -87,15 +87,15 @@ NfcCxGuidFromUnicodeString(
     }
     RtlCopyMemory(nullTerminated, GuidString->Buffer, GuidString->Length);
 
-    if (11 != swscanf_s(nullTerminated, STR_GUID_FMTW, 
-                            &Guid->Data1, 
-                            &temp[0], 
-                            &temp[1], 
-                            &temp[2], 
+    if (11 != swscanf_s(nullTerminated, STR_GUID_FMTW,
+                            &Guid->Data1,
+                            &temp[0],
+                            &temp[1],
+                            &temp[2],
                             &temp[3],
-                            &temp[4], 
-                            &temp[5], 
-                            &temp[6], 
+                            &temp[4],
+                            &temp[5],
+                            &temp[6],
                             &temp[7],
                             &temp[8],
                             &temp[9])) {
@@ -119,6 +119,89 @@ NfcCxGuidFromUnicodeString(
     Guid->Data4[7] = (UCHAR)temp[9];
 
 Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxUnicodeStringFromGuid(
+    _In_ REFGUID Guid,
+    _Out_ PUNICODE_STRING GuidString
+    )
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    int cch = 0;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    cch = StringFromGUID2(Guid, GuidString->Buffer, GuidString->MaximumLength);
+    if (cch == 0) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to convert the GUID to a string.");
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    NT_ASSERT(cch == STR_GUID_LENGTH);
+
+    GuidString->Length = (USHORT)(cch * sizeof(WCHAR));
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+// If this function succeeds, you will need to deallocate the memory for NarrowStr with free()
+NTSTATUS
+NfcCxWideStringToNarrowString(
+    _In_ size_t cchWideStr,
+    _In_reads_z_(cchWideStr) PCWSTR WideStr,
+    _Out_ size_t* cchNarrowStr,
+    _Out_writes_z_(*cchNarrowStr) PSTR* NarrowStr
+    )
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    size_t cbNarrowStr = 0;
+    PSTR tempNarrowStr = NULL;
+    size_t convertedIncludingTerminator = 0;
+    errno_t err = 0;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NT_ASSERT(NULL != WideStr);
+    NT_ASSERT(NULL != cchNarrowStr);
+    NT_ASSERT(NULL != NarrowStr);
+
+    cbNarrowStr = (cchWideStr + 1) * sizeof(char); // Add a byte for NULL terminator
+    tempNarrowStr = (PSTR)malloc(cbNarrowStr);
+    if (NULL == tempNarrowStr) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to allocate memory for string");
+        status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Done;
+    }
+
+    err = wcstombs_s(&convertedIncludingTerminator,
+                     tempNarrowStr,
+                     cbNarrowStr,
+                     WideStr,
+                     cchWideStr);
+    if (err != 0) {
+        TRACE_LINE(LEVEL_ERROR, "wcstombs_s failed with error code %d", err);
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    NT_ASSERT(convertedIncludingTerminator == (cchWideStr + 1));
+
+    *NarrowStr = tempNarrowStr;
+
+    // Per MSDN the wcstombs_s includes counting the terminator, but for "cch" that's not expected/typical
+    *cchNarrowStr = convertedIncludingTerminator - 1;
+
+Done:
+    if (!NT_SUCCESS(status) && NULL != tempNarrowStr) {
+        free(tempNarrowStr);
+        tempNarrowStr = NULL;
+    }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 

@@ -14,11 +14,11 @@
 #include <phFriNfc_SmtCrdFmt.h>
 #include <phFriNfc_NdefReg.h>
 #include <phLibNfc.h>
-#include <phLibNfc_ndef_raw.h>
+#include "phLibNfc_ndef_raw.h"
 
 #include <phNfcHalTypes2.h>
 #include <phFriNfc_LlcpTransport.h>
-#include <phLibNfc_State.h>
+#include "phLibNfc_State.h"
 
 
 typedef struct phLibNfc_LlcpInfo

@@ -17,8 +17,10 @@ Environment:
 
 #pragma once
 
+#ifdef TELEMETRY
+
 #include <TraceLoggingProvider.h>
-#include <Telemetry\MicrosoftTelemetry.h> 
+#include <Telemetry\MicrosoftTelemetry.h>
 #include <TraceLoggingActivity.h>
 
 #define LOG_BUFFER_LENGTH 1024
@@ -33,3 +35,11 @@ TRACELOGGING_DECLARE_PROVIDER(g_hNfcCxProvider);
             TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES), \
             TraceLoggingHexInt32(status, "NTStatus")); \
     }
+
+#else
+
+#define TraceLoggingWrite(hProvider, eventName, ...)
+
+#define TRACE_LOG_NTSTATUS_ON_FAILURE(status)
+
+#endif // TELEMETRY

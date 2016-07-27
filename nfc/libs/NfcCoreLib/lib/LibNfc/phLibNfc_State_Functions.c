@@ -31,14 +31,13 @@ static NFCSTATUS phLibNfc_MFCWrite16Complete(void *pContext,NFCSTATUS wStatus,vo
 static NFCSTATUS phLibNfc_SendRd16Cmd(void *pContext,NFCSTATUS wStatus,void *pInfo);
 static NFCSTATUS phLibNfc_Rd16CmdResp(void *pContext,NFCSTATUS wStatus,void *pInfo);
 
-static NFCSTATUS phLibNfc_MFCIncDecTrRestoreCmd(void *pContext,NFCSTATUS wStatus,void *pInfo);
-static NFCSTATUS phLibNfc_MFCIncDecResp(void *pContext,NFCSTATUS wStatus,void *pInfo);
-static NFCSTATUS phLibNfc_MFCIncDecPayload(void *pContext,NFCSTATUS wStatus,void *pInfo);
-static NFCSTATUS phLibNfc_MFCIncDecPayloadResp(void *pContext,NFCSTATUS wStatus,void *pInfo);
-static NFCSTATUS phLibNfc_MFCIncDecPayloadComplete(void *pContext,NFCSTATUS wStatus,void *pInfo);
-static NFCSTATUS phLibNfc_MFCIncDecTrRestoreComplete(void *pContext,NFCSTATUS wStatus,void *pInfo);
-static NFCSTATUS phLibNfc_MFCTransferRestoreCmd(void *pContext,NFCSTATUS wStatus,void *pInfo);
-static NFCSTATUS phLibNfc_MFCTransferRestoreResp(void *pContext,NFCSTATUS wStatus,void *pInfo);
+static NFCSTATUS phLibNfc_MFCIncDecRestoreTransferCmd(void *pContext,NFCSTATUS wStatus,void *pInfo);
+static NFCSTATUS phLibNfc_MFCIncDecRestoreResp(void *pContext,NFCSTATUS wStatus,void *pInfo);
+static NFCSTATUS phLibNfc_MFCIncDecRestorePayload(void *pContext,NFCSTATUS wStatus,void *pInfo);
+static NFCSTATUS phLibNfc_MFCIncDecRestorePayloadResp(void *pContext,NFCSTATUS wStatus,void *pInfo);
+static NFCSTATUS phLibNfc_MFCIncDecRestorePayloadComplete(void *pContext,NFCSTATUS wStatus,void *pInfo);
+static NFCSTATUS phLibNfc_MFCIncDecRestoreTransferComplete(void *pContext,NFCSTATUS wStatus,void *pInfo);
+static NFCSTATUS phLibNfc_MFCTransferResp(void *pContext,NFCSTATUS wStatus,void *pInfo);
 
 static NFCSTATUS phLibNfc_SendAuthCmd(void *pContext,NFCSTATUS wStatus,void *pInfo);
 static NFCSTATUS phLibNfc_SendAuthCmdResp(void *pContext,NFCSTATUS wStatus,void *pInfo);
@@ -62,22 +61,22 @@ static phLibNfc_Sequence_t gphLibNfc_MFCWrite16[] = {
     {NULL, &phLibNfc_MFCWrite16Complete}
 };
 
-/* Send Increment or Decrement command In case of Mifare classic tag */
-static phLibNfc_Sequence_t gphLibNfc_MFCIncDec[] = {
-    {&phLibNfc_MFCIncDecTrRestoreCmd, &phLibNfc_MFCIncDecResp},
-    {NULL, &phLibNfc_MFCIncDecTrRestoreComplete}
+/* Send Increment, Decrement, or Restore command In case of Mifare classic tag */
+static phLibNfc_Sequence_t gphLibNfc_MFCIncDecRestore[] = {
+    {&phLibNfc_MFCIncDecRestoreTransferCmd, &phLibNfc_MFCIncDecRestoreResp},
+    {NULL, &phLibNfc_MFCIncDecRestoreTransferComplete}
 };
 
-/* Send Increment or Decrement payload In case of Mifare classic tag */
-static phLibNfc_Sequence_t gphLibNfc_MFCIncDecPayload[] = {
-    {&phLibNfc_MFCIncDecPayload, &phLibNfc_MFCIncDecPayloadResp},
-    {NULL, &phLibNfc_MFCIncDecPayloadComplete}
+/* Send Increment, Decrement, or Restore payload In case of Mifare classic tag */
+static phLibNfc_Sequence_t gphLibNfc_MFCIncDecRestorePayload[] = {
+    {&phLibNfc_MFCIncDecRestorePayload, &phLibNfc_MFCIncDecRestorePayloadResp},
+    {NULL, &phLibNfc_MFCIncDecRestorePayloadComplete}
 };
 
-/* Send Transfer and command In case of Mifare classic tag */
-static phLibNfc_Sequence_t gphLibNfc_MFCTransferResore[] = {
-    {&phLibNfc_MFCIncDecTrRestoreCmd, &phLibNfc_MFCTransferRestoreResp},
-    {NULL, &phLibNfc_MFCIncDecTrRestoreComplete}
+/* Send Transfer command In case of Mifare classic tag */
+static phLibNfc_Sequence_t gphLibNfc_MFCTransfer[] = {
+    {&phLibNfc_MFCIncDecRestoreTransferCmd, &phLibNfc_MFCTransferResp},
+    {NULL, &phLibNfc_MFCIncDecRestoreTransferComplete}
 };
 
 /* Set Authentication key and send authentication command In case of Mifare classic tag */
@@ -96,11 +95,16 @@ NFCSTATUS phLibNfc_Init2Discovery(void *pContext, void *Param1, void *Param2, vo
 {
     pphLibNfc_Context_t pCtx = pContext;
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+
+    // Warning C4305: 'type cast': truncation from 'void *' to 'phLibNfc_eDiscAndDisconnMode_t'
+#pragma warning(suppress:4305)
+    phLibNfc_eDiscAndDisconnMode_t eDiscMode = (phLibNfc_eDiscAndDisconnMode_t)Param1;
+
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if( (NULL != pCtx) && (NULL != Param2) )
     {
         wStatus = phLibNfc_ProcessDiscReq(pCtx,\
-                                    (phLibNfc_eDiscAndDisconnMode_t)Param1,\
+                                    eDiscMode,\
                                     (phLibNfc_sADD_Cfg_t *)Param2,\
                                     Param3);
     }else
@@ -116,11 +120,15 @@ NFCSTATUS phLibNfc_Actv2Discovery(void *pContext, void *Param1, void *Param2, vo
     pphLibNfc_Context_t pCtx = pContext;
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
 
+    // Warning C4305: 'type cast': truncation from 'void *' to 'phLibNfc_eDiscAndDisconnMode_t'
+#pragma warning(suppress:4305)
+    phLibNfc_eDiscAndDisconnMode_t eDiscMode = (phLibNfc_eDiscAndDisconnMode_t)Param1;
+
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NULL != pCtx)
     {
         wStatus = phLibNfc_ProcessReDiscReq(pCtx,\
-                                           (phLibNfc_eDiscAndDisconnMode_t)Param1,\
+                                           eDiscMode,\
                                            (phLibNfc_sADD_Cfg_t *)Param2,\
                                            Param3);
     }
@@ -133,11 +141,15 @@ NFCSTATUS phLibNfc_LsnAc2Dscv_Def(void *pContext, void *Param1, void *Param2, vo
     pphLibNfc_Context_t pCtx = pContext;
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
 
+    // Warning C4305: 'type cast': truncation from 'void *' to 'phLibNfc_eDiscAndDisconnMode_t'
+#pragma warning(suppress:4305)
+    phLibNfc_eDiscAndDisconnMode_t eDiscMode = (phLibNfc_eDiscAndDisconnMode_t)Param1;
+
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NULL != pCtx)
     {
         wStatus = phLibNfc_ProcessReDiscReq(pCtx,\
-                                           (phLibNfc_eDiscAndDisconnMode_t)Param1,\
+                                           eDiscMode,\
                                            (phLibNfc_sADD_Cfg_t *)Param2,\
                                            Param3);
     }
@@ -149,15 +161,18 @@ NFCSTATUS phLibNfc_Discovery2Active(void *pContext, void *Param1, void *Param2, 
 {
     pphLibNfc_Context_t pCtx = pContext;
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-    UNUSED(Param1);
-    UNUSED(Param2);
+
+    // Warning C4305: 'type cast': truncation from 'void *' to 'phNciNfc_RfInterfaces_t'
+#pragma warning(suppress:4305)
+    phNciNfc_RfInterfaces_t eRfInterface = (phNciNfc_RfInterfaces_t)Param2;
+
     UNUSED(Param3);
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NULL != pCtx)
     {
         wStatus = phNciNfc_Connect(pCtx->sHwReference.pNciHandle,
                   (pphNciNfc_RemoteDevInformation_t)Param1,
-                  (phNciNfc_RfInterfaces_t)Param2,
+                  eRfInterface,
                   NULL,
                   (void *)gpphLibNfc_Context);
     }else
@@ -275,30 +290,30 @@ NFCSTATUS phLibNfc_TranscvExit(void *pContext, void *Param1, void *Param2, void 
                         wStatus = phLibNfc_SeqHandler(pCtx,NFCSTATUS_SUCCESS,psTransceiveInfo);
                     }
                 }
-                else if((psTransceiveInfo->cmd.MfCmd == phNfc_eMifareAuthKeyNumA ||
-                         psTransceiveInfo->cmd.MfCmd == phNfc_eMifareAuthKeyNumB ))
+                else if(psTransceiveInfo->cmd.MfCmd == phNfc_eMifareAuthKeyNumA ||
+                        psTransceiveInfo->cmd.MfCmd == phNfc_eMifareAuthKeyNumB)
                 {
-                        PHLIBNFC_INIT_SEQUENCE(pCtx,gphLibNfc_MFCSendAuthCmd);
-                        wStatus = phLibNfc_SeqHandler(pCtx,NFCSTATUS_SUCCESS,psTransceiveInfo);
-                }
-                else if((psTransceiveInfo->sSendData.buffer != NULL) &&
-                        ((psTransceiveInfo->cmd.MfCmd == phNfc_eMifareInc ||
-                         psTransceiveInfo->cmd.MfCmd == phNfc_eMifareDec )))
-                {
-                    PHLIBNFC_INIT_SEQUENCE(pCtx,gphLibNfc_MFCIncDec);
+                    PHLIBNFC_INIT_SEQUENCE(pCtx,gphLibNfc_MFCSendAuthCmd);
                     wStatus = phLibNfc_SeqHandler(pCtx,NFCSTATUS_SUCCESS,psTransceiveInfo);
                 }
-                else if((psTransceiveInfo->sSendData.buffer != NULL) &&
-                        ((psTransceiveInfo->cmd.MfCmd == phNfc_eMifareTransfer ||
-                         psTransceiveInfo->cmd.MfCmd == phNfc_eMifareRestore )))
+                else if(psTransceiveInfo->sSendData.buffer != NULL &&
+                        (psTransceiveInfo->cmd.MfCmd == phNfc_eMifareInc ||
+                         psTransceiveInfo->cmd.MfCmd == phNfc_eMifareDec ||
+                         psTransceiveInfo->cmd.MfCmd == phNfc_eMifareRestore))
                 {
-                    PHLIBNFC_INIT_SEQUENCE(pCtx,gphLibNfc_MFCTransferResore);
+                    PHLIBNFC_INIT_SEQUENCE(pCtx,gphLibNfc_MFCIncDecRestore);
+                    wStatus = phLibNfc_SeqHandler(pCtx,NFCSTATUS_SUCCESS,psTransceiveInfo);
+                }
+                else if(psTransceiveInfo->sSendData.buffer != NULL &&
+                        psTransceiveInfo->cmd.MfCmd == phNfc_eMifareTransfer)
+                {
+                    PHLIBNFC_INIT_SEQUENCE(pCtx,gphLibNfc_MFCTransfer);
                     wStatus = phLibNfc_SeqHandler(pCtx,NFCSTATUS_SUCCESS,psTransceiveInfo);
                 }
             }
             else
             {
-                wStatus = phLibNfc_MapCmds((pRemDevHandle->RemDevType),psTransceiveInfo,&tNciTranscvInfo);
+                wStatus = phLibNfc_MapCmds(pRemDevHandle->RemDevType,psTransceiveInfo,&tNciTranscvInfo);
 
                 if(NFCSTATUS_SUCCESS == wStatus)
                 {
@@ -310,6 +325,7 @@ NFCSTATUS phLibNfc_TranscvExit(void *pContext, void *Param1, void *Param2, void 
                 }
                 else
                 {
+                    PH_LOG_LIBNFC_CRIT_STR("phLibNfc_MapCmds failed: %!NFCSTATUS!", wStatus);
                     wStatus = NFCSTATUS_FAILED;
                 }
             }
@@ -318,6 +334,10 @@ NFCSTATUS phLibNfc_TranscvExit(void *pContext, void *Param1, void *Param2, void 
         {
             wStatus = NFCSTATUS_INVALID_PARAMETER;
         }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_INFO_STR("bSkipTransceive flag set. Skipping transceive.");
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;
@@ -846,7 +866,7 @@ static NFCSTATUS phLibNfc_MfcChkPresAuth(void *pContext,NFCSTATUS wStatus,void *
         phOsalNfc_MemCopy(&(PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex]),
                             PHLIBNFC_GETCONTEXT()->tMfcInfo.MFCKey,
                             PHLIBNFC_MFC_AUTHKEYLEN);
-        
+
         bIndex += PHLIBNFC_MFC_AUTHKEYLEN;
 
         phOsalNfc_SetMemory(&tNciTranscvInfo,0x00,sizeof(phNciNfc_TransceiveInfo_t));
@@ -1172,7 +1192,7 @@ static NFCSTATUS phLibNfc_ChkMFCAuthWrtCmd(phLibNfc_sTransceiveInfo_t* psTransce
     return wStatus;
 }
 
-static NFCSTATUS phLibNfc_MFCIncDecTrRestoreCmd(void *pContext,NFCSTATUS wStatus,void *pInfo)
+static NFCSTATUS phLibNfc_MFCIncDecRestoreTransferCmd(void *pContext,NFCSTATUS wStatus,void *pInfo)
 {
     phNciNfc_TransceiveInfo_t tNciTranscvInfo;
     uint8_t bBuffIdx = 0x00;
@@ -1216,7 +1236,7 @@ static NFCSTATUS phLibNfc_MFCIncDecTrRestoreCmd(void *pContext,NFCSTATUS wStatus
     return wStatus;
 }
 
-static NFCSTATUS phLibNfc_MFCIncDecResp(void *pContext,NFCSTATUS wStatus,void *pInfo)
+static NFCSTATUS phLibNfc_MFCIncDecRestoreResp(void *pContext,NFCSTATUS wStatus,void *pInfo)
 {
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t)pContext;
     phNciNfc_Data_t *pReceiveData;
@@ -1224,12 +1244,12 @@ static NFCSTATUS phLibNfc_MFCIncDecResp(void *pContext,NFCSTATUS wStatus,void *p
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NFCSTATUS_SUCCESS == wStatus && pReceiveData->pBuff[0] == 0x0A)
     {
-        PH_LOG_LIBNFC_INFO_STR("Inc/Dec Command Header success");
-        PHLIBNFC_INIT_SEQUENCE(pCtx,gphLibNfc_MFCIncDecPayload);
+        PH_LOG_LIBNFC_INFO_STR("Increment/Decrement/Restore Command Header success");
+        PHLIBNFC_INIT_SEQUENCE(pCtx,gphLibNfc_MFCIncDecRestorePayload);
     }
     else
     {
-        PH_LOG_LIBNFC_CRIT_STR("Inc/Dec Command Header failed!");
+        PH_LOG_LIBNFC_CRIT_STR("Increment/Decrement/Restore Command Header failed!");
         if(NFCSTATUS_SUCCESS == wStatus)
             wStatus = NFCSTATUS_FAILED;
     }
@@ -1238,7 +1258,7 @@ static NFCSTATUS phLibNfc_MFCIncDecResp(void *pContext,NFCSTATUS wStatus,void *p
     return wStatus;
 }
 
-static NFCSTATUS phLibNfc_MFCTransferRestoreResp(void *pContext,NFCSTATUS wStatus,void *pInfo)
+static NFCSTATUS phLibNfc_MFCTransferResp(void *pContext,NFCSTATUS wStatus,void *pInfo)
 {
     phNciNfc_Data_t *pReceiveData;
     pReceiveData = (phNciNfc_Data_t *)pInfo;
@@ -1246,11 +1266,11 @@ static NFCSTATUS phLibNfc_MFCTransferRestoreResp(void *pContext,NFCSTATUS wStatu
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NFCSTATUS_SUCCESS == wStatus && pReceiveData->pBuff[0] == 0x0A)
     {
-        PH_LOG_LIBNFC_INFO_STR("Transfer/Restore Command Header success");
+        PH_LOG_LIBNFC_INFO_STR("Transfer Command Header success");
     }
     else
     {
-        PH_LOG_LIBNFC_CRIT_STR("Transfer/Restore Command Header failed!");
+        PH_LOG_LIBNFC_CRIT_STR("Transfer Command Header failed!");
         if(NFCSTATUS_SUCCESS == wStatus)
             wStatus = NFCSTATUS_FAILED;
     }
@@ -1259,24 +1279,24 @@ static NFCSTATUS phLibNfc_MFCTransferRestoreResp(void *pContext,NFCSTATUS wStatu
     return wStatus;
 }
 
-static NFCSTATUS phLibNfc_MFCIncDecPayloadResp(void *pContext,NFCSTATUS wStatus,void *pInfo)
+static NFCSTATUS phLibNfc_MFCIncDecRestorePayloadResp(void *pContext,NFCSTATUS wStatus,void *pInfo)
 {
     UNUSED(pContext);
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NFCSTATUS_SUCCESS == wStatus)
     {
-        PH_LOG_LIBNFC_INFO_STR("Inc/Dec Payload Command palyload Header success");
+        PH_LOG_LIBNFC_INFO_STR("Increment/Decrement/Restore Payload Command Header success");
     }
     else
     {
-        PH_LOG_LIBNFC_CRIT_STR("Inc/Dec Payload Command palyload Header failed!");
+        PH_LOG_LIBNFC_CRIT_STR("Increment/Decrement/Restore Payload Command Header failed!");
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;
 }
 
-static NFCSTATUS phLibNfc_MFCIncDecPayload(void *pContext,NFCSTATUS wStatus,void *pInfo)
+static NFCSTATUS phLibNfc_MFCIncDecRestorePayload(void *pContext,NFCSTATUS wStatus,void *pInfo)
 {
     phNciNfc_TransceiveInfo_t tNciTranscvInfo;
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t)pContext;
@@ -1322,7 +1342,7 @@ static NFCSTATUS phLibNfc_MFCIncDecPayload(void *pContext,NFCSTATUS wStatus,void
     return wStatus;
 }
 
-static NFCSTATUS phLibNfc_MFCIncDecTrRestoreComplete(void *pContext,NFCSTATUS wStatus,void *pInfo)
+static NFCSTATUS phLibNfc_MFCIncDecRestoreTransferComplete(void *pContext,NFCSTATUS wStatus,void *pInfo)
 {
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t)pContext;
     phNciNfc_Data_t pInf;
@@ -1371,7 +1391,7 @@ static NFCSTATUS phLibNfc_MFCIncDecTrRestoreComplete(void *pContext,NFCSTATUS wS
     return wStatus;
 }
 
-static NFCSTATUS phLibNfc_MFCIncDecPayloadComplete(void *pContext,NFCSTATUS wStatus,void *pInfo)
+static NFCSTATUS phLibNfc_MFCIncDecRestorePayloadComplete(void *pContext,NFCSTATUS wStatus,void *pInfo)
 {
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t)pContext;
     NFCSTATUS wTempStatus = wStatus;

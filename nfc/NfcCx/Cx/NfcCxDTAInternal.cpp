@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     DTA internal implementation
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -24,7 +24,7 @@ Environment:
 static VOID
 NfcCxDTAInterfaceMessage(
     _Inout_ PVOID Context,
-    _In_ DWORD Message,
+    _In_ UINT32 Message,
     _In_ UINT_PTR Param1,
     _In_ UINT_PTR Param2,
     _In_ UINT_PTR Param3
@@ -36,7 +36,7 @@ NfcCxDTAInterfaceMessage(
 VOID
 NfcCxDTAPostLibNfcThreadMessage(
     _Inout_ PVOID /*Context*/,
-    _In_ DWORD Message,
+    _In_ UINT32 Message,
     _In_ UINT_PTR Param1,
     _In_ UINT_PTR Param2,
     _In_ UINT_PTR Param3,
@@ -558,7 +558,7 @@ NfcCxDTAInterfaceSetDTAMode(
 VOID
 NfcCxDTAInterfaceLibNfcMessageHandler(
     _In_ PVOID Context,
-    _In_ DWORD Message,
+    _In_ UINT32 Message,
     _In_ UINT_PTR Param1,
     _In_ UINT_PTR Param2,
     _In_ UINT_PTR Param3,
@@ -585,7 +585,7 @@ NfcCxDTAInterfaceLibNfcMessageHandler(
         break;
 
     case LIBNFC_DTA_MESSAGE:
-        NfcCxDTAInterfaceMessage(Context, (DWORD)Param1, Param2, Param3, Param4);
+        NfcCxDTAInterfaceMessage(Context, (UINT32)Param1, Param2, Param3, Param4);
         break;
 
     default:
@@ -2340,6 +2340,7 @@ NfcCxDTAInterfaceSnepServerInit(
     snepConfig.sOptions.miu = SnepServerInfo->sSocketOption.uMIUX;
     snepConfig.sOptions.rw = SnepServerInfo->sSocketOption.bRW;
     snepConfig.SnepServerName = (DefaultSnepServer == SnepServerInfo->eServerType) ? NULL : &snepServerName;
+    snepConfig.bDtaFlag = TRUE;
 
     NfcCxDTAInterfacDumpSnepServerConfig(SnepServerInfo);
 
@@ -2393,7 +2394,7 @@ Done:
 }
 
 static VOID
-NfcCxDTAInterfaceSnepDeinit(
+NfcCxDTAInterfaceSnepServerDeinit(
     _In_ PNFCCX_DTA_INTERFACE DTAInterface,
     _In_ NFC_SNEP_SERVER_HANDLE SnepServerHandle
     )
@@ -2834,6 +2835,7 @@ NfcCxDTAInterfaceSnepClientInit(
     snepConfig.sOptions.miu = SnepClientInfo->sSocketOption.uMIUX;
     snepConfig.sOptions.rw = SnepClientInfo->sSocketOption.bRW;
     snepConfig.SnepServerName = (DefaultSnepServer == SnepClientInfo->eServerType) ? NULL : &snepServerName;
+    snepConfig.bDtaFlag = TRUE;
 
     NfcCxDTAInterfacDumpSnepClientConfig(SnepClientInfo);
 
@@ -3170,7 +3172,7 @@ NfcCxDTAInterfaceSetRoutingTable(
 static VOID
 NfcCxDTAInterfaceMessage(
     _Inout_ PVOID Context,
-    _In_ DWORD Message,
+    _In_ UINT32 Message,
     _In_ UINT_PTR Param1,
     _In_ UINT_PTR Param2,
     _In_ UINT_PTR Param3
@@ -3309,7 +3311,7 @@ NfcCxDTAInterfaceMessage(
         break;
 
     case DTA_SNEP_SERVER_DEINIT:
-        NfcCxDTAInterfaceSnepDeinit(dtaInterface, (NFC_SNEP_SERVER_HANDLE)Param1);
+        NfcCxDTAInterfaceSnepServerDeinit(dtaInterface, (NFC_SNEP_SERVER_HANDLE)Param1);
         break;
 
     case DTA_SNEP_SERVER_GET_NEXT_CONNECTION:

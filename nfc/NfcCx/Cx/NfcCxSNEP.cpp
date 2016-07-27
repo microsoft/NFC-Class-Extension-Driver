@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     SNEP Interface implementation
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -68,10 +68,11 @@ NfcCxSNEPInterfaceCreate(
 
     (*PPSNEPInterface)->sConfigInfo.SnepServerType = phLibNfc_SnepServer_Default;
     (*PPSNEPInterface)->sConfigInfo.SnepServerName = NULL;
-    (*PPSNEPInterface)->sConfigInfo.sOptions.miu = 
+    (*PPSNEPInterface)->sConfigInfo.sOptions.miu =
                         RFInterface->pLibNfcContext->LLCPInterface->sLlcpConfigParams.uMIU;
-    (*PPSNEPInterface)->sConfigInfo.sOptions.rw = 
+    (*PPSNEPInterface)->sConfigInfo.sOptions.rw =
                         RFInterface->pLibNfcContext->LLCPInterface->sLlcpConfigParams.uRecvWindowSize;
+    (*PPSNEPInterface)->sConfigInfo.bDtaFlag = FALSE;
 
 Done:
     if (!NT_SUCCESS(status)) {

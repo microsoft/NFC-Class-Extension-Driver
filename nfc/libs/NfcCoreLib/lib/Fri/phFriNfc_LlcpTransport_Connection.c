@@ -1620,14 +1620,14 @@ NFCSTATUS phFriNfc_LlcpTransport_ConnectionOriented_Accept(phFriNfc_LlcpTranspor
    requiredWorkingBufferSize =
        max((uint32_t)(pLlcpSocket->localRW) * pLlcpSocket->sSocketOption.miu, pLlcpSocket->bufferRwMaxLength);
 
-   if(FAILED(ULongAdd(requiredWorkingBufferSize, pLlcpSocket->bufferSendMaxLength, &requiredWorkingBufferSize)))
+   if(FAILED(UInt32Add(requiredWorkingBufferSize, pLlcpSocket->bufferSendMaxLength, &requiredWorkingBufferSize)))
    {
        PH_LOG_FRI_CRIT_STR("Overflow");
        status = NFCSTATUS_FAILED;
        goto clean_and_return;
    }
 
-   if(FAILED(ULongAdd(requiredWorkingBufferSize, pLlcpSocket->bufferLinearLength, &requiredWorkingBufferSize)))
+   if(FAILED(UInt32Add(requiredWorkingBufferSize, pLlcpSocket->bufferLinearLength, &requiredWorkingBufferSize)))
    {
        PH_LOG_FRI_CRIT_STR("Overflow");
        status = NFCSTATUS_FAILED;

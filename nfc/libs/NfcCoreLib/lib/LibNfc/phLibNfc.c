@@ -59,6 +59,7 @@ static NFCSTATUS phLibNfc_MapRemoteDevB(phNfc_sIso14443BInfo_t *RemoteDevInfo, p
 static NFCSTATUS phLibNfc_MapRemoteDevFelica(phNfc_sFelicaInfo_t *RemoteDevInfo, pphNciNfc_RemoteDevInformation_t pNciDevInfo);
 static NFCSTATUS phLibNfc_MapRemoteDevNfcIp1(phNfc_sNfcIPInfo_t *pRemoteDevInfo, phNciNfc_NfcIPInfo_t *pNciRemoteDevInfo, phNciNfc_RfTechMode_t eRfTechMode);
 static NFCSTATUS phLibNfc_MapRemoteDevIso15693(phNfc_sIso15693Info_t *pRemoteDevInfo, phNciNfc_Iso15693Info_t *pNciRemoteDevInfo);
+static NFCSTATUS phLibNfc_MapRemoteDevKovio(phNfc_sKovioInfo_t *RemoteDevInfo, pphNciNfc_RemoteDevInformation_t pNciDevInfo);
 
 static NFCSTATUS phLibNfc_ChkAuthCmdMFC(void *pContext, phLibNfc_sTransceiveInfo_t* pTransceiveInfo);
 static NFCSTATUS phLibNfc_InternalTransceive(phLibNfc_Handle hRemoteDevice, phLibNfc_sTransceiveInfo_t* psTransceiveInfo, pphLibNfc_TransceiveCallback_t pTransceive_RspCb, void* pContext);
@@ -87,6 +88,7 @@ static void phLibNfc_PrintRemDevInfoNFCF(phNfc_sFelicaInfo_t *phLibNfc_RemoteDev
 static void phLibNfc_PrintRemDevInfoNFCIP1(phNfc_sNfcIPInfo_t *phLibNfc_RemoteDevInfo);
 static void phLibNfc_PrintRemDevInfoISO15693(phNfc_sIso15693Info_t *phLibNfc_RemoteDevInfo);
 static void phLibNfc_PrintRemDevInfoEPCGEN2(phNfc_sEpcGenInfo_t *phLibNfc_RemoteDevInfo);
+static void phLibNfc_PrintRemDevInfoKovio(phNfc_sKovioInfo_t *phLibNfc_RemoteDevInfo);
 static void phLibNfc_PrintRemoteDevType(phNfc_eRemDevType_t RemDevType);
 
 /* Deactivate Mifare classic to sleep + again select same tag in case of check presence */
@@ -341,6 +343,7 @@ NFCSTATUS phLibNfc_GetTechModeAndRfInterface(pphNciNfc_RemoteDevInformation_t pR
         case phNciNfc_NFCF_Poll:
         case phNciNfc_NFCF_Active_Poll:
         case phNciNfc_NFCISO15693_Poll:
+        case phNciNfc_NFCA_Kovio_Poll:
             *pTechMode = 1; /*Poll Mode*/
             break;
 
@@ -1392,9 +1395,9 @@ static NFCSTATUS phLibNfc_InternalTransceive(phLibNfc_Handle                 hRe
                 }
                 else
                 {
-                    PH_LOG_LIBNFC_CRIT_STR("State machine returned status other than PENDING");
-                    PH_LOG_LIBNFC_CRIT_U32MSG("psTransceiveInfo->cmd.Iso15693Cmd",psTransceiveInfo->cmd.Iso15693Cmd);
-                    PH_LOG_LIBNFC_CRIT_U32MSG("psTransceiveInfo->sSendData.length",psTransceiveInfo->sSendData.length);
+                    PH_LOG_LIBNFC_CRIT_STR("State machine returned status other than PENDING: %!NFCSTATUS!", wStatus);
+                    PH_LOG_LIBNFC_CRIT_U32MSG("psTransceiveInfo->cmd.Iso15693Cmd", psTransceiveInfo->cmd.Iso15693Cmd);
+                    PH_LOG_LIBNFC_CRIT_U32MSG("psTransceiveInfo->sSendData.length", psTransceiveInfo->sSendData.length);
                 }
             }
             else
@@ -1748,10 +1751,10 @@ NFCSTATUS phLibNfc_RemoteDev_CheckPresence( phLibNfc_Handle     hRemoteDevice,
                                                     &Info,
                                                     (void *)hRemoteDevice);
                     if(NFCSTATUS_PENDING == wStatus)
-                    {  
+                    {
                         pLibContext->CBInfo.pClientPresChkCb = pPresenceChk_RspCb;
                         pLibContext->CBInfo.pClientPresChkCntx = pContext;
-                    }  
+                    }
                     pLibContext->bSkipTransceive = PH_LIBNFC_INTERNAL_COMPLETE;
                 }
                 else if((phNciNfc_e_RfProtocolsIsoDepProtocol == pNciRemoteDevHandle->eRFProtocol) &&
@@ -2292,6 +2295,7 @@ NFCSTATUS phLibNfc_Mgt_GetstackCapabilities(phLibNfc_StackCapabilities_t* phLibN
         phLibNfc_StackCapabilities->psFormatCapabilities.MifareStd = TRUE;
         phLibNfc_StackCapabilities->psFormatCapabilities.MifareUL = TRUE;
         phLibNfc_StackCapabilities->psFormatCapabilities.MifareULC = TRUE;
+        phLibNfc_StackCapabilities->psFormatCapabilities.Kovio = TRUE;
 
         /* Tag Mapping Capabilities */
         phLibNfc_StackCapabilities->psMappingCapabilities.Desfire = TRUE;
@@ -2303,8 +2307,9 @@ NFCSTATUS phLibNfc_Mgt_GetstackCapabilities(phLibNfc_StackCapabilities_t* phLibN
         phLibNfc_StackCapabilities->psMappingCapabilities.MifareStd = TRUE;
         phLibNfc_StackCapabilities->psMappingCapabilities.MifareUL = TRUE;
         phLibNfc_StackCapabilities->psMappingCapabilities.MifareULC = TRUE;
+        phLibNfc_StackCapabilities->psMappingCapabilities.Kovio = TRUE;
 
-        /*Emulation support protocols */
+        /* Emulation support protocols */
         phLibNfc_StackCapabilities->psDevCapabilities.EmulationSupProtocol.Bprime = FALSE;
         phLibNfc_StackCapabilities->psDevCapabilities.EmulationSupProtocol.EPCGEN2 = FALSE;
         phLibNfc_StackCapabilities->psDevCapabilities.EmulationSupProtocol.Felica = FALSE;
@@ -2318,7 +2323,7 @@ NFCSTATUS phLibNfc_Mgt_GetstackCapabilities(phLibNfc_StackCapabilities_t* phLibN
         phLibNfc_StackCapabilities->psDevCapabilities.EmulationSupProtocol.MifareUL = FALSE;
         phLibNfc_StackCapabilities->psDevCapabilities.EmulationSupProtocol.NFC = FALSE;
 
-        /*Reader support Protocols*/
+        /* Reader support Protocols*/
         phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.Bprime = FALSE;
         phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.EPCGEN2 = FALSE;
         phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.Felica = TRUE;
@@ -2327,7 +2332,7 @@ NFCSTATUS phLibNfc_Mgt_GetstackCapabilities(phLibNfc_StackCapabilities_t* phLibN
         phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.ISO14443_4B = TRUE;
         phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.ISO15693 = TRUE;
         phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.Jewel = TRUE;
-        phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.Kovio = FALSE;
+        phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.Kovio = TRUE;
         phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.MifareStd = TRUE;
         phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.MifareUL = TRUE;
         phLibNfc_StackCapabilities->psDevCapabilities.ReaderSupProtocol.NFC = TRUE;
@@ -2368,6 +2373,7 @@ static NFCSTATUS phLibNfc_ParseDiscActivatedRemDevInfo(phLibNfc_sRemoteDevInform
         switch(pNciDevInfo->eRFTechMode)
         {
             case phNciNfc_NFCA_Poll:
+            case phNciNfc_NFCA_Kovio_Poll:
             case phNciNfc_NFCA_Active_Poll:
             {
                 if((pNciDevInfo->eRFProtocol== phNciNfc_e_RfProtocolsT2tProtocol) ||\
@@ -2418,6 +2424,16 @@ static NFCSTATUS phLibNfc_ParseDiscActivatedRemDevInfo(phLibNfc_sRemoteDevInform
                     {
                         pLibNfcDeviceInfo->RemDevType = phNfc_eInvalid_DevType;
                         wStatus=NFCSTATUS_FAILED;
+                    }
+                }
+                else if(pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsKovioProtocol)
+                {
+                    pLibNfcDeviceInfo->RemDevType = phNfc_eKovio_PICC;
+                    wStatus = phLibNfc_MapRemoteDevKovio(&pLibNfcDeviceInfo->RemoteDevInfo.Kovio_Info, pNciDevInfo);
+                    if (wStatus != NFCSTATUS_SUCCESS)
+                    {
+                        pLibNfcDeviceInfo->RemDevType = phNfc_eInvalid_DevType;
+                        wStatus = NFCSTATUS_FAILED;
                     }
                 }
                 else
@@ -2808,7 +2824,6 @@ static NFCSTATUS phLibNfc_MapRemoteDevAJewel(phNfc_sJewelInfo_t     *RemoteDevIn
 
 static NFCSTATUS phLibNfc_MapRemoteDevIso15693(phNfc_sIso15693Info_t   *pRemoteDevInfo,
                                                phNciNfc_Iso15693Info_t *pNciRemoteDevInfo)
-
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     PH_LOG_LIBNFC_FUNC_ENTRY();
@@ -2834,6 +2849,28 @@ static NFCSTATUS phLibNfc_MapRemoteDevIso15693(phNfc_sIso15693Info_t   *pRemoteD
         PH_LOG_LIBNFC_INFO_X32MSG("AFI",pRemoteDevInfo->Afi);
         PH_LOG_LIBNFC_INFO_X32MSG("DSFID",pRemoteDevInfo->Dsfid);
         PH_LOG_LIBNFC_INFO_X32MSG("Flags",pRemoteDevInfo->Flags);
+    }
+    else
+    {
+        wStatus = NFCSTATUS_INVALID_PARAMETER;
+        PH_LOG_LIBNFC_CRIT_STR("Invalid input parameter!");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phLibNfc_MapRemoteDevKovio(phNfc_sKovioInfo_t *RemoteDevInfo,
+                                            pphNciNfc_RemoteDevInformation_t pNciDevInfo)
+{
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    phNciNfc_KovioInfo_t pRemoteDevInfo;
+
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if((NULL != pNciDevInfo) && (NULL != RemoteDevInfo))
+    {
+        pRemoteDevInfo = pNciDevInfo->tRemoteDevInfo.Kovio_Info;
+        RemoteDevInfo->TagIdLength = pRemoteDevInfo.TagIdLength;
+        phOsalNfc_MemCopy(&RemoteDevInfo->TagId, pRemoteDevInfo.TagId, RemoteDevInfo->TagIdLength);
     }
     else
     {
@@ -3704,6 +3741,7 @@ static NFCSTATUS phLibNfc_MifareMap(phLibNfc_sTransceiveInfo_t*    pTransceiveIn
         break;
         default:
         {
+            PH_LOG_LIBNFC_CRIT_STR("Unknown Mifare command: 0x%02X", pTransceiveInfo->cmd.MfCmd);
             status = NFCSTATUS_INVALID_PARAMETER;
             break;
         }
@@ -3987,6 +4025,11 @@ NFCSTATUS phLibNfc_Discovered2Transceive(void *pContext, void *Param1, void *Par
     pphNciNfc_RemoteDevInformation_t pRemoteDevInfo=(pphNciNfc_RemoteDevInformation_t)Param1;
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     uint16_t wRetVal;
+
+    // Warning C4305: 'type cast': truncation from 'void *' to 'phNciNfc_RfInterfaces_t'
+#pragma warning(suppress:4305)
+    phNciNfc_RfInterfaces_t eRfInterface = (phNciNfc_RfInterfaces_t)Param2;
+
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if((NULL != pCtxt) &&(NULL != pRemoteDevInfo) && (NULL != Param3))
     {
@@ -4029,7 +4072,7 @@ NFCSTATUS phLibNfc_Discovered2Transceive(void *pContext, void *Param1, void *Par
             /*Call Nci connect to connect to target*/
             wStatus = phNciNfc_Connect(pCtxt->sHwReference.pNciHandle,
                                        (pphNciNfc_RemoteDevInformation_t)Param1,
-                                       (phNciNfc_RfInterfaces_t)Param2,
+                                       eRfInterface,
                                        &phLibNfc_RemoteDev_Connect_Cb,
                                        (void *)gpphLibNfc_Context);
         }
@@ -5104,7 +5147,7 @@ NFCSTATUS phLibNfc_ChkAuthCmdMFC(void *pContext,
             wStatus = NFCSTATUS_FAILED;
         }
     }
-	else
+    else
     {
         wStatus = NFCSTATUS_FAILED;
     }
@@ -5332,6 +5375,9 @@ static void phLibNfc_PrintRemoteDevInfo(phLibNfc_RemoteDevList_t *psRemoteDevLis
                 case phNfc_eNfcIP1_Initiator:
                     phLibNfc_PrintRemDevInfoNFCIP1(&psRemoteDevList[bIndex].psRemoteDevInfo->RemoteDevInfo.NfcIP_Info);
                     break;
+                case phNfc_eKovio_PICC:
+                    phLibNfc_PrintRemDevInfoKovio(&psRemoteDevList[bIndex].psRemoteDevInfo->RemoteDevInfo.Kovio_Info);
+                    break;
                 default:
                     break;
             }
@@ -5475,5 +5521,14 @@ static void phLibNfc_PrintRemDevInfoEPCGEN2(phNfc_sEpcGenInfo_t *phLibNfc_Remote
         PH_LOG_LIBNFC_INFO_X32MSG("wNsi:",phLibNfc_RemoteDevInfo->ProtocolControl.wNsi);
         PH_LOG_LIBNFC_INFO_X32MSG("wStoredCrc:",phLibNfc_RemoteDevInfo->wStoredCrc);
         PH_LOG_LIBNFC_INFO_X32MSG("wXpc_W1:",phLibNfc_RemoteDevInfo->wXpc_W1);
+    }
+}
+
+static void phLibNfc_PrintRemDevInfoKovio(phNfc_sKovioInfo_t *phLibNfc_RemoteDevInfo)
+{
+    if(NULL != phLibNfc_RemoteDevInfo)
+    {
+        PH_LOG_LIBNFC_INFO_X32MSG("TAG LENGTH :", phLibNfc_RemoteDevInfo->TagIdLength);
+        PH_LOG_LIBNFC_INFO_HEXDATA("APP DATA :", phLibNfc_RemoteDevInfo->TagId, phLibNfc_RemoteDevInfo->TagIdLength);
     }
 }

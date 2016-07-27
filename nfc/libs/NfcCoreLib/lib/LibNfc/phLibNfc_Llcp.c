@@ -1162,3 +1162,40 @@ NFCSTATUS phLibNfc_Llcp_SendTo( phLibNfc_Handle               hRemoteDevice,
    PH_LOG_LLCP_FUNC_EXIT();
    return PHNFCSTATUS(result);
 }
+
+NFCSTATUS phLibNfc_Llcp_CancelPendingSend( phLibNfc_Handle hRemoteDevice,
+                                           phLibNfc_Handle hSocket
+                                           )
+{
+    NFCSTATUS                        result;
+    phFriNfc_LlcpTransport_Socket_t  *psSocket = (phFriNfc_LlcpTransport_Socket_t*)hSocket;
+
+    PH_LOG_LLCP_FUNC_ENTRY();
+
+    result = static_CheckState();
+    if (result != NFCSTATUS_SUCCESS)
+    {
+        PH_LOG_LLCP_FUNC_EXIT();
+        return result;
+    }
+
+    if ((hRemoteDevice == 0) ||
+        (hSocket == 0))
+    {
+        PH_LOG_LLCP_FUNC_EXIT();
+        return NFCSTATUS_INVALID_PARAMETER;
+    }
+
+    result = static_CheckDevice(hRemoteDevice);
+    if (result != NFCSTATUS_SUCCESS)
+    {
+        PH_LOG_LLCP_FUNC_EXIT();
+        return result;
+    }
+
+    /* Cancel data at the logical link */
+    result = phFriNfc_LlcpTransport_CancelPendingSend(psSocket);
+
+    PH_LOG_LLCP_FUNC_EXIT();
+    return PHNFCSTATUS(result);
+}

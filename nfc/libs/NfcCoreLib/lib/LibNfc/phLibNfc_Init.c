@@ -737,57 +737,65 @@ static NFCSTATUS phLibNfc_GetT3tMaxValueProc(void* pContext, NFCSTATUS status, v
 static NFCSTATUS phLibNfc_InitSetMapping(void* pContext, NFCSTATUS status, void* pInfo)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-    phNciNfc_MappingConfig_t * pProtoIfMapping = 0;
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t ) pContext;
-    phNciNfc_MappingConfig_t ProtoIfMapping[6] = {0};
-    UNUSED(status); UNUSED(pInfo);
+    phNciNfc_MappingConfig_t ProtoIfMapping[7] = {0};
+    uint8_t count = 0;
+    UNUSED(status);
+    UNUSED(pInfo);
 
-    pProtoIfMapping = &ProtoIfMapping[0];
+    ProtoIfMapping[count].Mode.bPollMode = 1;
+    ProtoIfMapping[count].Mode.bLstnMode = 1;
+    ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesISODEP_RF;
+    ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsIsoDepProtocol;
+    count++;
 
-    pProtoIfMapping->Mode.bPollMode = 1;
-    pProtoIfMapping->Mode.bLstnMode = 1;
-    pProtoIfMapping->tRfInterface = phNciNfc_e_RfInterfacesISODEP_RF;
-    pProtoIfMapping->tRfProtocol = phNciNfc_e_RfProtocolsIsoDepProtocol;
-    pProtoIfMapping++;
+    ProtoIfMapping[count].Mode.bPollMode = 1;
+    ProtoIfMapping[count].Mode.bLstnMode = 1;
+    ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesNFCDEP_RF;
+    ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsNfcDepProtocol;
+    count++;
 
-    pProtoIfMapping->Mode.bPollMode = 1;
-    pProtoIfMapping->Mode.bLstnMode = 1;
-    pProtoIfMapping->tRfInterface = phNciNfc_e_RfInterfacesNFCDEP_RF;
-    pProtoIfMapping->tRfProtocol = phNciNfc_e_RfProtocolsNfcDepProtocol;
-    pProtoIfMapping++;
+    ProtoIfMapping[count].Mode.bPollMode = 1;
+    ProtoIfMapping[count].Mode.bLstnMode = 0;
+    ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
+    ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsT1tProtocol;
+    count++;
 
-    pProtoIfMapping->Mode.bPollMode = 1;
-    pProtoIfMapping->Mode.bLstnMode = 0;
-    pProtoIfMapping->tRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
-    pProtoIfMapping->tRfProtocol = phNciNfc_e_RfProtocolsT1tProtocol;
-    pProtoIfMapping++;
+    ProtoIfMapping[count].Mode.bPollMode = 1;
+    ProtoIfMapping[count].Mode.bLstnMode = 0;
+    ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
+    ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsT2tProtocol;
+    count++;
 
-    pProtoIfMapping->Mode.bPollMode = 1;
-    pProtoIfMapping->Mode.bLstnMode = 0;
-    pProtoIfMapping->tRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
-    pProtoIfMapping->tRfProtocol = phNciNfc_e_RfProtocolsT2tProtocol;
-    pProtoIfMapping++;
-
-    pProtoIfMapping->Mode.bPollMode = 1;
-    pProtoIfMapping->Mode.bLstnMode = 0;
-    pProtoIfMapping->tRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
-    pProtoIfMapping->tRfProtocol = phNciNfc_e_RfProtocolsT3tProtocol;
-    pProtoIfMapping++;
+    ProtoIfMapping[count].Mode.bPollMode = 1;
+    ProtoIfMapping[count].Mode.bLstnMode = 0;
+    ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
+    ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsT3tProtocol;
+    count++;
 
     if(pCtx->tNfccFeatures.ManufacturerId == PH_LIBNFC_MANUFACTURER_NXP)
     {
-        pProtoIfMapping->Mode.bPollMode = 1;
-        pProtoIfMapping->Mode.bLstnMode = 0;
-        pProtoIfMapping->tRfInterface = phNciNfc_e_RfInterfacesTagCmd_RF;
-        pProtoIfMapping->tRfProtocol = phNciNfc_e_RfProtocolsMifCProtocol;
-        pProtoIfMapping++;
+        if(1 == pCtx->tADDconfig.PollDevInfo.PollCfgInfo.EnableKovio)
+        {
+            ProtoIfMapping[count].Mode.bPollMode = 1;
+            ProtoIfMapping[count].Mode.bLstnMode = 0;
+            ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
+            ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsKovioProtocol;
+            count++;
+        }
+
+        ProtoIfMapping[count].Mode.bPollMode = 1;
+        ProtoIfMapping[count].Mode.bLstnMode = 0;
+        ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesTagCmd_RF;
+        ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsMifCProtocol;
+        count++;
     }
 
-    wStatus = phNciNfc_ConfigMapping (pCtx->sHwReference.pNciHandle,
-                                      (uint8_t)(pProtoIfMapping - &ProtoIfMapping[0]),
-                                      ProtoIfMapping,
-                                      (pphNciNfc_IfNotificationCb_t)&phLibNfc_InternalSequence,
-                                      pContext);
+    wStatus = phNciNfc_ConfigMapping(pCtx->sHwReference.pNciHandle,
+                                     count,
+                                     ProtoIfMapping,
+                                     (pphNciNfc_IfNotificationCb_t)&phLibNfc_InternalSequence,
+                                     pContext);
 
     return wStatus;
 }

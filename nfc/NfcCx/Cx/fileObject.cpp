@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     Cx file Object implementation.
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -21,7 +21,7 @@ Environment:
 #include "fileObject.tmh"
 
 BOOLEAN
-NfcCxEvtDeviceFileCreate (
+NfcCxEvtDeviceFileCreate(
     _In_ WDFDEVICE Device,
     _In_ WDFREQUEST Request,
     _In_ WDFFILEOBJECT FileObject
@@ -45,12 +45,12 @@ Arguments:
 
 Return Value:
 
-   BOOLEAN
+    BOOLEAN
 
 --*/
 {
-    PNFCCX_FDO_CONTEXT   fdoContext;
-    PNFCCX_FILE_CONTEXT  fileContext;
+    PNFCCX_FDO_CONTEXT fdoContext = NULL;
+    PNFCCX_FILE_CONTEXT fileContext = NULL;
     NTSTATUS status = STATUS_SUCCESS;
     PUNICODE_STRING fileName = NULL;
     WDF_OBJECT_ATTRIBUTES objectAttrib;
@@ -65,7 +65,7 @@ Return Value:
     //
     fdoContext = NfcCxFdoGetContext(Device);
     fileContext = NfcCxFileGetContext(FileObject);
-    
+
     ZeroMemory(fileContext, sizeof(*fileContext));
     fileContext->Signature = NFCCX_FILE_CONTEXT_SIGNATURE;
     InitializeListHead(&fileContext->ListEntry);
@@ -75,7 +75,8 @@ Return Value:
     fileContext->PowerPolicyReferences = 0;
     fileContext->Enabled = TRUE;
     fileContext->Role = ROLE_UNDEFINED;
-    RtlInitAnsiString(&fileContext->Types, NULL);
+    fileContext->pszTypes = NULL;
+    fileContext->cchTypes = 0;
 
     //
     // Get the initiator process id
@@ -94,7 +95,7 @@ Return Value:
         impersonationContext.FileContext = fileContext;
 
         //
-        // In order to check the initiator process, we must 
+        // In order to check the initiator process, we must
         // impersonate the caller.
         //
         status = WdfRequestImpersonate(Request,
@@ -147,7 +148,7 @@ Return Value:
          ROLE_SECUREELEMENTMANAGER == fileContext->Role)) {
         //
         // The above roles require the SE to be supported and SE radio to be on.
-        //        
+        //
         if (!NfcCxPowerIsAllowedSE(fdoContext)) {
             TRACE_LINE(LEVEL_ERROR, "SE radio state is off, client role %!FILE_OBJECT_ROLE! not supported", fileContext->Role);
             status = STATUS_INVALID_DEVICE_STATE;
@@ -176,7 +177,7 @@ Return Value:
                                     &queue);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "WdfIoQueueCreate failed with Status code %!STATUS!", status);
-            goto Done;            
+            goto Done;
         }
         fileContext->RoleParameters.Sub.SubsMessageRequestQueue = queue;
     } else if (ROLE_PUBLICATION == fileContext->Role) {
@@ -207,7 +208,7 @@ Return Value:
                                     &queue);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "WdfIoQueueCreate failed with Status code %!STATUS!", status);
-            goto Done;            
+            goto Done;
         }
         fileContext->RoleParameters.Pub.SendMsgRequestQueue = queue;
     } else if (ROLE_SECUREELEMENTEVENT == fileContext->Role) {
@@ -231,7 +232,7 @@ Return Value:
                                     &queue);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "WdfIoQueueCreate failed with Status code %!STATUS!", status);
-            goto Done;            
+            goto Done;
         }
         fileContext->RoleParameters.SEEvent.EventRequestQueue = queue;
     }
@@ -283,7 +284,7 @@ Return Value:
                                 &objectAttrib,
                                 &fileContext->UnresponsiveClientDetectionTimer);
         if (!NT_SUCCESS(status)) {
-            TRACE_LINE(LEVEL_ERROR, "WdfTimerCreate failed with %!STATUS!", status); 
+            TRACE_LINE(LEVEL_ERROR, "WdfTimerCreate failed with %!STATUS!", status);
             goto Done;
         }
     }
@@ -308,35 +309,38 @@ Return Value:
                                            fileContext);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to add a smartcard client %!STATUS!", status);
-            goto Done;            
+            goto Done;
         }
     } else if (ROLE_SECUREELEMENTEVENT == fileContext->Role ||
                ROLE_SECUREELEMENTMANAGER == fileContext->Role) {
-        
+
         status = NfcCxSEInterfaceAddClient(NfcCxFileObjectGetSEInterface(fileContext),
                                            fileContext);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to add a SE client %!STATUS!", status);
-            goto Done;            
+            goto Done;
         }
     }
 
     TRACE_LINE(LEVEL_INFO, "Client Added");
     TRACE_LINE(LEVEL_INFO, "    Client Role = %!FILE_OBJECT_ROLE!",                     fileContext->Role);
     TRACE_LINE(LEVEL_INFO, "    Client TranslationType = %!TRANSLATION_TYPE_PROTOCOL!", fileContext->TranslationType);
-    TRACE_LINE(LEVEL_INFO, "    Client Type = %s",                                      fileContext->Types.Buffer);
+    TRACE_LINE(LEVEL_INFO, "    Client Type = %s",                                      fileContext->pszTypes);
     TRACE_LINE(LEVEL_INFO, "    Client Tnf = %d",                                       fileContext->Tnf);
 
+#ifdef EVENT_WRITE
     EventWriteNfpClientCreate(FileObject,
                               fileContext->Role,
-                              fileContext->Types.Buffer,
+                              fileContext->pszTypes,
                               fileContext->TranslationType,
                               fileContext->Tnf);
+#endif
 
     //
-    // If this is a pub/sub or vendor test, add a power reference
+    // If this is a pub/sub, smartcard or vendor test, add a power reference
     //
     if (NfcCxFileObjectIsPubSub(fileContext) ||
+        ROLE_SMARTCARD == fileContext->Role ||
         NFC_CX_DEVICE_MODE_RAW == fdoContext->NfcCxClientGlobal->Config.DeviceMode) {
         NCI_POWER_POLICY powerPol = {FALSE};
         status = NfcCxPowerSetPolicy(NfcCxFileObjectGetFdoContext(fileContext), fileContext, &powerPol);
@@ -347,16 +351,45 @@ Return Value:
     }
 
 Done:
+    if (!NT_SUCCESS(status)) 
+    {
+        if (NULL != fileContext) 
+        {
+            if (NULL != fileContext->pszTypes) {
+                free(fileContext->pszTypes);
+                fileContext->pszTypes = NULL;
+                fileContext->cchTypes = 0;
+            }
 
-    //
-    // Cleanup on error
-    //
-    if (!NT_SUCCESS(status)) {
-        if (NULL != fileContext) {
-            if (ROLE_PUBLICATION == fileContext->Role) {
-                if (NULL != fileContext->RoleParameters.Pub.PublicationBuffer) {
-                    delete fileContext->RoleParameters.Pub.PublicationBuffer;
-                    fileContext->RoleParameters.Pub.PublicationBuffer = NULL;
+            switch (fileContext->Role)
+            {
+                case ROLE_SUBSCRIPTION:
+                {
+                    NfcCxNfpInterfaceRemoveSubscriptionClient(NfcCxFileObjectGetNfpInterface(fileContext), fileContext);
+                    break;
+                }
+                case ROLE_PUBLICATION:
+                {
+                    NfcCxNfpInterfaceRemovePublicationClient(NfcCxFileObjectGetNfpInterface(fileContext), fileContext);
+
+                    if (NULL != fileContext->RoleParameters.Pub.PublicationBuffer)
+                    {
+                        delete fileContext->RoleParameters.Pub.PublicationBuffer;
+                        fileContext->RoleParameters.Pub.PublicationBuffer = NULL;
+                    }
+                    
+                    break;
+                }
+                case ROLE_SMARTCARD:
+                {
+                    NfcCxSCInterfaceRemoveClient(NfcCxFileObjectGetScInterface(fileContext), fileContext);
+                    break;
+                }
+                case ROLE_SECUREELEMENTEVENT:
+                case ROLE_SECUREELEMENTMANAGER:
+                {
+                    NfcCxSEInterfaceRemoveClient(NfcCxFileObjectGetSEInterface(fileContext), fileContext);
+                    break;
                 }
             }
         }
@@ -427,11 +460,19 @@ Return Value:
     fdoContext = NfcCxFdoGetContext(WdfFileObjectGetDevice(FileObject));
     fileContext = NfcCxFileGetContext(FileObject);
 
+    TRACE_LINE(LEVEL_INFO, "Client Removed");
+    TRACE_LINE(LEVEL_INFO, "    Client Role = %!FILE_OBJECT_ROLE!", fileContext->Role);
+    TRACE_LINE(LEVEL_INFO, "    Client TranslationType = %!TRANSLATION_TYPE_PROTOCOL!", fileContext->TranslationType);
+    TRACE_LINE(LEVEL_INFO, "    Client Type = %s", fileContext->pszTypes);
+    TRACE_LINE(LEVEL_INFO, "    Client Tnf = %d", fileContext->Tnf);
+
+#ifdef EVENT_WRITE
     EventWriteNfpClientDestroy(FileObject,
                                fileContext->Role,
-                               fileContext->Types.Buffer,
+                               fileContext->pszTypes,
                                fileContext->TranslationType,
                                fileContext->Tnf);
+#endif
 
     //
     // If it is a subscription, remove the the client
@@ -485,7 +526,7 @@ Return Value:
             delete fileContext->RoleParameters.Pub.PublicationBuffer;
             fileContext->RoleParameters.Pub.PublicationBuffer = NULL;
         }
-    
+
     } else if (ROLE_SECUREELEMENTEVENT == fileContext->Role) {
         //
         // Drain the received event queue
@@ -509,8 +550,10 @@ Return Value:
         }
     }
 
-    if (NULL != fileContext->Types.Buffer) {
-        RtlFreeAnsiString(&fileContext->Types);
+    if (NULL != fileContext->pszTypes) {
+        free(fileContext->pszTypes);
+        fileContext->pszTypes = NULL;
+        fileContext->cchTypes = 0;
     }
 
     WdfWaitLockRelease(fileContext->StateLock);
@@ -602,7 +645,7 @@ Return Value:
 
     TRACE_LINE(LEVEL_INFO, "IsAppContainerProcess = %d",
                         ImpersonationContext->FileContext->IsAppContainerProcess);
-   
+
 Done:
 
     if (NULL != hProcessToken) {
@@ -655,7 +698,7 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (NULL == FileName || 
+    if (NULL == FileName ||
         0 == FileName->Length) {
         TRACE_LINE(LEVEL_ERROR, "No file name provided, this is a configuration client");
         FileContext->Role = ROLE_CONFIGURATION;
@@ -664,14 +707,14 @@ Return Value:
     RtlZeroMemory(szFileName, sizeof(szFileName));
 
     cchFileName = (FileName->Length / sizeof(WCHAR));
-    if (MAX_FILE_NAME_LENGTH <= cchFileName || 
+    if (MAX_FILE_NAME_LENGTH <= cchFileName ||
         min(PUBS_NAMESPACE_LENGTH, SUBS_NAMESPACE_LENGTH) > cchFileName){
         TRACE_LINE(LEVEL_ERROR, "Invalid file name length, %!STATUS!", status);
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
 
-    RtlCopyMemory(szFileName, 
+    RtlCopyMemory(szFileName,
                   FileName->Buffer,
                   FileName->Length);
 
@@ -690,27 +733,27 @@ Return Value:
         goto Done;
     }
 
-    if (CSTR_EQUAL == CompareStringOrdinal(pszFileName, 
-                                            min(PUBS_NAMESPACE_LENGTH, cchFileName), 
-                                            PUBS_NAMESPACE, 
+    if (CSTR_EQUAL == CompareStringOrdinal(pszFileName,
+                                            min(PUBS_NAMESPACE_LENGTH, cchFileName),
+                                            PUBS_NAMESPACE,
                                             PUBS_NAMESPACE_LENGTH,
                                             TRUE)) {
         FileContext->Role = ROLE_PUBLICATION;
         pszProtocol = pszFileName + PUBS_NAMESPACE_LENGTH;
         cchProtocol = cchFileName - PUBS_NAMESPACE_LENGTH;
 
-    } else if (CSTR_EQUAL == CompareStringOrdinal(pszFileName, 
-                                                min(SUBS_NAMESPACE_LENGTH, cchFileName), 
-                                                SUBS_NAMESPACE, 
+    } else if (CSTR_EQUAL == CompareStringOrdinal(pszFileName,
+                                                min(SUBS_NAMESPACE_LENGTH, cchFileName),
+                                                SUBS_NAMESPACE,
                                                 SUBS_NAMESPACE_LENGTH,
                                                 TRUE)) {
         FileContext->Role = ROLE_SUBSCRIPTION;
         pszProtocol = pszFileName + SUBS_NAMESPACE_LENGTH;
         cchProtocol = cchFileName - SUBS_NAMESPACE_LENGTH;
 
-    } else if (CSTR_EQUAL == CompareStringOrdinal(pszFileName, 
-                                                min(SMARTCARD_READER_NAMESPACE_LENGTH, cchFileName), 
-                                                SMARTCARD_READER_NAMESPACE, 
+    } else if (CSTR_EQUAL == CompareStringOrdinal(pszFileName,
+                                                min(SMARTCARD_READER_NAMESPACE_LENGTH, cchFileName),
+                                                SMARTCARD_READER_NAMESPACE,
                                                 SMARTCARD_READER_NAMESPACE_LENGTH,
                                                 TRUE)) {
         FileContext->Role = ROLE_SMARTCARD;
@@ -721,7 +764,6 @@ Return Value:
                                                 SEEVENTS_NAMESPACE,
                                                 SEEVENTS_NAMESPACE_LENGTH,
                                                 TRUE)) {
-
         FileContext->Role = ROLE_SECUREELEMENTEVENT;
         goto Done;
 
@@ -730,10 +772,9 @@ Return Value:
                                                 SEMANAGER_NAMESPACE,
                                                 SEMANAGER_NAMESPACE_LENGTH,
                                                 TRUE)) {
-
         FileContext->Role = ROLE_SECUREELEMENTMANAGER;
         goto Done;
-    
+
     } else {
         status = STATUS_OBJECT_NAME_NOT_FOUND;
         goto Done;
@@ -795,7 +836,7 @@ Done:
     return status;
 }
 
-NTSTATUS 
+NTSTATUS
 NfcCxFileObjectSetType(
     _In_ PNFCCX_FILE_CONTEXT FileContext,
     _In_ LPWSTR Type
@@ -804,7 +845,7 @@ NfcCxFileObjectSetType(
 
 Routine Description:
 
-   Sets the client type string.
+    Sets the client type string.
 
 Arguments:
 
@@ -816,40 +857,42 @@ Return Value:
     NTSTATUS
 
 --*/
-{   
+{
     NTSTATUS status = STATUS_SUCCESS;
-    size_t cchStr = wcslen(Type);
-    UNICODE_STRING sourceType;
+    size_t cchWideStr = wcslen(Type);
+    size_t cchNarrowStr = 0;
+    PSTR narrowStr;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (NULL != FileContext->Types.Buffer){
+    if (NULL != FileContext->pszTypes){
         TRACE_LINE(LEVEL_ERROR, "Types already set");
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
 
-    // in case of wkt:U or wkt:T cchStr will be 1 i.e. equal to MinCchType
-    if (cchStr < MIN_TYPE_LENGTH ||
-        cchStr > MAX_TYPE_LENGTH) {
+    // In case of wkt:U or wkt:T cchWideStr will be 1 i.e. MIN_TYPE_LENGTH
+    if (cchWideStr < MIN_TYPE_LENGTH ||
+        cchWideStr > MAX_TYPE_LENGTH) {
         TRACE_LINE(LEVEL_ERROR, "Invalid type string");
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
 
     //
-    // All future compairison takes the ansi convertion of 
-    // this the type string
+    // All future comparison takes the ansi version of the type string
     //
-    sourceType.Buffer = Type;
-    sourceType.Length = (USHORT)(cchStr * sizeof(WCHAR));
-
-    status = RtlUnicodeStringToAnsiString(&FileContext->Types, &sourceType, TRUE);
+    status = NfcCxWideStringToNarrowString(cchWideStr,
+                                           Type,
+                                           &cchNarrowStr,
+                                           &narrowStr);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to convert the type string to ansi");
-        RtlInitAnsiString(&FileContext->Types, NULL);
         goto Done;
     }
+
+    FileContext->pszTypes = narrowStr;
+    FileContext->cchTypes = (UCHAR)cchNarrowStr;
 
 Done:
 
@@ -866,7 +909,7 @@ NfcCxFileObjectNfpDisable(
 
 Routine Description:
 
-   Disables the pub/subs associated with this file object. 
+   Disables the pub/subs associated with this file object.
 
 Arguments:
 
@@ -938,7 +981,7 @@ NfcCxFileObjectNfpEnable(
 
 Routine Description:
 
-   Enables the pub/subs associated with this file object. 
+   Enables the pub/subs associated with this file object.
 
 Arguments:
 
@@ -1006,13 +1049,13 @@ NTSTATUS
 NfcCxFileObjectValidateAndSetPayload(
     _In_ PNFCCX_FILE_CONTEXT FileContext,
     _In_bytecount_(PayloadLength) PVOID Payload,
-    _In_  size_t PayloadLength
+    _In_ size_t PayloadLength
     )
 /*++
 
 Routine Description:
 
-   Validate the payload and set it unto the clients's payload buffer.
+    Validate the payload and set it unto the clients's payload buffer.
 
 Arguments:
 
@@ -1066,8 +1109,8 @@ Return Value:
 
     status = FileContext->RoleParameters.Pub.PublicationBuffer->InitializeWithMessagePayload(FileContext->Tnf,
                                                                          FileContext->TranslationType,
-                                                                         (UCHAR)FileContext->Types.Length,
-                                                                         FileContext->Types.Buffer,
+                                                                         FileContext->cchTypes,
+                                                                         FileContext->pszTypes,
                                                                          (USHORT)PayloadLength,
                                                                          (PBYTE)Payload);
     if (!NT_SUCCESS(status)) {
@@ -1088,7 +1131,7 @@ NTSTATUS
 NfcCxFileObjectValidateAndSubscribeForEvent(
     _In_ PNFCCX_FILE_CONTEXT FileContext,
     _In_ GUID& SEIdentifier,
-    _In_  SECURE_ELEMENT_EVENT_TYPE eSEEventType
+    _In_ SECURE_ELEMENT_EVENT_TYPE eSEEventType
     )
 /*++
 
@@ -1164,7 +1207,7 @@ Return Value:
     // Get the next IOCTL_NFP_GET_NEXT_TRANSMITTED_MESSAGE request to see
     // if any of them matches the event
     //
-    status = WdfIoQueueRetrieveNextRequest(FileContext->RoleParameters.Pub.SendMsgRequestQueue, 
+    status = WdfIoQueueRetrieveNextRequest(FileContext->RoleParameters.Pub.SendMsgRequestQueue,
                                            &wdfRequest);
     if (!NT_SUCCESS(status)) {
 
@@ -1177,18 +1220,21 @@ Return Value:
         } else {
             FileContext->RoleParameters.Pub.SentMsgCounter++;
             TRACE_LINE(LEVEL_WARNING,
-                "No requests pended, %!STATUS!, CurrentCounter=%d", 
+                "No requests pended, %!STATUS!, CurrentCounter=%d",
                 status,
                 FileContext->RoleParameters.Pub.SentMsgCounter);
 
             NfcCxFileObjectStartUnresponsiveClientDetectionTimer(FileContext);
         }
     } else {
-       
+
         TRACE_LINE(LEVEL_INFO,
             "Completing request %p, with %!STATUS!, 0x%I64x", wdfRequest, status, 0);
 
+#ifdef EVENT_WRITE
         EventWriteNfpGetNextTransmittedMsgStop(FileContext->FileObject, status);
+#endif
+
         WdfRequestCompleteWithInformation(wdfRequest, status, 0);
         wdfRequest = NULL;
     }
@@ -1220,7 +1266,7 @@ Return Value:
 
 --*/
 {
-    PNFCCX_FILE_CONTEXT fileContext = 
+    PNFCCX_FILE_CONTEXT fileContext =
         NfcCxFileGetContext(WdfTimerGetParentObject(UnresponsiveClientDetectionTimer));
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);

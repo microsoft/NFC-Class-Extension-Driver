@@ -249,9 +249,12 @@ static NFCSTATUS phLibNfc_HciOpenAdmPipeProc(void* pContext,NFCSTATUS status,voi
             if(NFCSTATUS_SUCCESS == status)
             {
                 wStatus = status;
-                bNumOfPipes = (*(uint8_t *)pInfo);
                 PH_LOG_LIBNFC_INFO_STR("ADM pipe successfully opened");
-                PH_LOG_LIBNFC_INFO_U32MSG("Number of ADM pipes opened",bNumOfPipes);
+                if(NULL != pInfo)
+                {
+                    bNumOfPipes = (*(uint8_t *)pInfo);
+                    PH_LOG_LIBNFC_INFO_U32MSG("Number of ADM pipes opened", bNumOfPipes);
+                }
             }
             else
             {
@@ -567,7 +570,7 @@ static NFCSTATUS phHciNfc_CreateSETranseiveTimer(phHciNfc_HciContext_t  *pHciCon
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
      pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId = phOsalNfc_Timer_Create();
-     if(pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId == 0)
+     if(pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId == PH_OSALNFC_TIMER_ID_INVALID)
      {
          PH_LOG_LIBNFC_CRIT_STR("HCI SE TxRx Timer Create failed");
          wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;

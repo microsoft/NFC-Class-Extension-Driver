@@ -145,7 +145,8 @@ phLibNfc_SnepServer_AddSession(void)
 }
 
 phLibNfc_SnepServerConnection_t *
-phLibNfc_SnepServer_AddConnection(phLibNfc_Handle ServerHandle){
+phLibNfc_SnepServer_AddConnection(phLibNfc_Handle ServerHandle)
+{
     uint8_t count;
     phLibNfc_SnepServerConnection_t *pConnection = NULL;
     phLibNfc_SnepServerSession_t *pServerConnContext = NULL;
@@ -161,6 +162,7 @@ phLibNfc_SnepServer_AddConnection(phLibNfc_Handle ServerHandle){
                 if (NULL != pConnection)
                 {
                     memset(pConnection, 0x0, sizeof(phLibNfc_SnepServerConnection_t));
+                    pConnection->pServerSession = pServerConnContext;
                     pServerConnContext->pServerConnection[count] = pConnection;
                     pServerConnContext->CurrentConnCnt++;
                 }

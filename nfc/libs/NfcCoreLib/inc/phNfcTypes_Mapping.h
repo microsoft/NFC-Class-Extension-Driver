@@ -62,14 +62,15 @@ typedef phNfc_eJewelCmdList_t phHal_eJewelCmdList_t; /**< \copybrief phNfc_eJewe
 typedef phNfc_eHid_CmdList_t phHal_eHid_CmdList_t; /**< \copybrief phNfc_eHid_CmdList_t \sa phNfc_eHid_CmdList_t */
 #define phHal_eEpcGenRead phNfc_eEpcGen_Raw
 
-typedef phNfc_eEpcGenCmdList_t phHal_eEpcGenCmdList_t; /**< \copybrief phNfc_eEpcGen_t \sa phNfc_eEpcGen_t */
+typedef phNfc_eEpcGenCmdList_t phHal_eEpcGenCmdList_t; /**< \copybrief phNfc_eEpcGenCmdList_t \sa phNfc_eEpcGenCmdList_t */
 typedef phNfc_sIso14443AInfo_t phHal_sIso14443AInfo_t; /**< \copybrief phNfc_sIso14443AInfo_t \sa phNfc_sIso14443AInfo_t */
 typedef phNfc_sIso14443BInfo_t phHal_sIso14443BInfo_t; /**< \copybrief phNfc_sIso14443BInfo_t \sa phNfc_sIso14443BInfo_t */
 typedef phNfc_sIso14443BPrimeInfo_t phHal_sIso14443BPrimeInfo_t; /**< \copybrief phNfc_sIso14443BPrimeInfo_t \sa phNfc_sIso14443BPrimeInfo_t */
 typedef phNfc_sJewelInfo_t phHal_sJewelInfo_t; /**< \copybrief phNfc_sJewelInfo_t \sa phNfc_sJewelInfo_t */
 typedef phNfc_sFelicaInfo_t phHal_sFelicaInfo_t; /**< \copybrief phNfc_sFelicaInfo_t \sa phNfc_sFelicaInfo_t */
 typedef phNfc_sIso15693Info_t phHal_sIso15693Info_t; /**< \copybrief phNfc_sIso15693Info_t \sa phNfc_sIso15693Info_t */
-typedef phNfc_sEpcGenInfo_t phHal_sEpcGenInfo_t; /**< \copybrief phNfc_eEpcGen_t \sa phNfc_eEpcGen_t */
+typedef phNfc_sEpcGenInfo_t phHal_sEpcGenInfo_t; /**< \copybrief phNfc_sEpcGenInfo_t \sa phNfc_sEpcGenInfo_t */
+typedef phNfc_sKovioInfo_t phHal_eKovio_PICC; /**< \copybrief phNfc_sKovioInfo_t \sa phNfc_sKovioInfo_t */
 
 #define phHal_eDataRate_106 phNfc_eDataRate_106
 #define phHal_eDataRate_212 phNfc_eDataRate_212
@@ -253,6 +254,8 @@ typedef phNfc_uRemoteDevInfo_t phLibNfc_uRemoteDevInfo_t; /**< \copybrief phNfc_
 #define phLibNfc_eISO15693_PICC phNfc_eISO15693_PICC
 #define phLibNfc_eNfcIP1_Target phNfc_eNfcIP1_Target
 #define phLibNfc_eNfcIP1_Initiator phNfc_eNfcIP1_Initiator
+#define phLibNfc_eKovio_PICC phNfc_eKovio_PICC
+
 typedef phNfc_eRFDevType_t phLibNfc_eRFDevType_t; /**< \copybrief phNfc_eRFDevType_t \sa phNfc_eRFDevType_t */
 
 typedef phNfc_uCmdList_t phLibNfc_uCmdList_t; /**< \copybrief phNfc_uCmdList_t \sa phNfc_uCmdList_t */

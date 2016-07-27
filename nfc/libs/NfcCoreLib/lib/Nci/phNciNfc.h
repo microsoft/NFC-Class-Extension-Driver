@@ -268,7 +268,8 @@ typedef enum phNciNfc_RfTechnologies
      phNciNfc_e_NfcBPassiveListen = 0x81,   /**< Nfc-B passive listen mode */
      phNciNfc_e_NfcFPassiveListen = 0x82,   /**< Nfc-F passive listen mode */
      phNciNfc_e_NfcAActiveListen = 0x83,    /**< Nfc-A active listen mode */
-     phNciNfc_e_NfcFActiveListen = 0x85     /**< Nfc-F active listen mode */
+     phNciNfc_e_NfcFActiveListen = 0x85,    /**< Nfc-F active listen mode */
+     phNciNfc_e_NfcAKovioPoll = 0x77        /**< Kovio-specific Nfc-A poll mode */
 }phNciNfc_RfTechAndMode_t;
 
 /**
@@ -545,6 +546,25 @@ typedef struct phNciNfc_PollNfcADiscParams
     uint8_t bBailOut;           /**< If set to '1', bail out when NFC-A Technology has been detected
                                      during Poll Mode in Discovery activity */
 }phNciNfc_PollNfcADiscParams_t, *pphNciNfc_PollNfcADiscParams_t; /**< pointer to #phNciNfc_PollNfcADiscParams_t */
+
+/**
+* \ingroup grp_nci_nfc
+* \brief Kovio specific poll mode Nfc-A discovery configuration parameters
+*/
+typedef struct phNciNfc_PollNfcAKovioDiscParams
+{
+    union
+    {
+        struct
+        {
+            BitField_t SetBailOut:1;/**< 1:Set 'bBailOut'; 0:Do not set 'bBailOut' parameter. Most likely has no affect for Kovio */
+        }Config;                   /**< Structure holds list of paramters to be set */
+        uint32_t EnableConfig;     /**< Variable used to know whether ther are any parameters to be set */
+    }PollNfcAKovioConfig;               /**< This union shall give information on which parameter has to be set */
+    uint8_t bBailOut;           /**< If set to '1', bail out when NFC-A Technology has been detected
+                                     during Poll Mode in Discovery activity */
+}phNciNfc_PollNfcAKovioDiscParams_t, *pphNciNfc_PollNfcAKovioDiscParams_t; /**< pointer to #phNciNfc_PollNfcAKovioDiscParams_t */
+
 
 /**
  * \ingroup grp_nci_nfc
@@ -911,18 +931,19 @@ typedef struct phNciNfc_MappingConfig
  */
 typedef struct phNciNfc_RfConfigInfo
 {
-    BitField_t PollNfcAConfig:1;    /**< Poll Nfc-A Discovery configuration parameters */
-    BitField_t PollNfcBConfig:1;    /**< Poll Nfc-B Discovery configuration parameters */
-    BitField_t PollNfcFConfig:1;    /**< Poll Nfc-F Discovery configuration parameters */
-    BitField_t PollIsoDepConfig:1;  /**< Poll Iso-Dep Discovery configuration parameters */
-    BitField_t PollNfcDepConfig:1;  /**< Poll Nfc-Dep Discovery configuration parameters */
-    BitField_t LstnNfcAConfig:1;    /**< Listen Nfc-A Discovery configuration parameters */
-    BitField_t LstnNfcBConfig:1;    /**< Listen Nfc-B Discovery configuration parameters */
-    BitField_t LstnNfcFConfig:1;    /**< Listen Nfc-F Discovery configuration parameters */
-    BitField_t LstnIsoDepConfig:1;  /**< Listen Iso-Dep Discovery configuration parameters */
-    BitField_t LstnNfcDepConfig:1;  /**< Listen Nfc-Dep Discovery configuration parameters */
-    BitField_t CommonConfig:1;      /**< Common Discovery configuration parameters */
-}phNciNfc_RfConfigInfo_t;           /**< Enable/Disable config */
+    BitField_t PollNfcAConfig:1;      /**< Poll Nfc-A Discovery configuration parameters */
+    BitField_t PollNfcAKovioConfig:1; /**< Poll Nfc-A Kovio Discovery configuration parameters */
+    BitField_t PollNfcBConfig:1;      /**< Poll Nfc-B Discovery configuration parameters */
+    BitField_t PollNfcFConfig:1;      /**< Poll Nfc-F Discovery configuration parameters */
+    BitField_t PollIsoDepConfig:1;    /**< Poll Iso-Dep Discovery configuration parameters */
+    BitField_t PollNfcDepConfig:1;    /**< Poll Nfc-Dep Discovery configuration parameters */
+    BitField_t LstnNfcAConfig:1;      /**< Listen Nfc-A Discovery configuration parameters */
+    BitField_t LstnNfcBConfig:1;      /**< Listen Nfc-B Discovery configuration parameters */
+    BitField_t LstnNfcFConfig:1;      /**< Listen Nfc-F Discovery configuration parameters */
+    BitField_t LstnIsoDepConfig:1;    /**< Listen Iso-Dep Discovery configuration parameters */
+    BitField_t LstnNfcDepConfig:1;    /**< Listen Nfc-Dep Discovery configuration parameters */
+    BitField_t CommonConfig:1;        /**< Common Discovery configuration parameters */
+}phNciNfc_RfConfigInfo_t;             /**< Enable/Disable config */
 
 /**
  * \ingroup grp_nci_nfc

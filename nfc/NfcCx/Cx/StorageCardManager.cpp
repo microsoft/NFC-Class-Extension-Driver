@@ -27,9 +27,12 @@ StorageCardManager::StorageCardManager(
     : m_cRef(1),
       m_pStorageClass(NULL),
       m_pScInterface(pScInterface),
-      m_fTransparentSession(FALSE)
+      m_fTransparentSession(FALSE),
+      m_cbAtr(0)
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    ZeroMemory(m_rgbAtr, sizeof(m_rgbAtr));
 
     switch (DeviceType)
     {
@@ -100,6 +103,42 @@ Done:
     return pManager;
 }
 
+BOOLEAN
+StorageCardManager::AtrCached()
+{
+    return m_cbAtr != 0;
+}
+
+NTSTATUS
+StorageCardManager::GetCachedAtr(
+                                 _Out_writes_bytes_to_(cbBufferSize, *pcbReturnBufferSize) BYTE* pbBuffer,
+                                 _In_ DWORD cbBufferSize,
+                                 _Out_ DWORD* pcbReturnBufferSize
+                                 )
+{
+    NT_ASSERT(AtrCached());
+
+    if (cbBufferSize < m_cbAtr)
+    {
+        return STATUS_BUFFER_TOO_SMALL;
+    }
+
+    RtlCopyMemory(pbBuffer, m_rgbAtr, m_cbAtr);
+    *pcbReturnBufferSize = m_cbAtr;
+    return STATUS_SUCCESS;
+}
+
+void
+StorageCardManager::CacheAtr(
+                             _In_reads_bytes_(cbAtr) const BYTE* pbAtr,
+                             _In_ DWORD cbAtr
+                             )
+{
+    NT_ASSERT(cbAtr <= sizeof(m_rgbAtr));
+    RtlCopyMemory(m_rgbAtr, pbAtr, cbAtr);
+    m_cbAtr = cbAtr;
+}
+
 ApduResult
 StorageCardManager::ValidateParameters(
                                        _In_opt_ BYTE *dataBuffer,
@@ -119,6 +158,7 @@ StorageCardManager::ValidateParameters(
     TRACE_FUNCTION_EXIT_DWORD(LEVEL_VERBOSE, (DWORD)retValue);
     return retValue;
 }
+
 ApduResult
 StorageCardManager::GetCommandFromAPDU(
                                         _In_reads_bytes_(cbSize) const BYTE *pbDataBuffer,

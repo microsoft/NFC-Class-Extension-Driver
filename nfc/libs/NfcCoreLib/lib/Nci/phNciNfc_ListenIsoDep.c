@@ -4,7 +4,7 @@
 *              Original code Copyright (c), NXP Semiconductors
 */
 
-#include <phNciNfc_Pch.h>
+#include "phNciNfc_Pch.h"
 
 #include "phNciNfc_ListenIsoDep.tmh"
 

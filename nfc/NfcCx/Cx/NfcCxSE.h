@@ -302,6 +302,16 @@ NfcCxSEInterfaceValidateEventType(
             eEventType == HceDeactivated);
 }
 
+BOOLEAN FORCEINLINE
+NfcCxSEInterfaceValidateEmulationMode(
+    _In_ SECURE_ELEMENT_CARD_EMULATION_MODE eMode
+    )
+{
+    return (eMode == EmulationOff ||
+            eMode == EmulationOnPowerIndependent ||
+            eMode == EmulationOnPowerDependent);
+}
+
 phLibNfc_eSE_ActivationMode FORCEINLINE
 NfcCxSEInterfaceGetActivationMode(
     _In_ SECURE_ELEMENT_CARD_EMULATION_MODE eMode

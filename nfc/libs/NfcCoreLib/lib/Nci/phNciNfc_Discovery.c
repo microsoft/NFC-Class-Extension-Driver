@@ -915,6 +915,7 @@ static NFCSTATUS phNciNfc_StoreRfTechParams(uint8_t bBuffLen, uint8_t *pBuff,
     switch(pRemDevInfo->eRFTechMode)
     {
         case phNciNfc_NFCA_Poll:
+        case phNciNfc_NFCA_Kovio_Poll:
         case phNciNfc_NFCA_Active_Poll:
         if(bBuffLen >= PHNCINFC_NFCAPOLL_MINLEN)
         {
@@ -1158,6 +1159,25 @@ NFCSTATUS phNciNfc_UpdateDiscConfigParams(void *pNciHandle,
             wStatus = NFCSTATUS_INVALID_PARAMETER;
         }
     }
+
+    /* Check whether Polling loop to be enabled for Kovio Technology */
+    if ((pPollConfig->EnableKovio) && (NFCSTATUS_SUCCESS == wStatus))
+    {
+        /* Validate the poll frequency */
+        if ((pPollConfig->bKovio_PollFreq != 0) &&
+            (pPollConfig->bKovio_PollFreq <= PHNCINFC_MAXDISCFREQ))
+        {
+            pNciContext->NciDiscContext.pDiscPayload[bIndex++] =
+                (uint8_t)phNciNfc_NFCA_Kovio_Poll;
+            pNciContext->NciDiscContext.pDiscPayload[bIndex++] =
+                (uint8_t)pNciContext->NciDiscContext.tConfig.bKovio_PollFreq;
+        }
+        else
+        {
+            wStatus = NFCSTATUS_INVALID_PARAMETER;
+        }
+    }
+
     if(NFCSTATUS_SUCCESS == wStatus)
     {
         if(1 == pPollConfig->ListenNfcA)
@@ -1554,6 +1574,7 @@ NFCSTATUS phNciNfc_ProcessActvNtf(void *pContext,void *pInfo,NFCSTATUS wStatus)
                         case phNciNfc_NFCF_Poll:
                         case phNciNfc_NFCF_Active_Poll:
                         case phNciNfc_NFCISO15693_Poll:
+                        case phNciNfc_NFCA_Kovio_Poll:
                             wActvStatus = phNciNfc_PollMgmt(pNciContext,pRemDevInfo,pTransInfo->pbuffer,
                                                         pTransInfo->wLength);
                             break;
@@ -1746,8 +1767,7 @@ NFCSTATUS phNciNfc_ProcessDeActvNtf(void* pContext, void *pInfo, NFCSTATUS statu
         }
 
         if((NULL == pTransInfo->pbuffer) ||(2 != pTransInfo->wLength)
-            || (PH_NCINFC_STATUS_OK != status)
-            )
+            || (PH_NCINFC_STATUS_OK != status))
         {
             wStatus = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_FAILED);
             PH_LOG_NCI_WARN_STR(" Invalid Notification!!");
@@ -1836,21 +1856,26 @@ NFCSTATUS phNciNfc_ProcessDeActvNtf(void* pContext, void *pInfo, NFCSTATUS statu
     return wStatus;
 }
 
-static void phNciNfc_TargetDiscoveryComplete(void *pContext,NFCSTATUS wStatus)
+static void phNciNfc_TargetDiscoveryComplete(void *pContext, NFCSTATUS wStatus)
 {
     NFCSTATUS wCompleteStatus = wStatus;
-    pphNciNfc_Context_t     pNciContext = pContext;
+    pphNciNfc_Context_t pNciContext = pContext;
     phNciNfc_NotificationInfo_t tInfo = {0};
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL != pNciContext)
     {
         if(NULL != pNciContext->tRegListInfo.pDiscoveryNotification)
         {
+            PH_LOG_NCI_INFO_STR("Discovery notification registered");
             tInfo.pDiscoveryInfo = &pNciContext->NciDiscContext.tDevInfo;
             pNciContext->tRegListInfo.pDiscoveryNotification(pNciContext->tRegListInfo.DiscoveryCtxt,\
                                                             eNciNfc_DiscoverNtf,\
                                                             &tInfo,wCompleteStatus);
         }
+    }
+    else
+    {
+        PH_LOG_NCI_WARN_STR("Context not available");
     }
     PH_LOG_NCI_FUNC_EXIT();
     return;

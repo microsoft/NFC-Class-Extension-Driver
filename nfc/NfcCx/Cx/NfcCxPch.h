@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     Precompiled Header for the NFC Class Extension driver
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -22,24 +22,27 @@ Environment:
 #include <malloc.h>
 #include <stddef.h>
 #include <devioctl.h>
-#include <wdf.h>
-#include <wdfcx.h>
-#include <wdfcxbase.h>
-#include <wdfdevicepri.h>
-#include <wdfiotargetpri.h>
-#define INIT_GUID
-#include <initguid.h>
 #include <ntassert.h>
 #include <setupapi.h>
+#include <objbase.h>
+#include <ncidef.h>
+#include <windows.devices.smartcards.h>
+
+#include <initguid.h>
+
+#include <winsmcrd.h>
 #include <nfpdev.h>
 #include <nfcsedev.h>
 #include <nfcdtadev.h>
-#include <winsmcrd.h>
+#include <nfcradiodev.h>
 
-#pragma warning(push)
-#pragma warning(disable:26071)
-#include <Ntintsafe.h>
-#pragma warning(pop)
+#include <wdf.h>
+
+#include <ntintsafe.h>
+
+// Avoid conflicts with ntdef.h
+#define _NTDEF_
+#include <ntstrsafe.h>
 
 //
 // LibNfc Headers
@@ -54,9 +57,9 @@ WDF_EXTERN_C_START
 #include <phLibNfc_ioctl.h>
 WDF_EXTERN_C_END
 
-#include <NciDef.h>
-#include <NfcRadioDev.h>
 #include <NfcCx.h>
+#include <WdmLinkedList.h>
+#include <WdfCxProxy.h>
 
 //
 // Forward declarations
@@ -94,8 +97,16 @@ DEFINE_GUID(GUID_NULL, 0,0,0,0,0,0,0,0,0,0,0);
 #define NFCCX_REG_LOG_DATA_MESSAGES             L"LogNciDataMessages"
 
 //
-// As per spec The maximum length of the 
-// Protocol component and sub type is 250 characters 
+// Volatile registry settings
+//
+#define NFCCX_REG_VOLATILE_SUB_KEY_NAME         L"VolatileParams"
+#define NFCCX_REG_NUM_DRIVER_RESTARTS           L"NumDriverRestarts"
+
+#define NFCCX_MAX_NUM_DRIVER_RESTARTS           5
+
+//
+// As per spec The maximum length of the
+// Protocol component and sub type is 250 characters
 //
 #define MAX_TYPE_LENGTH 250
 #define MIN_TYPE_LENGTH 1
@@ -151,7 +162,10 @@ typedef struct _NFCCX_DDI_MODULE {
 //
 // Local Includes
 //
+#ifdef EVENT_WRITE
 #include "NfcCx.Events.h"
+#endif
+
 #include "NfcCxUtils.h"
 
 #include "StorageCardManager.h"

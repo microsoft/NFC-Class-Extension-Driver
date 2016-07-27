@@ -30,7 +30,7 @@ Environment:
 #include <phNfcTypes_Mapping.h>
 
 #include <phNciNfcTypes.h>
-#include <phNciNfc.h>
+#include "phNciNfc.h"
 #include "phNciNfc_Context.h"
 #include "phNciNfc_Core.h"
 #include "phNciNfc_CoreStatus.h"

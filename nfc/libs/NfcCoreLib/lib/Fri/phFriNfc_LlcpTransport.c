@@ -2089,3 +2089,24 @@ phFriNfc_LlcpTransport_RecvFrom(
    PH_LOG_LLCP_FUNC_EXIT();
    return status;
 }
+
+NFCSTATUS
+phFriNfc_LlcpTransport_CancelPendingSend(
+    _Inout_ phFriNfc_LlcpTransport_Socket_t *pLlcpSocket)
+{
+    NFCSTATUS status = NFCSTATUS_SUCCESS;
+
+    PH_LOG_LLCP_FUNC_ENTRY();
+
+    if (pLlcpSocket == NULL)
+    {
+        status = PHNFCSTVAL(CID_FRI_NFC_LLCP_TRANSPORT, NFCSTATUS_INVALID_PARAMETER);
+    }
+    else
+    {
+        status = phFriNfc_Llcp_CancelPendingSend(pLlcpSocket->psTransport->pLlcp);
+    }
+
+    PH_LOG_LLCP_FUNC_EXIT();
+    return status;
+}

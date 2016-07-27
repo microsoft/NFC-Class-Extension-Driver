@@ -10,7 +10,7 @@
 
 /** Maximum size of NFCID1 - Mapped to UID value for type-A target */
 #define PH_NCINFCTYPES_MAX_UID_LENGTH           (0x0AU)
-#define PH_NCINFCTYPES_KOVIO_TAG_ID_LENGTH      (0x10) /**< Length of the Kovio tag barcode */
+#define PH_NCINFCTYPES_KOVIO_TAG_ID_LENGTH      (0x20)  /**< Max length of the Kovio tag barcode */
 #define PH_NCINFCTYPES_15693_UID_LENGTH         (0x08U) /**< Length of the Inventory bytes for ISO15693 Tag */
 
 /** Maximum length of ATR_RES (General Bytes) length expected */
@@ -91,6 +91,7 @@ typedef enum phNciNfc_RfProtocols
     phNciNfc_e_RfProtocolsNfcDepProtocol = 0x05, /**<NFC DEP protocol */
     phNciNfc_e_RfProtocols15693Protocol = 0x06,  /**<15693 protocol */
     phNciNfc_e_RfProtocolsMifCProtocol = 0x80,   /**<Mifare Classic protocol */
+    phNciNfc_e_RfProtocolsKovioProtocol = 0x8A,  /**<Kovio protocol */
 } phNciNfc_RfProtocols_t;
 
 /**
@@ -123,7 +124,8 @@ typedef enum phNciNfc_RfTechMode
     phNciNfc_NFCF_Listen = 0x82,        /**<Nfc F Technology in Listen Mode */
     phNciNfc_NFCA_Active_Listen = 0x83, /**<Nfc A Technology in Active Listen Mode */
     phNciNfc_NFCF_Active_Listen = 0x85, /**<Nfc F Technology in Active Listen Mode */
-    phNciNfc_NFCISO15693_Active_Listen = 0x86  /**<Nfc ISO15693 Technology in Listen Mode */
+    phNciNfc_NFCISO15693_Active_Listen = 0x86,  /**<Nfc ISO15693 Technology in Listen Mode */
+    phNciNfc_NFCA_Kovio_Poll = 0x77,    /**<Nfc Kovio Technology in Poll Mode */
 } phNciNfc_RfTechMode_t;
 
 /**

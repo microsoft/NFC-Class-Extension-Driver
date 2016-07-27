@@ -19,25 +19,14 @@ Environment:
 #include "NfcCxPch.h"
 #include "driver.tmh"
 
+#ifdef TELEMETRY
 // Allocate storage for the provider and define a corresponding TraceLoggingHProvider variable
-TRACELOGGING_DEFINE_PROVIDER(g_hNfcCxProvider,
+TRACELOGGING_DEFINE_PROVIDER(
+    g_hNfcCxProvider,
     "Microsoft.Windows.Nfc.NfcCx",
     (0x6E6BACF6, 0x5635, 0x4670, 0xBE, 0xdf, 0x93, 0xf5, 0x5a, 0x82, 0x2f, 0x4b),
     TraceLoggingOptionMicrosoftTelemetry());
-
-WDF_CLASS_LIBRARY_INFO WdfClassLibraryInfo =
-{
-    sizeof(WDF_CLASS_LIBRARY_INFO),    // Size
-    {
-        1,  // Major
-        0,  // Minor
-        0,  // Buid
-    },                                  // Version
-    NfcCxInitialize,                    // ClassLibraryInitialize
-    NfcCxDeinitialize,                  // ClassLibraryDeinitialize
-    NfcCxBindClient,                    // ClassLibraryBindClient
-    NfcCxUnbindClient,                  // ClassLibraryUnbindClient
-};
+#endif
 
 BOOL WINAPI
 DllMain(
@@ -53,24 +42,36 @@ DllMain(
 #ifndef WPP_MACRO_USE_KM_VERSION_FOR_UM
         WPP_INIT_TRACING(NFCCX_TRACING_ID);
 #endif
+
+#ifdef EVENT_WRITE
         EventRegisterMicrosoft_Windows_NFC_ClassExtension();
+#endif
+
+#ifdef TELEMETRY
         TraceLoggingRegister(g_hNfcCxProvider);
+#endif
     }
     else if (DLL_PROCESS_DETACH == Reason) {
 #ifndef WPP_MACRO_USE_KM_VERSION_FOR_UM
         WPP_CLEANUP();
 #endif
+
+#ifdef EVENT_WRITE
         EventUnregisterMicrosoft_Windows_NFC_ClassExtension();
+#endif
+
+#ifdef TELEMETRY
         TraceLoggingUnregister(g_hNfcCxProvider);
+#endif
     }
 
     return TRUE;
 }
 
 NTSTATUS
-DriverEntry (
-    _In_ PDRIVER_OBJECT  DriverObject,
-    _In_ PUNICODE_STRING  RegistryPath
+DriverEntry(
+    _In_ PDRIVER_OBJECT DriverObject,
+    _In_ PUNICODE_STRING RegistryPath
     )
 /*++
 
@@ -91,7 +92,7 @@ Return Value:
 
 --*/
 {
-    NTSTATUS status;
+    NTSTATUS status = STATUS_SUCCESS;
     WDF_DRIVER_CONFIG config;
     WDFDRIVER hDriver;
 
@@ -112,18 +113,22 @@ Return Value:
                              &config,
                              &hDriver);
     if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "WdfDriverCreate failed status = %!STATUS!", status);
+        TRACE_LINE(LEVEL_ERROR, "WdfDriverCreate failed, status = %!STATUS!", status);
 #ifdef WPP_MACRO_USE_KM_VERSION_FOR_UM
         WPP_CLEANUP(DriverObject);
 #endif
         goto Done;
     }
 
-    status = WdfRegisterClassLibrary(&WdfClassLibraryInfo,
-                                     RegistryPath,
-                                     NULL);
+    status = CxProxyWdfRegisterClassLibrary(RegistryPath,
+                                            NULL,
+                                            1, 0, 0,
+                                            NfcCxInitialize,
+                                            NfcCxDeinitialize,
+                                            NfcCxBindClient,
+                                            NfcCxUnbindClient);
     if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "WdfRegisterClassLibrary failed status = %!STATUS!", status);
+        TRACE_LINE(LEVEL_ERROR, "WdfRegisterClassLibrary failed, status = %!STATUS!", status);
 #ifdef WPP_MACRO_USE_KM_VERSION_FOR_UM
         WPP_CLEANUP(DriverObject);
 #endif
@@ -132,6 +137,7 @@ Return Value:
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
     return status;
 }
 
@@ -167,6 +173,53 @@ Return Value:
 #endif
 }
 
+VOID NfcCxDeviceSetFailed(
+    _In_ WDFDEVICE Device
+    )
+/*++
+
+Routine Description:
+
+    This routine informs the WDF framework that the driver encountered a
+    hardware or software error that is associated with the specified device. It
+    will try to restart the driver if the restart count has not reached the max
+    count.
+
+Arguments:
+
+    Device - WDF device to set as failed
+
+Return Value:
+
+    None
+
+--*/
+{
+    PNFCCX_FDO_CONTEXT fdoContext;
+    NTSTATUS status;
+    WDF_DEVICE_FAILED_ACTION failedAction;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    fdoContext = NfcCxFdoGetContext(Device);
+
+    WdfWaitLockAcquire(fdoContext->HasFailedWaitLock, NULL);
+
+    if (!fdoContext->HasFailed) {
+        fdoContext->HasFailed = TRUE;
+
+        fdoContext->NumDriverRestarts++;
+        status = NfcCxFdoWriteCxDeviceVolatileRegistrySettings(Device, &fdoContext->NumDriverRestarts);
+
+        failedAction = (NT_SUCCESS(status) && fdoContext->NumDriverRestarts < NFCCX_MAX_NUM_DRIVER_RESTARTS) ? WdfDeviceFailedAttemptRestart : WdfDeviceFailedNoRestart;
+        WdfDeviceSetFailed(Device, failedAction);
+    }
+
+    WdfWaitLockRelease(fdoContext->HasFailedWaitLock);
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+}
+
 NTSTATUS
 NfcCxEvtDeviceInitConfig(
     _In_ PNFCCX_DRIVER_GLOBALS NfcCxGlobals,
@@ -191,11 +244,10 @@ Return Value:
 
 --*/
 {
-    NTSTATUS                          status = STATUS_SUCCESS; 
-    WDFCX_FILEOBJECT_CONFIG           fileConfig;
-    WDF_OBJECT_ATTRIBUTES             fileObjectAttributes;
-    PWDFCXDEVICE_INIT                 exDeviceInit;
-    PNFCCX_CLIENT_GLOBALS             nfcCxClientGlobal;
+    NTSTATUS status = STATUS_SUCCESS;
+    PNFCCX_CLIENT_GLOBALS nfcCxClientGlobals;
+    PWDFCXDEVICE_INIT cxDeviceInit;
+    WDF_OBJECT_ATTRIBUTES fileObjectAttributes;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -221,7 +273,7 @@ Return Value:
         goto Done;
     }
 
-    nfcCxClientGlobal = GetPrivateGlobals(NfcCxGlobals);
+    nfcCxClientGlobals = GetPrivateGlobals(NfcCxGlobals);
 
     //
     // The CX is the power policy owner of this stack.
@@ -231,44 +283,35 @@ Return Value:
     //
     // Allocate the CX DeviceInit
     //
-    exDeviceInit = WdfCxDeviceInitAllocate(DeviceInit);
-    if (NULL == exDeviceInit) {
+    cxDeviceInit = CxProxyWdfCxDeviceInitAllocate(DeviceInit);
+    if (NULL == cxDeviceInit) {
         status = STATUS_INSUFFICIENT_RESOURCES;
-        TRACE_LINE(LEVEL_ERROR,
-            "Failed WdfCxDeviceInitAllocate, status=%!STATUS!", status);
+        TRACE_LINE(LEVEL_ERROR, "WdfCxDeviceInitAllocate failed, %!STATUS!", status);
         goto Done;
     }
 
     //
     // Enable SelfIoTarget
     //
-    WdfDeviceInitAllowSelfIoTarget(DeviceInit);
-
-    //
-    // Initialize WDF_FILEOBJECT_CONFIG_INIT struct to tell the
-    // per handle (fileobject) context.
-    //
-    WDFCX_FILEOBJECT_CONFIG_INIT(
-                            &fileConfig,
-                            NfcCxEvtDeviceFileCreate,
-                            NfcCxEvtFileClose,
-                            WDF_NO_EVENT_CALLBACK // not interested in Cleanup
-                            );
+    CxProxyWdfDeviceInitAllowSelfIoTarget(DeviceInit);
 
     WDF_OBJECT_ATTRIBUTES_INIT(&fileObjectAttributes);
     fileObjectAttributes.SynchronizationScope = WdfSynchronizationScopeNone;
 
     WDF_OBJECT_ATTRIBUTES_SET_CONTEXT_TYPE(&fileObjectAttributes,
-                                            NFCCX_FILE_CONTEXT);
+                                           NFCCX_FILE_CONTEXT);
 
-    WdfCxDeviceInitSetFileObjectConfig(exDeviceInit,
-                                       &fileConfig,
-                                       &fileObjectAttributes);
+    CxProxyWdfCxDeviceInitSetFileObjectConfig(cxDeviceInit,
+                                              &fileObjectAttributes,
+                                              NfcCxEvtDeviceFileCreate,
+                                              NfcCxEvtFileClose,
+                                              WDF_NO_EVENT_CALLBACK); // not interested in EvtFileCleanup
 
     TRACE_LINE(LEVEL_INFO, "DriverFlags=0x%x PowerIdleType=%d PowerIdleTimeout=%d",
                             Config->DriverFlags, Config->PowerIdleType, Config->PowerIdleTimeout);
 
-    TraceLoggingWrite(g_hNfcCxProvider,
+    TraceLoggingWrite(
+        g_hNfcCxProvider,
         "NfcCxClientConfig",
         TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
         TraceLoggingHexInt32(Config->DriverFlags, "DriverFlags"),
@@ -278,13 +321,14 @@ Return Value:
     //
     // Save the client driver configs
     //
-    RtlCopyMemory(&nfcCxClientGlobal->Config, Config, Config->Size);
+    RtlCopyMemory(&nfcCxClientGlobals->Config, Config, Config->Size);
 
 Done:
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -302,7 +346,7 @@ Routine Description:
 
 Arguments:
 
-    NfcCxGlobal - CX global pointer
+    NfcCxGlobals - CX global pointer
     Device - WDF device to initialize
 
 Return Value:
@@ -341,7 +385,9 @@ Return Value:
         TRACE_LINE(LEVEL_ERROR, "Failed to allocate the client context");
         goto Done;
     }
+
     fdoContext->Device = Device;
+    fdoContext->HasFailed = FALSE;
     fdoContext->NfpRadioInterfaceCreated = FALSE;
     fdoContext->NfpPowerOffSystemOverride = FALSE;
     fdoContext->NfpPowerOffPolicyOverride = FALSE;
@@ -351,10 +397,18 @@ Return Value:
     fdoContext->SEPowerOffPolicyOverride = FALSE;
     fdoContext->SEPowerPolicyReferences = 0;
     fdoContext->NfcCxClientGlobal = nfcCxClientGlobal;
+    fdoContext->LogNciDataMessages = FALSE;
+    fdoContext->NumDriverRestarts = NFCCX_MAX_NUM_DRIVER_RESTARTS;
 
     status = NfcCxFdoReadCxDriverRegistrySettings(&fdoContext->LogNciDataMessages);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "NfcCxFdoReadCxDriverRegistrySettings failed, %!STATUS!", status);
+        goto Done;
+    }
+
+    status = NfcCxFdoReadCxDeviceVolatileRegistrySettings(Device, &fdoContext->NumDriverRestarts);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "NfcCxFdoReadCxDriverVolatileRegistrySettings failed, %!STATUS!", status);
         goto Done;
     }
 
@@ -365,6 +419,16 @@ Return Value:
                                 &fdoContext->PowerPolicyWaitLock);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to create the PowerPolicy WaitLock, %!STATUS!", status);
+        goto Done;
+    }
+
+    WDF_OBJECT_ATTRIBUTES_INIT(&objectAttrib);
+    objectAttrib.ParentObject = Device;
+
+    status = WdfWaitLockCreate(&objectAttrib,
+                                &fdoContext->HasFailedWaitLock);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to create the HasFailed WaitLock, %!STATUS!", status);
         goto Done;
     }
     
@@ -436,8 +500,8 @@ Return Value:
     // Assign our internal queue as the default queue for the SelfIoTarget. Any IO
     // sent to the SelfIoTarget would be dispatched from this queue.
     //
-    status = WdfIoTargetSelfAssignDefaultIoQueue(WdfDeviceGetSelfIoTarget(Device),
-                                                 fdoContext->SelfQueue);
+    status = CxProxyWdfIoTargetSelfAssignDefaultIoQueue(CxProxyWdfDeviceGetSelfIoTarget(Device),
+                                                        fdoContext->SelfQueue);
     if (!NT_SUCCESS (status)) {
         TRACE_LINE(LEVEL_ERROR, "WdfIoTargetSelfAssignDefaultIoQueue failed %!STATUS!", status);
         goto Done;
@@ -455,10 +519,11 @@ Return Value:
         //
         status = NfcCxFdoReadPersistedDeviceRegistrySettings(fdoContext);
         if (!NT_SUCCESS(status)) {
-            TRACE_LINE(LEVEL_ERROR, "NfcCxFdoReadPersistedDeviceRegistrySettings, %!STATUS!", status);
+            TRACE_LINE(LEVEL_ERROR, "NfcCxFdoReadPersistedDeviceRegistrySettings failed, %!STATUS!", status);
             goto Done;
         }
 
+#ifdef EVENT_WRITE
         //
         // Log all settings that could have been overridden from the registry.
         //
@@ -466,6 +531,7 @@ Return Value:
                                                   fdoContext->NfpPowerOffSystemOverride,
                                                   fdoContext->SEPowerOffPolicyOverride,
                                                   fdoContext->SEPowerOffSystemOverride);
+#endif
 
         //
         // Check the currently required power state
@@ -504,8 +570,9 @@ Return Value:
 Done:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -523,7 +590,7 @@ Routine Description:
 
 Arguments:
 
-    NfcCxGlobal - CX global pointer
+    NfcCxGlobals - CX global pointer
     Device - WDF device to initialize
 
 Return Value:
@@ -554,8 +621,9 @@ Return Value:
 Done:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -574,7 +642,7 @@ Routine Description:
 
 Arguments:
 
-    NfcCxGlobal - CX global pointer
+    NfcCxGlobals - CX global pointer
     Device - WDF device to initialize
     NciCxHardwareEventParams - A pointer to a hardware event description structure
 
@@ -631,6 +699,7 @@ Return Value:
 Done:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
 
     return status;
@@ -653,7 +722,7 @@ Routine Description:
 
 Arguments:
 
-    NfcCxGlobal - CX global pointer
+    NfcCxGlobals - CX global pointer
     Device - WDF device to initialize
     Memory - A pointer to a WDFMEMORY object that contains the 
              content of the read notification
@@ -713,7 +782,7 @@ Routine Description:
 
 Arguments:
 
-    NfcCxGlobal - CX global pointer
+    NfcCxGlobals - CX global pointer
     Device - WDF device to initialize
     Config - Pointer to a structure containing the Discovery configuration
 
@@ -772,7 +841,7 @@ Routine Description:
 
 Arguments:
 
-    NfcCxGlobal - CX global pointer
+    NfcCxGlobals - CX global pointer
     Device - WDF device to initialize
     Config - Pointer to a structure containing the LLCP configuration
 
@@ -832,7 +901,7 @@ Routine Description:
 
 Arguments:
 
-    NfcCxGlobal - CX global pointer
+    NfcCxGlobals - CX global pointer
     Device - WDF device to initialize
     Sequence - The sequence to register
     EvtNfcCxSequenceHandler - The sequence handler callback
@@ -898,7 +967,7 @@ Routine Description:
 
 Arguments:
 
-    NfcCxGlobal - CX global pointer
+    NfcCxGlobals - CX global pointer
     Device - WDF device to initialize
     Sequence - The sequence to unregister
 
@@ -969,12 +1038,15 @@ NfcCxDeinitialize(
 
 NTSTATUS
 NfcCxBindClient(
-    PWDF_CLASS_BIND_INFO ClassInfo,
-    PWDF_COMPONENT_GLOBALS ClientGlobals
+    _In_ PVOID ClassBindInfo,
+    _In_ ULONG FunctionTableCount,
+    _In_count_(FunctionTableCount) PFN_WDF_CLASS_EXPORT* FunctionTable
     )
 {
     NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_CLIENT_GLOBALS pGlobals;
+    errno_t err = 0;
+    PNFCCX_DRIVER_GLOBALS* ppPublicGlobals = (PNFCCX_DRIVER_GLOBALS*)ClassBindInfo;
+    PNFCCX_CLIENT_GLOBALS pPrivateGlobals = NULL;
 
     static const PFN_NFC_CX exports[] =
     {
@@ -989,30 +1061,42 @@ NfcCxBindClient(
         (PFN_NFC_CX)NfcCxEvtUnregisterSequenceHandler,
     };
 
-    UNREFERENCED_PARAMETER(ClientGlobals);
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
-    if (ClassInfo->FunctionTableCount != ARRAYSIZE(exports)) {
+
+    *ppPublicGlobals = NULL;
+
+    if (FunctionTableCount != ARRAYSIZE(exports)) {
+        TRACE_LINE(LEVEL_ERROR,
+                   "Function table size from client does not equal size from CX. Client size: %u, CX size: %u",
+                   FunctionTableCount,
+                   ARRAYSIZE(exports));
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
 
-    CopyMemory(ClassInfo->FunctionTable, &exports[0], sizeof(exports));
+    err = memcpy_s(FunctionTable,
+                   FunctionTableCount * sizeof(PFN_WDF_CLASS_EXPORT),
+                   exports,
+                   sizeof(exports));
+    if (err != 0) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to copy functions into function table. Error: %d", err);
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
 
-    pGlobals = (PNFCCX_CLIENT_GLOBALS) malloc(sizeof(NFCCX_CLIENT_GLOBALS));
-    if (pGlobals == NULL) {
+    pPrivateGlobals = (PNFCCX_CLIENT_GLOBALS)malloc(sizeof(NFCCX_CLIENT_GLOBALS));
+    if (pPrivateGlobals == NULL) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to allocate memory for private NfcCx globals");
         status = STATUS_INSUFFICIENT_RESOURCES;
         goto Done;
     }
 
-    RtlZeroMemory(pGlobals, sizeof(NFCCX_CLIENT_GLOBALS));
-    pGlobals->Signature = GLOBALS_SIG;
+    RtlZeroMemory(pPrivateGlobals, sizeof(NFCCX_CLIENT_GLOBALS));
+    pPrivateGlobals->Signature = GLOBALS_SIG;
 
-    *((PNFCCX_DRIVER_GLOBALS*)ClassInfo->ClassBindInfo) = &pGlobals->Public;
+    *ppPublicGlobals = &pPrivateGlobals->Public;
 
 Done:
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 
     return status;
@@ -1020,39 +1104,31 @@ Done:
 
 VOID
 NfcCxUnbindClient(
-    PWDF_CLASS_BIND_INFO ClassInfo,
-    PWDF_COMPONENT_GLOBALS ClientGlobals
+    _In_ PVOID ClassBindInfo
     )
 {
     NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_CLIENT_GLOBALS pGlobals;
-    UNREFERENCED_PARAMETER(ClientGlobals);
-    
+    PNFCCX_DRIVER_GLOBALS* ppPublicGlobals = (PNFCCX_DRIVER_GLOBALS*)ClassBindInfo;
+    PNFCCX_CLIENT_GLOBALS pPrivateGlobals = NULL;
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (ClassInfo->ClassBindInfo == NULL) {
-        status = STATUS_INSUFFICIENT_RESOURCES;
-        goto Done;
-    }
-
-    if (!VerifyPrivateGlobals(*((PNFCCX_DRIVER_GLOBALS*)ClassInfo->ClassBindInfo))) {
+    if (*ppPublicGlobals == NULL || !VerifyPrivateGlobals(*ppPublicGlobals)) {
+        TRACE_LINE(LEVEL_ERROR, "Invalid CX global pointer");
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
 
-    pGlobals = GetPrivateGlobals(
-        *((PNFCCX_DRIVER_GLOBALS*)ClassInfo->ClassBindInfo)
-        );
-
-    if (pGlobals == NULL) {
-        status = STATUS_INSUFFICIENT_RESOURCES;
+    pPrivateGlobals = GetPrivateGlobals(*ppPublicGlobals);
+    if (pPrivateGlobals == NULL) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to get private globals from CX global pointer");
+        status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
 
-    free (pGlobals);
-    *((PVOID*)ClassInfo->ClassBindInfo) = NULL;
+    free(pPrivateGlobals);
+    *ppPublicGlobals = NULL;
 
 Done:
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }

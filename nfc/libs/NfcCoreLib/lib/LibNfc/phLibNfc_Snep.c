@@ -237,6 +237,7 @@ NFCSTATUS phLibNfc_SnepServer_Init(phLibNfc_SnepConfig_t *pConfigInfo,
 
         if (NULL != pServerSession)
         {
+            pServerSession->bDtaFlag = pConfigInfo->bDtaFlag;
             pServerSession->sWorkingBuffer.buffer = (uint8_t*)phOsalNfc_GetMemory((pConfigInfo->sOptions.miu *pConfigInfo->sOptions.rw)+ pConfigInfo->sOptions.miu);
             if (NULL != pServerSession->sWorkingBuffer.buffer)
             {
@@ -474,6 +475,7 @@ NFCSTATUS phLibNfc_SnepClient_Init( phLibNfc_SnepConfig_t *pConfigInfo,
 
         if (NULL != pClientSession)
         {
+            pClientSession->bDtaFlag = pConfigInfo->bDtaFlag;
             pClientSession->sWorkingBuffer.buffer = (uint8_t*)phOsalNfc_GetMemory((pConfigInfo->sOptions.miu) *(pConfigInfo->sOptions.rw)+pConfigInfo->sOptions.miu);
             if (NULL != pClientSession->sWorkingBuffer.buffer)
             {

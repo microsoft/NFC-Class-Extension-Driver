@@ -446,6 +446,7 @@ static NFCSTATUS phLibNfc_StateMachineHandleIntEvent(void *pContext,
                                 )
 {
     pphLibNfc_Context_t pCtx = pContext;
+    phLibNfc_State_t CurrState = phLibNfc_StateInvalid;
     phLibNfc_State_t TrgtState = phLibNfc_StateInvalid;
     NFCSTATUS Result = 0;
     UNUSED(Param1);
@@ -469,42 +470,45 @@ static NFCSTATUS phLibNfc_StateMachineHandleIntEvent(void *pContext,
                 if(pCtx->StateContext.Flag == phLibNfc_StateTrasitionBusy)
                 {
                     /*Check for expected internal event*/
-                    /*if expected event is same then status is sucess else....*/
+                    /*if expected event is same then status is success else....*/
                     TrgtState = phLibNfc_IntEvent2State[pCtx->StateContext.TrgtState][TrigEvent - phLibNfc_EVENT_USER_MAX -1];
                 }else if((pCtx->StateContext.Flag == phLibNfc_StateTransitionComplete) ||
                     (pCtx->StateContext.Flag == phLibNfc_StateTrasitionInvalid))
                 {
-                    /*Call Entry function or may needed to have connector*/
-                    TrgtState = phLibNfc_IntEvent2State[pCtx->StateContext.CurrState][TrigEvent - phLibNfc_EVENT_USER_MAX - 1];
-                    /*TrgtState May be connector*/
-                    TrgtState = phLibNfc_FindTrgtState(pCtx, pCtx->StateContext.CurrState, TrgtState,Param2);
-                    if(pCtx->StateContext.CurrState != TrgtState)/*Event triggered by lowr layer needs transition*/
+                    CurrState = pCtx->StateContext.CurrState;
+
+                    if(CurrState < phLibNfc_STATE_MAX && CurrState >= phLibNfc_StateIdle)
                     {
-                        if (TrgtState >= phLibNfc_StateNone)
+                        /*Call Entry function or may needed to have connector*/
+                        TrgtState = phLibNfc_IntEvent2State[CurrState][TrigEvent - phLibNfc_EVENT_USER_MAX - 1];
+                        /*TrgtState May be connector*/
+                        TrgtState = phLibNfc_FindTrgtState(pCtx, CurrState, TrgtState, Param2);
+
+                        if(TrgtState < phLibNfc_STATE_MAX && TrgtState >= phLibNfc_StateIdle)
                         {
-                            Result = NFCSTATUS_INVALID_STATE;
-                        }else
-                        {
-                            _Analysis_assume_(TrgtState >= phLibNfc_StateIdle);
-                            /*execute the transition and event handler function*/
-                            /* transition to next */
-                            if(NULL != phLibNfc_StateTransition[pCtx->StateContext.CurrState][TrgtState])
+                            if (CurrState != TrgtState && /*Event triggered by lower layer needs transition*/
+                                (NULL != phLibNfc_StateTransition[CurrState][TrgtState]))
                             {
-                                Result = phLibNfc_StateTransition[pCtx->StateContext.CurrState][TrgtState](pCtx, Param1, Param2, Param3);
+                                /*execute the transition and event handler function*/
+                                /*transition to next*/
+                                Result = phLibNfc_StateTransition[CurrState][TrgtState](pCtx, Param1, Param2, Param3);
                             }
                         }
+                        else
+                        {
+                            Result = NFCSTATUS_INVALID_STATE;
+                            PH_LOG_LIBNFC_CRIT_STR("Transition can't be executed to TrgtState = %!phLibNfc_State!", TrgtState);
+                            /*No Action to be taken Event occurred can not be handled in this state*/
+                            /*set to invalid state*/
+                        }
                     }
-                    if (TrgtState >= phLibNfc_StateNone)
+                    else
                     {
                         Result = NFCSTATUS_INVALID_STATE;
-                        /*No Action to be taken Event ocuured can not be handled in this state*/
-                        /*set to invalid state*/
-                    }else
-                    {
-                        /*execute the transition and event handler function*/
+                        PH_LOG_LIBNFC_CRIT_STR("Unexpected CurrState = %!phLibNfc_State!", CurrState);
                     }
                 }
-                if ((TrgtState < phLibNfc_STATE_MAX) && (TrgtState >= 0))
+                if ((TrgtState < phLibNfc_STATE_MAX) && (TrgtState >= phLibNfc_StateIdle))
                 {
                     /*Call entry function*/
                     if(NULL != phLibNfc_StateFptr[TrgtState].pfEntry)
@@ -515,7 +519,7 @@ static NFCSTATUS phLibNfc_StateMachineHandleIntEvent(void *pContext,
                 }
                 else
                 {
-                    PH_LOG_LIBNFC_CRIT_U32MSG("Out of bound value of %!phLibNfc_State!",TrgtState);
+                    PH_LOG_LIBNFC_CRIT_STR("Out of bound value of %!phLibNfc_State!",TrgtState);
                 }
                 if(phLibNfc_StateDummy == TrgtState ||
                    phLibNfc_StateNone == TrgtState )
@@ -786,6 +790,7 @@ static uint8_t phLibNfc_CheckCurrentMode(pphLibNfc_LibContext_t pLibCtx)
                     case phNfc_eFelica_PICC:
                     case phNfc_eJewel_PICC:
                     case phNfc_eISO15693_PICC:
+                    case phNfc_eKovio_PICC:
                     case phNfc_eNfcIP1_Target:
                         bReturn = PH_LIBNFC_CURRENTMODE_POLL;
                         break;
@@ -837,6 +842,7 @@ static uint8_t phLibNfc_ConnIsRfListnerRegisterd(void *pContext,void *pInfo)
             switch(pNciDevInfo->pRemDevList[bIndex]->eRFTechMode)
             {
                 case phNciNfc_NFCA_Poll:
+                case phNciNfc_NFCA_Kovio_Poll:
                 case phNciNfc_NFCA_Active_Poll:
                 {
                     wStatus = phLibNfc_ChkRfListnerforNFCAPoll(pContext,\
@@ -1104,6 +1110,14 @@ static NFCSTATUS phLibNfc_RfListnerRegisterd(void *pContext,uint32_t DevType,uin
                 }
             }
             break;
+        case phNfc_eKovio_PICC:
+        {
+            if (pLibContext->RegNtfType.Kovio != TRUE)
+            {
+                wStatus = NFCSTATUS_FAILED;
+            }
+        }
+        break;
         default:
             {
                 wStatus = NFCSTATUS_FAILED;
@@ -1208,7 +1222,8 @@ uint8_t phLibNfc_ChkDiscoveryTypeAndMode(void *DidcMode,void *pInfo, void *TrigE
            (1 == pPollInfo->EnableIso14443B) ||   \
            (1 == pPollInfo->EnableFelica212) ||   \
            (1 == pPollInfo->EnableFelica424) ||   \
-           (1 == pPollInfo->EnableIso15693))
+           (1 == pPollInfo->EnableIso15693)  ||   \
+           (1 == pPollInfo->EnableKovio))
         {
             PH_LOG_LIBNFC_INFO_STR("Poll is enabled");
             bRetVal = 0;
@@ -1286,7 +1301,8 @@ uint8_t phLibNfc_ChkDiscoveryType(void *pContext,void *pInfo)
            (1 == pPollInfo->EnableIso14443B) ||   \
            (1 == pPollInfo->EnableFelica212) ||   \
            (1 == pPollInfo->EnableFelica424) ||   \
-           (1 == pPollInfo->EnableIso15693))
+           (1 == pPollInfo->EnableIso15693)  ||   \
+           (1 == pPollInfo->EnableKovio))
         {
             PH_LOG_LIBNFC_INFO_STR("Poll is enabled");
             bRetVal = 0;
@@ -1540,6 +1556,21 @@ NFCSTATUS phLibNfc_ChkRfListnerforNFCAPoll(void *pContext,\
                 wStatus = NFCSTATUS_FAILED;
             }
 
+        }
+        else if (pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsKovioProtocol)
+        {
+            LibNfc_RemDevType = phNfc_eKovio_PICC;
+            wStatus = phLibNfc_RfListnerRegisterd(pContext, \
+                                                  ((uint32_t )LibNfc_RemDevType), \
+                                                  bSak);
+            if (wStatus == NFCSTATUS_SUCCESS)
+            {
+                pLibContext->DiscoverdNtfType.Kovio = 1;
+            }
+            else
+            {
+                wStatus = NFCSTATUS_FAILED;
+            }
         }
         else if(pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsIsoDepProtocol)
         {
@@ -1957,6 +1988,11 @@ static NFCSTATUS phLibNfc_MapRemDevType(phNciNfc_RFDevType_t NciNfc_RemDevType, 
             case phNciNfc_eNfcIP1_Initiator:
             {
                 *LibNfc_RemDevType = phNfc_eNfcIP1_Initiator;
+            }
+            break;
+            case phNciNfc_eKovio_PICC:
+            {
+                *LibNfc_RemDevType = phNfc_eKovio_PICC;
             }
             break;
             default:

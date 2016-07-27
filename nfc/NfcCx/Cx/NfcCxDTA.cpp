@@ -4682,10 +4682,9 @@ NfcCxDTAInterfaceMapRemoteDevInfo(
             RemoteDevInfo->eRFTech = (phNfc_eISO14443_A_PCD == remoteDevInfo->RemDevType) ? NFC_RF_TECHNOLOGY_A : NFC_RF_TECHNOLOGY_B;
             RemoteDevInfo->cbUid = 0;
             break;
-
+        case phNfc_eKovio_PICC:
         case phNfc_eISO15693_PICC:
         case phNfc_eEpcGen2_PICC:
-        case phNfc_eKovio_PICC:
         case phNfc_eISO14443_BPrime_PICC:
         case phNfc_eISO14443_B_PICC:
         case phNfc_ePICC_DevType:

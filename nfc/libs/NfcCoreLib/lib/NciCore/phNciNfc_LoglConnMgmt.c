@@ -389,7 +389,7 @@ NFCSTATUS phNciNfc_RegForConnCredits(
 
             TimerId = phOsalNfc_Timer_Create();
 
-            if (0 == TimerId)
+            if (PH_OSALNFC_TIMER_ID_INVALID == TimerId)
             {
                 PH_LOG_NCI_WARN_STR("Credit wait Timer Create failed!!");
                 wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;

@@ -60,7 +60,7 @@ enum ApduResult
     RESULT_ERROR
 };
 
-typedef enum PcscInsByte
+typedef enum _PcscInsByte
 {
     PcscMifareLoadAuthKeyCmd = 0x82,
     PcscMifareGenAuthCmd = 0x86,
@@ -74,7 +74,7 @@ typedef enum PcscInsByte
     PcscSwitchProtocolCmd = 0xFEFC,
     PcscIncrementDecrementCmd = 0xFEFD,
     PcscInvalidCmd = 0xFF
-};
+} PcscInsByte;
 
 typedef struct _PcscAuthentication
 {
@@ -98,7 +98,7 @@ typedef struct _PcscCommandApduInfo
     unsigned char APDULen;
 } PcscCommandApduInfo, *PPcscCommandApduInfo;
 
-typedef enum PcscManageSession
+typedef enum _PcscManageSession
 {
     VersionCmd = 0x80,
     StartTransSessionCmd = 0x81,
@@ -111,9 +111,9 @@ typedef enum PcscManageSession
     VersionRsp = 0x80,
     GetParametersRsp = 0xFF6D,
     SetParametersRsp = 0xFF6E,
-};
+} PcscManageSession;
 
-typedef enum PcscTransparentExchange
+typedef enum _PcscTransparentExchange
 {
     TransmitBitFramingCmd = 0x91,
     ReceiptionBitFramingCmd = 0x92,
@@ -123,15 +123,15 @@ typedef enum PcscTransparentExchange
     TimerCmd = 0x5F46,
     ResponseStatus = 0x96,
     IccResponse = 0x97,
-};
+} PcscTransparentExchange;
 
-typedef enum PcscIncrementDecrement
+typedef enum _PcscIncrementDecrement
 {
     IncrementCmd = 0xA0,
     DecrementCmd = 0xA1,
     BlkAddressCmd = 0x80,
     BlkValueCmd = 0x81,
-};
+} PcscIncrementDecrement;
 
 class IStorageCard
 {

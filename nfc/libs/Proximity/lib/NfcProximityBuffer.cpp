@@ -9,9 +9,9 @@ Module Name:
 Abstract:
 
     Buffer parsing utilities
-    
+
 Environment:
-    
+
     User mode
 
 --*/
@@ -68,6 +68,14 @@ static const URI_PREFIX_IDENT_ENTRY PrefixTable[] = {
     {0x1D, L"file://"}
 };
 
+static NTSTATUS FORCEINLINE
+NTSTATUS_FROM_STRSAFE_HRESULT(
+    _In_ HRESULT strSafeHr
+    )
+{
+    return NTSTATUS_FROM_WIN32(HRESULT_CODE(strSafeHr));
+}
+
 NTSTATUS
 CNFCProximityBuffer::ValidateNdefMessage(
     _In_ USHORT cbRawNdef,
@@ -75,7 +83,7 @@ CNFCProximityBuffer::ValidateNdefMessage(
     )
 {
     NTSTATUS status = STATUS_SUCCESS;
-    ULONG cRawRecords = MAX_RECORDS_PER_MESSAGE;
+    UINT32 cRawRecords = MAX_RECORDS_PER_MESSAGE;
     UCHAR IsChunked[MAX_RECORDS_PER_MESSAGE];
     UCHAR *RawRecords[MAX_RECORDS_PER_MESSAGE];
 
@@ -99,6 +107,83 @@ Done:
 }
 
 NTSTATUS
+CNFCProximityBuffer::InitializeBarcode(
+    _In_ USHORT cbPayload,
+    _In_bytecount_(cbPayload) PBYTE pbPayload
+    )
+{
+    TRACE_METHOD_ENTRY(LEVEL_VERBOSE);
+    NTSTATUS status = STATUS_SUCCESS;
+
+    if (cbPayload < BARCODE_TYPE_MIN_LENGTH || cbPayload > BARCODE_TYPE_MAX_LENGTH) {
+        status = STATUS_INVALID_DEVICE_REQUEST;
+        goto Done;
+    }
+
+    status = SetRawBuffer(cbPayload, pbPayload);
+
+    if (!NT_SUCCESS(status)) {
+        status = STATUS_INSUFFICIENT_RESOURCES;
+        goto Done;
+    }
+
+    m_Barcode = TRUE;
+
+    // Check barcode payload type
+    switch (pbPayload[1])
+        {
+        case BARCODE_HTTP_WWW_TYPE:
+        case BARCODE_HTTPS_WWW_TYPE:
+        case BARCODE_HTTP_TYPE:
+        case BARCODE_HTTPS_TYPE:
+        {
+            m_cbPayload = cbPayload - BARCODE_NON_PAYLOAD_SIZE;
+            UCHAR i;
+            for (i = 2; i < m_cbPayload; i++)
+            {
+                if (pbPayload[i] == BARCODE_TYPE_URI_TERMINATOR)
+                {
+                    m_cbPayload = i - 1;
+                    break;
+                }
+            }
+
+            // Include format identifier
+            m_cbPayload += 1;
+            m_pbPayload = new BYTE[m_cbPayload];
+
+            // Take on extra to get prefix identifier
+            CopyMemory(m_pbPayload, pbPayload + 1, m_cbPayload);
+            m_tnf = NDEFRECORD_TNF_NFCWELLKNOWN;
+            break;
+        }
+        case BARCODE_EPC_URN_TYPE:
+        {
+            m_cbPayload = cbPayload - BARCODE_NON_PAYLOAD_SIZE;
+
+            // Include format identifier
+            m_cbPayload += 1;
+            m_pbPayload = new BYTE[m_cbPayload];
+
+            CopyMemory(m_pbPayload, pbPayload + 1, m_cbPayload);
+            m_tnf = NDEFRECORD_TNF_NFCWELLKNOWN;
+            break;
+        }
+        default:
+        {
+            m_cbPayload = cbPayload;
+            m_pbPayload = new BYTE[m_cbPayload];
+            CopyMemory(m_pbPayload, pbPayload, m_cbPayload);
+            m_tnf = 0xFF;
+            break;
+        }
+    }
+
+Done:
+    return status;
+}
+
+NTSTATUS
 CNFCProximityBuffer::InitializeRaw(
     _In_ USHORT cbRawNdef,
     _In_bytecount_(cbRawNdef) PBYTE pbRawNdef
@@ -108,8 +193,8 @@ CNFCProximityBuffer::InitializeRaw(
 
     NTSTATUS status = STATUS_SUCCESS;
     NFCSTATUS nfcStatus;
-    ULONG cRawRecords = MAX_RECORDS_PER_MESSAGE;
-    ULONG cbPayloadLength = 0;
+    UINT32 cRawRecords = MAX_RECORDS_PER_MESSAGE;
+    UINT32 cbPayloadLength = 0;
     UCHAR IsChunked[MAX_RECORDS_PER_MESSAGE];
     UCHAR *RawRecords[MAX_RECORDS_PER_MESSAGE];
     phFriNfc_NdefRecord_t sNdefRecord[MAX_RECORDS_PER_MESSAGE];
@@ -153,7 +238,7 @@ CNFCProximityBuffer::InitializeRaw(
     // If there are multiple then we will use the first and discard the rest.
     if (IsChunked[0] == PHFRINFCNDEFRECORD_CHUNKBIT_SET)
     {
-        for (DWORD nNdefRecord = 1; nNdefRecord < cRawRecords; nNdefRecord++)
+        for (UINT32 nNdefRecord = 1; nNdefRecord < cRawRecords; nNdefRecord++)
         {
             nfcStatus = phFriNfc_NdefRecord_Parse(&sNdefRecord[nNdefRecord], RawRecords[nNdefRecord]);
             if (nfcStatus != NFCSTATUS_SUCCESS) {
@@ -162,7 +247,7 @@ CNFCProximityBuffer::InitializeRaw(
                 goto Done;
             }
 
-            status = RtlULongAdd(cbPayloadLength,sNdefRecord[nNdefRecord].PayloadLength, &cbPayloadLength);
+            status = RtlUInt32Add(cbPayloadLength, sNdefRecord[nNdefRecord].PayloadLength, &cbPayloadLength);
             if (!NT_SUCCESS(status)) {
                 TRACE_LINE(LEVEL_ERROR, "Integer overflow collecting ndef records");
                 goto Done;
@@ -174,7 +259,7 @@ CNFCProximityBuffer::InitializeRaw(
         }
     }
 
-    if (MAX_USHORT < cbPayloadLength) {
+    if (USHORT_MAX < cbPayloadLength) {
         TRACE_LINE(LEVEL_ERROR, "Parsed Ndef record too large");
         status = STATUS_INVALID_DEVICE_REQUEST;
         goto Done;
@@ -188,7 +273,7 @@ CNFCProximityBuffer::InitializeRaw(
         goto Done;
     }
 
-    for (ULONG nNdefRecord = 0, cbBytesCopied = 0; (nNdefRecord < cRawRecords) && (cbBytesCopied < m_cbPayload); nNdefRecord++) {
+    for (UINT32 nNdefRecord = 0, cbBytesCopied = 0; (nNdefRecord < cRawRecords) && (cbBytesCopied < m_cbPayload); nNdefRecord++) {
         memcpy_s(&m_pbPayload[cbBytesCopied], m_cbPayload - cbBytesCopied, sNdefRecord[nNdefRecord].PayloadData, sNdefRecord[nNdefRecord].PayloadLength);
         cbBytesCopied += sNdefRecord[nNdefRecord].PayloadLength;
     }
@@ -236,7 +321,7 @@ CNFCProximityBuffer::InitializeNdef(
     NTSTATUS status = STATUS_SUCCESS;
     NFCSTATUS nfcStatus;
     phFriNfc_NdefRecord_t record = {};
-    ULONG cbWritten;
+    UINT32 cbWritten;
 
     record.Flags |= PH_FRINFC_NDEFRECORD_FLAGS_MB;
     record.Flags |= PH_FRINFC_NDEFRECORD_FLAGS_ME;
@@ -248,9 +333,9 @@ CNFCProximityBuffer::InitializeNdef(
     record.PayloadLength = cbPayload;
     record.PayloadData   = pbPayload;
 
-    ULONG cbBuffer = phFriNfc_NdefRecord_GetLength(&record);
+    UINT32 cbBuffer = phFriNfc_NdefRecord_GetLength(&record);
 
-    if (cbBuffer > MAX_USHORT) {
+    if (cbBuffer > USHORT_MAX) {
         status = STATUS_BUFFER_OVERFLOW;
         goto Done;
     }
@@ -289,10 +374,10 @@ Done:
 
 NTSTATUS
 CNFCProximityBuffer::AnalyzeMessageType(
-    _In_z_ LPWSTR  pszMessageType, 
-    _Outptr_result_maybenull_z_ LPWSTR *ppszSubTypeExt, 
+    _In_z_ LPWSTR  pszMessageType,
+    _Outptr_result_maybenull_z_ LPWSTR *ppszSubTypeExt,
     _In_ BOOL fPublication,
-    _Out_ UCHAR *pchTNF, 
+    _Out_ UCHAR *pchTNF,
     _Out_ TRANSLATION_TYPE_PROTOCOL *pTranslationType
     )
 {
@@ -304,8 +389,12 @@ CNFCProximityBuffer::AnalyzeMessageType(
     *ppszSubTypeExt = NULL;
     *pchTNF = 0;
     cchMessageTypeLength = wcslen(pszMessageType);
-
-    if (IsStringPrefixed(pszMessageType, cchMessageTypeLength, WINDOWS_PROTOCOL)) {
+    if (IsStringPrefixed(pszMessageType, cchMessageTypeLength, NFC_BARCODE)) {
+        TRACE_LINE(LEVEL_INFO, "NFC_BARCODE: %S", pszMessageType);
+        *pTranslationType = TRANSLATION_TYPE_NFC_BARCODE;
+        *pchTNF = 0xFF;
+    }
+    else if (IsStringPrefixed(pszMessageType, cchMessageTypeLength, WINDOWS_PROTOCOL)) {
         TRACE_LINE(LEVEL_INFO, "WINDOWS_PROTOCOL: %S", pszMessageType);
         LPWSTR pszNext = pszMessageType + WINDOWS_PROTOCOL_CHARS;
         cchMessageTypeLength -= WINDOWS_PROTOCOL_CHARS;
@@ -386,7 +475,7 @@ CNFCProximityBuffer::AnalyzeMessageType(
         cchMessageTypeLength -= NDEF_PROTOCOL_CHARS;
         if (*pszNext == L'\0') {
             // Protocol component of message type is NDEF
-            // Sub Protocol component is absent i.e. no colon (:) character 
+            // Sub Protocol component is absent i.e. no colon (:) character
             *pTranslationType = TRANSLATION_TYPE_NDEF;
             *pchTNF = 0xFF;
         }
@@ -488,8 +577,6 @@ CNFCProximityBuffer::MatchesSubscription(
     _In_bytecount_(cbType) PCHAR pbType
     )
 {
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
     if (tnf == m_tnf) {
         //
         // If the proximity technology is advertised as NFC,
@@ -500,9 +587,12 @@ CNFCProximityBuffer::MatchesSubscription(
         //
         if (translationType == TRANSLATION_TYPE_WINDOWSURI) {
             if ( m_cbSubTypeExt >= 1 &&
-                 m_pbSubTypeExt != NULL && 
+                 m_pbSubTypeExt != NULL &&
                  ((memcmp(m_pbSubTypeExt, "U", 1) == 0)
                     || (memcmp(m_pbSubTypeExt, "Sp", 2) == 0))) {
+                return TRUE;
+            }
+            else if (m_Barcode) {
                 return TRUE;
             }
         }
@@ -524,9 +614,15 @@ CNFCProximityBuffer::MatchesSubscription(
             return TRUE;
         }
     }
+    else if (TRANSLATION_TYPE_NFC_BARCODE == translationType)
+    {
+        return m_Barcode;
+    }
     else if (TRANSLATION_TYPE_NDEF == translationType) {
-        // Translation type for subscription of Subs\\NDEF
-        return TRUE;
+        if (!m_Barcode) {
+            // Translation type for subscription of Subs\\NDEF
+            return TRUE;
+        }
     }
     else if ((translationType == TRANSLATION_TYPE_PAIRING_BLUETOOTH) &&
              (m_cbPairingBtPayload >= BLUETOOTH_PAIRING_MIME_MIN_OOB_SIZE) &&
@@ -573,7 +669,7 @@ CNFCProximityBuffer::InitializeWithMessagePayload(
             break;
 
         case TRANSLATION_TYPE_PAIRING_BLUETOOTH:
-            // This case isn't required per spec. "Pairing:Bluetooth" is currently only 
+            // This case isn't required per spec. "Pairing:Bluetooth" is currently only
             // supported for subscriptions
             status = STATUS_INVALID_PARAMETER;
             break;
@@ -583,13 +679,13 @@ CNFCProximityBuffer::InitializeWithMessagePayload(
             // The buffer is only the payload, encode it as NDEF now
             status = InitializeNdef(Tnf, cbType, pbType, cbPayload, pbPayload);
             break;
- 
+
         case TRANSLATION_TYPE_WINDOWSMIME_MATCH_ALL:
              // The below shouldn't be allowed per spec. "WindowsMime" is only valid for subscriptions
              // This should be an ASSERT, because this case should never happen.
              status = STATUS_INVALID_PARAMETER;
              break;
-            
+
         case TRANSLATION_TYPE_WINDOWSURI:
         case TRANSLATION_TYPE_WINDOWSURI_WRITETAG:
             {
@@ -603,7 +699,7 @@ CNFCProximityBuffer::InitializeWithMessagePayload(
                 }
 
                 // A UTF8 string can (in the worst case) be 150% the size of a UTF16 string
-                DWORD cbEncodedUri = (cbPayload * 2) + 50;
+                UINT32 cbEncodedUri = (cbPayload * 2) + 50;
                 BYTE *pbEncodedUri = new BYTE[cbEncodedUri];
 
                 if (pbEncodedUri == NULL) {
@@ -612,11 +708,11 @@ CNFCProximityBuffer::InitializeWithMessagePayload(
                    break;
                 }
 
-                DWORD cchPayload = (DWORD)(cbPayload / sizeof(WCHAR));
+                UINT32 cchPayload = (UINT32)(cbPayload / sizeof(WCHAR));
                 LPWSTR pszPayload = (LPWSTR)pbPayload;
 
                 pbEncodedUri[0] = FindUriPrefixKey(pszPayload, cchPayload);
-                DWORD cbEncoded = WideCharToMultiByte(CP_UTF8, 0, pszPayload, cchPayload,
+                UINT32 cbEncoded = WideCharToMultiByte(CP_UTF8, 0, pszPayload, cchPayload,
                                                      (LPSTR)pbEncodedUri + 1, cbEncodedUri - 1, NULL, NULL);
                 if (cbEncoded == 0) {
                    delete [] pbEncodedUri;
@@ -626,9 +722,9 @@ CNFCProximityBuffer::InitializeWithMessagePayload(
 
                 cbEncoded++; // Add one byte for the URI Identifier Code Prefix
                 status = InitializeNdef(PH_FRINFC_NDEFRECORD_TNF_NFCWELLKNOWN,
-                                        ARRAYSIZE("U")-1, // subtract 1 to remove NULL 
+                                        ARRAYSIZE("U")-1, // subtract 1 to remove NULL
                                         "U",
-                                        (USHORT)cbEncoded, 
+                                        (USHORT)cbEncoded,
                                         pbEncodedUri);
 
                 delete [] pbEncodedUri;
@@ -694,7 +790,10 @@ CNFCProximityBuffer::GetMessagePayload(
             m_pbWindowsMimeBuffer = new BYTE[m_cbWindowsMimeBuffer];
 
             // Copy the MIME type (will be NULL terminated)
-            status = RtlStringCchCopyNA((LPSTR)m_pbWindowsMimeBuffer, WINDOWSMIME_MIME_TYPE_LENGTH, (LPSTR)m_pbSubTypeExt, m_cbSubTypeExt);
+            status = NTSTATUS_FROM_STRSAFE_HRESULT(StringCchCopyNA((LPSTR)m_pbWindowsMimeBuffer,
+                                                                   WINDOWSMIME_MIME_TYPE_LENGTH,
+                                                                   (LPSTR)m_pbSubTypeExt,
+                                                                   m_cbSubTypeExt));
 
             if (NT_SUCCESS(status)) {
                 memset(m_pbWindowsMimeBuffer + m_cbSubTypeExt, 0, WINDOWSMIME_MIME_TYPE_LENGTH - m_cbSubTypeExt);
@@ -710,15 +809,15 @@ CNFCProximityBuffer::GetMessagePayload(
         if (m_cbPayload > 0)
         {
             PBYTE pbPayload = m_pbPayload;
-            ULONG cbPayload = m_cbPayload;
+            UINT32 cbPayload = m_cbPayload;
 
             // NdefPayload is encoded as per NFCForum-TS-RTD_URI_1.0.pdf.
             // It MUST be decoded to a client buffer as NULL-terminated UTF-16LE
 
-            if (0 == memcmp(m_pbSubTypeExt, "Sp", 2))
+            if (!m_Barcode && 0 == memcmp(m_pbSubTypeExt, "Sp", 2))
             {
                 BOOL fMatchUriRecord = FALSE;
-                ULONG cRawRecords = MAX_RECORDS_PER_MESSAGE;
+                UINT32 cRawRecords = MAX_RECORDS_PER_MESSAGE;
                 UCHAR IsChunked[MAX_RECORDS_PER_MESSAGE];
                 UCHAR *RawRecords[MAX_RECORDS_PER_MESSAGE];
                 phFriNfc_NdefRecord_t sNdefRecord;
@@ -763,57 +862,68 @@ CNFCProximityBuffer::GetMessagePayload(
                     break;
                 }
             }
+            if (pbPayload[0] == BARCODE_TYPE_EPC_URI && m_Barcode) {
+                status = CreateEPCRawUri(cbPayload, pbPayload);
+                if (status != STATUS_SUCCESS) {
+                    TRACE_LINE(LEVEL_ERROR, "Insufficient buffer (Type = %d)", translationType);
+                    break;
+                }
+            }
+            else {
+                // First byte of URI payload is a prefix ID
+                UCHAR prefixId = FindUriPrefixIndex(pbPayload[0]);
+                UINT32 cchPrefix = (UINT32)(prefixId == 0 ? 0 : wcslen(PrefixTable[prefixId].Prefix));
+                UINT32 cchSuffix = 0;
 
-            // First byte of URI payload is a prefix ID
-            UCHAR prefixId = FindUriPrefixIndex(pbPayload[0]);
-            DWORD cchPrefix = (DWORD)(prefixId == 0 ? 0 : wcslen(PrefixTable[prefixId].Prefix));
-            DWORD cchSuffix = 0;
+                // If the contents of this field is zero (0x00), then NO prepending SHALL be done.
+                // All fields marked RFU SHALL be treated as if they were value zero
+                // (no perpending). A compliant system MUST NOT produce values that are marked RFU.
+                if (cchPrefix > 0) {
+                    status = NTSTATUS_FROM_STRSAFE_HRESULT(StringCchCopyW(m_szDecodedUri,
+                                                                          ARRAYSIZE(m_szDecodedUri),
+                                                                          PrefixTable[prefixId].Prefix));
+                    NT_ASSERT(status == STATUS_SUCCESS);
+                }
 
-            // If the contents of this field is zero (0x00), then NO prepending SHALL be done.
-            // All fields marked RFU SHALL be treated as if they were value zero
-            // (no perpending). A compliant system MUST NOT produce values that are marked RFU.
-            if (cchPrefix > 0) {
-                status = RtlStringCchCopyW(m_szDecodedUri, ARRAYSIZE(m_szDecodedUri), PrefixTable[prefixId].Prefix);
-                NT_ASSERT(status == STATUS_SUCCESS);
+                // Convert to UTF-16LE using MultiByteToWideChar(CP_UTF8, ...) and make sure the result IS NULL-terminated
+                // Also decode correct URI Identifier Code prefixes
+                cchSuffix = MultiByteToWideChar(CP_UTF8,
+                                                0,
+                                                (PCSTR)(pbPayload + 1),
+                                                cbPayload - 1,
+                                                m_szDecodedUri + cchPrefix,
+                                                ARRAYSIZE(m_szDecodedUri) - cchPrefix);
+                if (cchSuffix == 0) {
+                    TRACE_LINE(LEVEL_ERROR, "Insufficient buffer (Type = %d)", translationType);
+                    status = STATUS_BUFFER_TOO_SMALL;
+                    break;
+                }
+
+                // Append NULL terminating char
+                UINT32 cchDecodedUri = cchPrefix + cchSuffix;
+
+                if (cchDecodedUri >= ARRAYSIZE(m_szDecodedUri)) {
+                    TRACE_LINE(LEVEL_ERROR, "Insufficient buffer (Type = %d)", translationType);
+                    status = STATUS_BUFFER_TOO_SMALL;
+                    break;
+                }
+                m_szDecodedUri[cchDecodedUri] = L'\0';
             }
 
-            // Convert to UTF-16LE using MultiByteToWideChar(CP_UTF8, ...) and make sure the result IS NULL-terminated
-            // Also decode correct URI Identifier Code prefixes
-
-            cchSuffix = MultiByteToWideChar(CP_UTF8, 
-                                            0, 
-                                            (PCSTR)(pbPayload + 1), 
-                                            cbPayload - 1,
-                                            m_szDecodedUri + cchPrefix, 
-                                            ARRAYSIZE(m_szDecodedUri) - cchPrefix);
-            if (cchSuffix == 0) {
-                TRACE_LINE(LEVEL_ERROR, "Insufficient buffer (Type = %d)", translationType);
-                status = STATUS_BUFFER_TOO_SMALL;
-                break;
-            }
-
-            // Append NULL terminating char
-            DWORD cchDecodedUri = cchPrefix + cchSuffix;
-
-            if (cchDecodedUri >= ARRAYSIZE(m_szDecodedUri)) {
-                TRACE_LINE(LEVEL_ERROR, "Insufficient buffer (Type = %d)", translationType);
-                status = STATUS_BUFFER_TOO_SMALL;
-                break;
-            }
-
-            m_szDecodedUri[cchDecodedUri] = L'\0';
             *pcbPayload = (USHORT)((wcslen(m_szDecodedUri) + 1) * sizeof(WCHAR));
             *ppbPayload = (PBYTE)m_szDecodedUri;
         }
         break;
-
+    case TRANSLATION_TYPE_NFC_BARCODE:
+        *pcbPayload = m_cbBuffer;
+        *ppbPayload = m_pbBuffer;
+        break;
     case TRANSLATION_TYPE_NDEF:
     case TRANSLATION_TYPE_RAW_NDEF:
         // NDEF protocol returns RAW NDEF to client
         *pcbPayload = m_cbBuffer;
         *ppbPayload = m_pbBuffer;
         break;
-
     default:
         TRACE_LINE(LEVEL_ERROR, "Invalid translation type (Type = %d)", translationType);
         status = STATUS_INVALID_PARAMETER;
@@ -845,16 +955,16 @@ CNFCProximityBuffer::FindUriPrefixIndex(
 UCHAR
 CNFCProximityBuffer::FindUriPrefixKey(
     _Inout_count_(cchPayload) LPWSTR & pszPayload,
-    _Inout_ DWORD & cchPayload
+    _Inout_ UINT32 & cchPayload
     )
 {
     UCHAR i;
 
     for (i = 0; i < ARRAYSIZE(PrefixTable); i++) {
-       if (CompareStringOrdinal(pszPayload, 
-                                min(((DWORD)wcslen(PrefixTable[i].Prefix)), cchPayload),
-                                PrefixTable[i].Prefix, 
-                                ((DWORD)wcslen(PrefixTable[i].Prefix)), 
+       if (CompareStringOrdinal(pszPayload,
+                                min(((UINT32)wcslen(PrefixTable[i].Prefix)), cchPayload),
+                                PrefixTable[i].Prefix,
+                                ((UINT32)wcslen(PrefixTable[i].Prefix)),
                                 FALSE) == CSTR_EQUAL) {
            USHORT prefixLen = ((USHORT)wcslen(PrefixTable[i].Prefix));
            pszPayload = pszPayload + prefixLen;
@@ -865,6 +975,51 @@ CNFCProximityBuffer::FindUriPrefixKey(
 
    return 0;
 }
+
+NTSTATUS
+CNFCProximityBuffer::CreateEPCRawUri(
+    _In_ UINT32 cchPayload,
+    _In_count_(cchPayload) PBYTE pbPayload
+    )
+{
+    NTSTATUS status = NTSTATUS_FROM_STRSAFE_HRESULT(StringCchCopyW(m_szDecodedUri,
+                                                                   ARRAYSIZE(m_szDecodedUri),
+                                                                   NFC_BARCODE_URI_PREFIX));
+    NT_ASSERT(status == STATUS_SUCCESS);
+    if (status == STATUS_SUCCESS)
+    {
+        size_t remaining = 0;
+        LPWSTR buf = (LPWSTR)(m_szDecodedUri + NFC_BARCODE_URI_PREFIX_CHARS);
+        status = NTSTATUS_FROM_STRSAFE_HRESULT(StringCchPrintfExW(buf,
+                                                                  ARRAYSIZE(m_szDecodedUri) - NFC_BARCODE_URI_PREFIX_CHARS,
+                                                                  &buf,
+                                                                  &remaining,
+                                                                  STRSAFE_NO_TRUNCATION,
+                                                                  L"%d.x",
+                                                                  (cchPayload - 1) * 8));
+        NT_ASSERT(status == STATUS_SUCCESS);
+        for (UCHAR i = 1; i < cchPayload; i++) {
+            status = NTSTATUS_FROM_STRSAFE_HRESULT(StringCchPrintfExW(buf,
+                                                                      remaining,
+                                                                      &buf,
+                                                                      &remaining,
+                                                                      STRSAFE_NO_TRUNCATION,
+                                                                      L"%02X",
+                                                                      pbPayload[i]));
+            NT_ASSERT(status == STATUS_SUCCESS);
+            if (status != STATUS_SUCCESS) {
+                break;
+            }
+        }
+
+        if (status == STATUS_SUCCESS) {
+            *buf = L'\0';
+        }
+    }
+
+    return status;
+}
+
 
 #define IsConnectionHandoverSelectRecord()                          \
     ((m_tnf == NDEFRECORD_TNF_NFCWELLKNOWN) &&                      \
@@ -886,7 +1041,7 @@ CNFCProximityBuffer::FindUriPrefixKey(
      (memcmp(_Record_.Type, BLUETOOTH_PAIRING_MIME_TYPE, BLUETOOTH_PAIRING_MIME_TYPE_CHARS) == 0 || \
       memcmp(_Record_.Type, BLUETOOTH_LE_PAIRING_MIME_TYPE, BLUETOOTH_PAIRING_MIME_TYPE_CHARS) == 0) && \
      (_Record_.PayloadLength >= BLUETOOTH_PAIRING_MIME_MIN_OOB_SIZE) && \
-     (_Record_.PayloadLength < MAX_USHORT))
+     (_Record_.PayloadLength < USHORT_MAX))
 
 #define IsBTSimplifiedTagFormat()                                   \
     ((m_tnf == NDEFRECORD_TNF_MEDIATYPE) &&                         \
@@ -904,14 +1059,14 @@ CNFCProximityBuffer::FindUriPrefixKey(
 void
 CNFCProximityBuffer::ExtractPairingPayload(
     _In_count_(cRawRecords) UCHAR *rgpRawRecords[],
-    _In_ ULONG cRawRecords
+    _In_ UINT32 cRawRecords
     )
 {
     if ((cRawRecords > 1) &&
         (cRawRecords < MAX_RECORDS_PER_MESSAGE) &&
         IsConnectionHandoverSelectRecord())
     {
-        ULONG cAlternativeCarrierRecords = MAX_RECORDS_PER_MESSAGE;
+        UINT32 cAlternativeCarrierRecords = MAX_RECORDS_PER_MESSAGE;
         UCHAR *rgpAlternativeCarrierRecords[MAX_RECORDS_PER_MESSAGE];
         UCHAR  rgIsChunked[MAX_RECORDS_PER_MESSAGE] = {0};
 
@@ -1009,9 +1164,9 @@ CNFCProximityBuffer::InitializeLaunchAppMessage(
     TRACE_METHOD_ENTRY(LEVEL_VERBOSE);
 
     NTSTATUS status = STATUS_SUCCESS;
-    ULONG cbPayload = cchPayload * 2;
+    UINT32 cbPayload = cchPayload * 2;
     PBYTE pbPayload = NULL;
-    ULONG cbEncoded = 0;
+    UINT32 cbEncoded = 0;
     PBYTE prgMessage = NULL;
     USHORT cbMessage = 0;
     CHAR *pszArgs = NULL;
@@ -1034,16 +1189,16 @@ CNFCProximityBuffer::InitializeLaunchAppMessage(
         goto Done;
     }
 
-    cbEncoded = WideCharToMultiByte(CP_UTF8, 
-                                    0, 
-                                    pwszPayload, 
+    cbEncoded = WideCharToMultiByte(CP_UTF8,
+                                    0,
+                                    pwszPayload,
                                     cchPayload,
-                                    (LPSTR)pbPayload, 
-                                    cbPayload-1, 
-                                    NULL, 
+                                    (LPSTR)pbPayload,
+                                    cbPayload-1,
+                                    NULL,
                                     NULL);
 
-    if ((cbEncoded < LAUNCH_APP_MINIMUM_BYTES) || 
+    if ((cbEncoded < LAUNCH_APP_MINIMUM_BYTES) ||
         (cbEncoded > LAUNCH_APP_MAXIMUM_BYTES)) {
         status = STATUS_INVALID_PARAMETER;
         goto Done;
@@ -1113,10 +1268,10 @@ CNFCProximityBuffer::InitializeLaunchAppMessage(
     memcpy(prgMessage + cbMessage, pszArgs, cbArgs);
     cbMessage += cbArgs;
 
-    status = InitializeNdef(PH_FRINFC_NDEFRECORD_TNF_ABSURI, 
-                            LAUNCH_APP_TYPE_CHARS, 
-                            LAUNCH_APP_TYPE, 
-                            (USHORT)cbMessage, 
+    status = InitializeNdef(PH_FRINFC_NDEFRECORD_TNF_ABSURI,
+                            LAUNCH_APP_TYPE_CHARS,
+                            LAUNCH_APP_TYPE,
+                            (USHORT)cbMessage,
                             prgMessage);
 
 Done:

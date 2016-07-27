@@ -9,8 +9,6 @@
 typedef unsigned int BitField_t;
 
 #include <stdio.h>
-#define snprintf _snprintf
-
 #include <phNfcConfig.h>
 
 /* Basic Type Definitions */
@@ -29,7 +27,7 @@ typedef signed   short  int16_t;        /**< \ingroup grp_nfc_common
 
 #ifndef __int32_t_defined
 #define __int32_t_defined
-typedef signed   long   int32_t;        /**< \ingroup grp_nfc_common
+typedef signed   int    int32_t;        /**< \ingroup grp_nfc_common
                                              32 bit signed integer */
 #endif
 
@@ -47,7 +45,7 @@ typedef unsigned short  uint16_t;       /**< \ingroup grp_nfc_common
 
 #ifndef __uint32_t_defined
 #define __uint32_t_defined
-typedef unsigned long   uint32_t;       /**< \ingroup grp_nfc_common
+typedef unsigned int    uint32_t;       /**< \ingroup grp_nfc_common
                                              32 bit unsigned integer */
 #endif
 
@@ -101,6 +99,7 @@ uint16_t        NFCSTATUS;                  /**< \ingroup grp_nfc_common
 #define PHHAL_FEL_PM_LEN                0x08U       /**< Felica current PM Length */
 #define PHHAL_15693_UID_LENGTH          0x08U       /**< Length of the Inventory bytes for
                                                          ISO15693 Tag */
+#define PHHAL_KOVIO_TAG_ID_LENGTH       0x20U       /**< Kovio barcode tag content length */
 
 #define SESSIONID_SIZE                  0x08U
 #define MAX_AID_LEN                     0x10U
@@ -580,10 +579,17 @@ typedef struct phNfc_sIso15693Info
     uint8_t         Afi;                            /**< Application Family Identifier of 15693 Tag Discovered */
 }phNfc_sIso15693Info_t;
 
+/** \ingroup grp_hal_nfci
+*
+*  The <em> Reader Kovio structure </em> includes the available information
+*  related to the discovered Kovio barcode remote device. This information
+*  is updated for every device discovery.
+*/
+
 typedef struct phNfc_sKovioInfo
 {
     uint8_t TagIdLength;
-    uint8_t TagId[16];
+    uint8_t TagId[PHHAL_KOVIO_TAG_ID_LENGTH];
 }phNfc_sKovioInfo_t;
 
 /** \ingroup grp_hal_nfci
@@ -798,7 +804,7 @@ typedef union phNfc_uCommand
   phNfc_eJewelCmdList_t          JewelCmd;      /**< Jewel command structure.  */
   phNfc_eIso15693_CmdList_t      Iso15693Cmd;   /**< ISO 15693 command structure.  */
   phNfc_eNfcIP1CmdList_t         NfcIP1Cmd;     /**< ISO 18092 (NFCIP1) command structure */
-  phNfc_eHid_CmdList_t           HidCmd;        
+  phNfc_eHid_CmdList_t           HidCmd;
   phNfc_eHid_CmdList_t           BPrimeCmd;     /**<Could be same is ISO-4*/
   phNfc_eEpcGenCmdList_t         EpcGenCmd;     /**< EpcGen command structure*/
 }phNfc_uCmdList_t;
@@ -826,22 +832,22 @@ typedef struct phNfc_sRemoteDevInformation
 
 typedef struct phNfc_sDevInputParam
 {
-    uint8_t FelicaPollPayload[5];           
-    uint8_t NfcPollPayload[5];              
-    uint8_t NFCIDAuto;                      
-    uint8_t NFCID3i[PHNFC_NFCID_LENGTH];    
-    uint8_t DIDiUsed;                       
-    uint8_t CIDiUsed;                       
-    uint8_t NfcNADiUsed;                    
-    uint8_t GeneralByte[48];                
-    uint8_t GeneralByteLength;              
-    uint8_t ISO14443_4B_AFI;                
+    uint8_t FelicaPollPayload[5];
+    uint8_t NfcPollPayload[5];
+    uint8_t NFCIDAuto;
+    uint8_t NFCID3i[PHNFC_NFCID_LENGTH];
+    uint8_t DIDiUsed;
+    uint8_t CIDiUsed;
+    uint8_t NfcNADiUsed;
+    uint8_t GeneralByte[48];
+    uint8_t GeneralByteLength;
+    uint8_t ISO14443_4B_AFI;
 
 } phNfc_sDevInputParam_t;
 
 typedef struct phNfc_sTransceiveInfo
 {
-    phNfc_uCmdList_t                cmd;                
+    phNfc_uCmdList_t                cmd;
     uint8_t                         addr;               /**< Start Block Number for T1T and T2T*/
     uint8_t                         bKeyNum;            /**< Key number for Mifare Cards for authentication */
     uint16_t                        timeout;            /**< Timeout value to be used during transceive */
@@ -849,8 +855,8 @@ typedef struct phNfc_sTransceiveInfo
     /*For Felica Check and Update Service Code List*/
     uint16_t                        *ServiceCodeList;   /**< 2 Byte service Code List, Can be 2 Byte value to be used for all the blocks */
     uint16_t                        *Blocklist;         /**< 2 Byte Block list could be continuous num of blocks so NumBlock is enough*/
-    phNfc_sData_t                   sSendData;          
-    phNfc_sData_t                   sRecvData;          
+    phNfc_sData_t                   sSendData;
+    phNfc_sData_t                   sRecvData;
     /* For EpcGen Transceive support */
     uint32_t                        dwWordPtr;          /**< Specifies the word address for the memory write */
     uint8_t                         bWordPtrLen;        /**< Specifies the length of word pointer
@@ -1436,15 +1442,15 @@ typedef struct phNfc_sUiccEmuCfg
 
 typedef struct phNfc_sHostEmuCfg_A
 {
-    uint8_t                 enableEmulation;    
-    phNfc_sIso14443AInfo_t  hostEmuCfgInfo;     
-    uint8_t                 enableCID;          
+    uint8_t                 enableEmulation;
+    phNfc_sIso14443AInfo_t  hostEmuCfgInfo;
+    uint8_t                 enableCID;
 }phNfc_sHostEmuCfg_A_t;
 
 typedef struct phNfc_sHostEmuCfg_B
 {
-    uint8_t                 enableEmulation;    
-    phNfc_sIso14443BInfo_t  hostEmuCfgInfo;     
+    uint8_t                 enableEmulation;
+    phNfc_sIso14443BInfo_t  hostEmuCfgInfo;
 }phNfc_sHostEmuCfg_B_t;
 
 /** \ingroup grp_hal_common
@@ -1455,7 +1461,7 @@ typedef struct phNfc_sHostEmuCfg_B
 
 typedef struct phNfc_sHostEmuCfg_F
 {
-    uint8_t                 enableEmulation;    
+    uint8_t                 enableEmulation;
 }phNfc_sHostEmuCfg_F_t;
 
 
@@ -1467,15 +1473,15 @@ typedef struct phNfc_sHostEmuCfg_F
 
 typedef struct phNfc_sEmulationCfg
 {
-    phNfc_HostType_t        hostType;   
-    phNfc_eEmulationType_t  emuType;    
+    phNfc_HostType_t        hostType;
+    phNfc_eEmulationType_t  emuType;
     union phHal_uEmuConfig  /**< Emulation configuration */
     {
-        phNfc_sSmartMX_Cfg_t    smartMxCfg;     
-        phNfc_sHostEmuCfg_A_t   hostEmuCfg_A;   
-        phNfc_sHostEmuCfg_B_t   hostEmuCfg_B;   
-        phNfc_sHostEmuCfg_F_t   hostEmuCfg_F;   
-        phNfc_sUiccEmuCfg_t     uiccEmuCfg;     
+        phNfc_sSmartMX_Cfg_t    smartMxCfg;
+        phNfc_sHostEmuCfg_A_t   hostEmuCfg_A;
+        phNfc_sHostEmuCfg_B_t   hostEmuCfg_B;
+        phNfc_sHostEmuCfg_F_t   hostEmuCfg_F;
+        phNfc_sUiccEmuCfg_t     uiccEmuCfg;
     }config;
 }phNfc_sEmulationCfg_t;
 
@@ -1565,10 +1571,10 @@ typedef struct phNfc_sADD_Cfg
 
 typedef union phNfc_uConfig
 {
-    phNfc_sEmulationCfg_t   emuConfig;            
+    phNfc_sEmulationCfg_t   emuConfig;
     phNfc_sNfcIPCfg_t       nfcIPConfig;          /**< Gives the information about the General Bytes for NFC-IP Communication. */
-    phNfc_sReaderCfg_t      readerConfig;      
-    phNfc_sSEProtectionCfg_t protectionConfig;  
+    phNfc_sReaderCfg_t      readerConfig;
+    phNfc_sSEProtectionCfg_t protectionConfig;
 }phNfc_uConfig_t;
 
 /** MACRO to declare temporarily unused variables */

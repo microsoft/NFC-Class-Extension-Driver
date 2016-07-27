@@ -46,6 +46,7 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
+    ULONG powerPolicyReferences = 0;
     BOOLEAN releaseFdoContextRef = FALSE;
     BOOLEAN acquireFdoContextRef = FALSE;
 
@@ -53,54 +54,69 @@ Return Value:
 
     WdfWaitLockAcquire(FdoContext->PowerPolicyWaitLock, NULL);
 
+    powerPolicyReferences = FileContext->PowerPolicyReferences;
     if (PowerPolicy->CanPowerDown) {
 
         //
         // Releasing a reference that doesn't exist
         //
-        if (0 == FileContext->PowerPolicyReferences) {
+        if (0 == powerPolicyReferences) {
             TRACE_LINE(LEVEL_ERROR, "Releasing a reference that was not acquired!");
             status = STATUS_INVALID_DEVICE_REQUEST;
             WdfWaitLockRelease(FdoContext->PowerPolicyWaitLock);
             goto Done;
         }
 
-        FileContext->PowerPolicyReferences--;
+        powerPolicyReferences--;
 
-        if (0 == FileContext->PowerPolicyReferences) {
+        if (0 == powerPolicyReferences) {
             releaseFdoContextRef = TRUE;
         }
 
     } else {
 
-        if (0 == FileContext->PowerPolicyReferences) {
+        if (0 == powerPolicyReferences) {
             acquireFdoContextRef = TRUE;
         }
 
-        if (MAX_ULONG == FileContext->PowerPolicyReferences) {
+        if (MAX_ULONG == powerPolicyReferences) {
 
             //
-            // About to overflow the Policy references -> BC
+            // About to overflow the Policy references
             //
-            WdfCxVerifierKeBugCheck(FileContext->FileObject, 
-                                    NFC_CX_VERIFIER_BC, 
-                                    NFC_CX_BC_POWER_REF_OVERFLOW, 
-                                    NULL, 
-                                    NULL, 
-                                    NULL);
+            TRACE_LINE(LEVEL_ERROR, "Power policy references overflow");
+
+            TraceLoggingWrite(
+                g_hNfcCxProvider,
+                "NfcCxPowerSetPolicyOverflow",
+                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
+            status = STATUS_UNSUCCESSFUL;
+            NfcCxDeviceSetFailed(FdoContext->Device);
+
             WdfWaitLockRelease(FdoContext->PowerPolicyWaitLock);
             goto Done;
         }
 
-        FileContext->PowerPolicyReferences++;
+        powerPolicyReferences++;
     }
 
     if (acquireFdoContextRef) {
-        status = NfcCxPowerAcquireFdoContextReferenceLocked(FdoContext, FileContext);
+        BOOLEAN powerReferenceTaken = FALSE;
+        status = NfcCxPowerAcquireFdoContextReferenceLocked(FdoContext, FileContext, &powerReferenceTaken);
+        if (NT_SUCCESS(status) && !powerReferenceTaken)
+        {
+            powerPolicyReferences--;
+        }
     }
 
     if (releaseFdoContextRef) {
         status = NfcCxPowerReleaseFdoContextReferenceLocked(FdoContext, FileContext);
+    }
+
+    if (NT_SUCCESS(status))
+    {
+        FileContext->PowerPolicyReferences = powerPolicyReferences;
     }
 
     TRACE_LINE(LEVEL_INFO, "Current Power Policy references [FileObject = %p], [FileReferences = %d], [FdoReferences = %d,%d]",
@@ -122,7 +138,8 @@ _Requires_lock_held_(FdoContext->PowerPolicyWaitLock)
 NTSTATUS
 NfcCxPowerAcquireFdoContextReferenceLocked(
     _In_ PNFCCX_FDO_CONTEXT FdoContext,
-    _In_ PNFCCX_FILE_CONTEXT FileContext
+    _In_ PNFCCX_FILE_CONTEXT FileContext,
+    _Out_ BOOLEAN* pReferenceTaken
     )
 /*++
 
@@ -137,6 +154,7 @@ Arguments:
 
     FdoContext - Pointer to the FDO Context
     FileContext - Pointer to the file object context
+    pReferenceTaken - Output boolean indicating whether we acquired a power policy reference
 
 Return Value:
     NTSTATUS
@@ -145,11 +163,17 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     BOOLEAN IsPoweringUp = FALSE;
+    LONG nfpPowerPolicyReferencesDelta = 0;
+    LONG sePowerPolicyReferencesDelta = 0;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
+    NT_ASSERT(pReferenceTaken != NULL);
+
+    *pReferenceTaken = FALSE;
     if (NFC_CX_DEVICE_MODE_RAW == FdoContext->NfcCxClientGlobal->Config.DeviceMode) {
-        IsPoweringUp = TRUE;
+        TRACE_LINE(LEVEL_INFO, "Raw device mode. Powering up");
+
         status = WdfDeviceStopIdle(FdoContext->Device, TRUE);
         goto Done;
     }
@@ -158,14 +182,16 @@ Return Value:
         if (MAX_ULONG == FdoContext->NfpPowerPolicyReferences) {
 
             //
-            // About to overflow the Policy references -> BC
+            // About to overflow the Policy references
             //
-            WdfCxVerifierKeBugCheck(FdoContext->Device, 
-                                    NFC_CX_VERIFIER_BC, 
-                                    NFC_CX_BC_POWER_REF_OVERFLOW, 
-                                    NULL, 
-                                    NULL, 
-                                    NULL);
+            TRACE_LINE(LEVEL_ERROR, "NFP power policy references overflow");
+
+            TraceLoggingWrite(
+                g_hNfcCxProvider,
+                "NfcCxPowerAcquireFdoContextNfpReferencesOverflow",
+                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
+            status = STATUS_UNSUCCESSFUL;
             goto Done;
         }
 
@@ -175,27 +201,28 @@ Return Value:
             // the thread responsible for disabling the interface and a CreateFile
             //
             NT_ASSERT(FileContext->PowerPolicyReferences > 0);
-            FileContext->PowerPolicyReferences--;
-            TRACE_LINE(LEVEL_WARNING, 
+            TRACE_LINE(LEVEL_WARNING,
                        "Request received to increment NfpPowerPolicyReference with the Nfp interface disabled");
 
         } else {
             IsPoweringUp = (0 == FdoContext->NfpPowerPolicyReferences);
-            FdoContext->NfpPowerPolicyReferences++;
+            nfpPowerPolicyReferencesDelta++;
         }
 
     } else {
         if (MAX_ULONG == FdoContext->SEPowerPolicyReferences) {
 
             //
-            // About to overflow the Policy references -> BC
+            // About to overflow the Policy references
             //
-            WdfCxVerifierKeBugCheck(FdoContext->Device, 
-                                    NFC_CX_VERIFIER_BC, 
-                                    NFC_CX_BC_POWER_REF_OVERFLOW, 
-                                    NULL, 
-                                    NULL, 
-                                    NULL);
+            TRACE_LINE(LEVEL_ERROR, "SE power policy references overflow");
+
+            TraceLoggingWrite(
+                g_hNfcCxProvider,
+                "NfcCxPowerAcquireFdoContextSeReferencesOverflow",
+                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
+            status = STATUS_UNSUCCESSFUL;
             goto Done;
         }
 
@@ -205,29 +232,51 @@ Return Value:
             // the thread responsible for disabling the interface and a CreateFile
             //
             NT_ASSERT(FileContext->PowerPolicyReferences > 0);
-            FileContext->PowerPolicyReferences--;
-            TRACE_LINE(LEVEL_WARNING, 
+            TRACE_LINE(LEVEL_WARNING,
                        "Request received to increment SEPowerPolicyReference with the SE interface disabled");
 
         } else {
             IsPoweringUp = (0 == FdoContext->SEPowerPolicyReferences);
-            FdoContext->SEPowerPolicyReferences++;
+            sePowerPolicyReferencesDelta++;
         }
     }
 
     if (IsPoweringUp) {
+        TRACE_LINE(LEVEL_INFO, "Powering up");
+
         // SEManager power requests are dispatched from power managed queue
-        status = WdfDeviceStopIdle(FdoContext->Device,
-                                   !NfcCxFileObjectIsSEManager(FileContext));
-        if (NT_SUCCESS(status)) {
-            NfcCxRFInterfaceUpdateDiscoveryState(FdoContext->RFInterface);
-            status = STATUS_SUCCESS;
+        status = WdfDeviceStopIdle(FdoContext->Device, !NfcCxFileObjectIsSEManager(FileContext));
+        if (!NT_SUCCESS(status)) {
+            TraceLoggingWrite(
+                g_hNfcCxProvider,
+                "NfcCxPowerAcquireFdoContextPoweringUpFailed",
+                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+            goto Done;
+        }
+        
+        status = NfcCxRFInterfaceUpdateDiscoveryState(FdoContext->RFInterface);
+        if (!NT_SUCCESS(status)) {
+            TraceLoggingWrite(
+                g_hNfcCxProvider,
+                "NfcCxPowerAcquireFdoContextPoweringUpFailed",
+                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+            goto Done;
         }
     }
 
-Done:
+    FdoContext->NfpPowerPolicyReferences += nfpPowerPolicyReferencesDelta;
+    FdoContext->SEPowerPolicyReferences += sePowerPolicyReferencesDelta;
+    if (nfpPowerPolicyReferencesDelta > 0 || sePowerPolicyReferencesDelta > 0) {
+        *pReferenceTaken = TRUE;
+    }
 
-    TRACE_FUNCTION_EXIT_DWORD(LEVEL_VERBOSE, IsPoweringUp);
+Done:
+    if (!NT_SUCCESS(status))
+    {
+        NfcCxDeviceSetFailed(FdoContext->Device);
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 
     return status;
 }
@@ -259,11 +308,14 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     BOOLEAN IsPoweringDown = FALSE;
+    LONG nfpPowerPolicyReferencesDelta = 0;
+    LONG sePowerPolicyReferencesDelta = 0;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     if (NFC_CX_DEVICE_MODE_RAW == FdoContext->NfcCxClientGlobal->Config.DeviceMode) {
-        IsPoweringDown = TRUE;
+        TRACE_LINE(LEVEL_INFO, "Raw device mode. Powering down");
+
         WdfDeviceResumeIdle(FdoContext->Device);
         goto Done;
     }
@@ -273,57 +325,75 @@ Return Value:
         if (0 == FdoContext->NfpPowerPolicyReferences) {
 
             //
-            // About to underflow the Policy references -> BC
+            // About to underflow the Policy references
             //
-            WdfCxVerifierKeBugCheck(FdoContext->Device, 
-                                    NFC_CX_VERIFIER_BC, 
-                                    NFC_CX_BC_POWER_REF_UNDERFLOW, 
-                                    NULL, 
-                                    NULL, 
-                                    NULL);
-            
-            TRACE_LINE(LEVEL_ERROR, "Releasing a reference that was not acquired!");
+            TRACE_LINE(LEVEL_ERROR, "NFP power policy references underflow. Releasing a reference that was not acquired!");
+
+            TraceLoggingWrite(
+                g_hNfcCxProvider,
+                "NfcCxPowerReleaseFdoContextNfpReferencesUnderflow",
+                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
+            status = STATUS_UNSUCCESSFUL;
             goto Done;
         }
 
-        FdoContext->NfpPowerPolicyReferences--;
-        IsPoweringDown = (0 == FdoContext->NfpPowerPolicyReferences);
-            
+        nfpPowerPolicyReferencesDelta--;
+        IsPoweringDown = (0 == (FdoContext->NfpPowerPolicyReferences + nfpPowerPolicyReferencesDelta));
     } else {
 
         if (0 == FdoContext->SEPowerPolicyReferences) {
 
             //
-            // About to underflow the Policy references -> BC
+            // About to underflow the Policy references
             //
-            WdfCxVerifierKeBugCheck(FdoContext->Device, 
-                                    NFC_CX_VERIFIER_BC, 
-                                    NFC_CX_BC_POWER_REF_UNDERFLOW, 
-                                    NULL, 
-                                    NULL, 
-                                    NULL);
-            
-            TRACE_LINE(LEVEL_ERROR, "Releasing a reference that was not acquired!");
+            TRACE_LINE(LEVEL_ERROR, "SE power policy references underflow. Releasing a reference that was not acquired!");
+
+            TraceLoggingWrite(
+                g_hNfcCxProvider,
+                "NfcCxPowerReleaseFdoContextSeReferencesUnderflow",
+                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
+            status = STATUS_UNSUCCESSFUL;
             goto Done;
         }
 
-        FdoContext->SEPowerPolicyReferences--;
-        IsPoweringDown = (0 == FdoContext->SEPowerPolicyReferences);
+        sePowerPolicyReferencesDelta--;
+        IsPoweringDown = (0 == (FdoContext->SEPowerPolicyReferences + sePowerPolicyReferencesDelta));
     }
 
     if (IsPoweringDown) {
         //
         // Either proximity or secure element feature has been disabled, so increment idle count
         //
+        TRACE_LINE(LEVEL_INFO, "Powering down");
+
         if (FdoContext->RFInterface != NULL) {
-            NfcCxRFInterfaceUpdateDiscoveryState(FdoContext->RFInterface);
+            status = NfcCxRFInterfaceUpdateDiscoveryState(FdoContext->RFInterface);
+            if (!NT_SUCCESS(status))
+            {
+                TraceLoggingWrite(
+                    g_hNfcCxProvider,
+                    "NfcCxPowerReleaseFdoContextPoweringDownFailed",
+                    TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
+                goto Done;
+            }
         }
+        
         WdfDeviceResumeIdle(FdoContext->Device);
     }
 
-Done:
+    FdoContext->NfpPowerPolicyReferences += nfpPowerPolicyReferencesDelta;
+    FdoContext->SEPowerPolicyReferences += sePowerPolicyReferencesDelta;
 
-    TRACE_FUNCTION_EXIT_DWORD(LEVEL_VERBOSE, IsPoweringDown);
+Done:
+    if (!NT_SUCCESS(status))
+    {
+        NfcCxDeviceSetFailed(FdoContext->Device);
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 
     return status;
 }
@@ -495,7 +565,10 @@ Return Value:
     }
     
     TRACE_LINE(LEVEL_INFO, "Current Power State = %!BOOLEAN!", FdoContext->NfpRadioState);
+
+#ifdef EVENT_WRITE
     EventWritePowerSetRadioState(FdoContext->NfpRadioState);
+#endif
 
 Done:
     //
@@ -648,7 +721,6 @@ Return Value:
     case IOCTL_NFCSERM_SET_RADIO_STATE:
     case IOCTL_NFCSERM_QUERY_RADIO_STATE:
         return TRUE;
-        break;
     default:
         return FALSE;
     }

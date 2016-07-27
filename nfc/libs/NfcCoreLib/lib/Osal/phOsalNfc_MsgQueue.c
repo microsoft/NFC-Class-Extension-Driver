@@ -21,7 +21,7 @@ NFCSTATUS phOsalNfc_MsgQueue_Init(void)
 
     if(gpphOsalNfc_Context->hMsgQueueEvent != NULL)
     {
-        gpphOsalNfc_Context->hCallbackThread = CreateThread(NULL, 0, phOsalNfc_MsgQueue_Thread, NULL, CREATE_SUSPENDED, &gpphOsalNfc_Context->dwCallbackThreadID);
+        gpphOsalNfc_Context->hCallbackThread = CreateThread(NULL, 0, phOsalNfc_MsgQueue_Thread, NULL, CREATE_SUSPENDED, (LPDWORD)&gpphOsalNfc_Context->dwCallbackThreadID);
 
         if(gpphOsalNfc_Context->hCallbackThread != NULL)
         {

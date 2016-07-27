@@ -347,13 +347,17 @@ NfcCxTml_PostWriteCompletion(
             NT_ASSERT(IsListEmpty(&TmlInterface->ReadNotificationQueue));
             
             if (!IsListEmpty(&TmlInterface->ReadNotificationQueue)) {
-                TRACE_LINE(LEVEL_ERROR, "ReadQueue and ReadNotificationQueue have data. This shouldn't happen and can cause a deadlock");
-                WdfCxVerifierKeBugCheck(TmlInterface->FdoContext->Device,
-                                        NFC_CX_VERIFIER_BC,
-                                        NFC_CX_BC_TML_INVALID_QUEUE_STATE,
-                                        NULL,
-                                        NULL,
-                                        NULL);
+                TRACE_LINE(LEVEL_ERROR, "ReadQueue and ReadNotificationQueue both have data, which is unexpected. Calling NfcCxDeviceSetFailed");
+
+                TraceLoggingWrite(
+                    g_hNfcCxProvider,
+                    "NfcCxTmlInvalidQueueState",
+                    TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
+                NfcCxDeviceSetFailed(TmlInterface->FdoContext->Device);
+
+                WdfWaitLockRelease(TmlInterface->QueueLock);
+                goto Done;
             }
         }
 
@@ -462,6 +466,7 @@ Return Value:
 {
     PNFCCX_TML_WRITE_CONTEXT writeContext = NULL;
     PNFCCX_FDO_CONTEXT fdoContext = NULL;
+    DWORD dwWait = 0;
 
     UNREFERENCED_PARAMETER(Target);
     UNREFERENCED_PARAMETER(Context);
@@ -503,13 +508,22 @@ Return Value:
                                              NULL);
     
     if (writeContext->hCompletionEvent != NULL) {
-        if (WaitForSingleObject(writeContext->hCompletionEvent, MAX_CALLBACK_TIMEOUT) != WAIT_OBJECT_0) {
-            WdfCxVerifierKeBugCheck(fdoContext->Device,
-                                    NFC_CX_VERIFIER_BC,
-                                    NFC_CX_BC_RF_QUEUE_DRAIN_TIMEOUT,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+        dwWait = WaitForSingleObject(writeContext->hCompletionEvent, MAX_CALLBACK_TIMEOUT);
+
+        if (dwWait != WAIT_OBJECT_0) {
+            if (dwWait == WAIT_FAILED) {
+                dwWait = GetLastError();
+            }
+
+            TRACE_LINE(LEVEL_ERROR, "Timer for write completion callback timed out. Error: 0x%08X", dwWait);
+
+            TraceLoggingWrite(
+                g_hNfcCxProvider,
+                "NfcCxTmlPostWriteCallbackTimeout",
+                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
+                TraceLoggingHexUInt32(dwWait, "WaitError"));
+
+            NfcCxDeviceSetFailed(fdoContext->Device);
         }
 
         CloseHandle(writeContext->hCompletionEvent);
@@ -579,7 +593,7 @@ Return Value:
     // Forward the request to the class extension client driver
     //
     if (!WdfRequestSend(request,
-                        WdfDeviceGetSelfIoTarget(fdoContext->Device),
+                        CxProxyWdfDeviceGetSelfIoTarget(fdoContext->Device),
                         NULL)) {
         status = WdfRequestGetStatus(request);
         TRACE_LINE(LEVEL_ERROR, "Failed to write the Nci Packet to the CX, %!STATUS!", status);
@@ -653,8 +667,8 @@ Return Value:
     WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&requestAttrib, NFCCX_TML_WRITE_CONTEXT);
     requestAttrib.ParentObject = fdoContext->Device;
 
-    status = WdfRequestCreate(&requestAttrib, 
-                              WdfDeviceGetSelfIoTarget(fdoContext->Device), 
+    status = WdfRequestCreate(&requestAttrib,
+                              CxProxyWdfDeviceGetSelfIoTarget(fdoContext->Device),
                               &request);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to create the write request, %!STATUS!", status);
@@ -676,6 +690,7 @@ Return Value:
         TRACE_LINE(LEVEL_ERROR, "Failed to parse the Nci Packet Header");
     }
     else {
+#ifdef EVENT_WRITE
         EventWriteNciPacketWrite(nciHeader.MessageType,
                                  nciHeader.PBF,
                                  BufferLength);
@@ -683,6 +698,7 @@ Return Value:
                                         nciHeader.PBF,
                                         BufferLength,
                                         Buffer);
+#endif
     }
 
     WdfRequestSetCompletionRoutine(request, NfcCxTml_WriteCompletion, NULL);
@@ -700,7 +716,7 @@ Return Value:
     }
     writeContext->Memory = memory;
     
-    status = WdfIoTargetFormatRequestForIoctl(WdfDeviceGetSelfIoTarget(fdoContext->Device),
+    status = WdfIoTargetFormatRequestForIoctl(CxProxyWdfDeviceGetSelfIoTarget(fdoContext->Device),
                                               request,
                                               IOCTL_NFCCX_WRITE_PACKET,
                                               memory,
@@ -896,6 +912,7 @@ Return Value:
     PLIST_ENTRY ple = NULL;
     PNFCCX_TML_READ_QUEUE_ENTRY pReadQueueEntry = NULL;
     NCI_PACKET_HEADER nciHeader = {0};
+    DWORD dwWait = 0;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -909,6 +926,7 @@ Return Value:
         TRACE_LINE(LEVEL_ERROR, "Failed to parse the Nci Packet Header");
     }
     else {
+#ifdef EVENT_WRITE
         EventWriteNciPacketReceived(nciHeader.MessageType,
                                     nciHeader.PBF,
                                     BufferSize);
@@ -916,6 +934,7 @@ Return Value:
                                            nciHeader.PBF,
                                            BufferSize,
                                            Buffer);
+#endif
     }
 
     WdfWaitLockAcquire(TmlInterface->QueueLock, NULL);
@@ -983,14 +1002,25 @@ Return Value:
                                              NULL);
     
     if (pReadQueueEntry->hCompletionEvent != NULL) {
-        if (WaitForSingleObject(pReadQueueEntry->hCompletionEvent, MAX_CALLBACK_TIMEOUT) != WAIT_OBJECT_0) {
-            WdfCxVerifierKeBugCheck(TmlInterface->FdoContext->Device,
-                                    NFC_CX_VERIFIER_BC,
-                                    NFC_CX_BC_RF_QUEUE_DRAIN_TIMEOUT,
-                                    NULL,
-                                    NULL,
-                                    NULL);
+        dwWait = WaitForSingleObject(pReadQueueEntry->hCompletionEvent, MAX_CALLBACK_TIMEOUT);
+
+        if (dwWait != WAIT_OBJECT_0) {
+            if (dwWait == WAIT_FAILED) {
+                dwWait = GetLastError();
+            }
+
+            TRACE_LINE(LEVEL_ERROR, "Timer for read completion callback timed out. Error: 0x%08X", dwWait);
+
+            TraceLoggingWrite(
+                g_hNfcCxProvider,
+                "NfcCxTmlPostReadCallbackTimeout",
+                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
+                TraceLoggingHexUInt32(dwWait, "WaitError"));
+
+            status = STATUS_UNSUCCESSFUL;
+            NfcCxDeviceSetFailed(TmlInterface->FdoContext->Device);
         }
+
         CloseHandle(pReadQueueEntry->hCompletionEvent);
     }
     else {
@@ -1084,8 +1114,8 @@ phTmlNfc_Write(
     if (!IsListEmpty(&tmlInterface->WriteQueue) ||
         (TRUE == tmlInterface->IsWriteCompletionPending)) {
         status = STATUS_PENDING;
-        TRACE_LINE(LEVEL_INFO, 
-                   "A write is already is already in the queue (%d) or write is pended with transport layer %d",
+        TRACE_LINE(LEVEL_INFO,
+                   "A write is already in the queue (%d) or write is pended with transport layer %d",
                    (IsListEmpty(&tmlInterface->WriteQueue) == 0),
                    tmlInterface->IsWriteCompletionPending);
         InsertTailList(&tmlInterface->WriteQueue, &writeQueueEntry->ListEntry);
@@ -1109,8 +1139,8 @@ Done:
             free(writeQueueEntry);
         }
     }
+
     return NfcCxNfcStatusFromNtStatus(status);
-                
 }
 
 NFCSTATUS

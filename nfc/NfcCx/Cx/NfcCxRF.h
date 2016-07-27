@@ -22,9 +22,9 @@ Environment:
 #define MAX_INBOX_SIZE                  MAX_MESSAGE_SIZE
 #define MAX_ROUTING_TABLE_SIZE          32
 #define MAX_NUMBER_OF_SE                (PHLIBNFC_MAXNO_OF_SE + 1)
-#define MAX_CALLBACK_TIMEOUT            10000
-#define MAX_WATCHDOG_TIMEOUT            45000
-#define MAX_DEINIT_TIMEOUT              15000
+#define MAX_CALLBACK_TIMEOUT            8000
+#define MAX_WATCHDOG_TIMEOUT            10000
+#define MAX_DEINIT_TIMEOUT              8000
 #define PRESENCE_CHECK_INTERVAL         200
 #define MAX_TRANSCEIVE_TIMEOUT          5000
 
@@ -130,6 +130,8 @@ typedef struct _NFCCX_RF_INTERFACE {
     UCHAR uiNfcCE_Mode;
     ULONG uiDuration;
     UCHAR uiBailout; 
+    // Store timetamp for Kovio last detection time to detect the tag being read again too quickly
+    ULONGLONG bKovioDetected;
 
     //
     // Dynamic Configuration. May have different state based on initial initialization or recovery initialization.
@@ -156,6 +158,9 @@ typedef struct _NFCCX_RF_INTERFACE {
     ULONG uiActualNdefMsgLength;   // Indicates Actual length of NDEF Message in Tag.
     ULONG uiMaxNdefMsgLength;      // Indicates Maximum Ndef Message length that Tag can hold.
     phLibNfc_Data_t sNdefMsg;
+
+    // Store barcode in a separate buffer, to not mix with ndef
+    phLibNfc_Data_t sBarcodeMsg;
 
     //
     // Watchdog timer
@@ -438,6 +443,8 @@ FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceTagConvertReadOnly;
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceTargetTransceive;
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceTargetPresenceCheck;
 
+FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceTagReadBarcode;
+
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfacePreSEEnumerate;
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceSEEnumerate;
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfacePostSEEnumerate;
@@ -484,6 +491,8 @@ FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfacePostRecovery;
 #define RF_INTERFACE_TAG_READ_NDEF_SEQUENCE \
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceTagCheckNdef) \
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceTagReadNdef)
+
+#define RF_INTERFACE_TAG_READ_BARCODE_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceTagReadBarcode)
 
 #define RF_INTERFACE_TAG_WRITE_NDEF_SEQUENCE \
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceTagFormatNdef) \

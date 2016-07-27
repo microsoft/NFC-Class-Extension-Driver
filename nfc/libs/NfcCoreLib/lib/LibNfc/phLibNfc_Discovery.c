@@ -465,7 +465,7 @@ NFCSTATUS phLibNfc_ProcessDeactResp(void *pContext,NFCSTATUS wStatus,void *pInfo
 }
 
 static NFCSTATUS
-phLibNfc_ProcessDeactComplete(void *pContext,NFCSTATUS status,void *pInfo)
+phLibNfc_ProcessDeactComplete(void *pContext, NFCSTATUS status, void *pInfo)
 {
     NFCSTATUS    wStatus = status;
     NFCSTATUS    wRetVal = NFCSTATUS_FAILED;
@@ -476,13 +476,15 @@ phLibNfc_ProcessDeactComplete(void *pContext,NFCSTATUS status,void *pInfo)
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
 
-    if( NULL != pLibContext)
+    if(NULL != pLibContext)
     {
+        pLibContext->bSkipTransceive = PH_LIBNFC_INTERNAL_COMPLETE;
+
         pDisconnNtfCb = pLibContext->CBInfo.pClientDisConnectCb;
         pUpper_Context = pLibContext->CBInfo.pClientDConCntx;
         pLibContext->CBInfo.pClientDisConnectCb = NULL;
         pLibContext->CBInfo.pClientDConCntx = NULL;
-        if (NFCSTATUS_SUCCESS == PHNFCSTATUS(status))
+        if(NFCSTATUS_SUCCESS == PHNFCSTATUS(status))
         {
             PH_LOG_LIBNFC_INFO_STR("Lower layer has returned NFCSTATUS_SUCCESS");
             pLibContext->Connected_handle = NULL;
@@ -492,12 +494,13 @@ phLibNfc_ProcessDeactComplete(void *pContext,NFCSTATUS status,void *pInfo)
             PH_LOG_LIBNFC_CRIT_STR("Buffer passed by Lower layer is NULL");
             wStatus = NFCSTATUS_FAILED;
         }
-        phLibNfc_UpdateEvent(PHNFCSTATUS(wStatus),&TrigEvent);
+
+        phLibNfc_UpdateEvent(PHNFCSTATUS(wStatus), &TrigEvent);
         wRetVal = phLibNfc_StateHandler(pLibContext, TrigEvent, pInfo, NULL, NULL);
         /* Disconnect call back needs to be invoked */
         if(NULL != pDisconnNtfCb)
         {
-            pDisconnNtfCb(pUpper_Context,(phLibNfc_Handle)NULL,wStatus);
+            pDisconnNtfCb(pUpper_Context, (phLibNfc_Handle)NULL, wStatus);
         }
     }
 
@@ -764,14 +767,16 @@ NFCSTATUS phLibNfc_Actv2Init(void *pContext, void *Param1, void *Param2, void *P
 {
     pphLibNfc_Context_t pCtx = pContext;
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
-    phNfc_eDiscAndDisconnMode_t ReleaseType;
+
+    // Warning C4305: 'type cast': truncation from 'void *' to 'phNfc_eDiscAndDisconnMode_t'
+#pragma warning(suppress:4305)
+    phNfc_eDiscAndDisconnMode_t ReleaseType = (phNfc_eDiscAndDisconnMode_t)Param1;
+
     UNUSED(Param2);
     UNUSED(Param3);
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NULL != pCtx)
     {
-        ReleaseType = (phNfc_eDiscAndDisconnMode_t)Param1;
-
         if(NFC_INTERNAL_STOP_DISCOVERY != ReleaseType)
         {
             if(1 == pCtx->bDiscDelayFlag)
@@ -808,8 +813,11 @@ NFCSTATUS phLibNfc_DummyInit(void *pContext, void *Param1, void *Param2, void *P
     pphLibNfc_Context_t pCtx = pContext;
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
     uint32_t dwTimerId = PH_OSALNFC_TIMER_ID_INVALID;
+
+    // Warning C4305: 'type cast': truncation from 'void *' to 'phNfc_eDiscAndDisconnMode_t'
+#pragma warning(suppress:4305)
     phNfc_eDiscAndDisconnMode_t RequestedMode = (phNfc_eDiscAndDisconnMode_t)Param1;
-    UNUSED(Param1);
+
     UNUSED(Param2);
     UNUSED(Param3);
     PH_LOG_LIBNFC_FUNC_EXIT();
@@ -1245,16 +1253,17 @@ static NFCSTATUS phLibNfc_ConfigDiscParams(void *pContext,
 
         /* Check whether any configuration is set. If yes, then invoke
            Set Config Command */
-        if((1 == tNciDiscConfig.tConfigInfo.PollNfcAConfig)    || \
-           (1 == tNciDiscConfig.tConfigInfo.PollNfcBConfig)    || \
-           (1 == tNciDiscConfig.tConfigInfo.PollNfcFConfig)    || \
-           (1 == tNciDiscConfig.tConfigInfo.PollIsoDepConfig)  || \
-           (1 == tNciDiscConfig.tConfigInfo.PollNfcDepConfig)  || \
-           (1 == tNciDiscConfig.tConfigInfo.LstnNfcAConfig)    || \
-           (1 == tNciDiscConfig.tConfigInfo.LstnNfcBConfig)    || \
-           (1 == tNciDiscConfig.tConfigInfo.LstnNfcFConfig)    || \
-           (1 == tNciDiscConfig.tConfigInfo.LstnIsoDepConfig)  || \
-           (1 == tNciDiscConfig.tConfigInfo.LstnNfcDepConfig)  || \
+        if((1 == tNciDiscConfig.tConfigInfo.PollNfcAConfig)      || \
+           (1 == tNciDiscConfig.tConfigInfo.PollNfcBConfig)      || \
+           (1 == tNciDiscConfig.tConfigInfo.PollNfcFConfig)      || \
+           (1 == tNciDiscConfig.tConfigInfo.PollIsoDepConfig)    || \
+           (1 == tNciDiscConfig.tConfigInfo.PollNfcDepConfig)    || \
+           (1 == tNciDiscConfig.tConfigInfo.LstnNfcAConfig)      || \
+           (1 == tNciDiscConfig.tConfigInfo.LstnNfcBConfig)      || \
+           (1 == tNciDiscConfig.tConfigInfo.LstnNfcFConfig)      || \
+           (1 == tNciDiscConfig.tConfigInfo.LstnIsoDepConfig)    || \
+           (1 == tNciDiscConfig.tConfigInfo.LstnNfcDepConfig)    || \
+           (1 == tNciDiscConfig.tConfigInfo.PollNfcAKovioConfig) || \
            (1 == tNciDiscConfig.tConfigInfo.CommonConfig))
         {
             wStatus = phNciNfc_SetConfigRfParameters(pLibContext->sHwReference.pNciHandle,
@@ -1280,6 +1289,7 @@ static void phLibNfc_SetDiscPayload(void *pContext,phLibNfc_sADD_Cfg_t *pADDSetu
         pNciConfig->EnableFelica = ((pADDSetup->PollDevInfo.PollCfgInfo.EnableFelica212) ||
                                     (pADDSetup->PollDevInfo.PollCfgInfo.EnableFelica424));
         pNciConfig->EnableIso15693 = pADDSetup->PollDevInfo.PollCfgInfo.EnableIso15693;
+        pNciConfig->EnableKovio = pADDSetup->PollDevInfo.PollCfgInfo.EnableKovio;
     }
     /* Configure for P2P Initiator Device */
     /* Enable passive mode */
@@ -1428,6 +1438,10 @@ static void phLibNfc_SetDiscPayload(void *pContext,phLibNfc_sADD_Cfg_t *pADDSetu
         {
             pNciConfig->bIso15693_PollFreq = pADDSetup->aPollParms[3].PollFreq;
         }
+    }
+    if(pNciConfig->EnableKovio)
+    {
+        pNciConfig->bKovio_PollFreq = 0x01;
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return ;
@@ -1762,7 +1776,8 @@ static uint8_t phLibNfc_CheckDiscParams(phLibNfc_sADD_Cfg_t *pDiscConfig)
                (1 == pPollInfo->EnableIso14443B) ||   \
                (1 == pPollInfo->EnableFelica212) ||   \
                (1 == pPollInfo->EnableFelica424) ||   \
-               (1 == pPollInfo->EnableIso15693))
+               (1 == pPollInfo->EnableIso15693)  ||   \
+               (1 == pPollInfo->EnableKovio))
             {
                 PH_LOG_LIBNFC_INFO_STR("Polling for one of the tag's is enabled");
                 bSkipSetConfig = 0;

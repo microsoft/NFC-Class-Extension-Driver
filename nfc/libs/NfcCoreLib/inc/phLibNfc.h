@@ -141,6 +141,8 @@ typedef struct SupportedTagInfo
                                      or formatting)for JEWEL tag supported else not supported.*/
     unsigned Desfire:1;         /**<TRUE indicates specified feature (mapping
                                      or formatting)for DESFire tag supported else not supported.*/
+    unsigned Kovio : 1;         /**<TRUE indicates specified feature (mapping
+                                     or formatting) for Kovio barcode tag supported else not supported.*/
 }phLibNfc_sSupportedTagInfo_t;
 
 typedef phLibNfc_sSupportedTagInfo_t  phLibNfc_sNDEFMappingInfo_t;
@@ -2135,3 +2137,27 @@ extern NFCSTATUS phLibNfc_Llcp_SendTo( phLibNfc_Handle               hRemoteDevi
                                        pphLibNfc_LlcpSocketSendCb_t  pSend_RspCb,
                                        void*                         pContext
                                        );
+
+/**
+* \ingroup grp_lib_nfc
+* \brief <b>Cancel the pending Send fragment issued by SNEP in case SNEP has received Invalid Response</b>.
+*
+* This function is used by SNEP layer only. SNEP calls this function in case of Fragmented PUT/GET request.
+* This function is called to cancel the pending send Fragment at Fri layer, in case an Invalid response(2nd CONTINUE Request/Response)
+* is received.
+*
+* \param[in]  hRemoteDevice      Remote device handle
+* \param[in]  hSocket            Socket handle obtained during socket creation.
+*
+* \retval #NFCSTATUS_ABORTED                  Send Operation aborted successful.
+* \retval #NFCSTATUS_INVALID_PARAMETER        One or more of the supplied parameters
+*                                             could not be properly interpreted.
+* \retval #NFCSTATUS_INVALID_STATE            The socket is not in a valid state, or not of
+*                                             a valid type to perform the requsted operation.
+* \retval #NFCSTATUS_NOT_INITIALISED          Indicates stack is not yet initialized.
+* \retval #NFCSTATUS_SHUTDOWN                 Shutdown in progress.
+* \retval #NFCSTATUS_FAILED                   Operation failed.
+*/
+extern NFCSTATUS phLibNfc_Llcp_CancelPendingSend( phLibNfc_Handle hRemoteDevice,
+                                                  phLibNfc_Handle hSocket
+                                                  );

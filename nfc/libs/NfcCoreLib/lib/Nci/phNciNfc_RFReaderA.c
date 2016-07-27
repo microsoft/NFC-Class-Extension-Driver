@@ -45,7 +45,14 @@ phNciNfc_RdrAInit(
         pRfNtfBuff = &pBuff[7];
 
         /* Get technology specific parameters incase of Nfc-A poll mode */
-        if(phNciNfc_NFCA_Listen != pRemDevInf->eRFTechMode)
+        if (phNciNfc_NFCA_Kovio_Poll == pRemDevInf->eRFTechMode)
+        {
+            if (RfTechSpecParamsLen > PH_NCINFCTYPES_KOVIO_TAG_ID_LENGTH)
+            {
+                status = NFCSTATUS_FAILED;
+            }
+        }
+        else if(phNciNfc_NFCA_Listen != pRemDevInf->eRFTechMode)
         {
             /* Length of NFCID1 */
             bUidLength = *(pRfNtfBuff+2);
@@ -128,6 +135,15 @@ phNciNfc_RdrAInit(
                     PH_LOG_NCI_INFO_STR(" Invalid UID Length received");
                 }
             }
+            case phNciNfc_eKovio_PICC:
+            {
+                // The tag ID is all we get
+                if(RfTechSpecParamsLen > 0)
+                {
+                    pRemDevInf->tRemoteDevInfo.Kovio_Info.TagIdLength = RfTechSpecParamsLen;
+                    phOsalNfc_MemCopy(&(pRemDevInf->tRemoteDevInfo.Kovio_Info.TagId), pRfNtfBuff, RfTechSpecParamsLen);
+                }
+            }
             break;
             default:
             {
@@ -141,6 +157,10 @@ phNciNfc_RdrAInit(
         switch(pRemDevInf->RemDevType)
         {
             case phNciNfc_eISO14443_A_PICC:
+            {
+                break;
+            }
+            case phNciNfc_eKovio_PICC:
             {
                 break;
             }

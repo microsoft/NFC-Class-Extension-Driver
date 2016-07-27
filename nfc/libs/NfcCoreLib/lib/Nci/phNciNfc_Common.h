@@ -7,7 +7,7 @@
 #pragma once
 
 #include <phNfcTypes.h>
-#include <phNciNfc.h>
+#include "phNciNfc.h"
 
 /* Time out between command and response or send and receive data */
 #define PHNCINFC_NCI_CMD_RSP_TIMEOUT    (2000)

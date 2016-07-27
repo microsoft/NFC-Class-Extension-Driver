@@ -88,7 +88,11 @@ typedef struct _NFCCX_FILE_CONTEXT {
 
     TRANSLATION_TYPE_PROTOCOL TranslationType;
     UCHAR Tnf;
-    ANSI_STRING Types;
+
+    // NULL terminated string
+    PSTR pszTypes;
+    // Character count
+    UCHAR cchTypes;
 
     //
     // Role specific parameters

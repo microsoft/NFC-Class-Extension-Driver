@@ -69,6 +69,7 @@ static uint8_t phNciNfc_VerifyRfProtocols(uint8_t bNumMapEntries, pphNciNfc_Mapp
 
 static NFCSTATUS phNciNfc_ValidateCommonParams(pphNciNfc_CommonDiscParams_t pDiscCommConfig, uint16_t *wSize, uint8_t *pNumParams);
 static NFCSTATUS phNciNfc_ValidatePollNfcAParams(pphNciNfc_PollNfcADiscParams_t pPollNfcAConf, uint16_t *wSize, uint8_t *pNumParams);
+static NFCSTATUS phNciNfc_ValidatePollNfcAKovioParams(pphNciNfc_PollNfcAKovioDiscParams_t pPollNfcAKovioConf, uint16_t *wSize, uint8_t *pNumParams);
 static NFCSTATUS phNciNfc_ValidatePollNfcBParams(pphNciNfc_PollNfcBDiscParams_t pPollNfcBConf, uint16_t *wSize, uint8_t *pNumParams);
 static NFCSTATUS phNciNfc_ValidatePollNfcFParams(pphNciNfc_PollNfcFDiscParams_t pPollNfcFConf, uint16_t *wSize, uint8_t *pNumParams);
 static NFCSTATUS phNciNfc_ValidatePollIsoDepParams(pphNciNfc_PollIsoDepDiscParams_t pPollIsoDepConf, uint16_t *wSize, uint8_t *pNumParams);
@@ -84,6 +85,7 @@ static NFCSTATUS phNciNfc_BuildSetConfCmdPayload(pphNciNfc_RfDiscConfigParams_t 
 static uint8_t phNciNfc_BuildCommonParams(pphNciNfc_TlvUtilInfo_t pTlvInfo, pphNciNfc_CommonDiscParams_t pDiscCommonConf);
 
 static uint8_t phNciNfc_BuildPollNfcAParams(pphNciNfc_TlvUtilInfo_t pTlvInfo, pphNciNfc_PollNfcADiscParams_t pPollNfcAParams);
+static uint8_t phNciNfc_BuildPollNfcKovioAParams(pphNciNfc_TlvUtilInfo_t pTlvInfo, pphNciNfc_PollNfcAKovioDiscParams_t pPollNfcAKovioParams);
 static uint8_t phNciNfc_BuildPollNfcBParams(pphNciNfc_TlvUtilInfo_t pTlvInfo, pphNciNfc_PollNfcBDiscParams_t pPollNfcBParams);
 static uint8_t phNciNfc_BuildPollNfcFParams(pphNciNfc_TlvUtilInfo_t pTlvInfo, pphNciNfc_PollNfcFDiscParams_t pPollNfcFParams);
 static uint8_t phNciNfc_BuildPollIsoDepParams(pphNciNfc_TlvUtilInfo_t pTlvInfo, pphNciNfc_PollIsoDepDiscParams_t pPollIsoDepParams);
@@ -2628,6 +2630,29 @@ phNciNfc_BuildPollNfcAParams(pphNciNfc_TlvUtilInfo_t pTlvInfo,
 }
 
 static uint8_t
+phNciNfc_BuildPollNfcAKovioParams(pphNciNfc_TlvUtilInfo_t pTlvInfo,
+    pphNciNfc_PollNfcAKovioDiscParams_t pPollNfcAKovioParams)
+{
+    uint8_t bReturnStat = NFCSTATUS_SUCCESS;
+    uint8_t bStatus = 0;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (1 == pPollNfcAKovioParams->PollNfcAKovioConfig.Config.SetBailOut)
+    {
+        bReturnStat = phNciNfc_TlvUtilsAddTlv(pTlvInfo, PHNCINFC_RFCONFIG_PA_BAIL_OUT, 1,
+            &pPollNfcAKovioParams->bBailOut, 0);
+        if (NFCSTATUS_SUCCESS != bReturnStat)
+        {
+            PH_LOG_NCI_WARN_STR("Poll Nfc-A Kovio disc config framing failed");
+            bStatus = 1;
+        }
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return bStatus;
+}
+
+
+static uint8_t
 phNciNfc_BuildPollNfcBParams(pphNciNfc_TlvUtilInfo_t pTlvInfo,
                              pphNciNfc_PollNfcBDiscParams_t pPollNfcBParams)
 {
@@ -3491,6 +3516,37 @@ phNciNfc_ValidatePollNfcAParams(pphNciNfc_PollNfcADiscParams_t pPollNfcAConf,
     else
     {
         PH_LOG_NCI_WARN_STR("No Poll Nfc-Dep parameters are being requested by the user to configure");
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS
+phNciNfc_ValidatePollNfcAKovioParams(pphNciNfc_PollNfcAKovioDiscParams_t pPollNfcAKovioConf,
+    uint16_t *wSize,
+    uint8_t *pNumParams)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+    /* Check if user is requesting to configure any Poll Kovio parameters */
+    if (0 != pPollNfcAKovioConf->PollNfcAKovioConfig.EnableConfig)
+    {
+        if (1 == pPollNfcAKovioConf->PollNfcAKovioConfig.Config.SetBailOut)
+        {
+            /* Number of configurable parameters in Poll Nfc-A technology */
+            *pNumParams += PHNCINFC_RFCONFIG_PNFCA_PARAMS;
+            /* Range of bail-out parameter is 0 or 1 */
+            if (1 >= pPollNfcAKovioConf->bBailOut)
+            {
+                wStatus = NFCSTATUS_SUCCESS;
+                *wSize += PHNCINFC_RFCONFIG_PNFCA_BAILOUT_LEN;
+            }
+        }
+    }
+    else
+    {
+        PH_LOG_NCI_WARN_STR("No Poll Nfc-Kovio parameters are being requested by the user to configure");
     }
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;

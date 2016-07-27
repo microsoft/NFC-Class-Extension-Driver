@@ -15,14 +15,14 @@
 #include <phOsalNfc_Timer.h>
 #include <phFriNfc_NdefReg.h>
 #include <phLibNfc.h>
-#include <phLibNfc_ndef_raw.h>
+#include "phLibNfc_ndef_raw.h"
 
 #include <phNfcHalTypes2.h>
 #include "phLibNfc_CeHost.h"
 #include "phLibNfc_State.h"
 #include "phLibNfc_Sequence.h"
-#include <phLibNfc_Llcp.h>
-#include <phLibNfc_Discovery.h>
+#include "phLibNfc_Llcp.h"
+#include "phLibNfc_Discovery.h"
 #include "phLibNfc_Ioctl.h"
 #include "phLibNfc_IoctlUtils.h"
 

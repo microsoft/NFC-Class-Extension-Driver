@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM">
+      <Configuration>Release</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\phNciNfc_Core.c" />
+    <ClCompile Include="..\phNciNfc_CoreIf.c" />
+    <ClCompile Include="..\phNciNfc_CoreMemMgr.c" />
+    <ClCompile Include="..\phNciNfc_CoreRecv.c" />
+    <ClCompile Include="..\phNciNfc_CoreRecvMgr.c" />
+    <ClCompile Include="..\phNciNfc_CoreSend.c" />
+    <ClCompile Include="..\phNciNfc_CoreUtils.c" />
+    <ClCompile Include="..\phNciNfc_DbgDescription.c" />
+    <ClCompile Include="..\phNciNfc_LoglConnMgmt.c" />
+    <ClCompile Include="..\phNciNfc_TlvUtils.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\phNciNfcTypes.h" />
+    <ClInclude Include="..\phNciNfc_Core.h" />
+    <ClInclude Include="..\phNciNfc_CoreIf.h" />
+    <ClInclude Include="..\phNciNfc_CoreMemMgr.h" />
+    <ClInclude Include="..\phNciNfc_CorePch.h" />
+    <ClInclude Include="..\phNciNfc_CoreRecv.h" />
+    <ClInclude Include="..\phNciNfc_CoreRecvMgr.h" />
+    <ClInclude Include="..\phNciNfc_CoreSend.h" />
+    <ClInclude Include="..\phNciNfc_CoreStatus.h" />
+    <ClInclude Include="..\phNciNfc_CoreUtils.h" />
+    <ClInclude Include="..\phNciNfc_DbgDescription.h" />
+    <ClInclude Include="..\phNciNfc_LoglConnMgmt.h" />
+    <ClInclude Include="..\phNciNfc_State.h" />
+    <ClInclude Include="..\phNciNfc_TlvUtils.h" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{2A883886-5C38-48D8-8A4F-1E5CF7992F77}</ProjectGuid>
+    <TemplateGuid>{0a049372-4c4d-4ea0-a64e-dc6ad88ceca1}</TemplateGuid>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">ARM</Platform>
+    <RootNamespace>NfcCoreNciCore</RootNamespace>
+    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WindowsUserModeDriver10.0</PlatformToolset>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <DriverTargetPlatform>Universal</DriverTargetPlatform>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WppEnabled>true</WppEnabled>
+      <WppModuleName>NfcCoreLib</WppModuleName>
+      <WppScanConfigurationData>..\..\inc\NfcCoreLibTracing.h</WppScanConfigurationData>
+      <WppAdditionalOptions>-scan:"..\..\..\inc\phNfcTraceEnums.h" -scan:"..\phNciNfc_DbgDescription.h" %(WppAdditionalOptions)</WppAdditionalOptions>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);..\..\..\inc;..\..\Inc;..\..\Osal</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

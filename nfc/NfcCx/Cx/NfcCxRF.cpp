@@ -20,6 +20,10 @@ Environment:
 
 #include "NfcCxRF.tmh"
 
+// Temporary define until NfcCx.h header is updated
+// Kovio refers to NfcBarcode tags
+#define NFC_CX_POLL_NFC_A_KOVIO 0x00000040
+
 // {D06B4CC1-1DA2-45c2-BD7B-877C4573F83B}
 DEFINE_GUID(SESSION_ID, 
 0xd06b4cc1, 0x1da2, 0x45c2, 0xbd, 0x7b, 0x87, 0x7c, 0x45, 0x73, 0xf8, 0x3b);
@@ -30,7 +34,7 @@ DEFINE_GUID(SESSION_ID,
 static VOID
 NfcCxRFInterfaceLibNfcMessageHandler(
     _In_ LPVOID pContext,
-    _In_ ULONG Message,
+    _In_ UINT32 Message,
     _In_ UINT_PTR Param1,
     _In_ UINT_PTR Param2,
     _In_ UINT_PTR Param3,
@@ -214,6 +218,7 @@ NfcCxRFInterfaceGetGenericRemoteDevType(
     case phNfc_eJewel_PICC:
     case phNfc_eISO15693_PICC:
     case phNfc_eISO14443_A_PICC:
+    case phNfc_eKovio_PICC:
     case phNfc_ePICC_DevType:
         return phNfc_ePICC_DevType;
 
@@ -237,7 +242,7 @@ NfcCxRFInterfaceGetGenericRemoteDevType(
 
 NFCCX_CX_EVENT FORCEINLINE
 NfcCxRFInterfaceGetEventType(
-    _In_ DWORD Message
+    _In_ UINT32 Message
     )
 {
     switch (Message) {
@@ -277,12 +282,15 @@ NfcCxRFInterfaceWatchdogTimerCallback(
     )
 {
     PNFCCX_RF_INTERFACE rfInterface = (PNFCCX_RF_INTERFACE)Context;
-    WdfCxVerifierKeBugCheck(rfInterface->FdoContext->Device,
-                            NFC_CX_VERIFIER_BC,
-                            NFC_CX_BC_WATCHDOG_TIMEOUT,
-                            NULL,
-                            NULL,
-                            NULL);
+
+    TRACE_LINE(LEVEL_ERROR, "Watchdog timer timed out");
+
+    TraceLoggingWrite(
+        g_hNfcCxProvider,
+        "NfcCxRfInterfaceWatchdogTimeout",
+        TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
+    NfcCxDeviceSetFailed(rfInterface->FdoContext->Device);
 }
 
 VOID FORCEINLINE
@@ -319,7 +327,13 @@ NfcCxRFInterfaceExecute(
     PNFCCX_STATE_INTERFACE stateInterface = NfcCxRFInterfaceGetStateInterface(RFInterface);
 
     RFInterface->pLibNfcContext->Status = STATUS_SUCCESS;
-    ResetEvent(RFInterface->pLibNfcContext->hNotifyCompleteEvent);
+
+    TRACE_LINE(LEVEL_VERBOSE, "ResetEvent, handle %p", RFInterface->pLibNfcContext->hNotifyCompleteEvent);
+    if (!ResetEvent(RFInterface->pLibNfcContext->hNotifyCompleteEvent))
+    {
+        NTSTATUS status = NTSTATUS_FROM_WIN32(GetLastError());
+        TRACE_LINE(LEVEL_ERROR, "ResetEvent with handle %p failed, %!STATUS!", RFInterface->pLibNfcContext->hNotifyCompleteEvent, status);
+    }
 
     NfcCxPostLibNfcThreadMessage(RFInterface, Message, Param1, Param2, NULL, NULL);
     DWORD dwWait = WaitForSingleObject(RFInterface->pLibNfcContext->hNotifyCompleteEvent, MAX_WATCHDOG_TIMEOUT);
@@ -334,13 +348,24 @@ NfcCxRFInterfaceExecute(
     }
 
     if (dwWait != WAIT_OBJECT_0) {
-        TRACE_LINE(LEVEL_ERROR, "%!NFCCX_LIBNFC_MESSAGE! timed out", Message);
-        WdfCxVerifierKeBugCheck(RFInterface->FdoContext->Device,
-                                NFC_CX_VERIFIER_BC,
-                                NFC_CX_BC_RF_EXECUTION_TIMEOUT,
-                                Message,
-                                Param1,
-                                Param2);
+        if (dwWait == WAIT_FAILED) {
+            dwWait = GetLastError();
+        }
+
+        TRACE_LINE(LEVEL_ERROR, "%!NFCCX_LIBNFC_MESSAGE! timed out. Error: 0x%08X", Message, dwWait);
+
+        TraceLoggingWrite(
+            g_hNfcCxProvider,
+            "NfcCxRfExecutionTimeout",
+            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
+            TraceLoggingUInt32(Message, "LibNfcMessage"),
+            TraceLoggingUIntPtr(Param1, "Param1"),
+            TraceLoggingUIntPtr(Param2, "Param2"),
+            TraceLoggingHexUInt32(dwWait, "WaitError"));
+
+        RFInterface->pLibNfcContext->Status = STATUS_UNSUCCESSFUL;
+        NfcCxDeviceSetFailed(RFInterface->FdoContext->Device);
+
     } else if (!NT_SUCCESS(RFInterface->pLibNfcContext->Status)) {
         TRACE_LINE(LEVEL_ERROR, "%!NFCCX_LIBNFC_MESSAGE! failed, %!STATUS!", Message, RFInterface->pLibNfcContext->Status);
     }
@@ -445,6 +470,8 @@ Return Value:
     rfInterface->uiNfcIP_Tgt_Mode = NFC_CX_NFCIP_TGT_DEFAULT;
     rfInterface->uiNfcCE_Mode = NFC_CX_CE_DEFAULT;
 
+    rfInterface->bKovioDetected = 0;
+
     //
     // Create the State Interface
     //
@@ -510,6 +537,7 @@ Return Value:
     rfInterface->RegInfo.Jewel = 1;
     rfInterface->RegInfo.ISO15693 = 1;
     rfInterface->RegInfo.NFC = 1;
+    rfInterface->RegInfo.Kovio = 1;
 
     rfInterface->tpTagPrescenceWork = CreateThreadpoolWork(NfcCxRFInterfaceTagPresenceThread, rfInterface, NULL);
     if (NULL == rfInterface->tpTagPrescenceWork) {
@@ -653,7 +681,9 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
+#ifdef EVENT_WRITE
     EventWriteRfInitializeStart();
+#endif
 
     //
     // Start the RF Module
@@ -662,7 +692,9 @@ Return Value:
     status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_INIT, NULL, NULL);
     WdfWaitLockRelease(RFInterface->DeviceLock);
 
+#ifdef EVENT_WRITE
     EventWriteRfInitializeStop(status);
+#endif
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
@@ -743,7 +775,8 @@ Return Value:
     TRACE_LINE(LEVEL_INFO, "TotalDuration=%d PollConfig=0x%08x NfcIPMode=0x%02x NfcIPTgtMode=0x%02x NfcCEMode=0x%02x BailoutConfig=0x%02x",
                             Config->TotalDuration, Config->PollConfig, Config->NfcIPMode, Config->NfcIPTgtMode, Config->NfcCEMode, Config->BailoutConfig);
 
-    TraceLoggingWrite(g_hNfcCxProvider,
+    TraceLoggingWrite(
+        g_hNfcCxProvider,
         "NfcCxRFInterfaceSetDiscoveryConfig",
         TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
         TraceLoggingValue(Config->TotalDuration, "TotalDuration"),
@@ -792,7 +825,8 @@ Return Value:
 
     TRACE_LINE(LEVEL_INFO, "Miu=%d LinkTimeout=%d RecvWindowSize=%d", Config->Miu, Config->LinkTimeout, Config->RecvWindowSize);
 
-    TraceLoggingWrite(g_hNfcCxProvider,
+    TraceLoggingWrite(
+        g_hNfcCxProvider,
         "NfcCxRFInterfaceSetLLCPConfig",
         TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
         TraceLoggingValue(Config->Miu, "Miu"),
@@ -1292,6 +1326,7 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
+    NTSTATUS enumerateStatus = STATUS_SUCCESS;
     BOOLEAN fAcquireLock = RFInterface->pLibNfcContext->LibNfcThreadId != GetCurrentThreadId();
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -1305,20 +1340,38 @@ Return Value:
         (RFInterface->FdoContext->NfcCxClientGlobal->Config.DriverFlags & NFC_CX_DRIVER_DISABLE_NFCEE_DISCOVERY) == 0) {
 
         NT_ASSERT(fAcquireLock);
+
         //
         // Enumerating SE requires discovery process to be stopped
         //
-        NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_STOP, NULL, NULL);
+        status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_STOP, NULL, NULL);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to stop discovery process, %!STATUS!", status);
+            goto Done;
+        }
 
-        RFInterface->pLibNfcContext->EnableSEDiscovery = TRUE;
-        status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_SE_ENUMERATE, NULL, NULL);
+        enumerateStatus = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_SE_ENUMERATE, NULL, NULL);
+        if (NT_SUCCESS(enumerateStatus)) {
+            RFInterface->pLibNfcContext->EnableSEDiscovery = TRUE;
+        }
+        else {
+            // If enumerating SEs failed, don't goto Done yet. We want to restart the discovery
+            // process first
+            TRACE_LINE(LEVEL_ERROR, "Failed to enumerate SE, %!STATUS!", enumerateStatus);
+        }
 
-        NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
-    }
+        status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to start discovery process, %!STATUS!", status);
+        }
 
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to enumerate SE, %!STATUS!", status);
-        goto Done;
+        if (!NT_SUCCESS(enumerateStatus)) {
+            status = enumerateStatus;
+            goto Done;
+        }
+        else if (!NT_SUCCESS(status)) {
+            goto Done;
+        }
     }
 
     _Analysis_assume_(MAX_NUMBER_OF_SE >= RFInterface->pLibNfcContext->SECount);
@@ -1329,6 +1382,7 @@ Done:
     if (fAcquireLock) {
         WdfWaitLockRelease(RFInterface->DeviceLock);
     }
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
@@ -1615,12 +1669,16 @@ NfcCxRFInterfaceTagConnectionEstablished(
     _In_ DWORD ArrivalBitMask
     )
 {
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
     if (RFInterface->pLibNfcContext->pRemDevList != NULL) {
         RFInterface->pLibNfcContext->bIsTagConnected = TRUE;
         NfcCxNfpInterfaceHandleTagConnectionEstablished(NfcCxRFInterfaceGetNfpInterface(RFInterface), ArrivalBitMask);
         NfcCxSCInterfaceHandleSmartCardConnectionEstablished(NfcCxRFInterfaceGetScInterface(RFInterface),
                                                              RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo);
     }
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
 VOID
@@ -1628,6 +1686,8 @@ NfcCxRFInterfaceTagConnectionLost(
     _In_ PNFCCX_RF_INTERFACE RFInterface
     )
 {
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
     // Reset all the parameters for info for tags
     RFInterface->pLibNfcContext->bIsTagPresent = FALSE;
     SetEvent(RFInterface->hStartPresenceCheck);
@@ -1640,6 +1700,8 @@ NfcCxRFInterfaceTagConnectionLost(
 
     RFInterface->pLibNfcContext->bIsTagWriteAttempted = FALSE;
     RFInterface->pLibNfcContext->bIsTagReadOnlyAttempted = FALSE;
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
 VOID
@@ -1686,13 +1748,15 @@ Return Value:
     pDiscoveryConfig->FelicaPollCfg.ReqCode = pDiscoveryConfig->FelicaPollCfg.TimeSlotNum = 0;
     memset(pDiscoveryConfig->FelicaPollCfg.SystemCode, 0xFF, sizeof(pDiscoveryConfig->FelicaPollCfg.SystemCode));
 
-    if (NfcCxNfpInterfaceCheckIfDriverDiscoveryEnabled(NfcCxRFInterfaceGetNfpInterface(RFInterface))) {
+    if (NfcCxNfpInterfaceCheckIfDriverDiscoveryEnabled(NfcCxRFInterfaceGetNfpInterface(RFInterface)) ||
+        NfcCxSCInterfaceCheckIfDriverDiscoveryEnabled(NfcCxRFInterfaceGetScInterface(RFInterface))) {
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableIso14443A = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_A) != 0;
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableIso14443B = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_B) != 0;
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableFelica212 = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_F_212) != 0;
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableFelica424 = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_F_424) != 0;
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableIso15693 = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_15693) != 0;
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableNfcActive = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_ACTIVE) != 0;
+        pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableKovio = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_A_KOVIO) != 0;
         pDiscoveryConfig->NfcIP_Mode = RFInterface->uiNfcIP_Mode;
         pDiscoveryConfig->NfcIP_Tgt_Mode_Config = RFInterface->uiNfcIP_Tgt_Mode;
         pDiscoveryConfig->NfcIP_Tgt_Disable = 0x0;
@@ -1763,7 +1827,39 @@ NfcCxRFInterfaceHandleReceivedNdefMessage(
                 TraceLoggingCharArray((LPCSTR)proxBuffer->GetSubTypeExt(), proxBuffer->GetSubTypeExtSize(), "MessageType"),
                 TraceLoggingValue(proxBuffer->GetSubTypeExtSize(), "TypeLength"),
                 TraceLoggingValue(proxBuffer->GetPayloadSize(), "PayloadSize"));
-        } 
+        }
+
+        delete proxBuffer;
+        proxBuffer = NULL;
+    }
+}
+
+VOID
+NfcCxRFInterfaceHandleReceivedBarcodeMessage(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ uint16_t barcodeLength,
+    _In_bytecount_(barcodeLength) PBYTE barcodeBuffer
+    )
+{
+    CNFCProximityBuffer* proxBuffer = new CNFCProximityBuffer();
+
+    if (proxBuffer != NULL)
+    {
+        HRESULT hr = proxBuffer->InitializeBarcode(barcodeLength, barcodeBuffer);
+
+        if (SUCCEEDED(hr)) {
+            //
+            // Forward the ndef message to the NFP interface
+            //
+            NfcCxNfpInterfaceHandleReceivedNdefMessage(NfcCxRFInterfaceGetNfpInterface(RFInterface),
+                proxBuffer);
+
+            TraceLoggingWrite(
+                g_hNfcCxProvider,
+                "NfcCxRFInterfaceHandleReceivedBarcodeMessage",
+                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
+                TraceLoggingValue(proxBuffer->GetPayloadSize(), "PayloadSize"));
+        }
 
         delete proxBuffer;
         proxBuffer = NULL;
@@ -1857,7 +1953,7 @@ NfcCxRFInterfaceRemoteDevReceiveCB(
                                     (USHORT) pRecvBufferInfo->length);
 
 Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
 VOID
@@ -2059,6 +2155,11 @@ NfcCxRFInterfaceDeinitialize(
     )
 {
     NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
+
+    // Warning C4302: 'type cast': truncation from 'void *' to 'BOOLEAN'
+#pragma warning(suppress:4302)
+    BOOLEAN fSkipResetDuringShutdown = (BOOLEAN)Param1;
+
     static NFCCX_RF_LIBNFC_REQUEST_CONTEXT LibNfcContext;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -2066,7 +2167,7 @@ NfcCxRFInterfaceDeinitialize(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
-    if ((BOOLEAN)Param1) { // Skip reset during shutdown
+    if (fSkipResetDuringShutdown) {
         phLibNfc_Mgt_Reset(RFInterface->FdoContext);
         NfcCxRFInterfaceDeinitializeCB(&LibNfcContext, nfcStatus);
     }
@@ -2383,7 +2484,11 @@ NfcCxRFInterfaceTagCheckNdef(
     )
 {
     NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
+
+    // Warning C4302: 'type cast': truncation from 'void *' to 'BOOLEAN'
+#pragma warning(suppress:4302)
     BOOLEAN formatSequence = (BOOLEAN)Param1;
+
     static NFCCX_RF_LIBNFC_REQUEST_CONTEXT LibNfcContext;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -2412,7 +2517,9 @@ NfcCxRFInterfaceNdefTagWriteCB(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
+#ifdef EVENT_WRITE
     EventWriteRfNdefTagWriteStop(status);
+#endif
 
     rfInterface->pLibNfcContext->bIsTagWriteAttempted = TRUE;
     NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, NULL, NULL);
@@ -2441,7 +2548,10 @@ NfcCxRFInterfaceTagWriteNdef(
         TRACE_LINE(LEVEL_ERROR, "Tag Ndef Write already attempted");
     }
     else {
+#ifdef EVENT_WRITE
         EventWriteRfNdefTagWriteStart(RFInterface->sSendBuffer.length);
+#endif
+
         nfcStatus = phLibNfc_Ndef_Write(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev,
                                         &RFInterface->sSendBuffer,
                                         NfcCxRFInterfaceNdefTagWriteCB,
@@ -2465,7 +2575,9 @@ NfcCxRFInterfaceTagReadNdefCB(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
+#ifdef EVENT_WRITE
     EventWriteRfNdefTagReadStop(status, (USHORT)rfInterface->sNdefMsg.length);
+#endif
 
     if (NT_SUCCESS(status)) {
         NfcCxRFInterfaceHandleReceivedNdefMessage(rfInterface,
@@ -2483,6 +2595,56 @@ NfcCxRFInterfaceTagReadNdefCB(
     rfInterface->sNdefMsg.buffer = NULL;
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+}
+
+NTSTATUS
+NfcCxRFInterfaceTagReadBarcode(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS Status,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+    )
+{
+    NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
+    static NFCCX_RF_LIBNFC_REQUEST_CONTEXT LibNfcContext;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    LibNfcContext.RFInterface = RFInterface;
+    LibNfcContext.Sequence = RFInterface->pSeqHandler;
+
+    if (RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phNfc_eKovio_PICC) 
+    {
+        // Skip if already handled (same tag read too quickly)
+        if ( (GetTickCount64() - RFInterface->bKovioDetected) > PRESENCE_CHECK_INTERVAL) {
+            RFInterface->sBarcodeMsg.length = RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemoteDevInfo.Kovio_Info.TagIdLength;
+            RFInterface->sBarcodeMsg.buffer = (uint8_t*)malloc(RFInterface->sBarcodeMsg.length);
+            if (RFInterface->sBarcodeMsg.buffer)
+            {
+                RtlCopyMemory(RFInterface->sBarcodeMsg.buffer, RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemoteDevInfo.Kovio_Info.TagId, RFInterface->sBarcodeMsg.length);
+                NfcCxRFInterfaceHandleReceivedBarcodeMessage(RFInterface, (USHORT)RFInterface->sBarcodeMsg.length, RFInterface->sBarcodeMsg.buffer);
+                free(RFInterface->sBarcodeMsg.buffer);
+                RFInterface->sBarcodeMsg.buffer = NULL;
+                RFInterface->sBarcodeMsg.length = 0;
+            }
+            else
+            {
+                RFInterface->sBarcodeMsg.length = 0;
+                nfcStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
+                TRACE_LINE(LEVEL_ERROR, "Failed to allocate memory for barcode read");
+            }
+        }
+    }
+    else 
+    {
+        nfcStatus = NFCSTATUS_INVALID_REMOTE_DEVICE;
+        TRACE_LINE(LEVEL_ERROR, "Barcode type not supported for requested device.");
+    }
+
+    Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    return Status;
 }
 
 NTSTATUS
@@ -2504,7 +2666,11 @@ NfcCxRFInterfaceTagReadNdef(
     RFInterface->sNdefMsg.buffer = (uint8_t*)malloc(RFInterface->uiActualNdefMsgLength);
     if (RFInterface->sNdefMsg.buffer) {
         RFInterface->sNdefMsg.length = RFInterface->uiActualNdefMsgLength;
+
+#ifdef EVENT_WRITE
         EventWriteRfNdefTagReadStart();
+#endif
+
         nfcStatus = phLibNfc_Ndef_Read(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev,
                                        &RFInterface->sNdefMsg,
                                        phLibNfc_Ndef_EBegin,
@@ -3166,6 +3332,11 @@ NfcCxRFInterfaceConfigureRoutingTable(
     )
 {
     NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
+
+    // Warning C4302: 'type cast': truncation from 'void *' to 'uint8_t'
+#pragma warning(suppress:4302)
+    uint8_t bNumRtngConfigs = (uint8_t)Param1;
+
     static NFCCX_RF_LIBNFC_REQUEST_CONTEXT LibNfcContext;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -3173,7 +3344,7 @@ NfcCxRFInterfaceConfigureRoutingTable(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
-    nfcStatus = phLibNfc_Mgt_ConfigRoutingTable((uint8_t)Param1,
+    nfcStatus = phLibNfc_Mgt_ConfigRoutingTable(bNumRtngConfigs,
                                                 (phLibNfc_RtngConfig_t*)Param2,
                                                 NfcCxRFInterfaceConfigureRoutingTableCB,
                                                 &LibNfcContext);
@@ -3880,7 +4051,7 @@ NfcCxRFInterfacePostRecovery(
 static VOID
 NfcCxRFInterfaceLibNfcMessageHandler(
     _In_ LPVOID pContext,
-    _In_ ULONG Message,
+    _In_ UINT32 Message,
     _In_ UINT_PTR Param1,
     _In_ UINT_PTR Param2,
     _In_ UINT_PTR Param3,
@@ -3917,7 +4088,12 @@ NfcCxRFInterfaceLibNfcMessageHandler(
             rfInterface->pLibNfcContext->Status = NfcCxStateInterfaceStateHandler(NfcCxRFInterfaceGetStateInterface(rfInterface),
                                                                                   NfcCxRFInterfaceGetEventType(Message),
                                                                                   (VOID*)Message, (VOID*)Param1, (VOID*)Param2);
-            SetEvent(rfInterface->pLibNfcContext->hNotifyCompleteEvent);
+            TRACE_LINE(LEVEL_VERBOSE, "SetEvent, handle %p", rfInterface->pLibNfcContext->hNotifyCompleteEvent);
+            if (!SetEvent(rfInterface->pLibNfcContext->hNotifyCompleteEvent))
+            {
+                NTSTATUS eventStatus = NTSTATUS_FROM_WIN32(GetLastError());
+                TRACE_LINE(LEVEL_ERROR, "SetEvent with handle %p failed, %!STATUS!", rfInterface->pLibNfcContext->hNotifyCompleteEvent, eventStatus);
+            }
         }
         break;
 
@@ -4790,6 +4966,27 @@ NfcCxRFInterfaceP2PDiscoveredSeqComplete(
     return Status;
 }
 
+static NTSTATUS
+NfcCxRFInterfaceBarcodeReadSeqComplete(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS Status,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+    )
+{
+    // The tag will keep transmitting so block future attempts until enough time passes
+    RFInterface->bKovioDetected = GetTickCount64();
+
+    PNFCCX_STATE_INTERFACE stateInterface = NfcCxRFInterfaceGetStateInterface(RFInterface);
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventDeactivated, NULL, NULL, NULL);
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    return Status;
+}
+
 NTSTATUS
 NfcCxRFInterfaceStateRfDiscovery2RfDiscovered(
     _In_ PNFCCX_STATE_INTERFACE StateInterface,
@@ -4807,6 +5004,11 @@ NfcCxRFInterfaceStateRfDiscovery2RfDiscovered(
     UNREFERENCED_PARAMETER(Event);
 
     NT_ASSERT(NFCCX_IS_INTERNAL_EVENT(Event));
+
+    // Enable kovio again if some other tag detected
+    if (rfInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType != phLibNfc_eKovio_PICC) {
+        rfInterface->bKovioDetected = 0;
+    }
 
     if (rfInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eNfcIP1_Target) {
         NFCCX_CX_BEGIN_SEQUENCE_MAP(P2PDiscoveredSequence)
@@ -4835,6 +5037,18 @@ NfcCxRFInterfaceStateRfDiscovery2RfDiscovered(
     }
     else if ((rfInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_A_PCD) ||
              (rfInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_B_PCD)) {
+    }
+    else if (rfInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eKovio_PICC) {
+        // As we already have all that we need keep the logic simple
+        NFCCX_CX_BEGIN_SEQUENCE_MAP(TagReadBarcodeSequence)
+            RF_INTERFACE_TAG_READ_BARCODE_SEQUENCE
+        NFCCX_CX_END_SEQUENCE_MAP()
+
+        TagReadBarcodeSequence[ARRAYSIZE(TagReadBarcodeSequence) - 1].SequenceProcess =
+            NfcCxRFInterfaceBarcodeReadSeqComplete;
+
+        NFCCX_INIT_SEQUENCE(rfInterface, TagReadBarcodeSequence);
+        status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
     }
     else {
         NFCCX_CX_BEGIN_SEQUENCE_MAP(TagDiscoveredSequence)
@@ -4956,6 +5170,8 @@ NfcCxRFInterfaceStateRfDiscovered2RfDataXchg(
         else if ((rfInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_A_PCD) ||
                  (rfInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_B_PCD)) {
         }
+        else if (rfInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eKovio_PICC) {
+        }
         else {
             NFCCX_CX_BEGIN_SEQUENCE_MAP(TagReadNdefSequence)
                 RF_INTERFACE_TAG_READ_NDEF_SEQUENCE
@@ -5076,11 +5292,16 @@ NfcCxRFInterfaceStateRfIdle(
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_RF_INTERFACE rfInterface = StateInterface->FdoContext->RFInterface;
 
+    // Warning C4311: 'type cast': pointer truncation from 'void *' to 'UINT32'
+    // Warning C4302: 'type cast': truncation from 'void *' to 'UINT32'
+#pragma warning(suppress:4311 4302)
+    UINT32 eLibNfcMessage = (UINT32)Param1;
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     if (Event == NfcCxEventConfig)
     {
-        switch ((DWORD)Param1)
+        switch (eLibNfcMessage)
         {
         case LIBNFC_SE_SET_MODE:
             {
@@ -5203,9 +5424,14 @@ NfcCxRFInterfaceStateRfDiscovery(
     }
     else
     {
+        // Warning C4311: 'type cast': pointer truncation from 'void *' to 'UINT32'
+        // Warning C4302: 'type cast': truncation from 'void *' to 'UINT32'
+#pragma warning(suppress:4311 4302)
+        UINT32 eLibNfcMessage = (UINT32)Param1;
+
         NT_ASSERT(Event == NfcCxEventConfig);
 
-        switch ((DWORD)Param1)
+        switch (eLibNfcMessage)
         {
         case LIBNFC_SE_SET_MODE:
             {
@@ -5243,13 +5469,18 @@ NfcCxRFInterfaceStateRfDiscovered(
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_RF_INTERFACE rfInterface = StateInterface->FdoContext->RFInterface;
 
+    // Warning C4311: 'type cast': pointer truncation from 'void *' to 'UINT32'
+    // Warning C4302: 'type cast': truncation from 'void *' to 'UINT32'
+#pragma warning(suppress:4311 4302)
+    UINT32 eLibNfcMessage = (UINT32)Param1;
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     UNREFERENCED_PARAMETER(Event);
 
     NT_ASSERT(Event == NfcCxEventConfig);
 
-    switch ((DWORD)Param1)
+    switch (eLibNfcMessage)
     {
     case LIBNFC_SE_SET_MODE:
         {
@@ -5500,13 +5731,18 @@ NfcCxRFInterfaceStateRfDataXchg(
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_RF_INTERFACE rfInterface = StateInterface->FdoContext->RFInterface;
 
+    // Warning C4311: 'type cast': pointer truncation from 'void *' to 'UINT32'
+    // Warning C4302: 'type cast': truncation from 'void *' to 'UINT32'
+#pragma warning(suppress:4311 4302)
+    UINT32 eLibNfcMessage = (UINT32)Param1;
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     UNREFERENCED_PARAMETER(Event);
 
     NT_ASSERT(Event == NfcCxEventDataXchg || Event == NfcCxEventConfig);
 
-    switch ((DWORD)Param1)
+    switch (eLibNfcMessage)
     {
     case LIBNFC_TAG_WRITE:
         {
@@ -5646,7 +5882,8 @@ NfcCxRFInterfaceConnChkDiscMode(
     PNFCCX_RF_INTERFACE rfInterface = StateInterface->FdoContext->RFInterface;
 
     return (NfcCxNfpInterfaceCheckIfDriverDiscoveryEnabled(NfcCxRFInterfaceGetNfpInterface(rfInterface)) ||
-            NfcCxSEInterfaceCheckIfDriverDiscoveryEnabled(NfcCxRFInterfaceGetSEInterface(rfInterface)));
+            NfcCxSEInterfaceCheckIfDriverDiscoveryEnabled(NfcCxRFInterfaceGetSEInterface(rfInterface)) ||
+            NfcCxSCInterfaceCheckIfDriverDiscoveryEnabled(NfcCxRFInterfaceGetScInterface(rfInterface)));
 }
 
 BOOLEAN

@@ -83,6 +83,9 @@ Environment:
 
 #define DEFAULT_14443_4_TRANSCEIVE_TIMEOUT  1500
 
+#define MIFARE_UL_AUTHENTICATE_RESPONSE_BUFFER_SIZE 9
+#define MIFARE_UL_AUTHENTICATE_RESPONSE_TIMEOUT     100
+
 typedef
 NTSTATUS
 NFCCX_SC_DISPATCH_HANDLER(
@@ -133,7 +136,7 @@ typedef struct _NFCCX_SC_INTERFACE {
     // SmartCard Connection state
     //
     WDFWAITLOCK SmartCardLock;
-     _Guarded_by_(SmartCardLock)
+    _Guarded_by_(SmartCardLock)
     BOOLEAN SmartCardConnected;
 
     //
@@ -157,6 +160,11 @@ typedef struct _NFCCX_SC_INTERFACE {
 
     _Guarded_by_(SmartCardLock)
     LoadKey* StorageCardKey;
+
+    //
+    // ATR
+    //
+    WDFWAITLOCK AtrLock;
 
 } NFCCX_SC_INTERFACE, *PNFCCX_SC_INTERFACE;
 
@@ -222,8 +230,13 @@ NfcCxSCInterfaceHandleSmartCardConnectionLost(
     _In_ PNFCCX_SC_INTERFACE ScInterface
     );
 
+BOOL
+NfcCxSCInterfaceCheckIfDriverDiscoveryEnabled(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+    );
+
 NTSTATUS
-NfcCxSCInterfaceValidateRequest (
+NfcCxSCInterfaceValidateRequest(
     _In_ ULONG IoControlCode,
     _In_ size_t InputBufferLength,
     _In_ size_t OutputBufferLength
@@ -288,6 +301,7 @@ NfcCxSCInterfaceDispatchAttributeCurrentProtocolTypeLocked(
     );
 
 _Requires_lock_not_held_(ScInterface->SmartCardLock)
+_Requires_lock_not_held_(ScInterface->AtrLock)
 NTSTATUS
 NfcCxSCInterfaceDispatchAttributeAtr(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
@@ -398,11 +412,17 @@ NfcCxSCInterfaceGetDeviceUidLocked(
     );
 
 _Requires_lock_held_(ScInterface->SmartCardLock)
-NTSTATUS
+VOID
 NfcCxSCInterfaceGetDeviceTypeLocked(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
     _Out_ phNfc_eRemDevType_t* pDevType,
     _Out_ DWORD* pSak
+    );
+
+_Requires_lock_held_(ScInterface->SmartCardLock)
+BOOLEAN
+NfcCxSCInterfaceIsStorageCardConnected(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
     );
 
 _Requires_lock_held_(ScInterface->SmartCardLock)

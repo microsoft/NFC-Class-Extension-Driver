@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     Buffer parsing utilities declarations
-    
+
 Environment:
 
     User mode
@@ -58,6 +58,9 @@ Environment:
 
 #define NDEF_WKT                L"wkt."
 #define NDEF_WKT_CHARS          (ARRAYSIZE(NDEF_WKT) - 1)
+
+#define NFC_BARCODE             L"NfcBarcode"
+#define NFC_BARCODE_CHARS       (ARRAYSIZE(NFC_BARCODE) - 1)
 
 #define WRITEABLE_TAG           L"WriteableTag"
 
@@ -110,6 +113,20 @@ C_ASSERT(BLUETOOTH_PAIRING_MIME_TYPE_CHARS == (ARRAYSIZE(BLUETOOTH_LE_PAIRING_MI
 
 #define WINDOWSMIME_MIME_TYPE_LENGTH    256
 
+#define BARCODE_TYPE_MIN_LENGTH        16
+#define BARCODE_TYPE_MAX_LENGTH         32
+#define BARCODE_TYPE_URI_TERMINATOR    0xFE
+#define BARCODE_NON_PAYLOAD_SIZE       0x4
+#define BARCODE_TYPE_EPC_URI           0x5
+#define NFC_BARCODE_URI_PREFIX         L"urn:epc:raw:"
+#define NFC_BARCODE_URI_PREFIX_CHARS   (ARRAYSIZE(NFC_BARCODE_URI_PREFIX) - 1)
+
+#define BARCODE_HTTP_WWW_TYPE          0x1
+#define BARCODE_HTTPS_WWW_TYPE         0x2
+#define BARCODE_HTTP_TYPE              0x3
+#define BARCODE_HTTPS_TYPE             0x4
+#define BARCODE_EPC_URN_TYPE           0x5
+
 typedef enum _TRANSLATION_TYPE_PROTOCOL {
     TRANSLATION_TYPE_UNDEFINED,
     TRANSLATION_TYPE_ARRIVAL,
@@ -126,6 +143,7 @@ typedef enum _TRANSLATION_TYPE_PROTOCOL {
     TRANSLATION_TYPE_LAUNCH_APP_WRITETAG,
     TRANSLATION_TYPE_PAIRING_BLUETOOTH,
     TRANSLATION_TYPE_SETTAG_READONLY,
+    TRANSLATION_TYPE_NFC_BARCODE
 } TRANSLATION_TYPE_PROTOCOL;
 
 class CNFCProximityBuffer
@@ -141,7 +159,8 @@ public:
           m_pbPairingBtPayload(NULL),
           m_cbPairingBtPayload(0),
           m_pbWindowsMimeBuffer(NULL),
-          m_cbWindowsMimeBuffer(0)
+          m_cbWindowsMimeBuffer(0),
+          m_Barcode(FALSE)
     {
         InitializeListHead(&m_ListEntry);
     }
@@ -164,6 +183,12 @@ public:
             m_cbWindowsMimeBuffer = 0;
         }
     }
+
+    NTSTATUS
+    InitializeBarcode(
+            _In_ USHORT cbPayload,
+            _In_bytecount_(cbPayload) PBYTE pbPayload
+            );
 
     NTSTATUS
     InitializeRaw(
@@ -192,10 +217,10 @@ public:
     //
     static NTSTATUS
     AnalyzeMessageType(
-        _In_z_ LPWSTR  pszMessageType, 
-        _Outptr_result_maybenull_z_ LPWSTR *ppszSubTypeExt, 
+        _In_z_ LPWSTR  pszMessageType,
+        _Outptr_result_maybenull_z_ LPWSTR *ppszSubTypeExt,
         _In_ BOOL fPublication,
-        _Out_ UCHAR *pchTNF, 
+        _Out_ UCHAR *pchTNF,
         _Out_ TRANSLATION_TYPE_PROTOCOL *pTranslationType
         );
 
@@ -229,7 +254,7 @@ public:
     MatchesSubscription(
         _In_ TRANSLATION_TYPE_PROTOCOL translationType,
         _In_ uint8_t tnf,
-        _In_ uint8_t cbType, 
+        _In_ uint8_t cbType,
         _In_bytecount_(cbType) PCHAR pbType
         );
 
@@ -267,7 +292,7 @@ public:
     {
         return m_cbSubTypeExt;
     }
-    
+
     PLIST_ENTRY GetListEntry()
     {
         return &m_ListEntry;
@@ -288,7 +313,7 @@ private:
     void
     ExtractPairingPayload(
         _In_count_(cRawRecords) UCHAR *rgpRawRecords[],
-        _In_ ULONG cRawRecords
+        _In_ UINT32 cRawRecords
         );
 
     NTSTATUS
@@ -305,7 +330,13 @@ private:
     UCHAR
     FindUriPrefixKey(
         _Inout_count_(cchPayload) LPWSTR & pszPayload,
-        _Inout_ DWORD & cchPayload
+        _Inout_ UINT32 & cchPayload
+        );
+
+    NTSTATUS
+    CreateEPCRawUri(
+        _In_ UINT32 cchPayload,
+        _In_count_(cchPayload) PBYTE pbPayload
         );
 
 private:
@@ -320,12 +351,12 @@ private:
     UCHAR    m_tnf;
     PBYTE    m_pbSubTypeExt;
     USHORT   m_cbSubTypeExt;
-  
+    BOOLEAN  m_Barcode;
     union
     {
         WCHAR    m_szDecodedUri[INTERNET_MAX_URL_LENGTH];
         uint8_t  m_rgBuffer[INTERNET_MAX_URL_LENGTH * 2];
     };
-    
+
     LIST_ENTRY m_ListEntry;
 };

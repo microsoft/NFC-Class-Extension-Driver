@@ -255,7 +255,7 @@ NFCSTATUS phLibNfc_SnepProtocolSrvSendResponse(phLibNfc_Handle ConnHandle, phNfc
 
         if (pServerSessionContext->responseDataContext.pSnepPacket)
         {
-            if (pServerSessionContext->responseDataContext.pSnepPacket->length > pServerSessionContext->iMiu)
+            if (pServerSessionContext->responseDataContext.pSnepPacket->length > pServerSessionContext->iRemoteMiu)
             {
                 if (!pServerSessionContext->responseDataContext.pProcessingBuffer)
                 {

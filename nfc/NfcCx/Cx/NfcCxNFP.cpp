@@ -506,7 +506,7 @@ Return Value:
         goto Done;
     }
 
-    CopyMemory((((PUCHAR)OutputBuffer) + 4), Data, DataLength);
+    CopyMemory(((PUCHAR)OutputBuffer) + sizeof(ULONG), Data, DataLength);
     *BufferUsed = requiredBufferSize;
 
 Done:
@@ -587,9 +587,11 @@ Return Value:
     TRACE_LINE(LEVEL_INFO,
         "Completing request %p, with %!STATUS!, 0x%I64x", wdfRequest, status, actualSize);
 
+#ifdef EVENT_WRITE
     EventWriteNfpGetNextSubscribedMsgStop(WdfRequestGetFileObject(wdfRequest),
                                           status,
                                           actualSize);
+#endif
 
     WdfRequestCompleteWithInformation(wdfRequest, status, actualSize);
     wdfRequest = NULL;
@@ -649,7 +651,9 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
+#ifdef EVENT_WRITE
     EventWriteRfArrivalDeparture(Event);
+#endif
 
     WdfWaitLockAcquire(NfpInterface->SubsLock, NULL);
 
@@ -736,7 +740,7 @@ Return Value:
             // This function can't fail for <= sizeof(DWORD)
             (VOID)pEntry->Initialize((PBYTE)&EventData, sizeof(DWORD));
 
-            InsertTailList(&client->RoleParameters.Sub.SubscribedMessageQueue, 
+            InsertTailList(&client->RoleParameters.Sub.SubscribedMessageQueue,
                             pEntry->GetListEntry());
             client->RoleParameters.Sub.SubscribedMessageQueueLength++;
 
@@ -1147,9 +1151,9 @@ Return Value:
 {
     PLIST_ENTRY ple;
 
-    TRACE_LINE(LEVEL_INFO, "NDEF message received %p, %d", 
-                            MessageBuffer->GetPayload(), 
-                            MessageBuffer->GetPayloadSize());
+    TRACE_LINE(LEVEL_INFO, "NDEF message received. Size = %u, Tnf = %u",
+                            MessageBuffer->GetPayloadSize(),
+                            MessageBuffer->GetTnf());
 
     WdfWaitLockAcquire(NfpInterface->SubsLock, NULL);
 
@@ -1170,19 +1174,21 @@ Return Value:
         }
 
         //
-        // Does the received NDEF message
-        // matches the subscription client
+        // Does the received NDEF message match the subscription client
         //
         if (!MessageBuffer->MatchesSubscription(fileContext->TranslationType,
                                                 fileContext->Tnf,
-                                                (UCHAR)fileContext->Types.Length,
-                                                fileContext->Types.Buffer)) {
+                                                fileContext->cchTypes,
+                                                fileContext->pszTypes)) {
             WdfWaitLockRelease(fileContext->StateLock);
             continue;
         }
-    
-        status = MessageBuffer->GetMessagePayload(fileContext->TranslationType, 
-                                                  &eventDataLength, 
+
+        TRACE_LINE(LEVEL_INFO, "Found matching subscription. Translation type = %d",
+                                fileContext->TranslationType);
+
+        status = MessageBuffer->GetMessagePayload(fileContext->TranslationType,
+                                                  &eventDataLength,
                                                   &eventData);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to get the message payload, %!STATUS!", status);
@@ -1226,7 +1232,7 @@ Return Value:
                 continue;
             }
 
-            InsertTailList(&fileContext->RoleParameters.Sub.SubscribedMessageQueue, 
+            InsertTailList(&fileContext->RoleParameters.Sub.SubscribedMessageQueue,
                 queuedMessage->GetListEntry());
             fileContext->RoleParameters.Sub.SubscribedMessageQueueLength++;
 
@@ -2194,7 +2200,9 @@ Return Value:
     UNREFERENCED_PARAMETER(InputBuffer);
     UNREFERENCED_PARAMETER(InputBufferLength);
 
+#ifdef EVENT_WRITE
     EventWriteNfpGetNextSubscribedMsgStart(FileContext->FileObject);
+#endif
 
     if (ROLE_SUBSCRIPTION != FileContext->Role) {
         TRACE_LINE(LEVEL_ERROR, "Invalid role for request");
@@ -2207,7 +2215,7 @@ Return Value:
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
-    
+
     WdfWaitLockAcquire(FileContext->StateLock, NULL);
 
     if (!FileContext->Enabled) {
@@ -2254,13 +2262,18 @@ Return Value:
             delete pBuffer;
         }
 
+#ifdef EVENT_WRITE
         EventWriteNfpGetNextSubscribedMsgStop(FileContext->FileObject, status, usedBufferSize);
+#endif
 
         WdfRequestCompleteWithInformation(Request, status, usedBufferSize);
 
     } else {
 
         WDFREQUEST subRequest = NULL;
+
+        TRACE_LINE(LEVEL_INFO, "No subscribed message available. Placing request into subcribed message queue");
+
         //
         // Ensure that there are no other requests in the queue.
         //
@@ -2280,11 +2293,11 @@ Return Value:
         else {
             NT_ASSERT(STATUS_NO_MORE_ENTRIES == status);
         }
-        
+
         //
         // Else, forward the request to the holding queue
         //
-        status = WdfRequestForwardToIoQueue(Request, 
+        status = WdfRequestForwardToIoQueue(Request,
                                 FileContext->RoleParameters.Sub.SubsMessageRequestQueue);
 
         if (!NT_SUCCESS(status)) {
@@ -2297,16 +2310,18 @@ Return Value:
     WdfWaitLockRelease(FileContext->StateLock);
 
     //
-    // Now that the request is is the holding queue or that we have completed it
+    // Now that the request is in the holding queue or that we have completed it
     // return STATUS_PENDING so the request isn't completed by the calling method.
     //
     status = STATUS_PENDING;
 
 Done:
 
+#ifdef EVENT_WRITE
     if (!NT_SUCCESS(status)) {
         EventWriteNfpGetNextSubscribedMsgStop(FileContext->FileObject, status, 0);
     }
+#endif
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
@@ -2370,7 +2385,9 @@ Return Value:
         goto Done;
     }
 
+#ifdef EVENT_WRITE
     EventWriteNfpSetPayload(FileContext->FileObject, InputBufferLength);
+#endif
 
     //
     // If the file object is enabled, and we are already connected,
@@ -2435,7 +2452,9 @@ Return Value:
         "Get Next Transmitted Message for client role %!FILE_OBJECT_ROLE! and %!TRANSLATION_TYPE_PROTOCOL!", 
         FileContext->Role, FileContext->TranslationType);
 
+#ifdef EVENT_WRITE
     EventWriteNfpGetNextTransmittedMsgStart(FileContext->FileObject);
+#endif
 
     if (ROLE_PUBLICATION != FileContext->Role) {
         TRACE_LINE(LEVEL_ERROR, "Invalid role for request");
@@ -2486,7 +2505,10 @@ Return Value:
         TRACE_LINE(LEVEL_INFO, "Completed queued notification");
         FileContext->RoleParameters.Pub.SentMsgCounter--;
 
+#ifdef EVENT_WRITE
         EventWriteNfpGetNextTransmittedMsgStop(FileContext->FileObject, STATUS_SUCCESS);
+#endif
+
         WdfRequestComplete(Request, STATUS_SUCCESS);
 
     } else {
@@ -2532,9 +2554,11 @@ Return Value:
 
 Done:
 
+#ifdef EVENT_WRITE
     if (!NT_SUCCESS(status)) {
         EventWriteNfpGetNextTransmittedMsgStop(FileContext->FileObject, status);
     }
+#endif
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
@@ -2599,8 +2623,9 @@ Return Value:
     status = STATUS_PENDING;
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -2663,8 +2688,9 @@ Return Value:
     status = STATUS_PENDING;
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 

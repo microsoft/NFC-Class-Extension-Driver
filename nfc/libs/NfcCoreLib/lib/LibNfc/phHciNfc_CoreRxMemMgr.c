@@ -4,7 +4,7 @@
 *              Original code Copyright (c), NXP Semiconductors
 */
 
-#include <phLibNfc_Pch.h>
+#include "phLibNfc_Pch.h"
 
 #include "phHciNfc_CoreRxMemMgr.tmh"
 

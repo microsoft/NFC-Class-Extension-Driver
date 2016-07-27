@@ -814,9 +814,9 @@ phFriNfc_Llcp_HandleMACLinkDeactivated(
   /* Delete the timer */
    if (Llcp->hSymmTimer != PH_OSALNFC_TIMER_ID_INVALID)
    {
-       PH_LOG_LLCP_CRIT_X32MSG("Llcp_HandleMACLinkDeactivated: Deleting SymmTimer timer:",Llcp->hSymmTimer);
+      PH_LOG_LLCP_CRIT_X32MSG("Llcp_HandleMACLinkDeactivated: Deleting SymmTimer timer:",Llcp->hSymmTimer);
       phOsalNfc_Timer_Delete(Llcp->hSymmTimer);
-	  Llcp->hSymmTimer = PH_OSALNFC_INVALID_TIMER_ID;
+      Llcp->hSymmTimer = PH_OSALNFC_TIMER_ID_INVALID;
    }
 
    /* Reset state - JB Port*/
@@ -1896,4 +1896,54 @@ phFriNfc_Llcp_Recv(
 
    PH_LOG_LLCP_FUNC_EXIT();
    return result;
+}
+
+NFCSTATUS
+phFriNfc_Llcp_CancelPendingSend(
+    _In_ phFriNfc_Llcp_t *Llcp
+    )
+{
+    NFCSTATUS result = NFCSTATUS_SUCCESS;
+    phFriNfc_Llcp_Send_CB_t pfSendCB = NULL;
+    void *pSendContext = NULL;
+
+    PH_LOG_LLCP_FUNC_ENTRY();
+
+    /* Check parameters */
+    if (Llcp == NULL)
+    {
+        PH_LOG_LLCP_INFO_STR("Invalid input parameters");
+        PH_LOG_LLCP_FUNC_EXIT();
+        return PHNFCSTVAL(CID_FRI_NFC_LLCP, NFCSTATUS_INVALID_PARAMETER);
+    }
+
+    if (Llcp->psSendInfo == NULL)
+    {
+        PH_LOG_LLCP_INFO_STR("Cancel failed: There is no pending send request");
+        PH_LOG_LLCP_FUNC_EXIT();
+        return PHNFCSTVAL(CID_FRI_NFC_LLCP, NFCSTATUS_NOT_ALLOWED);
+    }
+
+    PH_LOG_LLCP_INFO_STR("Cancel the pending send request");
+    /* Deallocate the saved fragment to be sent */
+    phFriNfc_Llcp_Deallocate(Llcp->psSendInfo);
+    Llcp->psSendInfo = NULL;
+    Llcp->psSendHeader = NULL;
+    Llcp->psSendSequence = NULL;
+
+    if (Llcp->pfSendCB != NULL)
+    {
+        PH_LOG_LLCP_INFO_STR("Returning: NFCSTATUS_ABORTED (Llcp->pfSendCB != NULL)");
+        /* Get Callback params */
+        pfSendCB = Llcp->pfSendCB;
+        pSendContext = Llcp->pSendContext;
+        /* Reset callback params */
+        Llcp->pfSendCB = NULL;
+        Llcp->pSendContext = NULL;
+        /* Call the callback so that the upper layer can initiate a Disconnect */
+        (pfSendCB)(pSendContext, NFCSTATUS_ABORTED);
+    }
+
+    PH_LOG_LLCP_FUNC_EXIT();
+    return result;
 }

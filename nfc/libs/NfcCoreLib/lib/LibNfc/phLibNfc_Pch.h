@@ -64,18 +64,17 @@ Environment:
 #include "phHciNfc_Pipe.h"
 
 #include <phLibNfc.h>
-#include <phLibNfc_Internal.h>
-#include <phLibNfc_Initiator.h>
+#include "phLibNfc_Internal.h"
+#include "phLibNfc_Initiator.h"
 #include <phLibNfc_Ioctl.h>
-#include <phLibNfc_IoctlUtils.h>
-#include <phLibNfc_State.h>
-#include <phLibNfc_Sequence.h>
-#include <phLibNfc_Init.h>
-#include <phLibNfc_Internal.h>
-#include <phLibNfc_Discovery.h>
-#include <phLibNfc_Target.h>
-#include <phLibNfc_Se.h>
-#include <phLibNfc_Hci.h>
+#include "phLibNfc_IoctlUtils.h"
+#include "phLibNfc_State.h"
+#include "phLibNfc_Sequence.h"
+#include "phLibNfc_Init.h"
+#include "phLibNfc_Discovery.h"
+#include "phLibNfc_Target.h"
+#include "phLibNfc_Se.h"
+#include "phLibNfc_Hci.h"
 
 #include <phFriNfc.h>
 #include <phFriNfc_LlcpMac.h>

@@ -79,7 +79,7 @@ NFCSTATUS phNciNfc_CoreInitRecverStateMachine(void *pContext)
         pStateCtx->CurrState = phNciNfc_StateRecvIdle;
         pStateCtx->Evt = phNciNfc_EvtRecvNone;
         TimerId = phOsalNfc_Timer_Create();
-        if (0 == TimerId)
+        if (PH_OSALNFC_TIMER_ID_INVALID == TimerId)
         {
             PH_LOG_NCI_WARN_STR("Response Timer Create failed");
             wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;

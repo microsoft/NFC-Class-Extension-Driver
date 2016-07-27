@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM">
+      <Configuration>Release</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\phNciNfc.c" />
+    <ClCompile Include="..\phNciNfc_Common.c" />
+    <ClCompile Include="..\phNciNfc_Context.c" />
+    <ClCompile Include="..\phNciNfc_Discovery.c" />
+    <ClCompile Include="..\phNciNfc_Init.c" />
+    <ClCompile Include="..\phNciNfc_Jewel.c" />
+    <ClCompile Include="..\phNciNfc_ListenIsoDep.c" />
+    <ClCompile Include="..\phNciNfc_ListenMgmt.c" />
+    <ClCompile Include="..\phNciNfc_ListenNfcDep.c" />
+    <ClCompile Include="..\phNciNfc_LogicalConn.c" />
+    <ClCompile Include="..\phNciNfc_NfceeMgmt.c" />
+    <ClCompile Include="..\phNciNfc_NfcIMgmt.c" />
+    <ClCompile Include="..\phNciNfc_PollMgmt.c" />
+    <ClCompile Include="..\phNciNfc_PollNfcDep.c" />
+    <ClCompile Include="..\phNciNfc_RfConfig.c" />
+    <ClCompile Include="..\phNciNfc_RFReader.c" />
+    <ClCompile Include="..\phNciNfc_RFReader4A.c" />
+    <ClCompile Include="..\phNciNfc_RFReader4B.c" />
+    <ClCompile Include="..\phNciNfc_RFReaderA.c" />
+    <ClCompile Include="..\phNciNfc_RFReaderB.c" />
+    <ClCompile Include="..\phNciNfc_RFReaderFelica.c" />
+    <ClCompile Include="..\phNciNfc_RFReaderIso15693.c" />
+    <ClCompile Include="..\phNciNfc_RFReaderMifare.c" />
+    <ClCompile Include="..\phNciNfc_Sequence.c" />
+    <ClCompile Include="..\phNciNfc_Utils.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\phNciNfc.h" />
+    <ClInclude Include="..\phNciNfc_Common.h" />
+    <ClInclude Include="..\phNciNfc_Context.h" />
+    <ClInclude Include="..\phNciNfc_Discovery.h" />
+    <ClInclude Include="..\phNciNfc_Init.h" />
+    <ClInclude Include="..\phNciNfc_Jewel.h" />
+    <ClInclude Include="..\phNciNfc_ListenIsoDep.h" />
+    <ClInclude Include="..\phNciNfc_ListenMgmt.h" />
+    <ClInclude Include="..\phNciNfc_ListenNfcDep.h" />
+    <ClInclude Include="..\phNciNfc_LogicalConn.h" />
+    <ClInclude Include="..\phNciNfc_NfceeMgmt.h" />
+    <ClInclude Include="..\phNciNfc_NfcIMgmt.h" />
+    <ClInclude Include="..\phNciNfc_Pch.h" />
+    <ClInclude Include="..\phNciNfc_PollMgmt.h" />
+    <ClInclude Include="..\phNciNfc_PollNfcDep.h" />
+    <ClInclude Include="..\phNciNfc_RfConfig.h" />
+    <ClInclude Include="..\phNciNfc_RFReader.h" />
+    <ClInclude Include="..\phNciNfc_RFReader4A.h" />
+    <ClInclude Include="..\phNciNfc_RFReader4B.h" />
+    <ClInclude Include="..\phNciNfc_RFReaderA.h" />
+    <ClInclude Include="..\phNciNfc_RFReaderB.h" />
+    <ClInclude Include="..\phNciNfc_RFReaderFelica.h" />
+    <ClInclude Include="..\phNciNfc_RFReaderIso15693.h" />
+    <ClInclude Include="..\phNciNfc_RFReaderMifare.h" />
+    <ClInclude Include="..\phNciNfc_Sequence.h" />
+    <ClInclude Include="..\phNciNfc_Utils.h" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{1A2DDE3F-2554-434B-8C4F-06014CB251F4}</ProjectGuid>
+    <TemplateGuid>{0a049372-4c4d-4ea0-a64e-dc6ad88ceca1}</TemplateGuid>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">ARM</Platform>
+    <RootNamespace>NfcCoreNci</RootNamespace>
+    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WindowsUserModeDriver10.0</PlatformToolset>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <DriverTargetPlatform>Universal</DriverTargetPlatform>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WppEnabled>true</WppEnabled>
+      <WppModuleName>NfcCoreLib</WppModuleName>
+      <WppScanConfigurationData>..\..\inc\NfcCoreLibTracing.h</WppScanConfigurationData>
+      <WppAdditionalOptions>-scan:"..\..\..\inc\phNfcTraceEnums.h" %(WppAdditionalOptions)</WppAdditionalOptions>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);..\..\..\inc;..\..\Inc;..\..\Osal;..\..\NciCore</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

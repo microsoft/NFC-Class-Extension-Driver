@@ -7,7 +7,7 @@
 #pragma once
 
 #include <phNfcTypes.h>
-#include <phNciNfc.h>
+#include "phNciNfc.h"
 
 extern uint8_t phNciNfc_ValidateRfInterface(phNciNfc_RfInterfaces_t eRfInterface);
 extern uint8_t phNciNfc_ValidateRfProtocol(phNciNfc_RfProtocols_t eRfProtocol);

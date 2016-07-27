@@ -13,7 +13,6 @@
  * \brief Invalid timer ID type.This ID used indicate timer creation is failed.
  */
 #define PH_OSALNFC_TIMER_ID_INVALID     0
-#define PH_OSALNFC_INVALID_TIMER_ID     PH_OSALNFC_TIMER_ID_INVALID
 
 /*!
  * \ingroup grp_osal_nfc
@@ -40,15 +39,15 @@ typedef struct phOsalNfc_TimerMsg
  * \ingroup grp_osal_nfc
  * \brief Allows to create new timer.
  * This API creates a cyclic timer.Incase valid timer is created returned timer ID will be
- * other than \ref PH_OSALNFC_INVALID_TIMER_ID.Incase returned timer id is \ref PH_OSALNFC_INVALID_TIMER_ID
+ * other than \ref PH_OSALNFC_TIMER_ID_INVALID.Incase returned timer id is \ref PH_OSALNFC_TIMER_ID_INVALID
  * indicates timer creation is failed.
  * When Timer created ,By default timer is not started.Application has to start timer explicitly 
  * needs using \ref phOsalNfc_Timer_Start() API.
  *
  * \retval     Valid timer Timer ID. 
- *             \note <br><br> If timer ID value is PH_OSALNFC_INVALID_TIMER_ID
+ *             \note <br><br> If timer ID value is PH_OSALNFC_TIMER_ID_INVALID
  *              Indicates timer is not created.
- * \retval     PH_OSALNFC_INVALID_TIMER_ID,Indicates timer creation failed.
+ * \retval     PH_OSALNFC_TIMER_ID_INVALID,Indicates timer creation failed.
  */
 
 uint32_t phOsalNfc_Timer_Create (void);

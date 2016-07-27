@@ -64,6 +64,10 @@ WDF_EXTERN_C_START
 DRIVER_INITIALIZE DriverEntry;
 EVT_WDF_DRIVER_UNLOAD NfcCxEvtDriverUnload;
 
+VOID NfcCxDeviceSetFailed(
+    _In_ WDFDEVICE Device
+    );
+
 //
 // Class extension binding
 //
@@ -79,14 +83,14 @@ NfcCxDeinitialize(
 
 NTSTATUS
 NfcCxBindClient(
-    PWDF_CLASS_BIND_INFO ClassInfo,
-    PWDF_COMPONENT_GLOBALS ClientGlobals
+    _In_ PVOID ClassBindInfo,
+    _In_ ULONG FunctionTableCount,
+    _In_count_(FunctionTableCount) PFN_WDF_CLASS_EXPORT* FunctionTable
     );
 
 VOID
 NfcCxUnbindClient(
-    PWDF_CLASS_BIND_INFO ClassInfo,
-    PWDF_COMPONENT_GLOBALS ClientGlobals
+    _In_ PVOID ClassBindInfo
     );
 
 //
@@ -101,13 +105,19 @@ NfcCxEvtDeviceInitConfig(
 
 NTSTATUS
 NfcCxEvtDeviceInitialize(
-    _In_ PNFCCX_DRIVER_GLOBALS NfcCxGlobal,
+    _In_ PNFCCX_DRIVER_GLOBALS NfcCxGlobals,
+    _In_ WDFDEVICE Device
+    );
+
+NTSTATUS
+NfcCxEvtDeviceDeinitialize(
+    _In_ PNFCCX_DRIVER_GLOBALS NfcCxGlobals,
     _In_ WDFDEVICE Device
     );
 
 NTSTATUS
 NfcCxEvtHardwareEvent(
-    _In_ PNFCCX_DRIVER_GLOBALS NfcCxGlobal,
+    _In_ PNFCCX_DRIVER_GLOBALS NfcCxGlobals,
     _In_ WDFDEVICE Device,
     _In_ PNFC_CX_HARDWARE_EVENT NciCxHardwareEventParams
     );

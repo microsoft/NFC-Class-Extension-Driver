@@ -82,7 +82,7 @@ uint32_t phOsalNfc_Timer_Create(void)
     uint32_t i = 0;
 
     if (NULL == gpphOsalNfc_Context) {
-        return PHNFCSTVAL(CID_NFC_OSAL, NFCSTATUS_INVALID_PARAMETER);
+        return PH_OSALNFC_TIMER_ID_INVALID;
     }
 
     EnterCriticalSection(&gpphOsalNfc_Context->TimerLock);
@@ -101,12 +101,12 @@ uint32_t phOsalNfc_Timer_Create(void)
     }
 
     LeaveCriticalSection(&gpphOsalNfc_Context->TimerLock);
-    
+
     if ((i == PH_MAX_OSAL_NUM_TIMERS) || (gpphOsalNfc_Context->TimerList[i].pTimer == NULL))
     {
-        return PH_OSALNFC_INVALID_TIMER_ID;
+        return PH_OSALNFC_TIMER_ID_INVALID;
     }
-    
+
     return (i + PH_OSAL_TIMER_BASE_ADDRESS);
 }
 
