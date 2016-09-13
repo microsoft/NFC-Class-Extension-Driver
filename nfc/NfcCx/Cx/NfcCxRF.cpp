@@ -20,10 +20,6 @@ Environment:
 
 #include "NfcCxRF.tmh"
 
-// Temporary define until NfcCx.h header is updated
-// Kovio refers to NfcBarcode tags
-#define NFC_CX_POLL_NFC_A_KOVIO 0x00000040
-
 // {D06B4CC1-1DA2-45c2-BD7B-877C4573F83B}
 DEFINE_GUID(SESSION_ID, 
 0xd06b4cc1, 0x1da2, 0x45c2, 0xbd, 0x7b, 0x87, 0x7c, 0x45, 0x73, 0xf8, 0x3b);
