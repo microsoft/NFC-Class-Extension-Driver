@@ -22,12 +22,12 @@ phNciNfc_LogConnMgmtInit()
 
     phOsalNfc_SetMemory(&gphNciNfc_ConnMgmtInt, 0x00, sizeof(phNciNfc_LogConnMgmt_Int_t));
 
-    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].tConn.bConnId =  CONNTYPE_STATIC;
-    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].tConn.bMaxDpldSize = 0;
-    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].tConn.bNumCredits = 0;
-    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].bDestId = UNASSIGNED_DESTID;
-    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].bDestType = phNciNfc_e_UNKNOWN_DEST_TYPE;
-    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].bIfActive = FALSE;
+    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].tConn.bConnId =  CONNRFTYPE_STATIC;
+    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].tConn.bMaxDpldSize = 0;
+    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].tConn.bNumCredits = 0;
+    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bDestId = UNASSIGNED_DESTID;
+    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bDestType = phNciNfc_e_UNKNOWN_DEST_TYPE;
+    gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bIfActive = FALSE;
 
     gphNciNfc_ConnMgmtInt.tConnInfo.bOpenConns = 1;
 
@@ -283,12 +283,12 @@ phNciNfc_UpdateConnDestInfo(
         {
             pphNciNfc_RemoteDevInformation_t  pActvDev = (pphNciNfc_RemoteDevInformation_t)pHandle;
 
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].bDestId = pActvDev->bRfDiscId;
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].bDestType = tDestType;
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].tConn.bMaxDpldSize = pActvDev->bMaxPayLoadSize;
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].tConn.bNumCredits = pActvDev->bInitialCredit;
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].bIfActive = TRUE;
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNTYPE_STATIC].pActvDevHandle = pActvDev;
+            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bDestId = pActvDev->bRfDiscId;
+            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bDestType = tDestType;
+            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].tConn.bMaxDpldSize = pActvDev->bMaxPayLoadSize;
+            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].tConn.bNumCredits = pActvDev->bInitialCredit;
+            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bIfActive = TRUE;
+            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].pActvDevHandle = pActvDev;
         }
         else
         {
@@ -325,7 +325,7 @@ phNciNfc_GetConnCredits(
             if(bConnId == (gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId) )
             {
                 if((TRUE == (gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].bIfActive)) ||
-                    (CONNTYPE_STATIC == (gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId)))
+                    (CONNRFTYPE_STATIC == (gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId)))
                 {
                     *pCredits = (gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bNumCredits);
                     wStatus = NFCSTATUS_SUCCESS;
@@ -368,7 +368,7 @@ NFCSTATUS phNciNfc_RegForConnCredits(
             if(bConnId == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId)
             {
                 if((TRUE == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].bIfActive) ||
-                    (CONNTYPE_STATIC == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId))
+                    (CONNRFTYPE_STATIC == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId))
                 {
                     wStatus = NFCSTATUS_SUCCESS;
                 }
@@ -570,7 +570,7 @@ phNciNfc_GetConnMaxPldSz(
             if(bConnId == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId)
             {
                 if((TRUE == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].bIfActive) ||
-                    (CONNTYPE_STATIC == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId))
+                    (CONNRFTYPE_STATIC == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId))
                 {
                     *pMaxPldSz = gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bMaxDpldSize;
                     wStatus = NFCSTATUS_SUCCESS;
@@ -603,7 +603,7 @@ NFCSTATUS phNciNfc_IncrConnCredits(
         if(bConnId == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId)
         {
             if((TRUE == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].bIfActive) ||
-                (CONNTYPE_STATIC == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId))
+                (CONNRFTYPE_STATIC == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId))
             {
                 gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bNumCredits += bVal;
 
@@ -640,7 +640,7 @@ NFCSTATUS phNciNfc_DecrConnCredit(
         if(bConnId == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId)
         {
             if((TRUE == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].bIfActive) ||
-                (CONNTYPE_STATIC == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId))
+                (CONNRFTYPE_STATIC == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId))
             {
                 if(gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bNumCredits > 0)
                 {
@@ -720,7 +720,7 @@ static NFCSTATUS phNciNfc_GetConnIndex(uint8_t bConnId, uint8_t *pbConnIdx)
             if(bConnId == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId)
             {
                 if((TRUE == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].bIfActive) ||
-                    (CONNTYPE_STATIC == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId))
+                    (CONNRFTYPE_STATIC == gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnListIdx].tConn.bConnId))
                 {
                     *pbConnIdx = bConnListIdx;
                     wStatus = NFCSTATUS_SUCCESS;
