@@ -9,6 +9,7 @@
 #include "phNciNfc_Core.h"
 
 #define CONNRFTYPE_STATIC               (0x00U)  /**< Static RF connection id/index */
+#define CONNHCITYPE_STATIC              (0x01U)  /**< Static HCI connection id/index */
 #define MAX_LOGICAL_CONNS               (0x03U)  /**< Maximum number of Logical Connections Supported */
 #define INVALID_CONN_ID                 (0xFFU)  /**< Range beyond 15 is invalid connid */
 #define UNASSIGNED_DESTID               (0xFFU)  /**< Unassigned destination id */
