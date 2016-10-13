@@ -220,7 +220,7 @@ static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS Status)
                 pNciContext->ResetInfo.NciVer = pNciContext->RspBuffInfo.pBuff[1];
 
                 if((pNciContext->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) <=
-                   (PH_NCINFC_VERSION & PH_NCINFC_VERSION_MAJOR_MASK))
+                   (PH_NCINFC_VERSION_1x & PH_NCINFC_VERSION_MAJOR_MASK))
                 {
                     /* Update Reset type */
                     if(pNciContext->RspBuffInfo.pBuff[2] == phNciNfc_ResetType_KeepConfig)

@@ -23,10 +23,10 @@
 #define PH_NCINFC_VERSION_MAJOR_MASK                (0xF0)
 #define PH_NCINFC_VERSION_MINOR_MASK                (0x0F)
 
-#define PH_NCINFC_VERSION_MAJOR                     (0x01)
-#define PH_NCINFC_VERSION_MINOR                     (0x00)
+#define PH_NCINFC_VERSION_MAJOR_1x                  (0x01)
+#define PH_NCINFC_VERSION_MINOR_1x                  (0x00)
 
-#define PH_NCINFC_VERSION                           ((PH_NCINFC_VERSION_MAJOR << 4) | PH_NCINFC_VERSION_MINOR)
+#define PH_NCINFC_VERSION_1x                        ((PH_NCINFC_VERSION_MAJOR_1x << 4) | PH_NCINFC_VERSION_MINOR_1x)
 
 
 /**
