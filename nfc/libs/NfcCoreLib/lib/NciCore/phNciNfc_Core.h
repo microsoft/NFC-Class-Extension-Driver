@@ -287,6 +287,13 @@ typedef void (*pphNciNfc_ConnCreditsNtf_t)(void* pContext, uint8_t bCredits, NFC
 /**
  * \ingroup grp_nci_nfc_core
  *
+ * \brief Manufacturer Information size in NCI 1.x
+  */
+#define PHNCINFC_CORE_MANUF_INFO_LEN_NCI1x		(4)
+
+/**
+ * \ingroup grp_nci_nfc_core
+ *
  * \brief Invalid connection Id
   */
 
@@ -661,11 +668,9 @@ typedef struct phNciNfc_sInitRspParams
     uint8_t ManufacturerId;                             /**<IC Manufacturer ID */
     struct                                              /**<NFCC manufacturer specific information*/
     {
-        uint8_t Byte0;
-        uint8_t Byte1;
-        uint8_t Byte2;
-        uint8_t Byte3;
-    }ManufacturerInfo;                                  /**< Manufacturer information */
+        uint8_t Length;
+        uint8_t *Buffer;                                /**<Manufacturer information NCI*/
+    }ManufacturerInfo;
 }phNciNfc_sInitRspParams_t, *pphNci_sInitRspParams_t; /**< pointer to #phNci_sInitRspParams_t */
 
 /**
