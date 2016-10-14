@@ -16,6 +16,8 @@
 #define FLOW_CONTROL_DISABLED           (0xFFU)  /**< Flow control disabled during data exchange */
 #define MAX_CREDITS_LIMIT               (0xFEU)  /**< Max possible Credits for a connection */
 
+#define PHNCINFC_MIN_WAITCREDIT_TO      (250)
+
 typedef struct phNciNfc_LogConn_Rsp
 {
     uint8_t     bConnId;           /**< NFCC assigned Connection Identifier */
