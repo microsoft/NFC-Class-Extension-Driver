@@ -69,38 +69,8 @@ phNciNfc_MfCreateWriteHdr(
         status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
         PH_LOG_NCI_INFO_STR(" Invalid Context Param..");
     }
-    else if(NULL == (psNciContext->tActvDevIf.pDevInfo))
-    {
-        status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_DEVICE);
-        PH_LOG_NCI_INFO_STR(" Invalid Device..");
-    }
     else
     {
-        pphNciNfc_RemoteDevInformation_t  pActivDev = NULL;
-
-        pActivDev = (psNciContext->tActvDevIf.pDevInfo);
-
-        switch(pActivDev->RemDevType)
-        {
-            case phNciNfc_eMifareUL_PICC:
-            {
-                /* For MfUL, Validate BlockAddr to be in the range of 2 to 15 blocks */
-                if(((0x02U) > bBlockAddr) || ((0x0FU) < bBlockAddr))
-                {
-                    status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
-                    PH_LOG_NCI_INFO_STR(" Invalid Block Address ..");
-                }
-                break;
-            }
-            case phNciNfc_eMifare1k_PICC:
-            {
-                break;
-            }
-            default:
-            {
-                break;
-            }
-        }
         if(NFCSTATUS_SUCCESS == status)
         {
             phOsalNfc_SetMemory(&(psNciContext->tTranscvCtxt.tActiveExtn),0,
@@ -136,38 +106,8 @@ phNciNfc_MfCreateReadHdr(
         status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
         PH_LOG_NCI_INFO_STR(" Invalid Context Param..");
     }
-    else if(NULL == (psNciContext->tActvDevIf.pDevInfo))
-    {
-        status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_DEVICE);
-        PH_LOG_NCI_INFO_STR(" Invalid Device..");
-    }
     else
     {
-        pphNciNfc_RemoteDevInformation_t  pActivDev = NULL;
-
-        pActivDev = (psNciContext->tActvDevIf.pDevInfo);
-
-        switch(pActivDev->RemDevType)
-        {
-            case phNciNfc_eMifareUL_PICC:
-            {
-                /* For MfUL, Validate BlockAddr to be <=15 blocks */
-                if((0x0FU) < bBlockAddr)
-                {
-                    status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
-                    PH_LOG_NCI_INFO_STR(" Invalid Block Address ..");
-                }
-                break;
-            }
-            case phNciNfc_eMifare1k_PICC:
-            {
-                break;
-            }
-            default:
-            {
-                break;
-            }
-        }
         if(NFCSTATUS_SUCCESS == status)
         {
             phOsalNfc_SetMemory(&(psNciContext->tTranscvCtxt.tActiveExtn),0,sizeof(psNciContext->tTranscvCtxt.tActiveExtn));
@@ -201,17 +141,8 @@ phNciNfc_MfCreateXchgDataHdr(
         status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
         PH_LOG_NCI_INFO_STR(" Invalid Context Param..");
     }
-    else if(NULL == (psNciContext->tActvDevIf.pDevInfo))
-    {
-        status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_DEVICE);
-        PH_LOG_NCI_INFO_STR(" Invalid Device..");
-    }
     else
     {
-        pphNciNfc_RemoteDevInformation_t  pActivDev = NULL;
-
-        pActivDev = (psNciContext->tActvDevIf.pDevInfo);
-
         phOsalNfc_SetMemory(&(psNciContext->tTranscvCtxt.tActiveExtn),0,
             sizeof(psNciContext->tTranscvCtxt.tActiveExtn));
 
@@ -735,7 +666,6 @@ phNciNfc_MfCreateAuthCmdHdr(phNciNfc_Context_t     *psNciContext,
                             uint8_t    bBlockAddr)
 {
     NFCSTATUS               status = NFCSTATUS_SUCCESS;
-    pphNciNfc_RemoteDevInformation_t  pActivDev = NULL;
 
     PH_LOG_NCI_FUNC_ENTRY();
 
@@ -744,11 +674,6 @@ phNciNfc_MfCreateAuthCmdHdr(phNciNfc_Context_t     *psNciContext,
         status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
         PH_LOG_NCI_INFO_STR(" Invalid Context Param..");
     }
-    else if(NULL == (psNciContext->tActvDevIf.pDevInfo))
-    {
-        status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_DEVICE);
-        PH_LOG_NCI_INFO_STR(" Invalid Device..");
-    }
     else if (3 > psNciContext->tTranscvCtxt.tTranscvInfo.tSendData.wLen)
     {
         status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
@@ -756,8 +681,6 @@ phNciNfc_MfCreateAuthCmdHdr(phNciNfc_Context_t     *psNciContext,
     }
     else
     {
-        pActivDev = (psNciContext->tActvDevIf.pDevInfo);
-
         /*For authentication extension no need to copy tSendData buffer of tTranscvInfo */
         psNciContext->tTranscvCtxt.tTranscvInfo.tSendData.wLen = 0x00;
 
@@ -792,7 +715,6 @@ phNciNfc_MfCreateSectorSelCmdHdr(phNciNfc_Context_t     *psNciContext,\
                                  uint8_t    bBlockAddr)
 {
     NFCSTATUS               status = NFCSTATUS_SUCCESS;
-    pphNciNfc_RemoteDevInformation_t  pActivDev = NULL;
 
     PH_LOG_NCI_FUNC_ENTRY();
 
@@ -801,15 +723,8 @@ phNciNfc_MfCreateSectorSelCmdHdr(phNciNfc_Context_t     *psNciContext,\
         status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
         PH_LOG_NCI_INFO_STR(" Invalid Context Param..");
     }
-    else if(NULL == (psNciContext->tActvDevIf.pDevInfo))
-    {
-        status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_DEVICE);
-        PH_LOG_NCI_INFO_STR(" Invalid Device..");
-    }
     else
     {
-        pActivDev = (psNciContext->tActvDevIf.pDevInfo);
-
         phOsalNfc_SetMemory(&(psNciContext->tTranscvCtxt.tActiveExtn),0,
             sizeof(psNciContext->tTranscvCtxt.tActiveExtn));
 

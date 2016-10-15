@@ -772,7 +772,10 @@ void phLibNfc_Ndef_CheckNdef_Cb(void *pContext,NFCSTATUS status)
     phLibNfc_sRemoteDevInformation_t   *ps_rem_dev_info = NULL;
     phNciNfc_RemoteDevInformation_t *pNciRemDevHandle = NULL;
     NFCSTATUS RetVal;
+
     PH_LOG_LIBNFC_FUNC_ENTRY();
+    PH_LOG_LIBNFC_INFO_STR("Status = %!NFCSTATUS!", status);
+
     Ndef_Info.ActualNdefMsgLength = 0;
     Ndef_Info.MaxNdefMsgLength = 0;
     Ndef_Info.NdefCardState = PHLIBNFC_NDEF_CARD_INVALID;
@@ -817,7 +820,7 @@ void phLibNfc_Ndef_CheckNdef_Cb(void *pContext,NFCSTATUS status)
                     Ndef_Info.MaxNdefMsgLength = pLibNfc_Ctxt->ndef_cntx.NdefLength;
                     RetStatus =NFCSTATUS_SUCCESS;
                 }
-                else if (PHNFCSTATUS(status) != NFCSTATUS_MORE_INFORMATION )
+                else if (PHNFCSTATUS(status) != NFCSTATUS_MORE_INFORMATION)
                 {
                     /*Ndef check Failed.Issue a PresenceChk to ascertain if tag is
                       still in the field*/

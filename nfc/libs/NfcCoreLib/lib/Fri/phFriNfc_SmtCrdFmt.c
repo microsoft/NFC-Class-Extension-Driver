@@ -7,18 +7,16 @@
 #include "phFriNfc_Pch.h"
 
 #include "phFriNfc_DesfireFormat.h"
-#include <phFriNfc_ISO15693Format.h>
 
 #include "phFriNfc_SmtCrdFmt.tmh"
 
-void phFriNfc_SmtCrdFmt_HCrHandler(phFriNfc_sNdefSmtCrdFmt_t  *NdefSmtCrdFmt,
-                                       NFCSTATUS            Status)
+void phFriNfc_SmtCrdFmt_HCrHandler(phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt,
+                                   NFCSTATUS                 Status)
 {
     PH_LOG_NDEF_FUNC_ENTRY();
-
-    NdefSmtCrdFmt->State =  PH_FRINFC_SMTCRDFMT_STATE_RESET_INIT;
-    NdefSmtCrdFmt->CompletionRoutine[PH_FRINFC_SMTCRDFMT_CR_FORMAT].
-        CompletionRoutine(NdefSmtCrdFmt->CompletionRoutine->Context, Status);
+    NdefSmtCrdFmt->State = PH_FRINFC_SMTCRDFMT_STATE_RESET_INIT;
+    NdefSmtCrdFmt->CompletionRoutine[PH_FRINFC_SMTCRDFMT_CR_FORMAT].CompletionRoutine(NdefSmtCrdFmt->CompletionRoutine->Context,
+                                                                                      Status);
     PH_LOG_NDEF_FUNC_EXIT();
 }
 
@@ -44,7 +42,7 @@ NFCSTATUS phFriNfc_NdefSmtCrd_Reset(phFriNfc_sNdefSmtCrdFmt_t       *NdefSmtCrdF
         /* Initialise the state to Init */
         NdefSmtCrdFmt->State = PH_FRINFC_SMTCRDFMT_STATE_RESET_INIT;
 
-        for(index = 0;index<PH_FRINFC_SMTCRDFMT_CR;index++)
+        for(index = 0; index < PH_FRINFC_SMTCRDFMT_CR; index++)
         {
             /* Initialise the NdefMap Completion Routine to Null */
             NdefSmtCrdFmt->CompletionRoutine[index].CompletionRoutine = NULL;
@@ -87,7 +85,7 @@ NFCSTATUS phFriNfc_NdefSmtCrd_Reset(phFriNfc_sNdefSmtCrdFmt_t       *NdefSmtCrdF
         NdefSmtCrdFmt->AddInfo.MfStdInfo.DevInputParam = psDevInputParam;
         phFriNfc_MfStd_Reset(NdefSmtCrdFmt);
 
-        phFriNfc_ISO15693_FmtReset (NdefSmtCrdFmt);
+        phFriNfc_ISO15693_FmtReset(NdefSmtCrdFmt);
     }
     PH_LOG_NDEF_FUNC_EXIT();
     return (result);
@@ -118,9 +116,7 @@ NFCSTATUS phFriNfc_NdefSmtCrd_SetCR(phFriNfc_sNdefSmtCrdFmt_t     *NdefSmtCrdFmt
     return status;
 }
 
-NFCSTATUS
-phFriNfc_NdefSmtCrd_ConvertToReadOnly (
-    phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt)
+NFCSTATUS phFriNfc_NdefSmtCrd_ConvertToReadOnly(phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt)
 {
     NFCSTATUS   result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
                                   NFCSTATUS_INVALID_PARAMETER);
@@ -168,7 +164,8 @@ phFriNfc_NdefSmtCrd_ConvertToReadOnly (
     return result;
 }
 
-NFCSTATUS phFriNfc_NdefSmtCrd_Format( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt, const uint8_t *ScrtKeyB )
+NFCSTATUS phFriNfc_NdefSmtCrd_Format(phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt,
+                                     const uint8_t *ScrtKeyB)
 {
     /* Component ID needs to be changed */
     NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
@@ -184,17 +181,21 @@ NFCSTATUS phFriNfc_NdefSmtCrd_Format( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt, 
         /* SAK (Select response) */
         sak = NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso14443A_Info.Sak;
 
+        PH_LOG_NDEF_INFO_STR("RemDevType = %d, SAK = 0x%02X",
+                             NdefSmtCrdFmt->psRemoteDevInfo->RemDevType,
+                             sak);
+
         /* Depending on the Opmodes, call the respective card functions */
-        switch ( NdefSmtCrdFmt->psRemoteDevInfo->RemDevType )
+        switch (NdefSmtCrdFmt->psRemoteDevInfo->RemDevType)
         {
-            case phNfc_eMifare_PICC :
+            case phNfc_eMifare_PICC:
             case phNfc_eISO14443_3A_PICC:
-                /*  Remote device is Mifare card . Check for Mifare
-                NDEF compliance */
+                /* Remote device is Mifare card. Check for Mifare
+                   NDEF compliance */
                 if(0x00 == sak)
                 {
-                    /*  The SAK/Sel_Res says the card is of the type
-                        Mifare UL */
+                    /* The SAK/Sel_Res says the card is of the type
+                       Mifare UL */
                     NdefSmtCrdFmt->CardType = PH_FRINFC_SMTCRDFMT_MIFARE_UL_CARD;
                     if (NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso14443A_Info.UidLength == 7 &&
                     NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso14443A_Info.Uid[0] == 0x04)
@@ -212,77 +213,74 @@ NFCSTATUS phFriNfc_NdefSmtCrd_Format( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt, 
                         (0x01 == sak))
                 {
                     NdefSmtCrdFmt->CardType = (uint8_t)
-                        (((sak & 0x18) == 0x08)?
-                        PH_FRINFC_SMTCRDFMT_MFSTD_1K_CRD:
+                        (((sak & 0x18) == 0x08) ?
+                        PH_FRINFC_SMTCRDFMT_MFSTD_1K_CRD :
                         PH_FRINFC_SMTCRDFMT_MFSTD_4K_CRD);
 
-                    /*  The SAK/Sel_Res says the card is of the type
-                        Mifare standard */
+                    /* The SAK/Sel_Res says the card is of the type
+                       Mifare standard */
                     Result = phFriNfc_MfStd_Format( NdefSmtCrdFmt, ScrtKeyB);
                 }
                 else
                 {
-                    /*  Invalid Mifare card, as the remote device
-                        info - opmode says its a Mifare card but,
-                        The SAK/Sel_Res is wrong */
+                    /* Invalid Mifare card, as the remote device
+                       info - opmode says its a Mifare card but,
+                       The SAK/Sel_Res is wrong */
                     Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
                                         NFCSTATUS_INVALID_REMOTE_DEVICE);
                 }
                 break;
 
-            case phNfc_eISO14443_A_PICC :
+            case phNfc_eISO14443_A_PICC:
             case phNfc_eISO14443_4A_PICC:
-                /*  Remote device is Desfire card . Check for Desfire
-                NDEF compliancy */
-                 if(0x20 == (sak & 0xFF))
+                /* Remote device is Desfire card. Check for Desfire
+                   NDEF compliancy */
+                if(0x20 == (sak & 0xFF))
                 {
                     NdefSmtCrdFmt->CardType = PH_FRINFC_SMTCRDFMT_ISO14443_4A_CARD;
-                    /*  The SAK/Sel_Res says the card is of the type
-                        ISO14443_4A */
+                    /* The SAK/Sel_Res says the card is of the type
+                       ISO14443_4A */
 
                     Result = phFriNfc_Desfire_Format(NdefSmtCrdFmt);
                 }
                 else
                 {
-                    /*  Invalid Desfire card, as the remote device
-                        info - opmode says its a desfire card but,
-                        The SAK/Sel_Res is wrong */
+                    /* Invalid Desfire card, as the remote device
+                       info - opmode says its a desfire card but,
+                       The SAK/Sel_Res is wrong */
                     Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
                                         NFCSTATUS_INVALID_REMOTE_DEVICE);
                 }
                 break;
 
-            case phHal_eJewel_PICC :
-                /*  Remote device is Topaz card . Check for Topaz
-                NDEF compliancy */
-                if(0xC2 == sak)
+            case phNfc_eJewel_PICC:
+                if (NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.HeaderRom0 == PH_FRINFC_TOPAZ_HEADROM0_VAL)
                 {
-                    Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
-                                        NFCSTATUS_INVALID_REMOTE_DEVICE);
+                    Result = phFriNfc_TopazFormat_Format(NdefSmtCrdFmt);
+                }
+                else if (NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.HeaderRom0 == PH_FRINFC_TOPAZ_DYNAMIC_HEADROM0_VAL)
+                {
+                    Result = phFriNfc_TopazDynamicFormat_Format(NdefSmtCrdFmt);
                 }
                 else
                 {
-                    /*  Invalid Topaz card, as the remote device
-                        info - opmode says its a desfire card but,
-                        The SAK/Sel_Res is wrong */
-                    Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
-                                        NFCSTATUS_INVALID_REMOTE_DEVICE);
+                    Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT, NFCSTATUS_INVALID_REMOTE_DEVICE);
+                    PH_LOG_NDEF_WARN_STR("Unknown header ROM 0 byte: 0x%02X",
+                                         NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.HeaderRom0);
                 }
                 break;
 
-            case phHal_eISO15693_PICC:
-                {
-                    Result = phFriNfc_ISO15693_Format (NdefSmtCrdFmt);
-                    break;
-                }
+            case phNfc_eISO15693_PICC:
+                Result = phFriNfc_ISO15693_Format(NdefSmtCrdFmt);
+                break;
 
-            default :
-                /*  Remote device is not recognised.
-                Probably not NDEF compliant */
+            default:
+                /* Remote device is not recognised.
+                   Probably not NDEF compliant */
                 Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
                                     NFCSTATUS_INVALID_REMOTE_DEVICE);
                 PH_LOG_NDEF_WARN_STR("Invalid remote device or Remote device not found");
-            break;
+                break;
         }
     }
     else
@@ -293,68 +291,76 @@ NFCSTATUS phFriNfc_NdefSmtCrd_Format( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt, 
     return Result;
 }
 
-void phFriNfc_NdefSmtCrd_Process(void        *Context,
+void phFriNfc_NdefSmtCrd_Process(void         *Context,
                                  NFCSTATUS    Status)
 {
     PH_LOG_NDEF_FUNC_ENTRY();
-    if ( Context != NULL )
+    PH_LOG_NDEF_INFO_STR("Status = %!NFCSTATUS!", Status);
+
+    if (Context != NULL)
     {
         phFriNfc_sNdefSmtCrdFmt_t  *NdefSmtCrdFmt = (phFriNfc_sNdefSmtCrdFmt_t *)Context;
 
-        switch ( NdefSmtCrdFmt->psRemoteDevInfo->RemDevType )
+        switch (NdefSmtCrdFmt->psRemoteDevInfo->RemDevType)
         {
-            case phNfc_eMifare_PICC :
+            case phNfc_eMifare_PICC:
             case phNfc_eISO14443_3A_PICC:
                 if((NdefSmtCrdFmt->CardType == PH_FRINFC_SMTCRDFMT_MFSTD_1K_CRD) ||
                     (NdefSmtCrdFmt->CardType == PH_FRINFC_SMTCRDFMT_MFSTD_4K_CRD))
                 {
-                    /*  Remote device is Mifare Standard card */
-                    phFriNfc_MfStd_Process(NdefSmtCrdFmt,Status);
+                    phFriNfc_MfStd_Process(NdefSmtCrdFmt, Status);
                 }
                 else
                 {
-                    /*  Remote device is Mifare UL card */
-                    phFriNfc_MfUL_Process(NdefSmtCrdFmt,Status);
+                    phFriNfc_MfUL_Process(NdefSmtCrdFmt, Status);
                 }
                 break;
 
-            case phHal_eISO14443_A_PICC :
+            case phNfc_eISO14443_A_PICC:
             case phNfc_eISO14443_4A_PICC:
-                /*  Remote device is Desfire card */
                 phFriNfc_Desf_Process(NdefSmtCrdFmt, Status);
                 break;
 
-            case phHal_eJewel_PICC :
-               Status = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
-                                            NFCSTATUS_INVALID_REMOTE_DEVICE);
+            case phNfc_eJewel_PICC:
+                if (NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.HeaderRom0 == PH_FRINFC_TOPAZ_HEADROM0_VAL)
+                {
+                    phFriNfc_TopazFormat_Process(NdefSmtCrdFmt, Status);
+                }
+                else if (NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.HeaderRom0 == PH_FRINFC_TOPAZ_DYNAMIC_HEADROM0_VAL)
+                {
+                    phFriNfc_TopazDynamicFormat_Process(NdefSmtCrdFmt, Status);
+                }
+                else
+                {
+                    Status = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT, NFCSTATUS_INVALID_REMOTE_DEVICE);
+                    PH_LOG_NDEF_WARN_STR("Unknown header ROM 0 byte: 0x%02X",
+                                         NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.HeaderRom0);
+                }
                 break;
 
-            case phHal_eISO15693_PICC :
-            {
-                phFriNfc_ISO15693_FmtProcess (NdefSmtCrdFmt, Status);
+            case phNfc_eISO15693_PICC:
+                phFriNfc_ISO15693_FmtProcess(NdefSmtCrdFmt, Status);
                 break;
-            }
 
-            default :
-                /*  Remote device opmode not recognised.
-                    Probably not NDEF compliant */
+            default:
+                /* Remote device opmode not recognised.
+                   Probably not NDEF compliant */
                 Status = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
                                     NFCSTATUS_INVALID_REMOTE_DEVICE);
-                /* set the state back to the Reset_Init state*/
-                NdefSmtCrdFmt->State =  PH_FRINFC_SMTCRDFMT_STATE_RESET_INIT;
+                /* Set the state back to the Reset_Init state */
+                NdefSmtCrdFmt->State = PH_FRINFC_SMTCRDFMT_STATE_RESET_INIT;
 
-                /* set the completion routine*/
-                NdefSmtCrdFmt->CompletionRoutine[PH_FRINFC_SMTCRDFMT_CR_INVALID_OPE].
-                CompletionRoutine(NdefSmtCrdFmt->CompletionRoutine->Context, Status);
-            break;
+                /* Set the completion routine */
+                NdefSmtCrdFmt->CompletionRoutine[PH_FRINFC_SMTCRDFMT_CR_INVALID_OPE].CompletionRoutine(NdefSmtCrdFmt->CompletionRoutine->Context,
+                                                                                                       Status);
+                break;
         }
     }
     else
     {
-        Status = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,\
+        Status = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
                             NFCSTATUS_INVALID_PARAMETER);
-        /* The control should not come here. As Context itself is NULL ,
-           Can't call the CR*/
     }
+
     PH_LOG_NDEF_FUNC_EXIT();
 }

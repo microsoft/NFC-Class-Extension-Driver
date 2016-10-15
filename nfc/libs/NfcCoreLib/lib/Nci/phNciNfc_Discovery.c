@@ -251,7 +251,6 @@ void phNciNfc_HandlePriorityDeactv(pphNciNfc_DiscContext_t pDiscCtx)
                              (pphNciNfc_CoreIfNtf_t)&phNciNfc_RdrDataXchgSequence);
         }
     }
-   return ;
 }
 
 static NFCSTATUS phNciNfc_DeActivateRemDev(void *pContext)
@@ -1474,6 +1473,9 @@ NFCSTATUS phNciNfc_ProcessActvNtf(void *pContext,void *pInfo,NFCSTATUS wStatus)
     uint8_t *pBuff;
     phNciNfc_RfTechMode_t eTechMode;
     pphNciNfc_IfNotificationCb_t        pConnectCb;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+
     if(NFCSTATUS_SUCCESS != wActvStatus)
     {
         /*Invalid Parameter is passed */
@@ -1502,8 +1504,8 @@ NFCSTATUS phNciNfc_ProcessActvNtf(void *pContext,void *pInfo,NFCSTATUS wStatus)
         tHeaderInfo.Opcode_ID.OidType.NciCoreNtfOid = phNciNfc_e_NciCoreGenericErrNtfOid;
 
         (void)phNciNfc_CoreIfUnRegRspNtf(&(pNciContext->NciCoreContext),
-                                        &(tHeaderInfo),&phNciNfc_ProcessGenericErrNtfMFC
-                                       );
+                                         &(tHeaderInfo),
+                                         &phNciNfc_ProcessGenericErrNtfMFC);
 
         /* Assign the Ntf buffer pointer*/
         pBuff = pTransInfo->pbuffer;
@@ -1657,7 +1659,7 @@ NFCSTATUS phNciNfc_ProcessActvNtf(void *pContext,void *pInfo,NFCSTATUS wStatus)
                     case phNciNfc_NFCF_Listen:
                     case phNciNfc_NFCF_Active_Listen:
                         /* If we are listeninig to remote device, make sure a Read request is opened
-                        inorder not to loose the data sent from remote device */
+                        in order to not lose the data sent from remote device */
                         wActvStatus = phNciNfc_DummyReadReq(pNciContext);
                         if(NFCSTATUS_FAILED == wActvStatus)
                         {

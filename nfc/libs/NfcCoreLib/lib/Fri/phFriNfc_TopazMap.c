@@ -6,9 +6,6 @@
 
 #include "phFriNfc_Pch.h"
 
-#include <phFriNfc_TopazMap.h>
-#include <phFriNfc_MapTools.h>
-
 #include "phFriNfc_TopazMap.tmh"
 
 #define CC_BLOCK_NUMBER                                         (0x01U)
@@ -27,12 +24,6 @@
 static NFCSTATUS phFriNfc_Tpz_H_RdBytes(phFriNfc_NdefMap_t *NdefMap,
                                         uint16_t             BlockNo,
                                         uint16_t             ByteNo);
-
-/*!
-* \brief \copydoc page_ovr Helper function for Topaz. This function shall process
-* read id command
-*/
-static NFCSTATUS phFriNfc_Tpz_H_ProReadID(phFriNfc_NdefMap_t *NdefMap);
 
 /*!
 * \brief \copydoc page_ovr Helper function for Topaz. This function shall process
@@ -142,11 +133,13 @@ static NFCSTATUS phFriNfc_Tpz_H_WrCCorTLV(phFriNfc_NdefMap_t  *NdefMap);
 static NFCSTATUS phFriNfc_Tpz_H_ProCCTLV(phFriNfc_NdefMap_t  *NdefMap);
 
 NFCSTATUS phFriNfc_Topaz_H_Reset(phFriNfc_NdefMap_t *NdefMap,
-                               phNfc_sDevInputParam_t *pDevInpParam)
+                                 phNfc_sDevInputParam_t *pDevInpParam)
 {
     NFCSTATUS Result = NFCSTATUS_SUCCESS;
     UNUSED(pDevInpParam);
+
     PH_LOG_NDEF_FUNC_ENTRY();
+
     if(NdefMap == NULL)
     {
         Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP, NFCSTATUS_INVALID_PARAMETER);
@@ -154,28 +147,31 @@ NFCSTATUS phFriNfc_Topaz_H_Reset(phFriNfc_NdefMap_t *NdefMap,
     else
     {
         /* Initialising the Topaz structure variable */
+        phOsalNfc_SetMemory(&NdefMap->TopazContainer,
+                            0,
+                            sizeof(NdefMap->TopazContainer));
         NdefMap->TopazContainer.CRIndex = PH_FRINFC_NDEFMAP_CR_INVALID_OPE;
         NdefMap->TopazContainer.CurrentBlock = PH_FRINFC_TOPAZ_VAL1;
         NdefMap->TopazContainer.ByteNumber = PH_FRINFC_TOPAZ_VAL0;
         NdefMap->TopazContainer.InternalState = PH_FRINFC_TOPAZ_VAL0;
-        (void)phOsalNfc_SetMemory(NdefMap->TopazContainer.ReadBuffer, PH_FRINFC_TOPAZ_VAL0,
-                    sizeof(NdefMap->TopazContainer.ReadBuffer));
         NdefMap->TopazContainer.ReadWriteCompleteFlag = PH_FRINFC_TOPAZ_FLAG0;
         NdefMap->TopazContainer.RemainingSize = PH_FRINFC_TOPAZ_VAL0;
-        (void)phOsalNfc_SetMemory(NdefMap->TopazContainer.UID, PH_FRINFC_TOPAZ_VAL0,
-                    sizeof(NdefMap->TopazContainer.UID));
-        NdefMap->TopazContainer.Cur_RW_Index=0;
-        NdefMap->TopazContainer.ByteRWFrmCard =0;
+        NdefMap->TopazContainer.Cur_RW_Index = 0;
+        NdefMap->TopazContainer.ByteRWFrmCard = 0;
     }
+
     PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
-NFCSTATUS phFrinfc_Topaz_GetContainerSize(const phFriNfc_NdefMap_t *NdefMap,\
-                                   uint32_t *maxSize, uint32_t *actualSize)
+NFCSTATUS phFriNfc_Topaz_GetContainerSize(const phFriNfc_NdefMap_t *NdefMap,
+                                          uint32_t *maxSize,
+                                          uint32_t *actualSize)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+
     PH_LOG_NDEF_FUNC_ENTRY();
+
     if((NULL != NdefMap) && (NULL != maxSize) &&(NULL != actualSize))
     {
         /*  Topaz card */
@@ -192,40 +188,18 @@ NFCSTATUS phFrinfc_Topaz_GetContainerSize(const phFriNfc_NdefMap_t *NdefMap,\
         wStatus = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,\
                         NFCSTATUS_INVALID_PARAMETER);
     }
-    PH_LOG_NDEF_FUNC_EXIT();
-    return wStatus;
-}
 
-NFCSTATUS phFrinfc_TopazDynamic_GetContainerSize(const phFriNfc_NdefMap_t *NdefMap,\
-                                   uint32_t *maxSize, uint32_t *actualSize)
-{
-    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-    PH_LOG_NDEF_FUNC_ENTRY();
-    if((NULL != NdefMap) && (NULL != maxSize) &&(NULL != actualSize))
-    {
-        /*  Topaz 512 card */
-        /*  The integration needs to ensure that the checkNdef
-        function has been called before calling this function,
-        otherwise NdefMap->CardMemSize will be 0 */
-        *maxSize = NdefMap->TopazContainer.NDEFRWSize;
-        /* In Topaz card, the actual size is the length field value of the
-        TLV */
-        *actualSize = NdefMap->TopazContainer.ActualNDEFMsgSize;
-    }
-    else
-    {
-        wStatus = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,\
-                        NFCSTATUS_INVALID_PARAMETER);
-    }
     PH_LOG_NDEF_FUNC_EXIT();
     return wStatus;
 }
 
 NFCSTATUS phFriNfc_TopazMap_ChkNdef( phFriNfc_NdefMap_t     *NdefMap)
 {
-    NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
-        NFCSTATUS_INVALID_PARAMETER);
-    if ( NdefMap != NULL)
+    NFCSTATUS Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP, NFCSTATUS_INVALID_PARAMETER);
+
+    PH_LOG_NDEF_FUNC_ENTRY();
+
+    if (NdefMap != NULL)
     {
         /* Update the previous operation */
         NdefMap->PrevOperation = PH_FRINFC_NDEFMAP_CHECK_OPE;
@@ -238,33 +212,26 @@ NFCSTATUS phFriNfc_TopazMap_ChkNdef( phFriNfc_NdefMap_t     *NdefMap)
         /* Set card state */
         NdefMap->CardType = PH_FRINFC_NDEFMAP_TOPAZ_CARD;
 
-        /* Change the state to Check Ndef Compliant */
-        if(NdefMap->bDtaFlag)
-        {
-            /* TopazMap is not going to ask anyone for RID/UID and hence copy the lower layer info here */
-            phOsalNfc_MemCopy(
-                NdefMap->TopazContainer.UID,
-                NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.Uid,
-                NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.UidLength);
-        }
-
-        NdefMap->State = PH_FRINFC_TOPAZ_STATE_READID;
-        NdefMap->PrevOperation = PH_FRINFC_NDEFMAP_CHECK_OPE;
-
+        /* Check NDEF compliance */
+        NdefMap->State = PH_FRINFC_TOPAZ_STATE_READALL;
         NdefMap->Cmd.JewelCmd = phNfc_eJewel_Raw;
-        NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] = PH_FRINFC_TOPAZ_CMD_READID;
-
-        Result = phFriNfc_Tpz_H_RdBytes(NdefMap, NdefMap->TopazContainer.CurrentBlock,
-            NdefMap->TopazContainer.ByteNumber);
+        NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] = PH_FRINFC_TOPAZ_CMD_READALL;
+        Result = phFriNfc_Tpz_H_RdBytes(NdefMap,
+                                        NdefMap->TopazContainer.CurrentBlock,
+                                        NdefMap->TopazContainer.ByteNumber);
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
 NFCSTATUS
-phFriNfc_TopazMap_ConvertToReadOnly (
+phFriNfc_TopazMap_ConvertToReadOnly(
     phFriNfc_NdefMap_t          *NdefMap)
 {
     NFCSTATUS               result = NFCSTATUS_SUCCESS;
+
+    PH_LOG_NDEF_FUNC_ENTRY();
 
     result = phFriNfc_Tpz_H_WrAByte (NdefMap, CC_BLOCK_NUMBER,
                                     CC_RWA_BYTE_NUMBER, CC_READ_ONLY_VALUE);
@@ -273,6 +240,8 @@ phFriNfc_TopazMap_ConvertToReadOnly (
     {
         NdefMap->State = PH_FRINFC_TOPAZ_STATE_WR_CC_BYTE;
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return result;
 }
 
@@ -282,6 +251,8 @@ NFCSTATUS phFriNfc_TopazMap_RdNdef( phFriNfc_NdefMap_t                  *NdefMap
                                         uint8_t                         Offset)
 {
     NFCSTATUS               Result =    NFCSTATUS_SUCCESS;
+
+    PH_LOG_NDEF_FUNC_ENTRY();
 
     /* Copy user buffer to the context */
     NdefMap->ApduBuffer = PacketData;
@@ -339,6 +310,7 @@ NFCSTATUS phFriNfc_TopazMap_RdNdef( phFriNfc_NdefMap_t                  *NdefMap
         phFriNfc_Tpz_H_CpDataToUsrBuf(NdefMap));
     }
 
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
@@ -349,6 +321,9 @@ NFCSTATUS phFriNfc_TopazMap_WrNdef( phFriNfc_NdefMap_t     *NdefMap,
 {
     NFCSTATUS                   Result =    NFCSTATUS_SUCCESS;
     uint8_t TempByteVal = 0;
+
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     /* Copy user buffer to the context */
     NdefMap->ApduBuffer = PacketData;
     /* Copy user length to the context */
@@ -366,7 +341,6 @@ NFCSTATUS phFriNfc_TopazMap_WrNdef( phFriNfc_NdefMap_t     *NdefMap,
     NdefMap->TopazContainer.CRIndex = PH_FRINFC_NDEFMAP_CR_WR_NDEF;
     /* Store the offset in the context */
     NdefMap->Offset = Offset;
-
 
     if( (Offset == PH_FRINFC_NDEFMAP_SEEK_BEGIN) ||
         (NdefMap->PrevOperation == PH_FRINFC_NDEFMAP_READ_OPE))
@@ -417,19 +391,23 @@ NFCSTATUS phFriNfc_TopazMap_WrNdef( phFriNfc_NdefMap_t     *NdefMap,
             NdefMap->TopazContainer.ByteNumber,TempByteVal));
     }
 
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
-void phFriNfc_TopazMap_Process( void       *Context,
+void phFriNfc_TopazMap_Process(void        *Context,
                                NFCSTATUS   Status)
 {
 
-    phFriNfc_NdefMap_t              *psNdefMap = NULL;
+    phFriNfc_NdefMap_t *psNdefMap = (phFriNfc_NdefMap_t *)Context;
 
-    psNdefMap = (phFriNfc_NdefMap_t *)Context;
+    PH_LOG_NDEF_FUNC_ENTRY();
+    PH_LOG_NDEF_INFO_STR("Status = %!NFCSTATUS!", Status);
 
     if ((Status & PHNFCSTBLOWER) == (NFCSTATUS_SUCCESS & PHNFCSTBLOWER))
     {
+        PH_LOG_NDEF_INFO_STR("psNdefMap->State = %u", psNdefMap->State);
+
         switch (psNdefMap->State)
         {
             case PH_FRINFC_TOPAZ_STATE_WR_CC_BYTE:
@@ -459,7 +437,7 @@ void phFriNfc_TopazMap_Process( void       *Context,
                 if((LOCK0_BYTE_VALUE == *psNdefMap->SendRecvBuf)
                     && (PH_FRINFC_TOPAZ_VAL1 == *psNdefMap->SendRecvLength))
                 {
-                    Status = phFriNfc_Tpz_H_WrAByte (psNdefMap,
+                    Status = phFriNfc_Tpz_H_WrAByte(psNdefMap,
                                             LOCK_BLOCK_NUMBER,
                                             LOCK1_BYTE_NUMBER,
                                             LOCK1_BYTE_VALUE);
@@ -492,43 +470,37 @@ void phFriNfc_TopazMap_Process( void       *Context,
 
             case PH_FRINFC_TOPAZ_STATE_WRITE:
             {
-                Status = phFriNfc_Tpz_H_ProWrUsrData (psNdefMap);
-                break;
-            }
-
-            case PH_FRINFC_TOPAZ_STATE_READID:
-            {
-                Status = phFriNfc_Tpz_H_ProReadID (psNdefMap);
+                Status = phFriNfc_Tpz_H_ProWrUsrData(psNdefMap);
                 break;
             }
 
             case PH_FRINFC_TOPAZ_STATE_READALL:
             {
-                Status = phFriNfc_Tpz_H_ProReadAll (psNdefMap);
+                Status = phFriNfc_Tpz_H_ProReadAll(psNdefMap);
                 break;
             }
 
             case PH_FRINFC_TOPAZ_STATE_WRITE_NMN:
             {
-                Status = phFriNfc_Tpz_H_ProWrNMN (psNdefMap);
+                Status = phFriNfc_Tpz_H_ProWrNMN(psNdefMap);
                 break;
             }
 
             case PH_FRINFC_TOPAZ_STATE_WRITE_L_TLV:
             {
-                Status = phFriNfc_Tpz_H_ProWrTLV (psNdefMap);
+                Status = phFriNfc_Tpz_H_ProWrTLV(psNdefMap);
                 break;
             }
 
             case PH_FRINFC_TOPAZ_STATE_WR_CC_OR_TLV:
             {
-                Status = phFriNfc_Tpz_H_ProCCTLV (psNdefMap);
+                Status = phFriNfc_Tpz_H_ProCCTLV(psNdefMap);
                 break;
             }
 
             default:
             {
-                Status = PHNFCSTVAL (CID_FRI_NFC_NDEF_MAP,
+                Status = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
                                     NFCSTATUS_INVALID_DEVICE_REQUEST);
                 break;
             }
@@ -540,6 +512,8 @@ void phFriNfc_TopazMap_Process( void       *Context,
     {
         phFriNfc_Tpz_H_Complete(psNdefMap, Status);
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
 }
 
 static NFCSTATUS phFriNfc_Tpz_H_RdBytes(phFriNfc_NdefMap_t *NdefMap,
@@ -548,6 +522,8 @@ static NFCSTATUS phFriNfc_Tpz_H_RdBytes(phFriNfc_NdefMap_t *NdefMap,
 {
     NFCSTATUS   Result = NFCSTATUS_SUCCESS;
     uint8_t index = 0;
+
+    PH_LOG_NDEF_FUNC_ENTRY();
 
     /* set the data for additional data exchange*/
     NdefMap->psDepAdditionalInfo.DepFlags.MetaChaining = PH_FRINFC_TOPAZ_VAL0;
@@ -582,7 +558,7 @@ static NFCSTATUS phFriNfc_Tpz_H_RdBytes(phFriNfc_NdefMap_t *NdefMap,
         {
             (void)phOsalNfc_MemCopy(&(NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL3]),
                 &(NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.Uid),
-                TOPAZ_UID_LENGTH_FOR_READ_WRITE);
+                TOPAZ_UID_LENGTH);
         }
         break;
 
@@ -601,10 +577,10 @@ static NFCSTATUS phFriNfc_Tpz_H_RdBytes(phFriNfc_NdefMap_t *NdefMap,
 
         /*Copy UID of the tag to  Send Buffer*/
         (void)phOsalNfc_MemCopy(&(NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL3]),
-        &(NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.Uid),
-        TOPAZ_UID_LENGTH_FOR_READ_WRITE);
+                                &(NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.Uid),
+                                TOPAZ_UID_LENGTH);
 
-        index = (uint8_t)(index + TOPAZ_UID_LENGTH_FOR_READ_WRITE);
+        index = (uint8_t)(index + TOPAZ_UID_LENGTH);
 
         /* Update the length of the command buffer*/
         NdefMap->SendLength = index;
@@ -622,9 +598,7 @@ static NFCSTATUS phFriNfc_Tpz_H_RdBytes(phFriNfc_NdefMap_t *NdefMap,
         7 | 6   5   4   3 | 2   1   0 |
         |    block no   |  byte no  |
         */
-        NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL1] =
-                (uint8_t)((BlockNo << PH_FRINFC_TOPAZ_SHIFT3) +
-                ByteNo);
+        NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL1] = ((BlockNo & 0x0F) << 3) | (ByteNo & 0x07);
         index ++;
         /*Copy 0x00 to  Send Buffer*/
         NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL2] = 0x00;
@@ -632,9 +606,9 @@ static NFCSTATUS phFriNfc_Tpz_H_RdBytes(phFriNfc_NdefMap_t *NdefMap,
 
         /*Copy UID of the tag to  Send Buffer*/
         (void)phOsalNfc_MemCopy(&(NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL3]),
-        &(NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.Uid),
-        TOPAZ_UID_LENGTH_FOR_READ_WRITE);
-        index = (uint8_t)(index + TOPAZ_UID_LENGTH_FOR_READ_WRITE);
+                                &(NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.Uid),
+                                TOPAZ_UID_LENGTH);
+        index = (uint8_t)(index + TOPAZ_UID_LENGTH);
 
         /* Update the length of the command buffer*/
         NdefMap->SendLength = index;
@@ -658,6 +632,8 @@ static NFCSTATUS phFriNfc_Tpz_H_RdBytes(phFriNfc_NdefMap_t *NdefMap,
                                                 NdefMap->SendRecvBuf,
                                                 NdefMap->SendRecvLength);
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
@@ -670,8 +646,8 @@ static NFCSTATUS phFriNfc_Tpz_H_WrAByte(phFriNfc_NdefMap_t *NdefMap,
     NFCSTATUS   Result = NFCSTATUS_SUCCESS;
     uint8_t     index = 0;
 
+    PH_LOG_NDEF_FUNC_ENTRY();
 
-    PHNFC_UNUSED_VARIABLE(ByteVal);
     /* set the data for additional data exchange*/
     NdefMap->psDepAdditionalInfo.DepFlags.MetaChaining = PH_FRINFC_TOPAZ_VAL0;
     NdefMap->psDepAdditionalInfo.DepFlags.NADPresent = PH_FRINFC_TOPAZ_VAL0;
@@ -685,8 +661,12 @@ static NFCSTATUS phFriNfc_Tpz_H_WrAByte(phFriNfc_NdefMap_t *NdefMap,
     /* Command used to write 1 byte */
     NdefMap->Cmd.JewelCmd = phNfc_eJewel_Raw;
 
-    /*Copy command to Send Buffer*/
-    NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0]  = PH_FRINFC_TOPAZ_CMD_WRITE_1NE;
+    /* Copy command to Send Buffer */
+    /* Use WRITE-NE command for lock block since the lock bits can't be erased */
+    NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] =
+        (BlockNo == LOCK_BLOCK_NUMBER) ?
+        PH_FRINFC_TOPAZ_CMD_WRITE_1NE :
+        PH_FRINFC_TOPAZ_CMD_WRITE_1E;
     index ++;
 
     /*Copy Address to  Send Buffer*/
@@ -694,9 +674,7 @@ static NFCSTATUS phFriNfc_Tpz_H_WrAByte(phFriNfc_NdefMap_t *NdefMap,
     7 | 6   5   4   3 | 2   1   0 |
     |    block no   |  byte no  |
     */
-    NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL1] =
-            (uint8_t)((BlockNo << PH_FRINFC_TOPAZ_SHIFT3) +
-            ByteNo);
+    NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL1] = ((BlockNo & 0x0F) << 3) | (ByteNo & 0x07);
     index ++;
     /*Copy Data byte to Send Buffer*/
     NdefMap->SendRecvBuf[index] = ByteVal;
@@ -705,8 +683,8 @@ static NFCSTATUS phFriNfc_Tpz_H_WrAByte(phFriNfc_NdefMap_t *NdefMap,
     /*Copy UID of the tag to  Send Buffer*/
     (void)phOsalNfc_MemCopy(&(NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL3]),
       &(NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.Uid),
-      TOPAZ_UID_LENGTH_FOR_READ_WRITE);
-    index = (uint8_t)(index + TOPAZ_UID_LENGTH_FOR_READ_WRITE);
+      TOPAZ_UID_LENGTH);
+    index = (uint8_t)(index + TOPAZ_UID_LENGTH);
 
     /* Update the length of the command buffer*/
     NdefMap->SendLength = index;
@@ -722,72 +700,52 @@ static NFCSTATUS phFriNfc_Tpz_H_WrAByte(phFriNfc_NdefMap_t *NdefMap,
                                             NdefMap->SendRecvBuf,
                                             NdefMap->SendRecvLength);
 
-    return Result;
-}
-
-static NFCSTATUS phFriNfc_Tpz_H_ProReadID(phFriNfc_NdefMap_t *NdefMap)
-{
-    NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
-        NFCSTATUS_INVALID_RECEIVE_LENGTH);
-
-    if(((NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] &
-        PH_FRINFC_TOPAZ_HEADROM0_CHK) == PH_FRINFC_TOPAZ_HEADROM0_VAL) &&
-        (*NdefMap->SendRecvLength == PH_FRINFC_TOPAZ_VAL6))
-    {
-        /* Copy UID to the context, Used when the READ ALL command is used */
-        (void)phOsalNfc_MemCopy(NdefMap->TopazContainer.UID,
-            &NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL2],
-            PH_FRINFC_TOPAZ_VAL4);
-
-        /* State has to be changed */
-        NdefMap->State = PH_FRINFC_TOPAZ_STATE_READALL;
-
-        /* Topaz command = READALL */
-        NdefMap->Cmd.JewelCmd = phNfc_eJewel_Raw;
-        NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] = PH_FRINFC_TOPAZ_CMD_READALL;
-
-        /* Read all bytes from the card */
-        Result = phFriNfc_Tpz_H_RdBytes(NdefMap, NdefMap->TopazContainer.CurrentBlock,
-            NdefMap->TopazContainer.ByteNumber);
-    }
-
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
 static NFCSTATUS phFriNfc_Tpz_H_ProReadAll(phFriNfc_NdefMap_t *NdefMap)
 {
-    NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
-        NFCSTATUS_INVALID_RECEIVE_LENGTH);
-    int32_t     memcompare = PH_FRINFC_TOPAZ_VAL0;
+    NFCSTATUS Result = NFCSTATUS_SUCCESS;
 
-    /* Compare the UID of READ ALL command with the stored UID */
-    if ((NdefMap->TopazContainer.UID[0] == NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL2]) &&
-        (NdefMap->TopazContainer.UID[1] == NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL2 + 1]) &&
-        (NdefMap->TopazContainer.UID[2] == NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL2 + 2]) &&
-        (NdefMap->TopazContainer.UID[3] == NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL2 + 3]))
+    PH_LOG_NDEF_FUNC_ENTRY();
+
+    static_assert(PH_FRINFC_TOPAZ_READALL_RESP_SIZE >= 2 + TOPAZ_UID_LENGTH,
+                  "READ ALL response size must include header ROM length and UID length");
+
+    if (*NdefMap->SendRecvLength != PH_FRINFC_TOPAZ_READALL_RESP_SIZE)
     {
-        memcompare = PH_FRINFC_TOPAZ_VAL0;
+        Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP, NFCSTATUS_INVALID_RECEIVE_LENGTH);
+        PH_LOG_NDEF_WARN_STR("Invalid received buffer length for READ ALL command. Length = %u",
+                             *NdefMap->SendRecvLength);
+    }
+    else if ((NdefMap->SendRecvBuf[0] != NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.HeaderRom0) ||
+        (NdefMap->SendRecvBuf[1] != NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.HeaderRom1))
+    {
+        Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP, NFCSTATUS_INVALID_REMOTE_DEVICE);
+        PH_LOG_NDEF_WARN_STR("Header ROM in READ ALL response does not match Header ROM received from READ ID response");
+    }
+    else if (0 != phOsalNfc_MemCompare(&NdefMap->SendRecvBuf[2],
+                                       NdefMap->psRemoteDevInfo->RemoteDevInfo.Jewel_Info.Uid,
+                                       TOPAZ_UID_LENGTH))
+    {
+        Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP, NFCSTATUS_INVALID_REMOTE_DEVICE);
+        PH_LOG_NDEF_WARN_STR("UID in READ ALL response does not match UID received from READ ID response");
     }
     else
     {
-        memcompare = PH_FRINFC_TOPAZ_VAL1;
-    }
-
-    if(((NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] &
-        PH_FRINFC_TOPAZ_HEADROM0_CHK) == PH_FRINFC_TOPAZ_HEADROM0_VAL) &&
-        (*NdefMap->SendRecvLength == PH_FRINFC_TOPAZ_READALL_RESP) &&
-        (memcompare == PH_FRINFC_TOPAZ_VAL0))
-    {
         /* Copy 96 bytes from the read/write memory space */
-        (void)phOsalNfc_MemCopy(NdefMap->TopazContainer.ReadBuffer,
-            &NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL10],
-            PH_FRINFC_TOPAZ_TOTAL_RWBYTES);
+        phOsalNfc_MemCopy(NdefMap->TopazContainer.ReadBuffer,
+                          &NdefMap->SendRecvBuf[10],
+                          PH_FRINFC_TOPAZ_TOTAL_RWBYTES);
 
         /* Check the lock bits and set the card state */
         phFriNfc_Tpz_H_ChkLockBits(NdefMap);
 
         Result = phFriNfc_Tpz_H_CallNxtOp(NdefMap);
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
@@ -795,6 +753,9 @@ static NFCSTATUS phFriNfc_Tpz_H_CallNxtOp(phFriNfc_NdefMap_t *NdefMap)
 {
     NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
         NFCSTATUS_INVALID_RECEIVE_LENGTH);
+
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     /* Depending on the operation (check, read or write ndef), process the
     read data */
     switch(NdefMap->PrevOperation)
@@ -803,17 +764,15 @@ static NFCSTATUS phFriNfc_Tpz_H_CallNxtOp(phFriNfc_NdefMap_t *NdefMap)
         /* Check the capabilty container values, according
         to the spec */
         Result = phFriNfc_Tpz_H_ChkCCinChkNdef(NdefMap);
-
-        if (NdefMap->CardState != PH_NDEFMAP_CARD_STATE_INVALID)
+        if (Result == NFCSTATUS_SUCCESS && NdefMap->CardState != PH_NDEFMAP_CARD_STATE_INVALID)
         {
             /* Check the spec version */
-            Result = phFriNfc_Tpz_H_ChkSpcVer( NdefMap,
-                NdefMap->TopazContainer.ReadBuffer[PH_FRINFC_TOPAZ_VAL1]);
+            Result = phFriNfc_Tpz_H_ChkSpcVer(NdefMap,
+                                              NdefMap->TopazContainer.ReadBuffer[PH_FRINFC_TOPAZ_VAL1]);
             /*  Check the CC header size: Only valid ones are
             0x0C for 96 bytes. */
             if ((Result == NFCSTATUS_SUCCESS) &&
-                ( NdefMap->TopazContainer.ReadBuffer[PH_FRINFC_TOPAZ_VAL2] <=
-                PH_FRINFC_TOPAZ_CC_BYTE2_MAX))
+                (NdefMap->TopazContainer.ReadBuffer[PH_FRINFC_TOPAZ_VAL2] <= PH_FRINFC_TOPAZ_CC_BYTE2_STATIC_MAX))
             {
                 Result = phFriNfc_Tpz_H_findNDEFTLV(NdefMap);
 
@@ -825,20 +784,6 @@ static NFCSTATUS phFriNfc_Tpz_H_CallNxtOp(phFriNfc_NdefMap_t *NdefMap)
                 _Analysis_assume_(Result == NFCSTATUS_SUCCESS);
                 Result = NFCSTATUS_SUCCESS;
             }
-        }
-        else
-        {
-            Result = NFCSTATUS_SUCCESS;
-            NdefMap->CardState = PH_NDEFMAP_CARD_STATE_INITIALIZED;
-            NdefMap->CardMemSize =
-            NdefMap->TopazContainer.RemainingSize = (uint16_t)
-                        /*
-                        4 is decremented from the max size because of the 4 CC bytes
-                        2 is decremented because of the NDEF TLV T and L byte
-                        to get the actual data size
-                        */
-                        (PH_FRINFC_TOPAZ_MAX_CARD_SZ - PH_FRINFC_TOPAZ_VAL4 -
-                        PH_FRINFC_TOPAZ_VAL2);
         }
         break;
 
@@ -891,6 +836,7 @@ static NFCSTATUS phFriNfc_Tpz_H_CallNxtOp(phFriNfc_NdefMap_t *NdefMap)
         break;
     }
 
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
@@ -898,6 +844,8 @@ static NFCSTATUS phFriNfc_Tpz_H_ChkCCBytes(phFriNfc_NdefMap_t *NdefMap)
 {
     NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
         NFCSTATUS_NO_NDEF_SUPPORT);
+
+    PH_LOG_NDEF_FUNC_ENTRY();
 
     if(NdefMap->TopazContainer.ReadBuffer[PH_FRINFC_TOPAZ_VAL0] ==
         PH_FRINFC_TOPAZ_CC_BYTE0)
@@ -907,18 +855,15 @@ static NFCSTATUS phFriNfc_Tpz_H_ChkCCBytes(phFriNfc_NdefMap_t *NdefMap)
             NdefMap->TopazContainer.ReadBuffer[PH_FRINFC_TOPAZ_VAL1]);
         /*  Check the CC header size: Only valid ones are
         0x0C for 96 bytes. */
-        Result = ((( NdefMap->TopazContainer.ReadBuffer[PH_FRINFC_TOPAZ_VAL2] >
-                    PH_FRINFC_TOPAZ_CC_BYTE2_MAX) || (Result !=
-                    NFCSTATUS_SUCCESS))?
-                    (PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
-                    NFCSTATUS_EOF_NDEF_CONTAINER_REACHED)):
-                    Result);
+        Result = (((NdefMap->TopazContainer.ReadBuffer[PH_FRINFC_TOPAZ_VAL2] > PH_FRINFC_TOPAZ_CC_BYTE2_STATIC_MAX) ||
+            (Result != NFCSTATUS_SUCCESS)) ?
+            (PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP, NFCSTATUS_EOF_NDEF_CONTAINER_REACHED)) : Result);
 
         /* Get the read/write card memory size */
-        NdefMap->TopazContainer.RemainingSize =
-                NdefMap->CardMemSize = ((Result == NFCSTATUS_SUCCESS)?
-                (PH_FRINFC_TOPAZ_MAX_CARD_SZ - PH_FRINFC_TOPAZ_VAL4):
-                NdefMap->CardMemSize);
+        NdefMap->CardMemSize = ((Result == NFCSTATUS_SUCCESS) ?
+            (PH_FRINFC_TOPAZ_MAX_CARD_SZ - PH_FRINFC_TOPAZ_VAL4) :
+            NdefMap->CardMemSize);
+        NdefMap->TopazContainer.RemainingSize = NdefMap->CardMemSize;
 
         /* if the call is from write ndef then check for read write access */
         if(((NdefMap->PrevOperation == PH_FRINFC_NDEFMAP_WRITE_OPE) &&
@@ -940,48 +885,27 @@ static NFCSTATUS phFriNfc_Tpz_H_ChkCCBytes(phFriNfc_NdefMap_t *NdefMap)
                                 NFCSTATUS_INVALID_FORMAT));
         }
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
-extern NFCSTATUS phFriNfc_Tpz_H_ChkSpcVer( phFriNfc_NdefMap_t  *NdefMap,
-                                          uint8_t             VersionNo)
+extern NFCSTATUS phFriNfc_Tpz_H_ChkSpcVer(phFriNfc_NdefMap_t *NdefMap,
+                                          uint8_t            VersionNo)
 {
     NFCSTATUS Result = NFCSTATUS_SUCCESS;
-    uint8_t TagVerNo = VersionNo;
 
-    /* To remove "warning (VS C4100) : unreferenced formal parameter" */
-    PHNFC_UNUSED_VARIABLE(NdefMap);
+    UNUSED(NdefMap);
+    PH_LOG_NDEF_FUNC_ENTRY();
 
-    if ( TagVerNo == 0 )
+    if (PH_NFCFRI_NDEFMAP_NFCDEV_MAJOR_VER_NUM != PH_NFCFRI_NDEFMAP_GET_MAJOR_TAG_VERNO(VersionNo))
     {
-        /*Return Status Error “ Invalid Format”*/
-        Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,NFCSTATUS_INVALID_FORMAT);
+        Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP, NFCSTATUS_INVALID_FORMAT);
+        PH_LOG_NDEF_WARN_STR("CC byte 1 did not equal expected Type 1 Tag version number. CC byte 1 = 0x%02X",
+                             VersionNo);
     }
-    else
-    {
-        /* calculate the major and minor version number of T3VerNo */
-        if( (( PH_NFCFRI_NDEFMAP_NFCDEV_MAJOR_VER_NUM ==
-            PH_NFCFRI_NDEFMAP_GET_MAJOR_TAG_VERNO(TagVerNo ) )&&
-            ( PH_NFCFRI_NDEFMAP_NFCDEV_MINOR_VER_NUM >=
-            PH_NFCFRI_NDEFMAP_GET_MINOR_TAG_VERNO(TagVerNo))) ||
-            (( PH_NFCFRI_NDEFMAP_NFCDEV_MAJOR_VER_NUM ==
-            PH_NFCFRI_NDEFMAP_GET_MAJOR_TAG_VERNO(TagVerNo ) )&&
-            ( PH_NFCFRI_NDEFMAP_NFCDEV_MINOR_VER_NUM <
-            PH_NFCFRI_NDEFMAP_GET_MINOR_TAG_VERNO(TagVerNo) )))
-        {
-            Result = PHNFCSTVAL(CID_NFC_NONE,NFCSTATUS_SUCCESS);
-        }
-        else
-        {
-            if (( PH_NFCFRI_NDEFMAP_NFCDEV_MAJOR_VER_NUM <
-                PH_NFCFRI_NDEFMAP_GET_MAJOR_TAG_VERNO(TagVerNo) ) ||
-                ( PH_NFCFRI_NDEFMAP_NFCDEV_MAJOR_VER_NUM >
-                PH_NFCFRI_NDEFMAP_GET_MAJOR_TAG_VERNO(TagVerNo)))
-            {
-                Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,NFCSTATUS_INVALID_FORMAT);
-            }
-        }
-    }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
@@ -991,6 +915,8 @@ static NFCSTATUS phFriNfc_Tpz_H_findNDEFTLV(phFriNfc_NdefMap_t *NdefMap)
         NFCSTATUS_NO_NDEF_SUPPORT);
     uint8_t     index = PH_FRINFC_TOPAZ_VAL4;
 
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     /* If remaining size is less than 3 then, there cant be any
     TLV present in the card */
     while((index < PH_FRINFC_TOPAZ_TOTAL_RWBYTES) &&
@@ -998,7 +924,7 @@ static NFCSTATUS phFriNfc_Tpz_H_findNDEFTLV(phFriNfc_NdefMap_t *NdefMap)
     {
         switch(NdefMap->TopazContainer.ReadBuffer[index])
         {
-        case PH_FRINFC_TOPAZ_NDEF_T:
+        case PH_FRINFC_TOPAZ_TLV_NDEF_T:
             /* To get the length field of the TLV */
             index++;
             /* Type and length are not data bytes, so to know the exact
@@ -1044,13 +970,13 @@ static NFCSTATUS phFriNfc_Tpz_H_findNDEFTLV(phFriNfc_NdefMap_t *NdefMap)
             }
             break;
 
-        case PH_FRINFC_TOPAZ_NULL_T:
+        case PH_FRINFC_TOPAZ_TLV_NULL_T:
             /* Null TLV, Skip the TLV */
             NdefMap->TopazContainer.RemainingSize--;
             index++;
             break;
 
-        case PH_FRINFC_TOPAZ_TERM_T:
+        case PH_FRINFC_TOPAZ_TLV_TERM_T:
             /* No more TLV present in the card, so error */
             index = PH_FRINFC_TOPAZ_TOTAL_RWBYTES;
             Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
@@ -1104,12 +1030,16 @@ static NFCSTATUS phFriNfc_Tpz_H_findNDEFTLV(phFriNfc_NdefMap_t *NdefMap)
         NdefMap->TopazContainer.ByteNumber = PH_FRINFC_TOPAZ_VAL4;
         NdefMap->TopazContainer.RemainingSize = PH_FRINFC_TOPAZ_TOTAL_RWBYTES1;
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
 static NFCSTATUS phFriNfc_Tpz_H_CpDataToUsrBuf(phFriNfc_NdefMap_t  *NdefMap)
 {
     NFCSTATUS   Result = NFCSTATUS_SUCCESS;
+
+    PH_LOG_NDEF_FUNC_ENTRY();
 
     /* Check the the TLV size and the user size */
     if(NdefMap->ApduBufferSize >=
@@ -1180,7 +1110,7 @@ static NFCSTATUS phFriNfc_Tpz_H_CpDataToUsrBuf(phFriNfc_NdefMap_t  *NdefMap)
     }
 
 Done:
-
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
@@ -1190,6 +1120,8 @@ static NFCSTATUS phFriNfc_Tpz_H_ProWrNMN(phFriNfc_NdefMap_t *NdefMap)
         NFCSTATUS_INVALID_RECEIVE_LENGTH);
     uint8_t     BlockNo = PH_FRINFC_TOPAZ_VAL0,
         ByteNo = PH_FRINFC_TOPAZ_VAL0;
+
+    PH_LOG_NDEF_FUNC_ENTRY();
 
     if((NdefMap->TopazContainer.InternalState ==
         PH_FRINFC_TOPAZ_WR_NMN_0) &&
@@ -1232,6 +1164,8 @@ static NFCSTATUS phFriNfc_Tpz_H_ProWrNMN(phFriNfc_NdefMap_t *NdefMap)
             Result = NFCSTATUS_SUCCESS;
         }
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
@@ -1239,6 +1173,9 @@ static NFCSTATUS phFriNfc_Tpz_H_ProWrTLV(phFriNfc_NdefMap_t *NdefMap)
 {
     NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
         NFCSTATUS_INVALID_RECEIVE_LENGTH);
+
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     if((NdefMap->TopazContainer.InternalState ==
         PH_FRINFC_TOPAZ_WR_L_TLV_0) &&
         (NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] ==
@@ -1282,6 +1219,8 @@ static NFCSTATUS phFriNfc_Tpz_H_ProWrTLV(phFriNfc_NdefMap_t *NdefMap)
             Result = phFriNfc_Tpz_H_WrByte0ValE1(NdefMap);
         }
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
@@ -1289,6 +1228,9 @@ static NFCSTATUS phFriNfc_Tpz_H_ProWrUsrData(phFriNfc_NdefMap_t *NdefMap)
 {
     NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
         NFCSTATUS_INVALID_RECEIVE_LENGTH);
+
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     /* send buffer should be equal to receive buffer */
     if((NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] ==
         NdefMap->ApduBuffer[NdefMap->ApduBuffIndex]) &&
@@ -1329,6 +1271,8 @@ static NFCSTATUS phFriNfc_Tpz_H_ProWrUsrData(phFriNfc_NdefMap_t *NdefMap)
                                             );
         }
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
@@ -1338,6 +1282,9 @@ static NFCSTATUS phFriNfc_Tpz_H_WrLByte(phFriNfc_NdefMap_t  *NdefMap)
     uint8_t     BlockNo = PH_FRINFC_TOPAZ_VAL0,
         ByteNo = PH_FRINFC_TOPAZ_VAL0;
     uint8_t TempByteVal = 0;
+
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     BlockNo = (uint8_t)(((NdefMap->TLVStruct.NdefTLVByte +
                             PH_FRINFC_TOPAZ_VAL1) >
                             PH_FRINFC_TOPAZ_VAL7)?
@@ -1359,12 +1306,16 @@ static NFCSTATUS phFriNfc_Tpz_H_WrLByte(phFriNfc_NdefMap_t  *NdefMap)
                     NdefMap->TLVStruct.BytesRemainLinTLV));
     /* Write the L field */
     Result = phFriNfc_Tpz_H_WrAByte(NdefMap, BlockNo, ByteNo,TempByteVal);
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
 static NFCSTATUS phFriNfc_Tpz_H_WrByte0ValE1(phFriNfc_NdefMap_t   *NdefMap)
 {
     NFCSTATUS   Result = NFCSTATUS_SUCCESS;
+
+    PH_LOG_NDEF_FUNC_ENTRY();
 
     /* Update L field */
     NdefMap->State = PH_FRINFC_TOPAZ_STATE_WRITE_NMN;
@@ -1374,22 +1325,30 @@ static NFCSTATUS phFriNfc_Tpz_H_WrByte0ValE1(phFriNfc_NdefMap_t   *NdefMap)
     /* Write the L field */
     Result = phFriNfc_Tpz_H_WrAByte(NdefMap, PH_FRINFC_TOPAZ_VAL1,
                                     PH_FRINFC_TOPAZ_VAL0,PH_FRINFC_TOPAZ_CC_BYTE0);
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
 static void phFriNfc_Tpz_H_Complete(phFriNfc_NdefMap_t  *NdefMap,
                                     NFCSTATUS           Status)
 {
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     /* set the state back to the Reset_Init state*/
     NdefMap->State =  PH_FRINFC_NDEFMAP_STATE_RESET_INIT;
 
     /* set the completion routine*/
     NdefMap->CompletionRoutine[NdefMap->TopazContainer.CRIndex].
         CompletionRoutine(NdefMap->CompletionRoutine->Context, Status);
+
+    PH_LOG_NDEF_FUNC_EXIT();
 }
 
 static void phFriNfc_Tpz_H_BlkChk(phFriNfc_NdefMap_t  *NdefMap)
 {
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     NdefMap->TopazContainer.CurrentBlock =
                     (uint8_t)((NdefMap->TopazContainer.ByteNumber >
                     PH_FRINFC_TOPAZ_VAL7)?
@@ -1399,6 +1358,8 @@ static void phFriNfc_Tpz_H_BlkChk(phFriNfc_NdefMap_t  *NdefMap)
 
     NdefMap->TopazContainer.ByteNumber = (uint8_t)(NdefMap->TopazContainer.ByteNumber %
                                         PH_FRINFC_TOPAZ_VAL8);
+
+    PH_LOG_NDEF_FUNC_EXIT();
 }
 
 static NFCSTATUS phFriNfc_Tpz_H_ChkCCinChkNdef(phFriNfc_NdefMap_t  *NdefMap)
@@ -1406,44 +1367,47 @@ static NFCSTATUS phFriNfc_Tpz_H_ChkCCinChkNdef(phFriNfc_NdefMap_t  *NdefMap)
     NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
                                     NFCSTATUS_NO_NDEF_SUPPORT);
 
-    if(NdefMap->TopazContainer.ReadBuffer[PH_FRINFC_TOPAZ_VAL0] ==
-        PH_FRINFC_TOPAZ_CC_BYTE0)
+    PH_LOG_NDEF_FUNC_ENTRY();
+
+    if (NdefMap->TopazContainer.ReadBuffer[0] == PH_FRINFC_TOPAZ_CC_BYTE0)
     {
         /* Check the most significant nibble of byte 3 (RWA) = 0 */
-        Result = (((NdefMap->TopazContainer.ReadBuffer[PH_FRINFC_TOPAZ_VAL3] &
-                    PH_FRINFC_TOPAZ_BYTE3_MSB)== PH_FRINFC_TOPAZ_VAL0)?
-                    NFCSTATUS_SUCCESS:
+        Result = (((NdefMap->TopazContainer.ReadBuffer[3] & PH_FRINFC_TOPAZ_BYTE3_MSB) == 0) ?
+                    NFCSTATUS_SUCCESS :
                     Result);
 
         /* Card size is initialised */
-        NdefMap->CardMemSize = NdefMap->TopazContainer.RemainingSize =
-                            ((Result == NFCSTATUS_SUCCESS)?
-                            (PH_FRINFC_TOPAZ_MAX_CARD_SZ - PH_FRINFC_TOPAZ_VAL4):
-                            NdefMap->CardMemSize);
+        NdefMap->CardMemSize = ((Result == NFCSTATUS_SUCCESS) ?
+            (PH_FRINFC_TOPAZ_MAX_CARD_SZ - PH_FRINFC_TOPAZ_VAL4) :
+            NdefMap->CardMemSize);
+        NdefMap->TopazContainer.RemainingSize = NdefMap->CardMemSize;
     }
 
     if (NdefMap->CardState != PH_NDEFMAP_CARD_STATE_READ_ONLY)
     {
-        NdefMap->CardState = (uint8_t)((Result == NFCSTATUS_SUCCESS)?
-                            PH_NDEFMAP_CARD_STATE_INITIALIZED:
+        NdefMap->CardState = (uint8_t)((Result == NFCSTATUS_SUCCESS) ?
+                            PH_NDEFMAP_CARD_STATE_INITIALIZED :
                             PH_NDEFMAP_CARD_STATE_INVALID);
     }
 
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
 static void phFriNfc_Tpz_H_ChkLockBits(phFriNfc_NdefMap_t  *NdefMap)
 {
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     /* Set the card state */
-    NdefMap->CardState =  (uint8_t)
+    NdefMap->CardState = (uint8_t)
         (((NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_LOCKBIT_BYTENO_0] ==
         PH_FRINFC_TOPAZ_LOCKBIT_BYTE114) &&
         ((NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_LOCKBIT_BYTENO_1] ==
         PH_FRINFC_TOPAZ_LOCKBIT_BYTE115_1) ||
         (NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_LOCKBIT_BYTENO_1] ==
-        PH_FRINFC_TOPAZ_LOCKBIT_BYTE115_2)))?
-        PH_NDEFMAP_CARD_STATE_READ_WRITE:
-        PH_NDEFMAP_CARD_STATE_READ_ONLY);
+        PH_FRINFC_TOPAZ_LOCKBIT_BYTE115_2))) ?
+            PH_NDEFMAP_CARD_STATE_READ_WRITE :
+            PH_NDEFMAP_CARD_STATE_READ_ONLY);
 
     /* Set the card state from CC bytes */
     if (NdefMap->CardState == PH_NDEFMAP_CARD_STATE_READ_WRITE)
@@ -1461,6 +1425,8 @@ static void phFriNfc_Tpz_H_ChkLockBits(phFriNfc_NdefMap_t  *NdefMap)
             NdefMap->CardState = PH_NDEFMAP_CARD_STATE_INVALID;
         }
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
 }
 
 static NFCSTATUS phFriNfc_Tpz_H_WrCCorTLV(phFriNfc_NdefMap_t  *NdefMap)
@@ -1469,6 +1435,9 @@ static NFCSTATUS phFriNfc_Tpz_H_WrCCorTLV(phFriNfc_NdefMap_t  *NdefMap)
     uint8_t     ByteNo = PH_FRINFC_TOPAZ_VAL0,
         BlockNo = PH_FRINFC_TOPAZ_VAL0;
     uint8_t TempByteVal = 0;
+
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     switch(NdefMap->TopazContainer.InternalState)
     {
     case PH_FRINFC_TOPAZ_WR_CC_BYTE0:
@@ -1487,7 +1456,7 @@ static NFCSTATUS phFriNfc_Tpz_H_WrCCorTLV(phFriNfc_NdefMap_t  *NdefMap)
 
     case PH_FRINFC_TOPAZ_WR_CC_BYTE2:
         /* To write the CC bytes */
-        TempByteVal = PH_FRINFC_TOPAZ_CC_BYTE2_MAX;
+        TempByteVal = PH_FRINFC_TOPAZ_CC_BYTE2_STATIC_MAX;
         ByteNo = (uint8_t)PH_FRINFC_TOPAZ_VAL2;
         BlockNo = PH_FRINFC_TOPAZ_VAL1;
         break;
@@ -1502,13 +1471,16 @@ static NFCSTATUS phFriNfc_Tpz_H_WrCCorTLV(phFriNfc_NdefMap_t  *NdefMap)
     case PH_FRINFC_TOPAZ_WR_T_OF_TLV:
     default:
         /* To write the NDEF TLV (if not present) */
-        TempByteVal = PH_FRINFC_TOPAZ_NDEF_T;
+        TempByteVal = PH_FRINFC_TOPAZ_TLV_NDEF_T;
         ByteNo = (uint8_t)NdefMap->TLVStruct.NdefTLVByte;
         BlockNo = NdefMap->TLVStruct.NdefTLVBlock;
         break;
     }
+
     NdefMap->State = PH_FRINFC_TOPAZ_STATE_WR_CC_OR_TLV;
     Result = phFriNfc_Tpz_H_WrAByte( NdefMap, BlockNo, ByteNo,TempByteVal);
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
@@ -1516,6 +1488,9 @@ static NFCSTATUS phFriNfc_Tpz_H_ProCCTLV(phFriNfc_NdefMap_t  *NdefMap)
 {
     NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
         NFCSTATUS_INVALID_RECEIVE_LENGTH);
+
+    PH_LOG_NDEF_FUNC_ENTRY();
+
     switch(NdefMap->TopazContainer.InternalState)
     {
     case PH_FRINFC_TOPAZ_WR_CC_BYTE0:
@@ -1545,8 +1520,7 @@ static NFCSTATUS phFriNfc_Tpz_H_ProCCTLV(phFriNfc_NdefMap_t  *NdefMap)
     case PH_FRINFC_TOPAZ_WR_CC_BYTE2:
         /* Process the CC byte */
         /* Check the response */
-        if((NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] ==
-            PH_FRINFC_TOPAZ_CC_BYTE2_MAX) &&
+        if((NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] == PH_FRINFC_TOPAZ_CC_BYTE2_STATIC_MAX) &&
             (*NdefMap->SendRecvLength == PH_FRINFC_TOPAZ_VAL1))
         {
             NdefMap->TopazContainer.InternalState = PH_FRINFC_TOPAZ_WR_CC_BYTE3;
@@ -1569,8 +1543,7 @@ static NFCSTATUS phFriNfc_Tpz_H_ProCCTLV(phFriNfc_NdefMap_t  *NdefMap)
     case PH_FRINFC_TOPAZ_WR_T_OF_TLV:
     default:
         /* Check the response */
-        if((NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] ==
-            PH_FRINFC_TOPAZ_NDEF_T) &&
+        if((NdefMap->SendRecvBuf[PH_FRINFC_TOPAZ_VAL0] == PH_FRINFC_TOPAZ_TLV_NDEF_T) &&
             (*NdefMap->SendRecvLength == PH_FRINFC_TOPAZ_VAL1))
         {
             /* Increment the Byte Number */
@@ -1589,5 +1562,7 @@ static NFCSTATUS phFriNfc_Tpz_H_ProCCTLV(phFriNfc_NdefMap_t  *NdefMap)
         }
         break;
     }
+
+    PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }

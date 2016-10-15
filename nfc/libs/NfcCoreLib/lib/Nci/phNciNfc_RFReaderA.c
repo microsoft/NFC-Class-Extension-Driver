@@ -206,14 +206,6 @@ phNciNfc_RdrAInit(
                 break;
             }
             case phNciNfc_eMifareUL_PICC:
-            {
-                if(NFCSTATUS_SUCCESS == status)
-                {
-                    gpphNciNfc_RdrDataXchgSequence[0].SequnceInitiate = &phNciNfc_SendMfReq;
-                    gpphNciNfc_RdrDataXchgSequence[0].SequenceProcess = &phNciNfc_RecvMfResp;
-                }
-                break;
-            }
             case phNciNfc_eMifare1k_PICC:
             case phNciNfc_eMifare4k_PICC:
             case phNciNfc_eMifareMini_PICC:
@@ -223,8 +215,8 @@ phNciNfc_RdrAInit(
                     gpphNciNfc_RdrDataXchgSequence[0].SequnceInitiate = &phNciNfc_SendMfReq;
                     gpphNciNfc_RdrDataXchgSequence[0].SequenceProcess = &phNciNfc_RecvMfResp;
                 }
+                break;
             }
-            break;
             case phNciNfc_eJewel_PICC:
             {
                 if(NFCSTATUS_SUCCESS == status)
@@ -239,7 +231,7 @@ phNciNfc_RdrAInit(
             }
             default:
             {
-              break;
+                break;
             }
         }
         gpphNciNfc_RdrDataXchgSequence[1].SequnceInitiate = NULL;

@@ -186,7 +186,7 @@ typedef enum phNciNfc_RFDevType
     /* This PICC type explains that the card is ISO15693 type */
     phNciNfc_eISO15693_PICC,
     /* This PICC type explains that the card is EpcGen2 type */
-    phNciNfc_eEpcGen_PICC,
+    phNciNfc_eEpcGen2_PICC,
     /* This PICC type explains that the card is Kovio type */
     phNciNfc_eKovio_PICC,
 
@@ -278,7 +278,7 @@ typedef struct phNciNfc_RATSResp
 */
 typedef struct phNciNfc_Iso14443AInfo
 {
-    uint8_t         Uid[PH_NCINFCTYPES_MAX_UID_LENGTH];      /**< UID information of the TYPE A
+    uint8_t         Uid[PH_NCINFCTYPES_MAX_UID_LENGTH]; /**< UID information of the TYPE A
                                                         Tag Discovered NFCID1 -
                                                         Considering max size of NFCID1*/
     _Field_range_(<=, PH_NCINFCTYPES_MAX_UID_LENGTH)
@@ -300,6 +300,11 @@ typedef struct phNciNfc_Iso14443AInfo
     uint8_t         bSelResRespLen;                     /**< SEL_RES Response Length */
     uint8_t         bRatsRespLen;                       /**< Length of RATS Response */
     phNciNfc_RATSResp_t   tRatsResp;                    /**< RATS Response Info */
+    phNfc_eMifareULType_t ULType;                       /**< [Mifare Ultralight only (SAK == 0x00)] The type of
+                                                        Mifare Ultralight card */
+    uint8_t         DataAreaSize;                       /**< [Mifare Ultralight EV1 only] The size of the
+                                                        data area in bytes, obtained from the GET_VERSION
+                                                        command */
 }phNciNfc_Iso14443AInfo_t;
 
 typedef struct phNciNfc_KovioInfo

@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     Storage card implementation
-    
+
 Environment:
 
     User mode
@@ -168,11 +168,11 @@ StorageCardManager::GetCommandFromAPDU(
 {
     ApduResult retValue = RESULT_SUCCESS;
     PPcscCommandApduInfo cmdApdu = (PPcscCommandApduInfo)pbDataBuffer;
-    
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     *pCommand = PcscInvalidCmd;
-    
+
     if (cbSize < MIN_APDU_HEADER) {
         retValue = RESULT_INVALID_PARAM;
         goto Done;
@@ -237,8 +237,6 @@ StorageCardManager::PrepareResponseCode(
                                          _Out_writes_bytes_all_(DEFAULT_APDU_STATUS_SIZE) BYTE Sw1Sw2Return[]
                                          )
 {
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
     switch (retError)
     {
         case RESULT_SUCCESS:
@@ -431,7 +429,6 @@ StorageCardManager::PrepareResponseCode(
         }
         break;
     }
-    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
 ApduResult
@@ -440,7 +437,7 @@ StorageCardManager::HandleManageSessionCommand(
                     _In_ DWORD cbSize,
                     _Out_writes_bytes_to_(cbOutBufferSize, *cbReturnBufferSize) BYTE *pbOutBuffer,
                     _In_ DWORD cbOutBufferSize,
-                    _Out_ DWORD *cbReturnBufferSize  
+                    _Out_ DWORD *cbReturnBufferSize
                     )
 {
     ApduResult retValue = RESULT_SUCCESS;
@@ -556,19 +553,22 @@ StorageCardManager::HandleTransSessionCommand(
                     _In_ DWORD cbSize,
                     _Out_writes_bytes_to_(cbOutBufferSize, *cbReturnBufferSize) BYTE *pbOutBuffer,
                     _In_ DWORD cbOutBufferSize,
-                    _Out_ DWORD *cbReturnBufferSize  
+                    _Out_ DWORD *cbReturnBufferSize
                     )
 {
     ApduResult retValue = RESULT_SUCCESS;
     PPcscCommandApduInfo cmdApdu = (PPcscCommandApduInfo)pbDataBuffer;
     DWORD index = 0;
     BYTE dataObjectNumber = 1;
-    BYTE errorStatus[3], responseStatus[2];
+    BYTE errorStatus[3] = {};
     DWORD dwTimeoutMs = 0;
-    BYTE outputBuffer[255];
+    BYTE outputBuffer[255] = {};
     DWORD responseSize = 0;
-    const BYTE *tag = NULL, *value = NULL;
-    DWORD tagSize = 0, lengthSize = 0, valueSize = 0;
+    const BYTE* tag = NULL;
+    const BYTE* value = NULL;
+    DWORD tagSize = 0;
+    DWORD lengthSize = 0;
+    DWORD valueSize = 0;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -612,18 +612,8 @@ StorageCardManager::HandleTransSessionCommand(
                 &responseSize,
                 (USHORT)dwTimeoutMs);
 
-            PrepareResponseCode(retValue, responseStatus);
-
-            retValue = AppendTlvDataObjectToResponseBuffer(
-                ResponseStatus,
-                sizeof(responseStatus),
-                responseStatus,
-                pbOutBuffer,
-                cbOutBufferSize,
-                cbReturnBufferSize);
-
             if (retValue != RESULT_SUCCESS) {
-                TRACE_LINE(LEVEL_ERROR, "AppendTlvDataObjectToResponseBuffer failed");
+                TRACE_LINE(LEVEL_ERROR, "StorageCardTransceive failed: 0x%lX", retValue);
                 break;
             }
 
@@ -735,7 +725,7 @@ StorageCardManager::ReadTlvDataObject(
     }
 
     if (BufferOffset >= cbSize) {
-        retValue = RESULT_INVALID_PARAM; 
+        retValue = RESULT_INVALID_PARAM;
         TRACE_LINE(LEVEL_ERROR, "Invalid length");
         goto Done;
     }

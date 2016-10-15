@@ -1727,16 +1727,16 @@ NFCSTATUS phLibNfc_P2pActivateResp(void *pContext,
 }
 
 
-NFCSTATUS phLibNfc_ReqInfoComplete(void *pContext,NFCSTATUS status,void *pInfo)
+NFCSTATUS phLibNfc_ReqInfoComplete(void *pContext, NFCSTATUS status, void *pInfo)
 {
     NFCSTATUS wStatus = status;
-    phLibNfc_NtfRegister_RspCb_t pClientCb=NULL;
+    phLibNfc_NtfRegister_RspCb_t pClientCb = NULL;
     pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t)pContext;
-    phLibNfc_Event_t TrigEvent;
+    phLibNfc_Event_t TrigEvent = phLibNfc_EventInvalid;
+
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
 
-    /* Return shall be success when type 1 tag is not found */
     if(NULL != pLibContext)
     {
         pClientCb = pLibContext->CBInfo.pClientNtfRegRespCB;
@@ -1750,7 +1750,8 @@ NFCSTATUS phLibNfc_ReqInfoComplete(void *pContext,NFCSTATUS status,void *pInfo)
         {
             TrigEvent = pLibContext->DiscTagTrigEvent;
         }
-        (void)phLibNfc_ProcessDevInfo(gpphLibNfc_Context, TrigEvent, gpphLibNfc_Context->pInfo ,status);
+
+        (void)phLibNfc_ProcessDevInfo(gpphLibNfc_Context, TrigEvent, gpphLibNfc_Context->pInfo, status);
     }
     else
     {

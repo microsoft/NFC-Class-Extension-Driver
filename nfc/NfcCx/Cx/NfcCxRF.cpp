@@ -2892,7 +2892,7 @@ NfcCxRFInterfaceTargetTransceive(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
-    nfcStatus = phLibNfc_RemoteDev_Transceive(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev,
+    nfcStatus = phLibNfc_RemoteDev_Transceive(pRemDevList->hTargetDev,
                                               &RFInterface->sTransceiveBuffer,
                                               NfcCxRFInterfaceTargetTransceiveCB,
                                               &LibNfcContext);

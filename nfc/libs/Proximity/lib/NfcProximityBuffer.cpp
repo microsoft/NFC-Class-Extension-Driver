@@ -131,21 +131,24 @@ CNFCProximityBuffer::InitializeBarcode(
 
     // Check barcode payload type
     switch (pbPayload[1])
-        {
+    {
         case BARCODE_HTTP_WWW_TYPE:
         case BARCODE_HTTPS_WWW_TYPE:
         case BARCODE_HTTP_TYPE:
         case BARCODE_HTTPS_TYPE:
         {
             m_cbPayload = cbPayload - BARCODE_NON_PAYLOAD_SIZE;
-            UCHAR i;
-            for (i = 2; i < m_cbPayload; i++)
-            {
-                if (pbPayload[i] == BARCODE_TYPE_URI_TERMINATOR)
-                {
-                    m_cbPayload = i - 1;
+
+            // Check for possible terminator
+            USHORT sizeBeforeTerminator = 0;
+            // Start at 2 to skip identifiers, and stop at 2 before cbPayload to skip CRC bytes
+            for (USHORT i = 2; i < cbPayload - 2; i++) {
+                if (pbPayload[i] == BARCODE_TYPE_URI_TERMINATOR) {
+                    m_cbPayload = sizeBeforeTerminator;
                     break;
                 }
+
+                sizeBeforeTerminator++;
             }
 
             // Include format identifier

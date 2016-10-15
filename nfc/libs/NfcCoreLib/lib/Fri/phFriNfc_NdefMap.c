@@ -134,8 +134,8 @@ static const phFriNfc_NdefFunc_t phFriNfc_NdefFunc[] =
 
     {phNfc_eFelica_PICC,      PH_FRINFC_MAP_CHECK_NONE,      PH_FRINFC_MAP_CHECK_NONE,             PH_FRINFC_MAP_FELICA_SUPPORT,    &phFriNfc_Felica_ChkNdef,          &phFriNfc_Felica_RdNdef,          &phFriNfc_Felica_WrNdef,          phFriNfc_Felica_EraseNdef, &phFrinfc_Felica_GetContainerSize},
 
-    {phNfc_eJewel_PICC,       PH_FRINFC_MAP_CHECK_HEADERROM, PH_FRINFC_TOPAZ_HEADROM0_VAL,         PH_FRINFC_MAP_TOPAZ_SUPPORT,     &phFriNfc_TopazMap_ChkNdef,        &phFriNfc_TopazMap_RdNdef,        &phFriNfc_TopazMap_WrNdef,        phFriNfc_NdefMap_WrNdef,   &phFrinfc_Topaz_GetContainerSize},
-    {phNfc_eJewel_PICC,       PH_FRINFC_MAP_CHECK_HEADERROM, PH_FRINFC_TOPAZ_DYNAMIC_HEADROM0_VAL, PH_FRINFC_MAP_TOPAZ_DYN_SUPPORT, &phFriNfc_TopazDynamicMap_ChkNdef, &phFriNfc_TopazDynamicMap_RdNdef, &phFriNfc_TopazDynamicMap_WrNdef, phFriNfc_NdefMap_WrNdef,   &phFrinfc_TopazDynamic_GetContainerSize},
+    {phNfc_eJewel_PICC,       PH_FRINFC_MAP_CHECK_HEADERROM, PH_FRINFC_TOPAZ_HEADROM0_VAL,         PH_FRINFC_MAP_TOPAZ_SUPPORT,     &phFriNfc_TopazMap_ChkNdef,        &phFriNfc_TopazMap_RdNdef,        &phFriNfc_TopazMap_WrNdef,        phFriNfc_NdefMap_WrNdef,   &phFriNfc_Topaz_GetContainerSize},
+    {phNfc_eJewel_PICC,       PH_FRINFC_MAP_CHECK_HEADERROM, PH_FRINFC_TOPAZ_DYNAMIC_HEADROM0_VAL, PH_FRINFC_MAP_TOPAZ_DYN_SUPPORT, &phFriNfc_TopazDynamicMap_ChkNdef, &phFriNfc_TopazDynamicMap_RdNdef, &phFriNfc_TopazDynamicMap_WrNdef, phFriNfc_NdefMap_WrNdef,   &phFriNfc_TopazDynamic_GetContainerSize},
     {phNfc_eISO15693_PICC,    PH_FRINFC_MAP_CHECK_NONE,      PH_FRINFC_MAP_CHECK_NONE,             PH_FRINFC_MAP_ISO15693_SUPPORT,  &phFriNfc_ISO15693_ChkNdef,        &phFriNfc_ISO15693_RdNdef,        &phFriNfc_ISO15693_WrNdef,        phFriNfc_NdefMap_WrNdef,   &phFrinfc_15693_GetContainerSize}
 };
 
@@ -320,35 +320,35 @@ NFCSTATUS phFriNfc_NdefMap_RdNdef(  phFriNfc_NdefMap_t  *NdefMap,
     /* check for validity of input parameters*/
     status = phFriNfc_ValidateParams(PacketData,PacketDataLength,Offset,NdefMap,PH_FRINFC_NDEF_READ_REQ);
     if((NFCSTATUS_SUCCESS == status) && (NULL != NdefMap))
-        {
+    {
         /* Update current read mode */
-            NdefMap->bCurrReadMode = Offset;
+        NdefMap->bCurrReadMode = Offset;
         /* Get Ndef Read function index */
-            bNdefIndex = phFriNfc_GetNdefFuncIndex(NdefMap);
-            if(PH_FRINFC_REMDEVICE_UNSUPPORTED != bNdefIndex)
-            {
+        bNdefIndex = phFriNfc_GetNdefFuncIndex(NdefMap);
+        if(PH_FRINFC_REMDEVICE_UNSUPPORTED != bNdefIndex)
+        {
             /* Check whether Ndef read is suported or not */
-                if((1 == phFriNfc_NdefFunc[bNdefIndex].bSupported) &&
-                    (NULL != phFriNfc_NdefFunc[bNdefIndex].pReadNdef))
-                {
-                    status = phFriNfc_NdefFunc[bNdefIndex].pReadNdef(NdefMap,
-                                            PacketData,
-                                            PacketDataLength,
-                                            Offset);
-                }
-                else
-                {
-                    PH_LOG_NDEF_CRIT_STR("Ndef not supported for this remote device");
-                    status = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,NFCSTATUS_INVALID_REMOTE_DEVICE);
-                }
+            if((1 == phFriNfc_NdefFunc[bNdefIndex].bSupported) &&
+                (NULL != phFriNfc_NdefFunc[bNdefIndex].pReadNdef))
+            {
+                status = phFriNfc_NdefFunc[bNdefIndex].pReadNdef(NdefMap,
+                                        PacketData,
+                                        PacketDataLength,
+                                        Offset);
             }
             else
             {
-                PH_LOG_NDEF_CRIT_STR("No Ndef Read is found for the current remote device");
-                /* No Ndef Read is found for the current remote device */
+                PH_LOG_NDEF_CRIT_STR("Ndef not supported for this remote device");
                 status = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,NFCSTATUS_INVALID_REMOTE_DEVICE);
             }
         }
+        else
+        {
+            PH_LOG_NDEF_CRIT_STR("No Ndef Read is found for the current remote device");
+            /* No Ndef Read is found for the current remote device */
+            status = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,NFCSTATUS_INVALID_REMOTE_DEVICE);
+        }
+    }
     PH_LOG_NDEF_FUNC_EXIT();
     return status;
 }
@@ -364,36 +364,36 @@ NFCSTATUS phFriNfc_NdefMap_WrNdef(  phFriNfc_NdefMap_t  *NdefMap,
     /* check for validity of input parameters*/
     status = phFriNfc_ValidateParams(PacketData,PacketDataLength,0,NdefMap,PH_FRINFC_NDEF_WRITE_REQ);
     if((NFCSTATUS_SUCCESS == status) && (NULL != NdefMap))
-        {
+    {
         /* Clear data count (since NdefWr always writes from the beginning) */
-            NdefMap->ApduBuffIndex = 0;
-            *NdefMap->DataCount = 0;
+        NdefMap->ApduBuffIndex = 0;
+        *NdefMap->DataCount = 0;
 
-            NdefMap->WrNdefPacketLength =   PacketDataLength;
-            bNdefIndex = phFriNfc_GetNdefFuncIndex(NdefMap);
-            if(PH_FRINFC_REMDEVICE_UNSUPPORTED != bNdefIndex)
+        NdefMap->WrNdefPacketLength =   PacketDataLength;
+        bNdefIndex = phFriNfc_GetNdefFuncIndex(NdefMap);
+        if(PH_FRINFC_REMDEVICE_UNSUPPORTED != bNdefIndex)
+        {
+            if((1 == phFriNfc_NdefFunc[bNdefIndex].bSupported) &&
+                (NULL != phFriNfc_NdefFunc[bNdefIndex].pWriteNdef))
             {
-                if((1 == phFriNfc_NdefFunc[bNdefIndex].bSupported) &&
-                    (NULL != phFriNfc_NdefFunc[bNdefIndex].pWriteNdef))
-                {
-                    status = phFriNfc_NdefFunc[bNdefIndex].pWriteNdef(NdefMap,
-                                                        PacketData,
-                                                        PacketDataLength,
-                                                        PH_FRINFC_NDEFMAP_SEEK_BEGIN);
-                }
-                else
-                {
-                    PH_LOG_NDEF_CRIT_STR("Ndef not supported for this remote device");
-                    status = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
-                        NFCSTATUS_INVALID_REMOTE_DEVICE);
-                }
+                status = phFriNfc_NdefFunc[bNdefIndex].pWriteNdef(NdefMap,
+                                                    PacketData,
+                                                    PacketDataLength,
+                                                    PH_FRINFC_NDEFMAP_SEEK_BEGIN);
             }
             else
             {
+                PH_LOG_NDEF_CRIT_STR("Ndef not supported for this remote device");
                 status = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
                     NFCSTATUS_INVALID_REMOTE_DEVICE);
             }
         }
+        else
+        {
+            status = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP,
+                NFCSTATUS_INVALID_REMOTE_DEVICE);
+        }
+    }
     PH_LOG_NDEF_FUNC_EXIT();
     return status;
 }
@@ -524,10 +524,12 @@ phFriNfc_GetNdefFuncIndex(
             }
         }
     }
+
     if(PH_FRINFC_REMDEVICE_UNSUPPORTED == bIndex)
     {
         PH_LOG_NDEF_CRIT_STR("Invalid Remote device");
     }
+
     PH_LOG_NDEF_FUNC_EXIT();
     return bIndex;
 }
@@ -606,7 +608,7 @@ static NFCSTATUS phFriNfc_ValidateParams(uint8_t             *PacketData,
         {
             if(pNdefMap->CardState == PH_NDEFMAP_CARD_STATE_READ_ONLY)
             {
-                /*Can't write to the card :No Grants */
+                PH_LOG_NDEF_WARN_STR("Can't write to card. Card is read-only");
                 wStatus = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP, NFCSTATUS_NOT_ALLOWED);
 
                 /* set the no. bytes written is zero*/

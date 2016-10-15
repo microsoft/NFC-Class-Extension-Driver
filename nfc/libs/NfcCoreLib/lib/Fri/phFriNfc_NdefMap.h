@@ -521,8 +521,6 @@ typedef struct phFriNfc_TopazCont
     uint8_t             InternalState;
      /** This state is used for write */
     uint8_t             SkipLockBlkFlag;
-    /** To store the UID */
-    uint8_t             UID[PH_FRINFC_NDEFMAP_TOPAZ_UID_SIZE];
     /** To CC bytes length */
     uint8_t             CCByteBuf[4];
     /** Store the Buffer Index */

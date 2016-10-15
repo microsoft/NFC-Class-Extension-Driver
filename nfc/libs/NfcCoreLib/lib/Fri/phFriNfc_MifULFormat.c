@@ -73,21 +73,15 @@ typedef enum phFriNfc_MfUL_Parse
 static NFCSTATUS phFriNfc_MfUL_H_Transceive(phFriNfc_sNdefSmtCrdFmt_t    *NdefSmtCrdFmt);
 
 /*!
-* \brief \copydoc page_ovr Helper function for Mifare UL. This function calls the
-* read or write operation
-*/
-static NFCSTATUS phFriNfc_MfUL_H_WrRd(phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt);
-
-/*!
 * \brief \copydoc page_ovr Helper function for Mifare UL. This function fills the
 * send buffer for transceive function
 */
-static void phFriNfc_MfUL_H_fillSendBuf(phFriNfc_sNdefSmtCrdFmt_t   *NdefSmtCrdFmt,
+static void phFriNfc_MfUL_H_FillSendBuf(phFriNfc_sNdefSmtCrdFmt_t   *NdefSmtCrdFmt,
                                         uint8_t                     BlockNo);
 
 /*!
-* \brief \copydoc page_ovr Helper function for Mifare UL. This function shall process
-* the read bytes
+* \brief \copydoc page_ovr Helper function for Mifare UL. This function shall process the
+* read bytes
 */
 static NFCSTATUS phFriNfc_MfUL_H_ProRd16Bytes(phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt);
 
@@ -136,66 +130,72 @@ uint8_t
 phFriNfc_MfUL_CalcRemainingLockBits (
     phFriNfc_sNdefSmtCrdFmt_t          *NdefSmtCrdFmt);
 
-static int MemCompare1 ( void *s1, void *s2, unsigned int n );
-
-static int MemCompare1 ( void *s1, void *s2, unsigned int n )
-{
-    int8_t   diff = 0;
-    int8_t *char_1  =(int8_t *)s1;
-    int8_t *char_2  =(int8_t *)s2;
-    PH_LOG_NDEF_FUNC_ENTRY();
-    if(NULL == s1 || NULL == s2)
-    {
-    }
-    else
-    {
-        for(;((n>0)&&(diff==0));n--,char_1++,char_2++)
-        {
-            diff = *char_1 - *char_2;
-        }
-    }
-    PH_LOG_NDEF_FUNC_EXIT();
-    return (int)diff;
-}
-
 void phFriNfc_MfUL_Reset(phFriNfc_sNdefSmtCrdFmt_t    *NdefSmtCrdFmt)
 {
-    uint8_t OTPByte[] = PH_FRINFC_MFUL_FMT_OTP_BYTES;
-    PH_LOG_NDEF_FUNC_ENTRY();
+    uint8_t OTPBytes[] = PH_FRINFC_MFUL_FMT_OTP_BYTES_TEMPLATE;
+
     NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock = PH_FRINFC_MFUL_FMT_VAL_0;
+    OTPBytes[PH_FRINFC_MFUL_FMT_OTP_DATA_AREA_SIZE_BYTE] = PH_FRINFC_MFUL_FMT_DATA_AREA_SIZE;
     phOsalNfc_MemCopy(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes,
-                OTPByte,
-                sizeof(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes));
+                      OTPBytes,
+                      sizeof(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes));
     NdefSmtCrdFmt->AddInfo.Type2Info.LockBytes[0] = 0;
     NdefSmtCrdFmt->AddInfo.Type2Info.LockBytes[1] = 0;
     NdefSmtCrdFmt->AddInfo.Type2Info.LockBytes[2] = 0;
     NdefSmtCrdFmt->AddInfo.Type2Info.LockBytes[3] = 0;
-    PH_LOG_NDEF_FUNC_EXIT();
 }
 
 NFCSTATUS phFriNfc_MfUL_Format(phFriNfc_sNdefSmtCrdFmt_t    *NdefSmtCrdFmt)
 {
-    NFCSTATUS               Result = NFCSTATUS_SUCCESS;
-    uint8_t                 OTPByte[] = PH_FRINFC_MFUL_FMT_OTP_BYTES;
+    NFCSTATUS Result = NFCSTATUS_SUCCESS;
+    uint8_t OTPBytes[] = PH_FRINFC_MFUL_FMT_OTP_BYTES_TEMPLATE;
+
     PH_LOG_NDEF_FUNC_ENTRY();
-    NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock = PH_FRINFC_MFUL_FMT_VAL_0;
-    phOsalNfc_MemCopy(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes,
-                OTPByte,
-                sizeof(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes));
+
+    if (NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso14443A_Info.ULType == phNfc_eMifareULType_UltralightC)
+    {
+        NdefSmtCrdFmt->CardType = PH_FRINFC_NDEFMAP_MIFARE_ULC_CARD;
+
+        OTPBytes[PH_FRINFC_MFUL_FMT_OTP_DATA_AREA_SIZE_BYTE] = PH_FRINFC_MFULC_FMT_DATA_AREA_SIZE;
+        phOsalNfc_MemCopy(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes,
+                          OTPBytes,
+                          sizeof(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes));
+    }
+    else if (NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso14443A_Info.ULType == phNfc_eMifareULType_UltralightEV1)
+    {
+        /* The NDEF TLV for Ultralight and Ultralight EV1 cards are the same, so just label
+           the CardType as Ultralight */
+        NdefSmtCrdFmt->CardType = PH_FRINFC_NDEFMAP_MIFARE_UL_CARD;
+
+        OTPBytes[PH_FRINFC_MFUL_FMT_OTP_DATA_AREA_SIZE_BYTE] = NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso14443A_Info.DataAreaSize >> 3; // Divide by 8
+        phOsalNfc_MemCopy(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes,
+                          OTPBytes,
+                          sizeof(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes));
+    }
+    else
+    {
+        assert(NdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso14443A_Info.ULType == phNfc_eMifareULType_Ultralight);
+
+        NdefSmtCrdFmt->CardType = PH_FRINFC_NDEFMAP_MIFARE_UL_CARD;
+
+        OTPBytes[PH_FRINFC_MFUL_FMT_OTP_DATA_AREA_SIZE_BYTE] = PH_FRINFC_MFUL_FMT_DATA_AREA_SIZE;
+        phOsalNfc_MemCopy(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes,
+                          OTPBytes,
+                          sizeof(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes));
+    }
 
     /* Set the state */
     NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_RD_16BYTES;
     /* Initialise current block to the lock bits block */
-    NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock = PH_FRINFC_MFUL_FMT_VAL_2;
+    NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock = 2;
+    Result = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
 
-    /* Start authentication */
-    Result = phFriNfc_MfUL_H_WrRd(NdefSmtCrdFmt);
     PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
 
 NFCSTATUS
-phFriNfc_MfUL_ConvertToReadOnly (
+phFriNfc_MfUL_ConvertToReadOnly(
     phFriNfc_sNdefSmtCrdFmt_t    *NdefSmtCrdFmt)
 {
     NFCSTATUS               result = NFCSTATUS_SUCCESS;
@@ -205,7 +205,7 @@ phFriNfc_MfUL_ConvertToReadOnly (
 
     NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_RO_RD_16BYTES;
 
-    result = phFriNfc_MfUL_H_WrRd (NdefSmtCrdFmt);
+    result = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
     PH_LOG_NDEF_FUNC_EXIT();
     return result;
 }
@@ -231,12 +231,10 @@ void phFriNfc_MfUL_Process(void             *Context,
             if (NdefSmtCrdFmt->CardType == PH_FRINFC_NDEFMAP_MIFARE_ULC_CARD)
             {
                 /* Write NDEF TLV in block number 5 */
-                NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock =
-                                                        PH_FRINFC_MFUL_FMT_VAL_5;
-                /* Card already have the OTP bytes so write TLV */
+                NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock = PH_FRINFC_MFUL_FMT_VAL_5;
                 NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_WR_TLV1;
 
-                Status = phFriNfc_MfUL_H_WrRd (NdefSmtCrdFmt);
+                Status = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
             }
             break;
 
@@ -272,7 +270,7 @@ void phFriNfc_MfUL_Process(void             *Context,
                     case TYPE_2_STATIC_MEM_SIZE_VALUE:
                     {
                         NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_RO_WR_OTP_BYTES;
-                        Status = phFriNfc_MfUL_H_WrRd (NdefSmtCrdFmt);
+                        Status = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
                         break;
                     }
 
@@ -283,7 +281,7 @@ void phFriNfc_MfUL_Process(void             *Context,
 
                         /* Start reading from block 4 */
                         NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock = 4;
-                        Status = phFriNfc_MfUL_H_WrRd (NdefSmtCrdFmt);
+                        Status = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
                         break;
                     }
 
@@ -311,7 +309,7 @@ void phFriNfc_MfUL_Process(void             *Context,
                 case TYPE_2_DYNAMIC_MEM_SIZE_VALUE:
                 {
                     NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_RO_WR_LOCK_BYTES;
-                    Status = phFriNfc_MfUL_H_WrRd (NdefSmtCrdFmt);
+                    Status = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
                     break;
                 }
 
@@ -379,7 +377,7 @@ void phFriNfc_MfUL_Process(void             *Context,
             {
                 /* There is no lock bits to write, then write OTP bytes */
                 NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_RO_WR_OTP_BYTES;
-                Status = phFriNfc_MfUL_H_WrRd (NdefSmtCrdFmt);
+                Status = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
             }
             else if ((NdefSmtCrdFmt->AddInfo.Type2Info.ReadDataIndex <
                 MIFARE_UL_READ_MAX_SIZE)
@@ -414,6 +412,7 @@ void phFriNfc_MfUL_Process(void             *Context,
             break;
         }
     }
+
     /* Status is not success then call completion routine */
     if(Status != NFCSTATUS_PENDING)
     {
@@ -651,7 +650,7 @@ phFriNfc_MfUL_UpdateAndWriteLockBits (
 
 
     NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_RO_WR_DYN_LOCK_BYTES;
-    result = phFriNfc_MfUL_H_WrRd (NdefSmtCrdFmt);
+    result = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
 
     return result;
 }
@@ -702,12 +701,12 @@ phFriNfc_MfUL_ReadWriteLockBytes (
     if (write_flag)
     {
         NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_RO_WR_DYN_LOCK_BYTES;
-        result = phFriNfc_MfUL_H_WrRd (NdefSmtCrdFmt);
+        result = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
     }
     else
     {
         NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_RO_RD_DYN_LOCK_BYTES;
-        result = phFriNfc_MfUL_H_WrRd (NdefSmtCrdFmt);
+        result = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
     }
 
     return result;
@@ -1023,7 +1022,7 @@ phFriNfc_MfUL_ParseTLVs (
         NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock =
                         (NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock + 4);
 
-        result = phFriNfc_MfUL_H_WrRd (NdefSmtCrdFmt);
+        result = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
     }
 
     if (NFCSTATUS_PENDING != result)
@@ -1035,30 +1034,22 @@ phFriNfc_MfUL_ParseTLVs (
     return result;
 }
 
-static NFCSTATUS phFriNfc_MfUL_H_WrRd( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt )
-{
-    NFCSTATUS   Result = NFCSTATUS_SUCCESS;
-    PH_LOG_NDEF_FUNC_ENTRY();
-    /* Fill the send buffer */
-    phFriNfc_MfUL_H_fillSendBuf(NdefSmtCrdFmt,
-                            NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock);
-
-    /* Call transceive */
-    Result = phFriNfc_MfUL_H_Transceive (NdefSmtCrdFmt);
-    PH_LOG_NDEF_FUNC_EXIT();
-    return Result;
-}
-
 static NFCSTATUS phFriNfc_MfUL_H_Transceive(phFriNfc_sNdefSmtCrdFmt_t    *NdefSmtCrdFmt)
 {
     NFCSTATUS   Result = NFCSTATUS_SUCCESS;
+
     PH_LOG_NDEF_FUNC_ENTRY();
-    /* set the data for additional data exchange*/
+
+    /* Fill the send buffer */
+    phFriNfc_MfUL_H_FillSendBuf(NdefSmtCrdFmt,
+                                NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock);
+
+    /* Set the data for additional data exchange */
     NdefSmtCrdFmt->psDepAdditionalInfo.DepFlags.MetaChaining = 0;
     NdefSmtCrdFmt->psDepAdditionalInfo.DepFlags.NADPresent = 0;
     NdefSmtCrdFmt->psDepAdditionalInfo.NodeAddress = 0;
 
-    /*set the completion routines for the card operations*/
+    /* Set the completion routines for the card operations */
     NdefSmtCrdFmt->SmtCrdFmtCompletionInfo.CompletionRoutine = phFriNfc_NdefSmtCrd_Process;
     NdefSmtCrdFmt->SmtCrdFmtCompletionInfo.Context = NdefSmtCrdFmt;
 
@@ -1078,12 +1069,13 @@ static NFCSTATUS phFriNfc_MfUL_H_Transceive(phFriNfc_sNdefSmtCrdFmt_t    *NdefSm
     return Result;
 }
 
-static void phFriNfc_MfUL_H_fillSendBuf( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt,
+static void phFriNfc_MfUL_H_FillSendBuf( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt,
                                  uint8_t                    BlockNo)
 {
-    uint8_t     NDEFTLV1[4] = {0x01, 0x03, 0xA0, 0x10};
-    uint8_t     NDEFTLV2[4] = {0x44, 0x03, 0x00, 0xFE};
-    uint8_t     NDEFTLV[4] = {0x03, 0x00, 0xFE, 0x00};
+    /* See Section 2.3 of NFC Forum Type 2 Tag spec for details about NDEF TLV */
+    static const uint8_t NdefTlvUL[] = { 0x03, 0x00, 0xFE, 0x00 };
+    static const uint8_t NdefTlvULC1[] = { 0x01, 0x03, 0xA0, 0x10 };
+    static const uint8_t NdefTlvULC2[] = { 0x44, 0x03, 0x00, 0xFE };
 
     PH_LOG_NDEF_FUNC_ENTRY();
 
@@ -1181,17 +1173,14 @@ static void phFriNfc_MfUL_H_fillSendBuf( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFm
         if (NdefSmtCrdFmt->CardType == PH_FRINFC_NDEFMAP_MIFARE_ULC_CARD)
         {
             phOsalNfc_MemCopy(&NdefSmtCrdFmt->SendRecvBuf[PH_FRINFC_MFUL_FMT_VAL_1],
-                    NDEFTLV1,
-                    PH_FRINFC_MFUL_FMT_VAL_4);
+                              NdefTlvULC1,
+                              PH_FRINFC_MFUL_FMT_VAL_4);
         }
         else if (NdefSmtCrdFmt->CardType == PH_FRINFC_NDEFMAP_MIFARE_UL_CARD)
         {
             phOsalNfc_MemCopy(&NdefSmtCrdFmt->SendRecvBuf[PH_FRINFC_MFUL_FMT_VAL_1],
-                NDEFTLV,
-                PH_FRINFC_MFUL_FMT_VAL_4);
-        }
-        else
-        {
+                              NdefTlvUL,
+                              PH_FRINFC_MFUL_FMT_VAL_4);
         }
         break;
 
@@ -1203,8 +1192,8 @@ static void phFriNfc_MfUL_H_fillSendBuf( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFm
             /* Write command */
             NdefSmtCrdFmt->Cmd.MfCmd = phHal_eMifareWrite4;
             phOsalNfc_MemCopy(&NdefSmtCrdFmt->SendRecvBuf[PH_FRINFC_MFUL_FMT_VAL_1],
-                        NDEFTLV2,
-                        PH_FRINFC_MFUL_FMT_VAL_4);
+                              NdefTlvULC2,
+                              PH_FRINFC_MFUL_FMT_VAL_4);
         }
         break;
 
@@ -1216,83 +1205,41 @@ static void phFriNfc_MfUL_H_fillSendBuf( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFm
 
 static NFCSTATUS phFriNfc_MfUL_H_ProRd16Bytes( phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt )
 {
-    NFCSTATUS   Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
-                                    NFCSTATUS_FORMAT_ERROR);
-    uint32_t    memcompare = PH_FRINFC_MFUL_FMT_VAL_0;
-    uint8_t     ZeroBuf[] = {0x00, 0x00, 0x00, 0x00};
-    uint8_t     OTPByteUL[] = PH_FRINFC_MFUL_FMT_OTP_BYTES;
-    uint8_t     OTPByteULC[] = PH_FRINFC_MFULC_FMT_OTP_BYTES;
+    static const uint8_t c_zeroBuf[] = { 0x00, 0x00, 0x00, 0x00 };
+
+    NFCSTATUS Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT, NFCSTATUS_FORMAT_ERROR);
 
     PH_LOG_NDEF_FUNC_ENTRY();
+
     /* Check the lock bits (byte number 2 and 3 of block number 2) */
-    if ((NdefSmtCrdFmt->SendRecvBuf[PH_FRINFC_MFUL_FMT_VAL_2] ==
-        PH_FRINFC_MFUL_FMT_LOCK_BITS_VAL) &&
-        (NdefSmtCrdFmt->SendRecvBuf[PH_FRINFC_MFUL_FMT_VAL_3] ==
-        PH_FRINFC_MFUL_FMT_LOCK_BITS_VAL))
+    if ((NdefSmtCrdFmt->SendRecvBuf[2] == PH_FRINFC_MFUL_FMT_LOCK_BITS_VAL) &&
+        (NdefSmtCrdFmt->SendRecvBuf[3] == PH_FRINFC_MFUL_FMT_LOCK_BITS_VAL))
     {
-        if (NdefSmtCrdFmt->SendRecvBuf[8] == 0x02 &&
-            NdefSmtCrdFmt->SendRecvBuf[9] == 0x00)
+        /* If OTP bytes are zero then the card has not been NDEF-formatted before */
+        if (0 == phOsalNfc_MemCompare(&NdefSmtCrdFmt->SendRecvBuf[4],
+                                      (void*)c_zeroBuf,
+                                      sizeof(c_zeroBuf)))
         {
-            NdefSmtCrdFmt->CardType = PH_FRINFC_NDEFMAP_MIFARE_ULC_CARD;
-
-            phOsalNfc_MemCopy(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes,
-                        OTPByteULC,
-                        sizeof(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes));
-        }
-        else if (NdefSmtCrdFmt->SendRecvBuf[8] == 0xFF &&
-                NdefSmtCrdFmt->SendRecvBuf[9] == 0xFF)
-        {
-            NdefSmtCrdFmt->CardType = PH_FRINFC_NDEFMAP_MIFARE_UL_CARD;
-
-            phOsalNfc_MemCopy(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes,
-                        OTPByteUL,
-                        sizeof(NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes));
+            PH_LOG_NDEF_INFO_STR("Writing OTP bytes");
+            NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock = 3;
+            NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_WR_OTPBYTES;
+            Result = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
         }
         else
         {
-            NdefSmtCrdFmt->CardType = PH_FRINFC_NDEFMAP_MIFARE_UL_CARD;
-        }
-
-        memcompare = (uint32_t)
-                    MemCompare1(&NdefSmtCrdFmt->SendRecvBuf[PH_FRINFC_MFUL_FMT_VAL_4],
-                            NdefSmtCrdFmt->AddInfo.Type2Info.OTPBytes,
-                            PH_FRINFC_MFUL_FMT_VAL_4);
-
-        if (memcompare == PH_FRINFC_MFUL_FMT_VAL_0)
-        {
-            /* Write NDEF TLV in block number 4 */
-            NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock =
-                                                PH_FRINFC_MFUL_FMT_VAL_4;
-            /* Card already have the OTP bytes so write TLV */
-            NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_WR_TLV;
-        }
-        else
-        {
-            /* IS the card new, OTP bytes = {0x00, 0x00, 0x00, 0x00} */
-            memcompare = (uint32_t)MemCompare1(&NdefSmtCrdFmt->SendRecvBuf[PH_FRINFC_MFUL_FMT_VAL_4],
-                                ZeroBuf,
-                                PH_FRINFC_MFUL_FMT_VAL_4);
-            /* If OTP bytes are Zero then the card is Zero */
-            if (memcompare == PH_FRINFC_MFUL_FMT_VAL_0)
+            /* Validate OTP bytes. Refer to section 6.1 of the NFC Forum Type 2 Tag spec */
+            if (NdefSmtCrdFmt->SendRecvBuf[4 + PH_FRINFC_MFUL_FMT_OTP_NDEF_MAGIC_NUMBER_BYTE] == PH_FRINFC_MFUL_FMT_NDEF_MAGIC_NUMBER &&
+                NdefSmtCrdFmt->SendRecvBuf[4 + PH_FRINFC_MFUL_FMT_OTP_TYPE2_TAG_VERSION_NUMBER_BYTE] == PH_FRINFC_MFUL_FMT_TYPE2_TAG_VERSION_NUMBER &&
+                NdefSmtCrdFmt->SendRecvBuf[4 + PH_FRINFC_MFUL_FMT_OTP_READ_WRITE_ACCESS_BYTE] == PH_FRINFC_MFUL_FMT_READ_WRITE_ACCESS)
             {
-                /* Write OTP bytes in block number 3 */
-                NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock =
-                                                PH_FRINFC_MFUL_FMT_VAL_3;
-                /* Card already have the OTP bytes so write TLV */
-                NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_WR_OTPBYTES;
+                PH_LOG_NDEF_INFO_STR("Card already has OTP bytes written. Writing NDEF TLV");
+                NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock = 4;
+                NdefSmtCrdFmt->State = PH_FRINFC_MFUL_FMT_WR_TLV;
+                Result = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
             }
         }
     }
 
-    if(
-        ((NdefSmtCrdFmt->State == PH_FRINFC_MFUL_FMT_WR_TLV) ||
-        (NdefSmtCrdFmt->State == PH_FRINFC_MFUL_FMT_WR_OTPBYTES)) &&
-        ((NdefSmtCrdFmt->CardType == PH_FRINFC_NDEFMAP_MIFARE_ULC_CARD) ||
-        (NdefSmtCrdFmt->CardType == PH_FRINFC_NDEFMAP_MIFARE_UL_CARD))
-        )
-    {
-        Result = phFriNfc_MfUL_H_WrRd(NdefSmtCrdFmt);
-    }
     PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }
@@ -1308,7 +1255,7 @@ static NFCSTATUS phFriNfc_MfUL_H_ProWrOTPBytes( phFriNfc_sNdefSmtCrdFmt_t *NdefS
     NdefSmtCrdFmt->AddInfo.Type2Info.CurrentBlock =
                                 PH_FRINFC_MFUL_FMT_VAL_4;
 
-    Result = phFriNfc_MfUL_H_WrRd(NdefSmtCrdFmt);
+    Result = phFriNfc_MfUL_H_Transceive(NdefSmtCrdFmt);
     PH_LOG_NDEF_FUNC_EXIT();
     return Result;
 }

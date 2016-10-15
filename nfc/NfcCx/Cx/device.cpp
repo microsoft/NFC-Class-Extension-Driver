@@ -233,7 +233,7 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    char *interfaceFailure = {0};
+    char* interfaceFailure = NULL;
     NFC_CX_DEVICE_MODE nfcCxDeviceMode = NFC_CX_DEVICE_MODE_NCI;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -1003,7 +1003,7 @@ Routine Description:
 
 Arguments:
 
-    Queue -  Handle to the framework queue object that is associated with the I/O request.
+    Queue - Handle to the framework queue object that is associated with the I/O request.
     Request - Handle to a framework request object.
     OutputBufferLength - Length of the output buffer associated with the request.
     InputBufferLength - Length of the input buffer associated with the request.
@@ -1015,12 +1015,20 @@ Return Value:
 
 --*/
 {
-    NTSTATUS  status = STATUS_SUCCESS;
-    PNFCCX_FILE_CONTEXT fileContext;
-    PNFCCX_FDO_CONTEXT fdoContext;
-    UCHAR i;
+    NTSTATUS status = STATUS_SUCCESS;
+    NFCCX_FILE_CONTEXT* fileContext = NULL;
+    NFCCX_FDO_CONTEXT* fdoContext = NULL;
+    UCHAR i = 0;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    TRACE_LINE(LEVEL_INFO,
+               "Queue 0x%p, Request 0x%p, OutputBufferLength %Iu, InputBufferLength %Iu, IoControlCode %!NFC_IOCTL!",
+               Queue,
+               Request,
+               OutputBufferLength,
+               InputBufferLength,
+               IoControlCode);
 
     fdoContext = NfcCxFdoGetContext(WdfIoQueueGetDevice(Queue));
     fileContext = NfcCxFileGetContext(WdfRequestGetFileObject(Request));
@@ -1030,7 +1038,7 @@ Return Value:
         if (g_NfcCxDdiModules[i].IsIoctlSupported(fdoContext, IoControlCode)) {
 
             if (NULL == fileContext &&
-                FALSE == g_NfcCxDdiModules[i].IsNullFileObjectOk) {
+                !g_NfcCxDdiModules[i].IsNullFileObjectOk) {
                 TRACE_LINE(LEVEL_ERROR, "%S module request received without a file context", g_NfcCxDdiModules[i].Name);
                 status = STATUS_INVALID_DEVICE_STATE;
                 goto Done;
@@ -1038,7 +1046,7 @@ Return Value:
 
             if (NULL != fileContext &&
                 fileContext->IsAppContainerProcess &&
-                FALSE == g_NfcCxDdiModules[i].IsAppContainerAllowed) {
+                !g_NfcCxDdiModules[i].IsAppContainerAllowed) {
                 TRACE_LINE(LEVEL_ERROR, "%S module request received received from the AppContainer process", g_NfcCxDdiModules[i].Name);
                 status = STATUS_INVALID_DEVICE_STATE;
                 goto Done;
@@ -1066,12 +1074,12 @@ Return Value:
                                                                           InputBufferLength,
                                                                           IoControlCode);
             status = STATUS_PENDING;
-
-        } else {
+        }
+        else {
             //
             // This class extension is the bottom of the stack so complete the unknown request
             //
-            TRACE_LINE(LEVEL_WARNING, "Unknown IOCTL code 0%x", IoControlCode);
+            TRACE_LINE(LEVEL_WARNING, "Unknown IOCTL: 0x%08lX", IoControlCode);
             status = STATUS_INVALID_DEVICE_STATE;
             goto Done;
         }
@@ -1103,7 +1111,7 @@ Routine Description:
 
 Arguments:
 
-    Queue -  Handle to the framework queue object that is associated with the I/O request.
+    Queue - Handle to the framework queue object that is associated with the I/O request.
     Request - Handle to a framework request object.
     OutputBufferLength - Length of the output buffer associated with the request.
     InputBufferLength - Length of the input buffer associated with the request.
@@ -1115,10 +1123,18 @@ Return Value:
 
 --*/
 {
-    NTSTATUS  status = STATUS_SUCCESS;
-    PNFCCX_FDO_CONTEXT fdoContext;
+    NTSTATUS status = STATUS_SUCCESS;
+    NFCCX_FDO_CONTEXT* fdoContext = NULL;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    TRACE_LINE(LEVEL_INFO,
+               "Queue 0x%p, Request 0x%p, OutputBufferLength %Iu, InputBufferLength %Iu, IoControlCode %!NFCCX_IOCTL!",
+               Queue,
+               Request,
+               OutputBufferLength,
+               InputBufferLength,
+               IoControlCode);
 
     UNREFERENCED_PARAMETER(InputBufferLength);
     UNREFERENCED_PARAMETER(OutputBufferLength);
@@ -1131,7 +1147,7 @@ Return Value:
         status = STATUS_PENDING;
     }
     else {
-        TRACE_LINE(LEVEL_WARNING, "Unknown IOCTL code 0x%x", IoControlCode);
+        TRACE_LINE(LEVEL_WARNING, "Unknown IOCTL: 0x%08lX", IoControlCode);
         status = STATUS_INVALID_DEVICE_STATE;
         goto Done;
     }

@@ -10,16 +10,16 @@
 
 #define DESFIRE_FMT_EV1
 
-#define PH_FRI_NFC_SMTCRDFMT_NFCSTATUS_FORMAT_ERROR                 9
-#define  PH_FRINFC_SMTCRDFMT_MSTD_DEFAULT_KEYA_OR_KEYB           {0xFF, 0xFF,0xFF,0xFF,0xFF,0xFF}
-#define  PH_FRINFC_SMTCRDFMT_MSTD_MADSECT_KEYA                   {0xA0, 0xA1,0xA2,0xA3,0xA4,0xA5}
-#define  PH_FRINFC_SMTCRDFMT_NFCFORUMSECT_KEYA                   {0xD3, 0xF7,0xD3,0xF7,0xD3,0xF7}
-#define  PH_FRINFC_SMTCRDFMT_MSTD_MADSECT_ACCESSBITS             {0x78,0x77,0x88}
-#define  PH_FRINFC_SMTCRDFMT_MSTD_NFCFORUM_ACCESSBITS            {0x7F,0x07,0x88}
-#define  PH_FRINFC_SMTCRDFMT_MAX_TLV_TYPE_SUPPORTED              1
+#define PH_FRI_NFC_SMTCRDFMT_NFCSTATUS_FORMAT_ERROR             9
+#define PH_FRINFC_SMTCRDFMT_MSTD_DEFAULT_KEYA_OR_KEYB           {0xFF, 0xFF,0xFF,0xFF,0xFF,0xFF}
+#define PH_FRINFC_SMTCRDFMT_MSTD_MADSECT_KEYA                   {0xA0, 0xA1,0xA2,0xA3,0xA4,0xA5}
+#define PH_FRINFC_SMTCRDFMT_NFCFORUMSECT_KEYA                   {0xD3, 0xF7,0xD3,0xF7,0xD3,0xF7}
+#define PH_FRINFC_SMTCRDFMT_MSTD_MADSECT_ACCESSBITS             {0x78,0x77,0x88}
+#define PH_FRINFC_SMTCRDFMT_MSTD_NFCFORUM_ACCESSBITS            {0x7F,0x07,0x88}
+#define PH_FRINFC_SMTCRDFMT_MAX_TLV_TYPE_SUPPORTED              1
 
-#define  PH_FRINFC_SMTCRDFMT_MAX_SEND_RECV_BUF_SIZE             252
-#define  PH_FRINFC_SMTCRDFMT_STATE_RESET_INIT                   1
+#define PH_FRINFC_SMTCRDFMT_MAX_SEND_RECV_BUF_SIZE              252
+#define PH_FRINFC_SMTCRDFMT_STATE_RESET_INIT                    1
 
 enum
 {
@@ -33,34 +33,29 @@ enum
 
 #define PH_FRINFC_SMTCRDFMT_CR_FORMAT           0
 #define PH_FRINFC_SMTCRDFMT_CR_INVALID_OPE      1
-#define  PH_FRINFC_SMTCRDFMT_CR                 2
+#define PH_FRINFC_SMTCRDFMT_CR                  2
 
 typedef struct phFriNfc_Type1_AddInfo
 {
-  /* Stores the CC byte values. For Ex: 0xE1, 0x10 , 0x0C, 0x00*/
-  uint8_t CCBytes[5];
-  uint8_t UID[4];
-  uint8_t CCByteIndex;
-
+    uint8_t CurrentBlock;
+    uint8_t CurrentByte;
 } phFriNfc_Type1_AddInfo_t;
 
 typedef struct phFriNfc_Type2_AddInfo
 {
-    /* Stores the CC byte values. For Ex: 0xE1, 0x10 , 0x10, 0x00*/
-   uint8_t OTPBytes[4];
-   uint8_t  LockBytes[4];
-   uint8_t  ReadData[16];
-   uint8_t  ReadDataIndex;
-   uint8_t  DynLockBytes[4];
-   uint8_t  BytesLockedPerLockBit;
-   uint8_t  LockBytesPerPage;
-   uint8_t  LockByteNumber;
-   uint8_t  LockBlockNumber;
-   uint8_t  NoOfLockBits;
-   uint8_t  DefaultLockBytesFlag;
-   uint8_t  LockBitsWritten;
-   /* Current Block Address*/
-   uint8_t CurrentBlock;
+    uint8_t OTPBytes[4]; /* Stores the CC byte values. For Ex: 0xE1, 0x10, 0x10, 0x00 */
+    uint8_t LockBytes[4];
+    uint8_t ReadData[16];
+    uint8_t ReadDataIndex;
+    uint8_t DynLockBytes[4];
+    uint8_t BytesLockedPerLockBit;
+    uint8_t LockBytesPerPage;
+    uint8_t LockByteNumber;
+    uint8_t LockBlockNumber;
+    uint8_t NoOfLockBits;
+    uint8_t DefaultLockBytesFlag;
+    uint8_t LockBitsWritten;
+    uint8_t CurrentBlock; /* Current block address */
 } phFriNfc_Type2_AddInfo_t;
 
 typedef struct phFriNfc_Type4_AddInfo
@@ -138,12 +133,11 @@ typedef struct phFriNfc_ISO15693_AddInfo
 
 typedef struct phFriNfc_sNdefSmtCrdFmt_AddInfo
 {
-   phFriNfc_Type1_AddInfo_t         Type1Info;
-   phFriNfc_Type2_AddInfo_t         Type2Info;
-   phFriNfc_Type4_AddInfo_t         Type4Info;
-   phFriNfc_MfStd_AddInfo_t         MfStdInfo;
-   phFriNfc_ISO15693_AddInfo_t      s_iso15693_info;
-
+    phFriNfc_Type1_AddInfo_t         Type1Info;
+    phFriNfc_Type2_AddInfo_t         Type2Info;
+    phFriNfc_Type4_AddInfo_t         Type4Info;
+    phFriNfc_MfStd_AddInfo_t         MfStdInfo;
+    phFriNfc_ISO15693_AddInfo_t      s_iso15693_info;
 }phFriNfc_sNdefSmtCrdFmt_AddInfo_t;
 
 typedef struct phFriNfc_sNdefSmtCrdFmt
@@ -219,9 +213,7 @@ NFCSTATUS phFriNfc_NdefSmtCrd_SetCR(phFriNfc_sNdefSmtCrdFmt_t     *NdefSmtCrdFmt
 NFCSTATUS phFriNfc_NdefSmtCrd_Format(phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt, const uint8_t *ScrtKeyB);
 
 
-NFCSTATUS
-phFriNfc_NdefSmtCrd_ConvertToReadOnly (
-    phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt);
+NFCSTATUS phFriNfc_NdefSmtCrd_ConvertToReadOnly(phFriNfc_sNdefSmtCrdFmt_t *NdefSmtCrdFmt);
 
 void phFriNfc_NdefSmtCrd_Process(void        *Context,
                                  NFCSTATUS    Status);

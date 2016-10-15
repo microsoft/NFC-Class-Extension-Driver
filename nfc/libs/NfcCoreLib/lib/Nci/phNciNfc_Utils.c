@@ -169,7 +169,7 @@ phNciNfc_GetRfDevType(uint8_t bRespVal, uint8_t bRespLen,
                     switch(bRespVal & SEL_RESP_CONFIG_MASK)
                     {
                         /* Ref: section 4.8.2 of [DIGITAL] */
-                        case 0:     /* Configured for Type 2 Tag Platform */
+                        case MIFARE_UL_SAK:     /* Configured for Type 2 Tag Platform */
                         {
                             *pDevType = phNciNfc_eMifareUL_PICC;
                             PH_LOG_NCI_INFO_STR(" MifareUL tag detected..");
@@ -271,7 +271,7 @@ phNciNfc_GetRfDevType(uint8_t bRespVal, uint8_t bRespLen,
                 *pDevType = phNciNfc_eNfcIP1_Target;
             }
         }
-        else if((phNciNfc_NFCA_Active_Poll == pRemDevInf->eRFTechMode)  )
+        else if(phNciNfc_NFCA_Active_Poll == pRemDevInf->eRFTechMode)
         {
             if(phNciNfc_e_RfProtocolsNfcDepProtocol == pRemDevInf->eRFProtocol)
             {

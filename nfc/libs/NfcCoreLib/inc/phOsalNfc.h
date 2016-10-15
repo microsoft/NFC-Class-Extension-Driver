@@ -35,9 +35,9 @@ typedef VOID (*phOsalNfc_MsgFunc_t)(_Inout_ void* pContext, _In_ uint32_t Messag
  */
 typedef struct phOsalNfc_Message
 {
-    uint32_t eMsgType;  /**< Type of the message to be posted*/
-    void   * pMsgData;  /**< Pointer to message specific data block in case any*/
-    uint16_t Size;      /**< Size of the datablock*/
+    uint32_t eMsgType;  /**< Type of the message to be posted */
+    void*    pMsgData;  /**< Pointer to message specific data block in case any */
+    uint16_t Size;      /**< Size of the datablock */
 } phOsalNfc_Message_t,*pphOsalNfc_Message_t;
 
 /*!
@@ -46,12 +46,12 @@ typedef struct phOsalNfc_Message
  */
 typedef enum
 {
-    phOsalNfc_e_NoMemory,                       /**<Memory allocation failed */
-    phOsalNfc_e_PrecondFailed,                  /**<precondition wasn't met */
-    phOsalNfc_e_InternalErr,                    /**<Unrecoverable error */
-    phOsalNfc_e_UnrecovFirmwareErr,             /**<Unrecoverable firmware error */
-    phOsalNfc_e_DALerror,                       /**<Unrecoverable DAL error */
-    phOsalNfc_e_Noerror                         /**<No errortype */
+    phOsalNfc_e_NoMemory,                       /**< Memory allocation failed */
+    phOsalNfc_e_PrecondFailed,                  /**< precondition wasn't met */
+    phOsalNfc_e_InternalErr,                    /**< Unrecoverable error */
+    phOsalNfc_e_UnrecovFirmwareErr,             /**< Unrecoverable firmware error */
+    phOsalNfc_e_DALerror,                       /**< Unrecoverable DAL error */
+    phOsalNfc_e_Noerror                         /**< No errortype */
 } phOsalNfc_ExceptionType_t;
 
 /*!
@@ -62,8 +62,8 @@ typedef struct phOsalNfc_Config
 {
     uint32_t dwCallbackThreadId;            /**< Thread ID of the message thread */
     phOsalNfc_MsgFunc_t pfnCallback;        /**< Callback to the message handler */
-    void *pCallbackContext;                 /**< Callback context to the message function */
-}phOsalNfc_Config_t, *pphOsalNfc_Config_t;  /**< Pointer to #phOsalNfc_Config_t */
+    void* pCallbackContext;                 /**< Callback context to the message function */
+} phOsalNfc_Config_t, *pphOsalNfc_Config_t; /**< Pointer to #phOsalNfc_Config_t */
 
 /*!
  * \ingroup grp_osal_nfc
@@ -71,7 +71,7 @@ typedef struct phOsalNfc_Config
  * This type of API is called from ClientApplication (main thread) to notify
  * specific callback.
  */
-typedef  void (*pphOsalNfc_DeferFuncPointer_t) (void*);
+typedef void (*pphOsalNfc_DeferFuncPointer_t) (void*);
 
 /*!
  * \ingroup grp_osal_nfc
@@ -82,8 +82,8 @@ typedef  void (*pphOsalNfc_DeferFuncPointer_t) (void*);
 typedef struct phOsalNfc_DeferedCallInfo
 {
     pphOsalNfc_DeferFuncPointer_t   pDeferredCall;  /**< pointer to Deferred callback */
-    void                            *pParam;        /**< contains timer message specific details*/
-}phOsalNfc_DeferedCallInfo_t;
+    void*                           pParam;         /**< contains timer message specific details */
+} phOsalNfc_DeferedCallInfo_t;
 
 /**
  * \ingroup grp_osal_nfc
@@ -167,7 +167,7 @@ NFCSTATUS phOsalNfc_QueueDeferredCallback(_In_ pphOsalNfc_DeferFuncPointer_t Def
  *
  * \param[in] Size   Size, in uint8_t, to be allocated
  *
- * \retval NON-NULL value:  The memory was successfully allocated ; the return value points to the allocated memory location
+ * \retval NON-NULL value:  The memory was successfully allocated; the return value points to the allocated memory location
  * \retval NULL:            The operation was not successful, certainly because of insufficient resources.
  *
  */
@@ -178,8 +178,8 @@ phOsalNfc_GetMemory(
     _In_ uint32_t Size
     )
 {
-   void * pMem = (void *) malloc(Size);
-   return pMem;  
+    void* pMem = (void*)malloc(Size);
+    return pMem;
 }
 
 /*!
@@ -200,7 +200,7 @@ phOsalNfc_FreeMemory(
 
 /*!
  * \ingroup grp_osal_nfc
- * \brief Compares the values stored in the source memory with the 
+ * \brief Compares the values stored in the source memory with the
  * values stored in the destination memory.
  *
  * \param[in] src   Pointer to the Source Memory
@@ -210,10 +210,10 @@ phOsalNfc_FreeMemory(
  * \retval zero if the comparison is successful, non-zero otherwise
  */
 int FORCEINLINE
-phOsalNfc_MemCompare( 
-    _In_reads_bytes_(n) void *src, 
-    _In_reads_bytes_(n) void *dest, 
-    _In_ unsigned int n 
+phOsalNfc_MemCompare(
+    _In_reads_bytes_(n) const void* src,
+    _In_reads_bytes_(n) const void* dest,
+    _In_ unsigned int n
     )
 {
     return memcmp(src, dest, n);

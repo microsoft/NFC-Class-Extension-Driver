@@ -19,17 +19,20 @@ Environment:
 #pragma once
 
 #include <windows.h>
+
 #include <malloc.h>
 #include <stddef.h>
+
 #include <devioctl.h>
 #include <ntassert.h>
-#include <setupapi.h>
 #include <objbase.h>
 #include <ncidef.h>
+
 #include <windows.devices.smartcards.h>
 
 #include <initguid.h>
 
+#include <devpropdef.h>
 #include <winsmcrd.h>
 #include <nfpdev.h>
 #include <nfcsedev.h>

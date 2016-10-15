@@ -467,6 +467,13 @@ typedef enum phNfc_eHid_CmdList
     phNfc_eHeidRead /* Todo */
 }phNfc_eHid_CmdList_t;
 
+typedef enum phNfc_eMifareULType
+{
+    phNfc_eMifareULType_Ultralight,
+    phNfc_eMifareULType_UltralightC,
+    phNfc_eMifareULType_UltralightEV1
+}phNfc_eMifareULType_t;
+
 /**
  * The <em> Reader A structure </em> includes the available information
  * related to the discovered ISO14443A remote device. This information
@@ -479,15 +486,20 @@ typedef struct phNfc_sIso14443AInfo
     uint8_t         UidLength;                      /**< UID information length, shall not be greater
                                                          than PHHAL_MAX_UID_LENGTH i.e., 10 */
     uint8_t         AppData[PHNFC_MAX_ATR_LENGTH];  /**< Application data information of the
-                                                        tag discovered (= Historical bytes for type A) */
+                                                         tag discovered (= Historical bytes for type A) */
     _Field_range_(<=, PHNFC_MAX_ATR_LENGTH)
     uint8_t         AppDataLength;                  /**< Application data length */
     uint8_t         Sak;                            /**< SAK informationof the TYPE A Tag Discovered */
     uint8_t         AtqA[PHNFC_ATQA_LENGTH];        /**< ATQA informationof the TYPE A Tag Discovered */
     uint8_t         MaxDataRate;                    /**< Maximum data rate supported by the TYPE A
-                                                       Tag Discovered */
+                                                         Tag Discovered */
     uint8_t         Fwi_Sfgt;                       /**< Frame waiting time and start up frame guard
                                                          time as defined in ISO/IEC 14443-4[7] for type A */
+    phNfc_eMifareULType_t ULType;                   /**< [Mifare Ultralight only (SAK == 0x00)] The type of
+                                                         Mifare Ultralight card */
+    uint8_t         DataAreaSize;                   /**< [Mifare Ultralight EV1 only] The size of the
+                                                         data area in bytes, obtained from the GET_VERSION
+                                                         command */
 }phNfc_sIso14443AInfo_t;
 
 /**
@@ -781,7 +793,6 @@ typedef enum phNfc_eRFDevType
 #define phHal_eNfcIP1_Target phNfc_eNfcIP1_Target /**< \copybrief phNfc_eNfcIP1_Target \sa phNfc_eNfcIP1_Target  */
 #define phHal_eNfcIP1_Initiator phNfc_eNfcIP1_Initiator /**< \copybrief phNfc_eNfcIP1_Initiator \sa phNfc_eNfcIP1_Initiator  */
 #define phHal_eInvalid_DevType phNfc_eInvalid_DevType /**< \copybrief phNfc_eInvalid_DevType \sa phNfc_eInvalid_DevType  */
-
 
 /** \ingroup grp_hal_nfci
  *

@@ -4,7 +4,7 @@ Copyright (c) 2012  Microsoft Corporation
 
 Module Name:
     phFriNfc_Pch.h
-    
+
 Abstract:
     This module contains the precompiled headers for the FRI component
 
@@ -39,17 +39,19 @@ Environment:
 #include <phFriNfc_MifareStdMap.h>
 #include <phFriNfc_ISO15693Map.h>
 #include <phFriNfc_MifareULMap.h>
+#include <phFriNfc_TopazMap.h>
+#include <phFriNfc_SmtCrdFmt.h>
 #include <phFriNfc_MifULFormat.h>
 #include <phFriNfc_MifStdFormat.h>
-#include <phFriNfc_SmtCrdFmt.h>
 #include <phFriNfc_ISO15693Format.h>
+#include <phFriNfc_TopazFormat.h>
 
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <windows.h>
 #include <memory.h>
-#include <ntassert.h>
+#include <assert.h>
 #include <intsafe.h>
 
 #include "NfcCoreLibTracing.h"

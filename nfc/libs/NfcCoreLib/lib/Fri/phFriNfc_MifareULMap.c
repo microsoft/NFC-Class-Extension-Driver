@@ -1563,6 +1563,20 @@ static NFCSTATUS phFriNfc_MfUL_H_findNDEFTLV(phFriNfc_NdefMap_t     *NdefMap,
                     if(NdefMap->TLVStruct.NdefTLVFoundFlag !=
                         PH_FRINFC_NDEFMAP_MFUL_FLAG1)
                     {
+                        if(NdefMap->MifareULContainer.RemainingSize < (NdefMap->SendRecvBuf[Temp16Bytes] + PH_FRINFC_NDEFMAP_MFUL_VAL1))
+                        {
+                            /* No NDEF TLV found */
+                            PH_LOG_NDEF_INFO_STR("No NDEF TLV found");
+                            Result = PHNFCSTVAL(CID_FRI_NFC_NDEF_MAP, NFCSTATUS_NO_NDEF_SUPPORT);
+                            *CRFlag = PH_FRINFC_NDEFMAP_MFUL_FLAG1;
+                            break;
+                        }
+
+                        NdefMap->MifareULContainer.RemainingSize =
+                                        (NdefMap->MifareULContainer.RemainingSize -
+                                        (NdefMap->SendRecvBuf[Temp16Bytes]
+                                        + PH_FRINFC_NDEFMAP_MFUL_VAL1));
+
                         NdefMap->TLVStruct.NdefTLVByte =
                                         (((Temp16Bytes + PH_FRINFC_NDEFMAP_MFUL_VAL1 +
                                         NdefMap->SendRecvBuf[Temp16Bytes]) %
@@ -1584,11 +1598,6 @@ static NFCSTATUS phFriNfc_MfUL_H_findNDEFTLV(phFriNfc_NdefMap_t     *NdefMap,
 
                         TemLength = (Temp16Bytes +
                                 NdefMap->SendRecvBuf[Temp16Bytes]);
-
-                        NdefMap->MifareULContainer.RemainingSize =
-                                        (NdefMap->MifareULContainer.RemainingSize -
-                                        (NdefMap->SendRecvBuf[Temp16Bytes]
-                                        + PH_FRINFC_NDEFMAP_MFUL_VAL1));
 
                         /* If the Length (L) in TLV < 16 bytes */
                         Temp16Bytes = ((TemLength >=

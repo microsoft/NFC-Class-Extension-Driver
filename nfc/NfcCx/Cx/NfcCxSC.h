@@ -66,6 +66,7 @@ Environment:
 #define PCSC_NN_MIFARE_PLUS_SL2_4K  0x39
 #define PCSC_NN_MIFARE_ULC          0x3A
 #define PCSC_NN_FELICA              0x3B
+#define PCSC_NN_MIFARE_ULEV1        0x3D
 
 #define PCSC_ATR_INIT_HEADER                        0x3B
 #define PCSC_ATR_T0                                 0x80
@@ -160,11 +161,6 @@ typedef struct _NFCCX_SC_INTERFACE {
 
     _Guarded_by_(SmartCardLock)
     LoadKey* StorageCardKey;
-
-    //
-    // ATR
-    //
-    WDFWAITLOCK AtrLock;
 
 } NFCCX_SC_INTERFACE, *PNFCCX_SC_INTERFACE;
 
@@ -461,12 +457,6 @@ NfcCxSCInterfaceTransmitRawData(
 _Requires_lock_not_held_(ScInterface->SmartCardLock)
 NTSTATUS
 NfcCxSCInterfaceResetCard(
-    _In_ PNFCCX_SC_INTERFACE ScInterface
-    );
-
-_Requires_lock_not_held_(ScInterface->SmartCardLock)
-BOOLEAN
-NfcCxSCInterfaceDetectMifareULC(
     _In_ PNFCCX_SC_INTERFACE ScInterface
     );
 

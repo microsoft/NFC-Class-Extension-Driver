@@ -977,8 +977,7 @@ static uint8_t phLibNfc_ConnIsRfListnerRegisterd(void *pContext,void *pInfo)
             for(bIndex = 0; bIndex < pNciDevInfo->dwNumberOfDevices ; bIndex++)
             {
                 pLibContext->Disc_handle[bIndex] = pNciDevInfo->pRemDevList[bIndex];
-                pLibContext->Map_Handle[bIndex].pNci_RemoteDev_List=
-                pNciDevInfo->pRemDevList[bIndex];
+                pLibContext->Map_Handle[bIndex].pNci_RemoteDev_List = pNciDevInfo->pRemDevList[bIndex];
                 gpphLibNfc_Context->bDiscovery_Notify_Enable = 0x00;
             }
             bRetVal = 0x00;
@@ -1925,7 +1924,7 @@ static NFCSTATUS phLibNfc_MapRemDevType(phNciNfc_RFDevType_t NciNfc_RemDevType, 
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NULL != LibNfc_RemDevType)
     {
-        /*TO DO Add Remaining types of remote device types*/
+        /* TODO: Add Remaining types of remote device types */
         switch(NciNfc_RemDevType)
         {
             case phNciNfc_eISO14443_A_PICC:

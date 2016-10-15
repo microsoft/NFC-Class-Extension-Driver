@@ -75,7 +75,7 @@ Return Value:
     NTSTATUS status = STATUS_SUCCESS;
     PNFP_INTERFACE nfpInterface = NULL;
     WDF_OBJECT_ATTRIBUTES objectAttrib;
-    WDF_WORKITEM_CONFIG workItemConfig = {0};
+    WDF_WORKITEM_CONFIG workItemConfig = {};
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -196,7 +196,7 @@ Return Value:
         // Disable the NFP interface
         //
         WdfDeviceSetDeviceInterfaceState(NfpInterface->FdoContext->Device,
-                                         (LPGUID) &GUID_DEVINTERFACE_NFP,
+                                         &GUID_DEVINTERFACE_NFP,
                                          NULL,
                                          FALSE);
 
@@ -226,26 +226,28 @@ Return Value:
 
 --*/
 {
+    static const wchar_t nfpCapabilitiesStringList[] = L"StandardNfc\0"; // Extra null terminator for multi-string list (DEVPROP_TYPE_STRING_LIST)
+
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_FDO_CONTEXT fdoContext = NfpInterface->FdoContext;
+    WDF_DEVICE_INTERFACE_PROPERTY_DATA propertyData = {};
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (FALSE == fdoContext->NfpRadioInterfaceCreated) {
+    if (!fdoContext->NfpRadioInterfaceCreated) {
         //
         // Create and publish the NFP RM Interface
         //
-        status = WdfDeviceCreateDeviceInterface(
-                        fdoContext->Device,
-                        (LPGUID)&GUID_NFC_RADIO_MEDIA_DEVICE_INTERFACE,
-                        NULL);
+        status = WdfDeviceCreateDeviceInterface(fdoContext->Device,
+                                                &GUID_NFC_RADIO_MEDIA_DEVICE_INTERFACE,
+                                                NULL);
         if (!NT_SUCCESS (status)) {
             TRACE_LINE(LEVEL_ERROR, "WdfDeviceCreateDeviceInterface failed %!STATUS!", status);
             goto Done;
         }
 
         WdfDeviceSetDeviceInterfaceState(fdoContext->Device,
-                                         (LPGUID)&GUID_NFC_RADIO_MEDIA_DEVICE_INTERFACE,
+                                         &GUID_NFC_RADIO_MEDIA_DEVICE_INTERFACE,
                                          NULL,
                                          TRUE);
 
@@ -258,26 +260,34 @@ Return Value:
         //
         if (!NfpInterface->InterfaceCreated) {
             status = WdfDeviceCreateDeviceInterface(fdoContext->Device,
-                                                    (LPGUID) &GUID_DEVINTERFACE_NFP,
+                                                    &GUID_DEVINTERFACE_NFP,
                                                     NULL);
             if (!NT_SUCCESS(status)) {
                 TRACE_LINE(LEVEL_ERROR, "Failed to create the NFP device interface, %!STATUS!", status);
                 goto Done;
             }
 
-            WdfDeviceSetDeviceInterfaceState(fdoContext->Device,
-                                            (LPGUID) &GUID_DEVINTERFACE_NFP,
-                                            NULL,
-                                            TRUE);
+            WDF_DEVICE_INTERFACE_PROPERTY_DATA_INIT(&propertyData,
+                                                    &GUID_DEVINTERFACE_NFP,
+                                                    &DEVPKEY_NFP_Capabilities);
+
+            status = WdfDeviceAssignInterfaceProperty(fdoContext->Device,
+                                                      &propertyData,
+                                                      DEVPROP_TYPE_STRING_LIST,
+                                                      sizeof(nfpCapabilitiesStringList),
+                                                      const_cast<wchar_t*>(nfpCapabilitiesStringList));
+            if (!NT_SUCCESS(status)) {
+                TRACE_LINE(LEVEL_ERROR, "Failed to assign property for the NFP device interface, %!STATUS!", status);
+                goto Done;
+            }
 
             NfpInterface->InterfaceCreated = TRUE;
-
-        } else {
-            WdfDeviceSetDeviceInterfaceState(fdoContext->Device,
-                                             (LPGUID) &GUID_DEVINTERFACE_NFP,
-                                             NULL,
-                                             TRUE);
         }
+
+        WdfDeviceSetDeviceInterfaceState(fdoContext->Device,
+                                         &GUID_DEVINTERFACE_NFP,
+                                         NULL,
+                                         TRUE);
     }
 
 Done:
@@ -313,11 +323,10 @@ Return Value:
 
     if (NfpInterface->InterfaceCreated) {
 
-        WdfDeviceSetDeviceInterfaceState(
-                        NfpInterface->FdoContext->Device,
-                        (LPGUID) &GUID_DEVINTERFACE_NFP,
-                        NULL,
-                        FALSE);
+        WdfDeviceSetDeviceInterfaceState(NfpInterface->FdoContext->Device,
+                                         &GUID_DEVINTERFACE_NFP,
+                                         NULL,
+                                         FALSE);
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -992,7 +1001,9 @@ Return Value:
          ple = ple->Flink) {
         PNFCCX_FILE_CONTEXT fileContext = CONTAINING_RECORD(ple, NFCCX_FILE_CONTEXT, ListEntry);
 
-        retValue = NfcCxFileObjectIsTagWriteClient(fileContext);
+        if (fileContext->Enabled) {
+            retValue = NfcCxFileObjectIsTagWriteClient(fileContext);
+        }
     }
 
     WdfWaitLockRelease(NfpInterface->PubsLock);
@@ -1855,8 +1866,8 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     ULONG_PTR bytesCopied = 0;
-    WDFMEMORY outMem = {0};
-    WDFMEMORY inMem = {0};
+    WDFMEMORY outMem = NULL;
+    WDFMEMORY inMem = NULL;
     PVOID     inBuffer = NULL;
     PVOID     outBuffer = NULL;
     size_t    sizeInBuffer = 0;

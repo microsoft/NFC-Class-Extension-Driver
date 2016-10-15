@@ -156,13 +156,6 @@ Return Value:
         goto Done;
     }
 
-    status = WdfWaitLockCreate(&objectAttrib,
-                               &scInterface->AtrLock);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to create the ATR WaitLock, %!STATUS!", status);
-        goto Done;
-    }
-
     WDF_OBJECT_ATTRIBUTES_INIT(&objectAttrib);
     objectAttrib.ParentObject = scInterface->FdoContext->Device;
 
@@ -2005,7 +1998,6 @@ Done:
 }
 
 _Requires_lock_not_held_(ScInterface->SmartCardLock)
-_Requires_lock_not_held_(ScInterface->AtrLock)
 NTSTATUS
 NfcCxSCInterfaceDispatchAttributeAtr(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
@@ -2035,11 +2027,10 @@ Return Value:
 --*/
 {
     static const DWORD PositionOfNN = 13;
+
     NTSTATUS status = STATUS_SUCCESS;
     BOOLEAN isStorageCard = FALSE;
     DWORD cbOutputBufferUsed = 0;
-    BOOLEAN requiresULCheck = FALSE;
-    StorageCardManager* pStorageCard = NULL;
 
     UNREFERENCED_PARAMETER(pbResultBuffer);
     UNREFERENCED_PARAMETER(cbResultBuffer);
@@ -2048,8 +2039,6 @@ Return Value:
 
     // Buffer size is validated at dispatch time
     _Analysis_assume_(DWORD_MAX >= *pcbOutputBuffer);
-
-    WdfWaitLockAcquire(ScInterface->AtrLock, NULL);
 
     WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
 
@@ -2089,45 +2078,14 @@ Return Value:
     }
 
     if (isStorageCard) {
-        if (cbOutputBufferUsed > (PositionOfNN + 1) &&
-            pbOutputBuffer[PositionOfNN] == 0x00 &&
-            pbOutputBuffer[PositionOfNN + 1] == PCSC_NN_MIFARE_UL) {
-            requiresULCheck = TRUE;
-
-            pStorageCard = ScInterface->StorageCard;
-            pStorageCard->AddRef();
-        }
-        else {
-            ScInterface->StorageCard->CacheAtr(pbOutputBuffer, cbOutputBufferUsed);
-        }
+        ScInterface->StorageCard->CacheAtr(pbOutputBuffer, cbOutputBufferUsed);
     }
 
     WdfWaitLockRelease(ScInterface->SmartCardLock);
 
-    // If the NN bytes are 0x0003, do an extra check to distinguish between Mifare UL and ULC
-    // Note: do not lock the DetectULC since it will be transmiting data through RF interface
-    if (requiresULCheck) {
-        if (NfcCxSCInterfaceDetectMifareULC(ScInterface)) {
-            pbOutputBuffer[PositionOfNN] = 0x00;
-            pbOutputBuffer[PositionOfNN + 1] = PCSC_NN_MIFARE_ULC;
-            pbOutputBuffer[cbOutputBufferUsed - 1] = NfcCxSCInterfaceComputeChecksum(pbOutputBuffer, cbOutputBufferUsed - 1);
-        }
-
-        WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
-        pStorageCard->CacheAtr(pbOutputBuffer, cbOutputBufferUsed);
-        pStorageCard->Release();
-        pStorageCard = NULL;
-        WdfWaitLockRelease(ScInterface->SmartCardLock);
-
-        // Reset the card to prevent it from becoming unresponsive
-        status = NfcCxSCInterfaceResetCard(ScInterface);
-    }
-
     *pcbOutputBuffer = cbOutputBufferUsed;
 
 Done:
-    WdfWaitLockRelease(ScInterface->AtrLock);
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
@@ -3326,7 +3284,19 @@ Return Value:
                 // Mifare UL
                 //
                 Output[index++] = 0x00;
-                Output[index++] = PCSC_NN_MIFARE_UL;
+                if (pRemDev->RemoteDevInfo.Iso14443A_Info.ULType == phNfc_eMifareULType_UltralightC)
+                {
+                    Output[index++] = PCSC_NN_MIFARE_ULC;
+                }
+                else if (pRemDev->RemoteDevInfo.Iso14443A_Info.ULType == phNfc_eMifareULType_UltralightEV1)
+                {
+                    Output[index++] = PCSC_NN_MIFARE_ULEV1;
+                }
+                else
+                {
+                    NT_ASSERT(pRemDev->RemoteDevInfo.Iso14443A_Info.ULType == phNfc_eMifareULType_Ultralight);
+                    Output[index++] = PCSC_NN_MIFARE_UL;
+                }
             }
             else if (pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_MIFARE_STD_1K) {
                 //
@@ -3642,57 +3612,6 @@ Return Value:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
-}
-
-_Requires_lock_not_held_(ScInterface->SmartCardLock)
-BOOLEAN
-NfcCxSCInterfaceDetectMifareULC(
-    _In_ PNFCCX_SC_INTERFACE ScInterface
-    )
-/*++
-
-Routine Description:
-
-    This routine detects if the card connected is Mifare UL or ULC.
-
-Arguments:
-
-    ScInterface - The SC Interface.
-
-Return Value:
-
-    TRUE if the card is Mifare ULC, FALSE if Mifare UL.
-
---*/
-{
-    BOOLEAN fResult = FALSE;
-    NTSTATUS status = STATUS_SUCCESS;
-    DWORD returnBufferSize = 0;
-    BYTE resultBuffer[256] = {0};
-    BYTE authenticateCmd[] = { 0x1A, 0x00 };
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    // Send an AUTHENTICATE command. Since Mifare ULC supports encryption and UL doesn't, the
-    // command will succeed for ULC and fail for UL.
-    status = NfcCxSCInterfaceTransmitRawData(ScInterface,
-                                             authenticateCmd,
-                                             sizeof(authenticateCmd),
-                                             resultBuffer,
-                                             sizeof(resultBuffer),
-                                             &returnBufferSize,
-                                             MIFARE_UL_AUTHENTICATE_RESPONSE_TIMEOUT);
-    TRACE_LINE(LEVEL_INFO,
-               L"AUTHENTICATE command returned status = %!STATUS! and buffer size = %lu",
-               status,
-               returnBufferSize);
-
-    if (NT_SUCCESS(status) && returnBufferSize == MIFARE_UL_AUTHENTICATE_RESPONSE_BUFFER_SIZE) {
-        fResult = TRUE;
-    }
-
-    TRACE_FUNCTION_EXIT_DWORD(LEVEL_VERBOSE, fResult);
-    return fResult;
 }
 
 _Requires_lock_not_held_(ScInterface->SmartCardLock)

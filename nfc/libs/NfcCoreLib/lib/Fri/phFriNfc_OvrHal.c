@@ -321,17 +321,13 @@ static void phFriNfc_OvrHal_CB_Transceive(void *context,
 {
     phFriNfc_OvrHal_t       *OvrHal = (phFriNfc_OvrHal_t *)context;
     PH_LOG_FRI_FUNC_ENTRY();
+    UNUSED(hRemoteDev);
 
     if (NULL != OvrHal)
     {
-        if(NULL != pRecvdata )
+        if (NULL != pRecvdata)
         {
             *OvrHal->pndef_recv_length = (uint16_t) pRecvdata->length;
-        }
-        if((phLibNfc_Handle)NULL != hRemoteDev)
-        {
-            /* Fix for Warning 4100 */
-            hRemoteDev=hRemoteDev;
         }
 
         if (NULL != OvrHal->TemporaryCompletionInfo.CompletionRoutine)
@@ -406,48 +402,42 @@ static void phFriNfc_OvrHal_CB_ConnectDisconnect(void *context,
     UNUSED(psRemoteDevInfo);
     if (NULL != OvrHal)
     {
-        if(hRemoteDev != (phLibNfc_Handle)NULL)
-        {
-            /* Fix for Warning 4100 */
-            hRemoteDev = hRemoteDev;
-        }
-        else
+        if (hRemoteDev == NULL)
         {
             status = NFCSTATUS_FAILED;
         }
 
         OvrHal->TemporaryCompletionInfo.CompletionRoutine(
-                OvrHal->TemporaryCompletionInfo.Context, status);
+            OvrHal->TemporaryCompletionInfo.Context, status);
     }
     PH_LOG_FRI_FUNC_EXIT();
 }
 
-static void  phFriNfc_OvrHal_SetComplInfo(phFriNfc_OvrHal_t *OvrHal,
+static void phFriNfc_OvrHal_SetComplInfo(phFriNfc_OvrHal_t *OvrHal,
                                    phFriNfc_CplRt_t  *CompletionInfo,
                                    uint8_t            Operation)
 
 {
-    PH_LOG_FRI_FUNC_ENTRY();
     OvrHal->Operation = Operation;
-   switch(Operation)
-   {
-      case PH_FRINFC_OVRHAL_RCV:
-      {
-         OvrHal->TemporaryRcvCompletionInfo.CompletionRoutine = CompletionInfo->CompletionRoutine;
-         OvrHal->TemporaryRcvCompletionInfo.Context = CompletionInfo->Context;
-         break;
-      }
-      case PH_FRINFC_OVRHAL_SND:
-      {
-         OvrHal->TemporarySndCompletionInfo.CompletionRoutine = CompletionInfo->CompletionRoutine;
-         OvrHal->TemporarySndCompletionInfo.Context = CompletionInfo->Context;
-         break;
-      }
-      default:
-      {
-         OvrHal->TemporaryCompletionInfo.CompletionRoutine = CompletionInfo->CompletionRoutine;
-         OvrHal->TemporaryCompletionInfo.Context = CompletionInfo->Context;
-         break;
-      }
-   }
+    switch (Operation)
+    {
+        case PH_FRINFC_OVRHAL_RCV:
+        {
+            OvrHal->TemporaryRcvCompletionInfo.CompletionRoutine = CompletionInfo->CompletionRoutine;
+            OvrHal->TemporaryRcvCompletionInfo.Context = CompletionInfo->Context;
+            break;
+        }
+        case PH_FRINFC_OVRHAL_SND:
+        {
+            OvrHal->TemporarySndCompletionInfo.CompletionRoutine = CompletionInfo->CompletionRoutine;
+            OvrHal->TemporarySndCompletionInfo.Context = CompletionInfo->Context;
+            break;
+        }
+        default:
+        {
+            OvrHal->TemporaryCompletionInfo.CompletionRoutine = CompletionInfo->CompletionRoutine;
+            OvrHal->TemporaryCompletionInfo.Context = CompletionInfo->Context;
+            break;
+        }
+    }
 }

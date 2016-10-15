@@ -26,10 +26,27 @@
 #define PH_FRINFC_MFUL_FMT_RO_PARSE_NDEF            10 /*!< Write default dynamic lock bytes address */
 #define PH_FRINFC_MFUL_FMT_RO_NDEF_PARSE_RD_BYTES   12 /*!< Read bytes from the card for parsing NDEF */
 
-#define PH_FRINFC_MFUL_FMT_LOCK_BITS_VAL            0x00   /*!< Lock bits block is 2 */
+#define PH_FRINFC_MFUL_FMT_LOCK_BITS_VAL            0x00 /*!< Lock bits block is 2 */
 
-#define PH_FRINFC_MFULC_FMT_OTP_BYTES               {0xE1, 0x10, 0x12, 0x00}   /*!< OTP bytes macro */
-#define PH_FRINFC_MFUL_FMT_OTP_BYTES                {0xE1, 0x10, 0x06, 0x00}   /*!< OTP bytes macro */
+/*
+* OTP bytes: Byte 0 is the NDEF magic number 0xE1. Byte 1 is the version number of the Type 2 Tag
+* Platform supported. Byte 2 is the memory size of the data area of the tag. Byte 3 indicates the
+* read and write access capability of the data area (0x00 means there is no restrictions on read
+* and write access). See Section 6.1, NDEF Management, of the NFC Forum Type 2 Tag spec for more
+* information.
+*/
+#define PH_FRINFC_MFUL_FMT_OTP_NDEF_MAGIC_NUMBER_BYTE        0 /*!< OTP byte that contains the NDEF magic number */
+#define PH_FRINFC_MFUL_FMT_OTP_TYPE2_TAG_VERSION_NUMBER_BYTE 1 /*!< OTP byte that contains the version of the Type 2 Tag spec implemented */
+#define PH_FRINFC_MFUL_FMT_OTP_DATA_AREA_SIZE_BYTE           2 /*!< OTP byte that contains the data area size */
+#define PH_FRINFC_MFUL_FMT_OTP_READ_WRITE_ACCESS_BYTE        3 /*!< OTP byte that contains the read/write access of the data area */
+
+#define PH_FRINFC_MFUL_FMT_NDEF_MAGIC_NUMBER        0xE1 /*!< NDEF magic number */
+#define PH_FRINFC_MFUL_FMT_TYPE2_TAG_VERSION_NUMBER 0x10 /*!< Version of the NFC Forum Type 2 Tag spec implemented (1.0) */
+#define PH_FRINFC_MFUL_FMT_READ_WRITE_ACCESS        0x00 /*!< Read/write access of the data area */
+#define PH_FRINFC_MFUL_FMT_DATA_AREA_SIZE           0x06 /*!< Size of data area for Ultralight */
+#define PH_FRINFC_MFULC_FMT_DATA_AREA_SIZE          0x12 /*!< Size of data area for Ultralight C */
+
+#define PH_FRINFC_MFUL_FMT_OTP_BYTES_TEMPLATE   { PH_FRINFC_MFUL_FMT_NDEF_MAGIC_NUMBER, PH_FRINFC_MFUL_FMT_TYPE2_TAG_VERSION_NUMBER, 0x00, PH_FRINFC_MFUL_FMT_READ_WRITE_ACCESS } /*!< OTP bytes template for Ultralight. Data area size byte is not set */
 
 enum
 {

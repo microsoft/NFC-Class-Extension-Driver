@@ -879,8 +879,8 @@ void phNciNfc_PrintNfceeDiscoverNtfDescription(uint8_t *pBuff, uint16_t wLen)
 }
 
 void phNciNfc_PrintPacketDescription(
-    pphNciNfc_sCoreHeaderInfo_t pHeaderInfo, 
-    uint8_t *pBuff, 
+    pphNciNfc_sCoreHeaderInfo_t pHeaderInfo,
+    uint8_t *pBuff,
     uint16_t wLen,
     uint8_t bLogDataMessages)
 {
@@ -894,15 +894,14 @@ void phNciNfc_PrintPacketDescription(
         case phNciNfc_e_NciCoreMsgTypeData:
         {
             PH_LOG_NCI_INFO_STR("Message type: Data");
-            PH_LOG_NCI_INFO_X32MSG("Conn ID:",(uint32_t)pHeaderInfo->bConn_ID);
-            PH_LOG_NCI_INFO_X32MSG("Payload Length:", (uint32_t)wLen);
+            PH_LOG_NCI_INFO_X32MSG("Conn ID:", (uint32_t)pHeaderInfo->bConn_ID);
         }
         break;
         case phNciNfc_e_NciCoreMsgTypeCntrlCmd:
         {
             PH_LOG_NCI_INFO_STR("Message type: Command");
             PH_LOG_NCI_INFO_STR("GID: %!phNciNfc_CoreGid!", pHeaderInfo->Group_ID);
-            
+
             switch (pHeaderInfo->Group_ID)
             {
             case phNciNfc_e_CoreNciCoreGid:
@@ -981,6 +980,7 @@ void phNciNfc_PrintPacketDescription(
             case phNciNfc_e_CoreInvalidGid:
             default:
                 PH_LOG_NCI_INFO_X32MSG("OID:",(uint32_t)pHeaderInfo->Opcode_ID.Val);
+                break;
             }
         }
         break;
@@ -1153,7 +1153,8 @@ void phNciNfc_PrintPacketDescription(
         }
         break;
     }
-    
+
+    PH_LOG_NCI_INFO_U32MSG("Payload Length:", (uint32_t)wLen);
     if (pHeaderInfo->eMsgType == phNciNfc_e_NciCoreMsgTypeData)
     {
         if (bLogDataMessages)
