@@ -288,6 +288,10 @@ NFCSTATUS phNciNfc_StartDiscovery(void* pNciHandle,
     NFCSTATUS               wStatus = NFCSTATUS_SUCCESS;
     /* Store the Number of Discovery configurations */
     uint8_t bNoofConfigs=0;
+    bool_t bNci1x = PH_NCINFC_VERSION_IS_1x(pNciContext);
+    bool_t bNci2x = PH_NCINFC_VERSION_IS_2x(pNciContext);
+
+    /*Note: ListenNfcFActive and PollNfcFActive exist only in NCI1.x specification.*/
 
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL == pNciHandle)
@@ -344,22 +348,24 @@ NFCSTATUS phNciNfc_StartDiscovery(void* pNciHandle,
             bNoofConfigs++;
         }
         /* Check whether Polling loop to be enabled for Listen NFC-F Technology */
-        if(pPollConfig->ListenNfcAActive)
+        if(pPollConfig->ListenNfcAActive ||
+            (1 == pPollConfig->ListenNfcFActive && bNci2x))
         {
             bNoofConfigs++;
         }
         /* Check whether Polling loop to be enabled for Listen NFC-F Technology */
-        if(pPollConfig->ListenNfcFActive)
+        if(pPollConfig->ListenNfcFActive && bNci1x)
         {
             bNoofConfigs++;
         }
         /* Check whether Polling loop to be enabled for Listen NFC-F Technology */
-        if(pPollConfig->PollNfcAActive)
+        if(pPollConfig->PollNfcAActive ||
+            (1 == pPollConfig->PollNfcFActive && bNci2x))
         {
             bNoofConfigs++;
         }
         /* Check whether Polling loop to be enabled for Listen NFC-F Technology */
-        if(pPollConfig->PollNfcFActive)
+        if(pPollConfig->PollNfcFActive && bNci1x)
         {
             bNoofConfigs++;
         }
