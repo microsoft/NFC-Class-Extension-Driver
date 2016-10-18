@@ -93,6 +93,9 @@
     <ClCompile Include="..\phFriNfc_TopazMap.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\phFriNfc_TopazFormat.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\phFriNfc.h">
@@ -171,6 +174,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\phFriNfc_TopazMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\phFriNfc_TopazFormat.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

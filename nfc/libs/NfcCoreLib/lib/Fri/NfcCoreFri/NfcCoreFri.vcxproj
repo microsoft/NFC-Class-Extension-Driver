@@ -60,6 +60,7 @@
     <ClCompile Include="..\phFriNfc_SnepProtocol.c" />
     <ClCompile Include="..\phFriNfc_SnepProtocolUtility.c" />
     <ClCompile Include="..\phFriNfc_TopazDynamicMap.c" />
+    <ClCompile Include="..\phFriNfc_TopazFormat.c" />
     <ClCompile Include="..\phFriNfc_TopazMap.c" />
   </ItemGroup>
   <ItemGroup>
@@ -88,6 +89,7 @@
     <ClInclude Include="..\phFriNfc_Pch.h" />
     <ClInclude Include="..\phFriNfc_SmtCrdFmt.h" />
     <ClInclude Include="..\phFriNfc_SnepProtocolUtility.h" />
+    <ClInclude Include="..\phFriNfc_TopazFormat.h" />
     <ClInclude Include="..\phFriNfc_TopazMap.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
