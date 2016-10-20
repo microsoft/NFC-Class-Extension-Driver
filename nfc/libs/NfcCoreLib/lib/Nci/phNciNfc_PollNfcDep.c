@@ -16,16 +16,21 @@ phNciNfc_NfcDepPollRdrAInit(
 {
     NFCSTATUS                   status = NFCSTATUS_SUCCESS;
     uint8_t                     *pRfNtfBuff = NULL;
+    uint8_t                     RfTech;
     uint8_t                     RfTechSpecParamsLen = 0;
     uint8_t                     ActvnParamsLen = 0;
+    uint8_t                     AtrLen = 0;
     uint8_t                     bSelResRespLen = 0;
     uint8_t                     bUidLength = 0;
     uint8_t                     bSelRespVal = 0;
+    uint8_t                     bCount = 7;
 
     PH_LOG_NCI_FUNC_ENTRY();
 
     if((0 != (wLen)) && (NULL != pBuff) && (NULL != pRemDevInf))
     {
+        RfTech = pBuff[3];
+
         /* Length of technology specific parameters */
         RfTechSpecParamsLen = pBuff[6];
 
@@ -37,57 +42,80 @@ phNciNfc_NfcDepPollRdrAInit(
         if(0 != RfTechSpecParamsLen)
         {
             /* Point the buffer to the first parameter of technology specific parameters */
-            pRfNtfBuff = &pBuff[7];
+            pRfNtfBuff = &pBuff[bCount];
 
-            /* Get technology specific parameters incase of Nfc-A poll mode */
-            /* Length of NFCID1 */
-            bUidLength = *(pRfNtfBuff+2);
-            /* Length of SEL_RES response */
-            bSelResRespLen = *(pRfNtfBuff + 3 + bUidLength);
-            if(0 != bSelResRespLen)
+            if(RfTech == phNciNfc_NFCA_Poll)
             {
-                /* Length of SEL_RES should always be '1' as per Nci spec ver 25 */
-                if(1 == bSelResRespLen)
+                /* Get technology specific parameters incase of Nfc-A poll mode */
+                /* Length of NFCID1 */
+                bUidLength = *(pRfNtfBuff + 2);
+                /* Length of SEL_RES response */
+                bSelResRespLen = *(pRfNtfBuff + 3 + bUidLength);
+                if(0 != bSelResRespLen)
                 {
-                    /* Length of SEL_RES shall be '0' incase of Nfc Forum Type 1 Tag */
-                    bSelRespVal = *(pRfNtfBuff + 3 + bUidLength + 1);
+                    /* Length of SEL_RES should always be '1' as per Nci spec ver 25 */
+                    if(1 == bSelResRespLen)
+                    {
+                        /* Length of SEL_RES shall be '0' incase of Nfc Forum Type 1 Tag */
+                        bSelRespVal = *(pRfNtfBuff + 3 + bUidLength + 1);
+                    }
+                    else
+                    {
+                        PH_LOG_NCI_CRIT_STR("Invalid SEL_RES length");
+                        status = NFCSTATUS_FAILED;
+                    }
+                }
+                pRemDevInf->tRemoteDevInfo.NfcIP_Info.SelRes = bSelRespVal;
+                pRemDevInf->tRemoteDevInfo.NfcIP_Info.SelResLen = bSelResRespLen;
+
+                phOsalNfc_SetMemory(pRemDevInf->tRemoteDevInfo.NfcIP_Info.SensRes, 0,
+                                    PH_NCINFCTYPES_SENS_RES_LEN);
+                /* Sense Response incase of Poll Nfc-A is of 2 bytes (incase of Poll Nfc-F, its 16 or 18 bytes) */
+                phOsalNfc_MemCopy(pRemDevInf->tRemoteDevInfo.NfcIP_Info.SensRes, pRfNtfBuff, 2);
+                pRemDevInf->tRemoteDevInfo.NfcIP_Info.SensResLength = 2;
+
+                /* NFCID3 shall is always 10 bytes */
+                if(0 == bUidLength)
+                {
+                    PH_LOG_NCI_CRIT_STR("NFCID3 does not exist");
+                }
+                else if((PH_NCINFCTYPES_NFCID1_4BYTES == bUidLength) ||
+                        (PH_NCINFCTYPES_NFCID1_7BYTES == bUidLength) ||
+                        (PH_NCINFCTYPES_MAX_NFCID1_SIZE == bUidLength))
+                {
+                    pRemDevInf->tRemoteDevInfo.NfcIP_Info.NFCID_Length = bUidLength;
+                    phOsalNfc_SetMemory((pRemDevInf->tRemoteDevInfo.NfcIP_Info.NFCID), 0,
+                                PH_NCINFCTYPES_MAX_NFCID3_SIZE);
+                    phOsalNfc_MemCopy(&(pRemDevInf->tRemoteDevInfo.NfcIP_Info.NFCID),
+                                (pRfNtfBuff + 3), bUidLength);
                 }
                 else
                 {
-                    PH_LOG_NCI_CRIT_STR("Invalid SEL_RES length");
+                    PH_LOG_NCI_CRIT_STR("Invalid NFCID3 length");
                     status = NFCSTATUS_FAILED;
                 }
             }
-            pRemDevInf->tRemoteDevInfo.NfcIP_Info.SelRes = bSelRespVal;
-            pRemDevInf->tRemoteDevInfo.NfcIP_Info.SelResLen = bSelResRespLen;
-
-            phOsalNfc_SetMemory(pRemDevInf->tRemoteDevInfo.NfcIP_Info.SensRes,0,
-                                PH_NCINFCTYPES_SENS_RES_LEN);
-            /* Sense Response incase of Poll Nfc-A is of 2 bytes (incase of Poll Nfc-F, its 16 or 18 bytes) */
-            phOsalNfc_MemCopy(pRemDevInf->tRemoteDevInfo.NfcIP_Info.SensRes,pRfNtfBuff,2);
-            pRemDevInf->tRemoteDevInfo.NfcIP_Info.SensResLength = 2;
-
-            /* NFCID3 shall is always 10 bytes */
-            if(0 == bUidLength)
-            {
-                PH_LOG_NCI_CRIT_STR("NFCID3 does not exist");
-            }
-            else if((PH_NCINFCTYPES_NFCID1_4BYTES == bUidLength) ||
-                    (PH_NCINFCTYPES_NFCID1_7BYTES == bUidLength) ||
-                    (PH_NCINFCTYPES_MAX_NFCID1_SIZE == bUidLength))
-            {
-                pRemDevInf->tRemoteDevInfo.NfcIP_Info.NFCID_Length = bUidLength;
-                phOsalNfc_SetMemory((pRemDevInf->tRemoteDevInfo.NfcIP_Info.NFCID),0,
-                            PH_NCINFCTYPES_MAX_NFCID3_SIZE);
-                phOsalNfc_MemCopy(&(pRemDevInf->tRemoteDevInfo.NfcIP_Info.NFCID),
-                            (pRfNtfBuff+3),bUidLength);
-            }
             else
             {
-                PH_LOG_NCI_CRIT_STR("Invalid NFCID3 length");
-                status = NFCSTATUS_FAILED;
-            }
+                pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = pRfNtfBuff[0];
+                phOsalNfc_SetMemory(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo, 0,
+                            PH_NCINFCTYPES_ATR_MAX_LEN);
 
+                if(pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length <= PH_NCINFCTYPES_ATR_MAX_LEN)
+                {
+                    /* Specific Parameters for NFC-ACM Poll Mode have the following format:
+                       - ATR_REQ Response Length: 1 byte
+                       - ATR_REQ Response: n bytes*/
+                    phOsalNfc_MemCopy(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo,
+                        pRfNtfBuff + 1, pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length);
+                }
+                else
+                {
+                    pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = 0;
+                    PH_LOG_NCI_CRIT_STR("Invalid ATR_INFO length");
+                    status = NFCSTATUS_FAILED;
+                }
+            }
         }
 
         if(NFCSTATUS_SUCCESS == status)
@@ -110,15 +138,23 @@ phNciNfc_NfcDepPollRdrAInit(
             /* Update gpphNciNfc_RdrDataXchgSequence with the appropriate functions to be called
                    by sequence handler on invocation during data exchange */
             /* Obtain the length of Activation parameters from pBuff */
-            ActvnParamsLen = pBuff[7+RfTechSpecParamsLen+PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN];
+            bCount += RfTechSpecParamsLen + PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN;
+            ActvnParamsLen = pBuff[bCount];
+            if (0 != ActvnParamsLen)
+            {
+                bCount++;
+                AtrLen = pBuff[bCount];
+            }
 
             /* Holds ATR_RES if remote device is a P2P target and ATR_REQ if remote device is a
                P2P initiator */
-
-            if(0 != ActvnParamsLen)
+            /* The relevant ATR Length is present in the first activation parameter.
+               In the case of NCI 2.0, we ignore the Data Exchange Length Reduction parameter for now */
+            if(0 != AtrLen)
             {
-                pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = (ActvnParamsLen-1);
-                pRfNtfBuff = &(pBuff[7+RfTechSpecParamsLen+PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN+2]);
+                pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = AtrLen;
+                bCount++;
+                pRfNtfBuff = &(pBuff[bCount]);
                 phOsalNfc_SetMemory(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo,0,
                                     PH_NCINFCTYPES_ATR_MAX_LEN);
                 if(pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length <= PH_NCINFCTYPES_ATR_MAX_LEN)
@@ -132,6 +168,20 @@ phNciNfc_NfcDepPollRdrAInit(
                     PH_LOG_NCI_CRIT_STR("Invalid ATR_INFO length");
                     status = NFCSTATUS_FAILED;
                 }
+            }
+
+            /* In NCI1.0 NFC-DEP params are stored in Activation Parameters
+            In NCI2.0 NFC-DEP params are stored in:
+            - RF Technology Specific Parameters in case of Active P2P
+            - Activation Parameters in case of Passive P2P
+            If using Active Communication Mode the RF_INTF_ACTIVATED_INTF SHALL NOT include any
+            Activation Parameters.
+            */
+            if(0 != ActvnParamsLen && pRemDevInf->tRemoteDevInfo.NfcIP_Info.Nfcip_Active == 1 &&
+               PH_NCINFC_VERSION_IS_2x(PHNCINFC_GETNCICONTEXT()))
+            {
+                status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
+                PH_LOG_NCI_INFO_STR(" Invalid Params..");
             }
 
             /* If Activated device is P2P Target. Only 'Transreceive' function shall be active
@@ -165,6 +215,8 @@ phNciNfc_NfcDepPollRdrFInit(
     uint8_t   RfTechSpecParamsLen;
     uint8_t   SensFResRespLen;
     uint8_t   ActvnParamsLen = 0;
+    uint8_t   AtrLen = 0;
+    uint8_t   bCount = 7;
 
     PH_LOG_NCI_FUNC_ENTRY();
     if( (0 != (wLen)) && (NULL != pBuff) && (NULL != pRemDevInf))
@@ -174,7 +226,7 @@ phNciNfc_NfcDepPollRdrFInit(
 
         /* Obtain the len of RF tech specific parameters from Resp buff */
         RfTechSpecParamsLen = pBuff[6];
-        pRfNtfBuff = &pBuff[7];
+        pRfNtfBuff = &pBuff[bCount];
 
         /* Clear the information */
         pRemDevInf->tRemoteDevInfo.NfcIP_Info.SensResLength = 0;
@@ -231,12 +283,22 @@ phNciNfc_NfcDepPollRdrFInit(
             /* Target speed (Target to initiator speed) */
             pRemDevInf->tRemoteDevInfo.NfcIP_Info.Nfcip_Datarate = (phNciNfc_BitRates_t)pRemDevInf->bTransBitRate;
             /* Obtain the length of Activation parameters from pBuff */
-            ActvnParamsLen = pBuff[7+RfTechSpecParamsLen+PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN];
+            bCount += RfTechSpecParamsLen + PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN;
+            ActvnParamsLen = pBuff[bCount];
 
-            if(0 != ActvnParamsLen)
+            /* The relevant ATR Length is present in the first activation parameter.
+               In the case of NCI 2.0, we ignore the Data Exchange Length Reduction parameter for now */
+            if (0 != ActvnParamsLen)
             {
-                pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = (ActvnParamsLen-1);
-                pRfNtfBuff = &(pBuff[7+RfTechSpecParamsLen+PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN+2]);
+                bCount++;
+                AtrLen = pBuff[bCount];
+            }
+
+            if(0 != AtrLen)
+            {
+                pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = AtrLen;
+                bCount++;
+                pRfNtfBuff = &(pBuff[bCount]);
                 phOsalNfc_SetMemory(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo,0,
                                     PH_NCINFCTYPES_ATR_MAX_LEN);
                 if(pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length <= PH_NCINFCTYPES_ATR_MAX_LEN)
