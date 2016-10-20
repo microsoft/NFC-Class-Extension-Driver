@@ -1292,7 +1292,7 @@ static void phLibNfc_SetDiscPayload(void *pContext,phLibNfc_sADD_Cfg_t *pADDSetu
         pNciConfig->EnableKovio = pADDSetup->PollDevInfo.PollCfgInfo.EnableKovio;
     }
     /* Configure for P2P Initiator Device */
-    /* Enable passive mode */
+    /* Enable active mode */
     if(pADDSetup->PollDevInfo.PollCfgInfo.EnableNfcActive == 1)
     {
         pNciConfig->PollNfcAActive = 0;
