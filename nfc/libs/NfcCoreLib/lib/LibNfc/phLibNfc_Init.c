@@ -38,6 +38,7 @@ phLibNfc_Sequence_t gphLibNfc_InitializeSequence[] = {
 static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
 {
     pphLibNfc_LibContext_t      pLibContext=NULL;
+    pphNciNfc_Context_t         pNciContext = NULL;
     pphNciNfc_TransactInfo_t pTransactInfo=(pphNciNfc_TransactInfo_t)pInfo;
     NFCSTATUS tempStatus = wStatus;
 
@@ -52,6 +53,7 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
             if(NULL != pInfo)
             {
                 (PHLIBNFC_GETCONTEXT())->sHwReference.pNciHandle=pTransactInfo->pContext;
+                pNciContext = pTransactInfo->pContext;
 
                 wStatus = phLibNfc_GetNfccFeatures((PHLIBNFC_GETCONTEXT())->sHwReference.pNciHandle);
                 if(NFCSTATUS_SUCCESS == wStatus)
@@ -101,6 +103,15 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                                 phNciNfc_e_RegisterReset,\
                                 &phLibNfc_ResetNtfHandler,\
                                 (void *)gpphLibNfc_Context);
+                    }
+
+                    /* RF_ISO_DEP_NAK_PRESENCE_CMD and CORE_SET_POWER_SUB_STATE_CMD are NCI2.0 commands.
+                     * If the Nci Version is 2.0 force those flags to 1.
+                     */
+                    if (PH_NCINFC_VERSION_IS_2x(pNciContext))
+                    {
+                        pLibContext->Config.bIsoDepPresChkCmd = 1;
+                        pLibContext->Config.bSwitchedOnSubState = 1;
                     }
                 }else
                 {
