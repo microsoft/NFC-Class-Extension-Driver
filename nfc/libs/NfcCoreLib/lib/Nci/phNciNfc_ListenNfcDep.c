@@ -19,6 +19,8 @@ phNciNfc_NfcDepLstnRdrAInit(
     uint8_t                     *pRfNtfBuff = NULL;
     uint8_t                     RfTechSpecParamsLen = 0;
     uint8_t                     ActvnParamsLen = 0;
+    uint8_t                     AtrLen = 0;
+    uint8_t                     bCount = 7;
 
     PH_LOG_NCI_FUNC_ENTRY();
     if((0 != (wLen)) && (NULL != pBuff) && (NULL != pRemDevInf))
@@ -27,7 +29,7 @@ phNciNfc_NfcDepLstnRdrAInit(
         RfTechSpecParamsLen = pBuff[6];
 
         /* Shift the buffer pointer points to first parameter of technology specific parameters */
-        pRfNtfBuff = &pBuff[7];
+        pRfNtfBuff = &pBuff[bCount];
 
         /* The activated remote device is a P2P Initiator */
         (pRemDevInf->RemDevType) = phNciNfc_eNfcIP1_Initiator;
@@ -45,21 +47,52 @@ phNciNfc_NfcDepLstnRdrAInit(
                 pRemDevInf->tRemoteDevInfo.NfcIP_Info.Nfcip_Active = 0; /* Passive communciation */
             break;
         }
-        /* Obtain the length of Activation parameters from pBuff */
-        ActvnParamsLen = pBuff[7+RfTechSpecParamsLen+PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN];
 
-        /* Holds ATR_RES if remote device is a P2P target and ATR_REQ if remote device is a
-           P2P initiator */
+        bCount += RfTechSpecParamsLen + PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN;
+        /* Obtain the length of Activation parameters from pBuff */
+        ActvnParamsLen = pBuff[bCount];
         if(0 != ActvnParamsLen)
         {
-            pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = (ActvnParamsLen-1);
-            pRfNtfBuff = &(pBuff[7+RfTechSpecParamsLen+PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN+2]);
-            phOsalNfc_SetMemory(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo,0,
+            bCount++;
+            AtrLen = pBuff[bCount];
+
+            /* Holds ATR_RES if remote device is a P2P target and ATR_REQ if remote device is a
+               P2P initiator */
+            /* The relevant ATR Length is present in the first activation parameter.
+               In the case of NCI 2.0, we ignore the Data Exchange Length Reduction parameter for now */
+            if (0 != AtrLen)
+            {
+                pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = AtrLen;
+                bCount++;
+                pRfNtfBuff = &(pBuff[bCount]);
+                phOsalNfc_SetMemory(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo, 0,
+                                    PH_NCINFCTYPES_ATR_MAX_LEN);
+                if (pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length <= PH_NCINFCTYPES_ATR_MAX_LEN)
+                {
+                    phOsalNfc_MemCopy(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo,
+                                pRfNtfBuff, pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length);
+                }
+                else
+                {
+                    pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = 0;
+                    PH_LOG_NCI_CRIT_STR("Invalid ATR_INFO length");
+                    status = NFCSTATUS_FAILED;
+                }
+            }
+        }
+
+        if(0 != RfTechSpecParamsLen)
+        {
+            pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = pRfNtfBuff[0];
+            phOsalNfc_SetMemory(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo, 0,
                                 PH_NCINFCTYPES_ATR_MAX_LEN);
             if(pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length <= PH_NCINFCTYPES_ATR_MAX_LEN)
             {
+                /* Specific Parameters for NFC-ACM Listen Mode have the following format:
+                    - ATR_RES Response Length: 1 byte
+                    - ATR_RES Response: n bytes*/
                 phOsalNfc_MemCopy(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo,
-                            pRfNtfBuff,pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length);
+                            pRfNtfBuff + 1, pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length);
             }
             else
             {
@@ -68,6 +101,20 @@ phNciNfc_NfcDepLstnRdrAInit(
                 status = NFCSTATUS_FAILED;
             }
         }
+
+        /* In NCI1.0 NFC-DEP params are stored in Activation Parameters
+           In NCI2.0 NFC-DEP params are stored in:
+           - RF Technology Specific Parameters in case of Active P2P
+           - Activation Parameters in case of Passive P2P
+           If using Active Communication Mode the RF_INTF_ACTIVATED_INTF SHALL NOT include any
+           Activation Parameters. */
+        if(0 != ActvnParamsLen && pRemDevInf->tRemoteDevInfo.NfcIP_Info.Nfcip_Active == 1 &&
+           PH_NCINFC_VERSION_IS_2x(PHNCINFC_GETNCICONTEXT()))
+        {
+            status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
+            PH_LOG_NCI_INFO_STR(" Invalid Params..");
+        }
+
         /* The Activated device is a P2P Initiator. The P2P 'Send' and 'Receive' functions shall be active.
            The P2P Target (i.e., us) is expected to receive data from remote P2P initiator and expected
            to send data to Remote P2P target in response */
@@ -92,6 +139,8 @@ phNciNfc_NfcDepLstnRdrFInit(
     uint8_t                     RfTechSpecParamsLen;
     uint8_t                     bNfcId2Len;
     uint8_t                     ActvnParamsLen = 0;
+    uint8_t                     AtrLen = 0;
+    uint8_t                     bCount = 7;
 
     PH_LOG_NCI_FUNC_ENTRY();
     if( (0 != (wLen)) && (NULL != pBuff) && (NULL != pRemDevInf))
@@ -101,7 +150,7 @@ phNciNfc_NfcDepLstnRdrFInit(
 
         /* Obtain the len of RF tech specific parameters from Resp buff */
         RfTechSpecParamsLen = pBuff[6]; /*TODO: Check should added for this*/
-        pRfNtfBuff = &pBuff[7];
+        pRfNtfBuff = &pBuff[bCount];
 
         bNfcId2Len = *(pRfNtfBuff);
 
@@ -141,13 +190,21 @@ phNciNfc_NfcDepLstnRdrFInit(
                     pRemDevInf->tRemoteDevInfo.NfcIP_Info.Nfcip_Active = 0; /* Passive communciation */
                 break;
             }
-            /* Obtain the length of Activation parameters from pBuff */
-            ActvnParamsLen = pBuff[7+RfTechSpecParamsLen+PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN];
 
-            if(0 != ActvnParamsLen)
+            bCount += RfTechSpecParamsLen + PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN;
+            /* Obtain the length of Activation parameters from pBuff */
+            ActvnParamsLen = pBuff[bCount];
+
+            if (0 != ActvnParamsLen)
             {
-                pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = (ActvnParamsLen-1);
-                pRfNtfBuff = &(pBuff[7+RfTechSpecParamsLen+PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN+2]);
+                bCount++;
+                AtrLen = pBuff[bCount];
+            }
+            if(0 != AtrLen)
+            {
+                pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = AtrLen;
+                bCount++;
+                pRfNtfBuff = &(pBuff[bCount]);
                 phOsalNfc_SetMemory(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo,0,
                                     PH_NCINFCTYPES_ATR_MAX_LEN);
                 if(pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length <= PH_NCINFCTYPES_ATR_MAX_LEN)
