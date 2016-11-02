@@ -461,6 +461,7 @@ typedef struct phNciNfc_NfceeDeviceInfo
     /** Number of NFCEE TLV present into the information field*/
     uint8_t bNumTypeInfo;
     uint8_t *pTlvInfo;
+    uint32_t TlvInfoLen;
     /** HW ID and ATR(looks will be present for almost all the NFCEEs) so kept outside
         of this discovery information Other are part of the */
     phNciNfc_NfceeDiscTlvInfo_t aAdditionalInfo[PH_NCINFC_NFCEE_INFO_TLV_MAX];

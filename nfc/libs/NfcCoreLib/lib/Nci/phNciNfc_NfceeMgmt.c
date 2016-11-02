@@ -498,6 +498,7 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
                 }
                 if( (NFCSTATUS_SUCCESS == wStatus) && (bCount > 0) )
                 {
+                    pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.TlvInfoLen = bCount;
                     pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.bNumTypeInfo = \
                         (uint8_t)pBuff[bIndex];
                     pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.pTlvInfo = \
