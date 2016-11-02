@@ -10,6 +10,7 @@
 
 static NFCSTATUS phLibNfc_OpenLogConn(void* pContext,NFCSTATUS status,void* pInfo);
 static NFCSTATUS phLibNfc_OpenLogConnProcess(void* pContext,NFCSTATUS status,void* pInfo);
+static NFCSTATUS phLibNfc_HciOpenAdmPipeNci2x(void* pContext, NFCSTATUS status, void* pInfo);
 static NFCSTATUS phLibNfc_HciOpenAdmPipe(void* pContext,NFCSTATUS status,void* pInfo);
 static NFCSTATUS phLibNfc_HciOpenAdmPipeProc(void* pContext,NFCSTATUS status,void* pInfo);
 static NFCSTATUS phLibNfc_HciGetHostList(void* pContext,NFCSTATUS status,void* pInfo);
@@ -194,6 +195,21 @@ NFCSTATUS phLibNfc_OpenLogConnProcess(void* pContext, NFCSTATUS wStatus, void* p
     else
     {
         wStatus = NFCSTATUS_FAILED;
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phLibNfc_HciOpenAdmPipeNci2x(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+
+    wStatus = phLibNfc_OpenLogConnProcess(pContext, status, pInfo);
+    if (wStatus == NFCSTATUS_SUCCESS)
+    {
+        wStatus = phLibNfc_HciOpenAdmPipe(pContext, status, pInfo);
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;
