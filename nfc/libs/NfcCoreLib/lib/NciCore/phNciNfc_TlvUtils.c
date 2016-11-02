@@ -271,6 +271,42 @@ static bool_t phNciNfc_TlvUtilsFindTlv( phNciNfc_TlvUtilInfo_t *pttlvInfo, uint8
     return bRetStat;
 }
 
+NFCSTATUS phNciNfc_TlvUtilsGetTLVLength(uint8_t *pBuffer,
+                                        uint16_t wLength,
+                                        uint16_t *tlvLength)
+{
+    uint16_t wCount = 0;
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+    if ((NULL != pBuffer) && (wLength >= PHNCINFC_TLVUTIL_TLV_HEADER_LEN))
+    {
+        for (; wCount + PHNCINFC_TLVUTIL_TLV_HEADER_LEN < wLength;
+             wCount += (uint16_t)(pBuffer[wCount + 1] + PHNCINFC_TLVUTIL_TLV_HEADER_LEN))
+        {
+            /*Parse it till end to assure tlv format consistency in the input buffer */
+        }
+        /* If input Tlv buffer contains valid tlv's */
+        if (wCount <= wLength)
+        {
+            *tlvLength = wCount;
+            /* Number of tlv's present in the buffer */
+            wStatus = NFCSTATUS_SUCCESS;
+        }
+        else
+        {
+            PH_LOG_NCI_CRIT_STR("Inconsistent tlv's!");
+            wStatus = NFCSTATUS_FAILED;
+        }
+    }
+    else
+    {
+        PH_LOG_NCI_CRIT_STR("Invalid input parameter");
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
 NFCSTATUS
 phNciNfc_TlvUtilsParseTLV(uint8_t *pBuffer,
                           uint16_t wLength)

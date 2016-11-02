@@ -73,6 +73,12 @@ extern uint8_t phNciNfc_TlvUtilsRemoveTlv(
                            uint8_t btag                         /**< 'tag' part of the TLV */
                            );
 
+extern NFCSTATUS phNciNfc_TlvUtilsGetTLVLength(
+                          uint8_t *pBuffer,
+                          uint16_t wLength,
+                          uint16_t *tlvLength
+                          );
+
 extern NFCSTATUS phNciNfc_TlvUtilsParseTLV(
                           uint8_t *pBuffer,
                           uint16_t wLength

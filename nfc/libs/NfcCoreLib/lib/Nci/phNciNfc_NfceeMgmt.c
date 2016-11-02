@@ -399,7 +399,7 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
     uint8_t *pBuff;
     uint16_t wLen;
     uint8_t bIndex = 0;
-    uint8_t bCount = 0;
+    uint16_t bCount = 0;
     uint8_t bDevIndex = 0;
     uint8_t bNfceeStatus = TRUE;
     uint8_t bNewNfceeId = FALSE;
@@ -488,14 +488,10 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
             if(NFCSTATUS_SUCCESS == wStatus)
             {
                 /* Index points to the Number of NFCEE info TLVs
-                   Calculate the length of TLV parameters sent in the command
-                   Number of TLV bytes = Total Length - length of other parameters in discover NTF -
+                   Calculate the remaining data length including TLV parameters sent in the command
+                   Number of remaining data length = Total Length - length of other parameters in discover NTF -
                                             Length of Number of TLVs */
-                bCount = (uint8_t)(wLen - bIndex - 1);
-                if(bCount > 0)
-                {
-                    wStatus = phNciNfc_TlvUtilsParseTLV(&pBuff[bIndex + 1],(uint16_t)bCount);
-                }
+                phNciNfc_TlvUtilsGetTLVLength(&pBuff[bIndex + 1], (wLen - bIndex - 1), &bCount);
                 if( (NFCSTATUS_SUCCESS == wStatus) && (bCount > 0) )
                 {
                     pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.TlvInfoLen = bCount;
