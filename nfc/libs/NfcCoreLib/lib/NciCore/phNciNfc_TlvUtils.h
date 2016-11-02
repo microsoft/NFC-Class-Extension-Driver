@@ -26,6 +26,9 @@
 /* Offset to the Proprietary value field in tlv buffer */
 #define PHNCINFC_TLVUTIL_NXP_PROP_VALUE_BYTEOFFSET      (3u)
 
+/* TLV Coding for Host ID in the HCI Network (NCI2.0) */
+#define PHNCINFC_TLVUTIL_NCI_PROP_HCINWK_HOST_ID        (0x03)
+
 #define PHNCINFC_TLVUTIL_SUCCESS                           (10u)
 #define PHNCINFC_TLVUTIL_BUFFER_NOT_EMPTY                  (11u)
 #define PHNCINFC_TLVUTIL_BUFFER_EMPTY                      (12u)

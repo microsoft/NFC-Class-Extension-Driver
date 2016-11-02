@@ -1419,7 +1419,13 @@ NFCSTATUS phLibNfc_SE_GetIndex(void *pContext, phLibNfc_SE_Status_t bSeState, ui
 phLibNfc_SE_Type_t phLibNfc_SE_GetType(void* pContext, pphNciNfc_NfceeInfo_t pNfceeInfo)
 {
     pphLibNfc_LibContext_t pLibContext = pContext;
-    if((NULL != pLibContext) && (NULL != pNfceeInfo))
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    uint8_t bType = 0;
+    uint8_t bLen = 0;
+    uint8_t bCount = 0;
+    phNciNfc_TlvUtilInfo_t tTlvInfo;
+    uint8_t *pValue = NULL;
+    if ((NULL != pLibContext) && (NULL != pNfceeInfo))
     {
         /*If the NFCC supports the HCI Network, it SHALL return NFCEE_DISCOVER_NTF with a Protocol type of "HCI Access"
           An NFCEE_DISCOVER_NTF that contains a Protocol type of "HCI Access" SHALL NOT contain any other additional Protocol*/
@@ -1434,13 +1440,39 @@ phLibNfc_SE_Type_t phLibNfc_SE_GetType(void* pContext, pphNciNfc_NfceeInfo_t pNf
         /*The NFCEE ID returned by the NFCC in the NFCEE_DISCOVER_NTF is used by the DH to address the HCI network*/
         if(0 == pLibContext->Config.bHciNwkPerNfcee)
         {
-            switch(pNfceeInfo->bNfceeId)
+            if (PH_NCINFC_VERSION_IS_1x(PHNCINFC_GETNCICONTEXT()))
             {
-            case phHciNfc_e_UICCHostID:
-                return phLibNfc_SE_Type_UICC;
+                switch (pNfceeInfo->bNfceeId)
+                {
+                case phHciNfc_e_UICCHostID:
+                    return phLibNfc_SE_Type_UICC;
 
-            case phHciNfc_e_SEHostID:
-                return phLibNfc_SE_Type_eSE;
+                case phHciNfc_e_SEHostID:
+                    return phLibNfc_SE_Type_eSE;
+                }
+            }
+            else
+            {
+                tTlvInfo.pBuffer = pNfceeInfo->pNfceeHandle->tDevInfo.pTlvInfo;
+                tTlvInfo.dwLength = pNfceeInfo->pNfceeHandle->tDevInfo.TlvInfoLen;
+                tTlvInfo.sizeInfo.dwOffset = 0;
+                for (bCount = 0; bCount < pNfceeInfo->pNfceeHandle->tDevInfo.bNumTypeInfo; bCount++)
+                {
+                    wStatus = phNciNfc_TlvUtilsGetNxtTlv(&tTlvInfo, &bType, &bLen, &pValue);
+                    if (NFCSTATUS_SUCCESS == wStatus)
+                    {
+                        if (bType == PHNCINFC_TLVUTIL_NCI_PROP_HCINWK_HOST_ID && bLen == 1)
+                        {
+                            switch (pValue[0])
+                            {
+                            case phHciNfc_e_UICCHostID:
+                                return phLibNfc_SE_Type_UICC;
+                            case phHciNfc_e_SEHostID:
+                                return phLibNfc_SE_Type_eSE;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
