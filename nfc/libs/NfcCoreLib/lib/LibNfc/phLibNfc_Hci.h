@@ -18,4 +18,5 @@ extern NFCSTATUS phLibNfc_HciSetSessionIdentity(void* pContext,NFCSTATUS status,
 extern NFCSTATUS phLibNfc_HciSetSessionIdentityProc(void* pContext,NFCSTATUS status,void* pInfo);
 
 extern NFCSTATUS phLibNfc_HciLaunchDevInitSequenceNci1x(void *pContext);
+extern NFCSTATUS phLibNfc_HciLaunchDevInitSequenceNci2x(void *pContext);
 extern NFCSTATUS phLibNfc_HciLaunchChildDevInitSequence(void *pContext, phLibNfc_SE_Index_t bIndex);

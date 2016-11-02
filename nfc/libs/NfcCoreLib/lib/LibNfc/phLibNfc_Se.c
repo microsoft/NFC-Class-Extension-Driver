@@ -578,11 +578,18 @@ static void phLibNfc_UpdateSeInfo(void* pContext, pphNciNfc_NfceeInfo_t pNfceeIn
         {
             pCtx->sSeContext.nNfceeDiscNtf--;
             wStatus = phLibNfc_SE_GetIndex(pCtx, phLibNfc_SeStateInitializing, &bIndex);
-            if((wStatus == NFCSTATUS_FAILED) && (pCtx->sSeContext.nNfceeDiscNtf == 0))
+            if(pCtx->sSeContext.nNfceeDiscNtf == 0)
             {
-                /*Decrement the count of the NFCEE discovery notification and if the discovery process has completed
-                  and there is no other NFCEE init sequence in progress launch the NFCEE discovery complete sequence*/
-                phLibNfc_LaunchNfceeDiscCompleteSequence(pCtx,NFCSTATUS_SUCCESS,NULL);
+                if(wStatus == NFCSTATUS_FAILED)
+                {
+                    /*Decrement the count of the NFCEE discovery notification and if the discovery process has completed
+                    and there is no other NFCEE init sequence in progress launch the NFCEE discovery complete sequence*/
+                    phLibNfc_LaunchNfceeDiscCompleteSequence(pCtx, NFCSTATUS_SUCCESS, NULL);
+                }
+                else if(PH_NCINFC_VERSION_IS_2x((PHNCINFC_GETNCICONTEXT())))
+                {
+                    phLibNfc_HciLaunchDevInitSequenceNci2x(pCtx);
+                }
             }
         }
     }
