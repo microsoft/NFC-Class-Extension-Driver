@@ -574,7 +574,8 @@ typedef enum phNciNfc_CoreNfceeMgtRspOid
 
 typedef enum phNciNfc_CoreNfceeMgtNtfOid
 {
-    phNciNfc_e_NfceeMgtNfceeDiscNtfOid = 0x00               /**<NFCEE Management NFCEE discover notification OID */
+    phNciNfc_e_NfceeMgtNfceeDiscNtfOid = 0x00,              /**<NFCEE Management NFCEE discover notification OID */
+    phNciNfc_e_NfceeMgtModeSetNtfOid = 0x01,                /**<NFCEE Management NFCEE mode set notification OID */
 }phNciNfc_CoreNfceeMgtNtfOid_t;
 
 /**
