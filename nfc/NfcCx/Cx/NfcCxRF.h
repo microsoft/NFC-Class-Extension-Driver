@@ -69,6 +69,9 @@ typedef struct _NFCCX_LIBNFC_CONTEXT {
     BOOLEAN                       bIsTagWriteAttempted;
     BOOLEAN                       bIsTagReadOnlyAttempted;
     BOOLEAN                       bIsP2PConnected;
+    BOOLEAN                       bIsMultiProtocolTag;
+    uint8_t                       uNoRemoteDevices;
+    DWORD                         SelectedProtocolIndex;
     phLibNfc_eReleaseType_t       eReleaseType;
     PNFCCX_STATE_INTERFACE        StateInterface;
     PNFCCX_LLCP_INTERFACE         LLCPInterface;
@@ -284,6 +287,16 @@ NfcCxRFInterfaceConvertToReadOnlyTag(
 
 NTSTATUS
 NfcCxRFInterfaceTargetReactivate(
+    _In_ PNFCCX_RF_INTERFACE RFInterface
+    );
+
+NTSTATUS
+NfcCxRFInterfaceTargetDeactivate(
+    _In_ PNFCCX_RF_INTERFACE RFInterface
+);
+
+NTSTATUS
+NfcCxRFInterfaceTargetActivate(
     _In_ PNFCCX_RF_INTERFACE RFInterface
     );
 

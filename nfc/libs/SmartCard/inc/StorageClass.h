@@ -133,6 +133,25 @@ typedef enum _PcscIncrementDecrement
     BlkValueCmd = 0x81,
 } PcscIncrementDecrement;
 
+
+typedef struct _PcscSwitchProtocolDataObject
+{
+    unsigned char  Tag;        // 0x8F
+    unsigned char  Length;     // 0x02
+    unsigned char  value[2];   // For values see spec
+}SwitchProtocolTlv_t;
+
+typedef struct _PcscSwitchProtocolAPDU
+{
+    unsigned char                   pbCLA;                  // 0xFF
+    unsigned char                   pbINS;                  // 0xC2
+    unsigned char                   pbP1;                   // 0x00
+    unsigned char                   pbP2;                   // 0x00
+    unsigned char                   pbLc;                   // 0x02
+    _PcscSwitchProtocolDataObject   PcscSwitchProtoData;
+    unsigned char                   pbLe;
+}PcscSwitchProtocolAPDU;
+
 class IStorageCard
 {
 public:

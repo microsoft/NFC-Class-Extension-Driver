@@ -907,7 +907,7 @@ Done:
 VOID
 NfcCxSCInterfaceHandleSmartCardConnectionEstablished(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_ phNfc_sRemoteDevInformation_t* pRemoteDeviceInfo
+    _In_ PNFCCX_RF_INTERFACE RFInterface
     )
 /*++
 
@@ -927,8 +927,19 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
+    DWORD    DefaultProtocol = 0;
+    phNfc_sRemoteDevInformation_t* pRemoteDeviceInfo = NULL;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
+
+    ScInterface->SmartCardConnected = TRUE;
+
+    TRACE_LINE(LEVEL_INFO, "SmartCardConnectionEstablished!!!");
+
+    pRemoteDeviceInfo = RFInterface->pLibNfcContext->pRemDevList[DefaultProtocol].psRemoteDevInfo;
+    RtlCopyMemory(&ScInterface->RemoteDeviceInfo, pRemoteDeviceInfo, sizeof(phNfc_sRemoteDevInformation_t));
 
     switch (pRemoteDeviceInfo->RemDevType)
     {
@@ -944,13 +955,6 @@ Return Value:
             TRACE_LINE(LEVEL_WARNING, "Unsupported SmartCard type %!phNfc_eRFDevType_t!", pRemoteDeviceInfo->RemDevType);
             goto Done;
     }
-
-    TRACE_LINE(LEVEL_INFO, "SmartCardConnectionEstablished!!!");
-
-    WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
-
-    ScInterface->SmartCardConnected = TRUE;
-    RtlCopyMemory(&ScInterface->RemoteDeviceInfo, pRemoteDeviceInfo, sizeof(phNfc_sRemoteDevInformation_t));
     status = NfcCxSCInterfaceLoadStorageClassFromAtrLocked(ScInterface);
 
     WdfWaitLockRelease(ScInterface->SmartCardLock);
@@ -1716,6 +1720,42 @@ Return Value:
             goto Done;
         }
 
+        cbOutputBufferUsed = cbResponseBuffer;
+    }
+    else if (NfcCxSCInterfaceValidateSwitchProtocolCommand((PBYTE)InputBuffer + sizeof(SCARD_IO_REQUEST),
+        cbInputBuffer - sizeof(SCARD_IO_REQUEST)) == TRUE){
+        BYTE Sw1Sw2[DEFAULT_APDU_STATUS_SIZE] = { 0x90,0x00 };
+
+        status = NfcCxSCInterfaceDeactivateMultiProtocolTag(scInterface);
+        if (NT_SUCCESS(status)){
+            WdfWaitLockAcquire(scInterface->SmartCardLock, NULL);
+
+            status = NfcCxSCInterfaceLoadSelectedProtocol(
+                                                        scInterface,
+                                                        (PBYTE)InputBuffer + sizeof(SCARD_IO_REQUEST),
+                                                        cbInputBuffer - sizeof(SCARD_IO_REQUEST));
+
+            WdfWaitLockRelease(scInterface->SmartCardLock);
+
+            status = NfcCxSCInterfaceActivateMultiProtocolTag(scInterface);
+            if (!NT_SUCCESS(status)){
+                Sw1Sw2[0] = 0x00;
+                Sw1Sw2[1] = 0x00;
+            }
+        } else {
+            Sw1Sw2[0] = 0x00;
+            Sw1Sw2[1] = 0x00;
+        }
+        status = NfcCxSCInterfaceCopyResponseData(OutputBuffer,
+                                                  cbOutputBuffer,
+                                                  Sw1Sw2,
+                                                  sizeof(Sw1Sw2),
+                                                  &cbResponseBuffer);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to construct response buffer, %!STATUS!", status);
+            goto Done;
+        }
+        TRACE_LINE(LEVEL_ERROR, "smartcard resp 90 00 sending %d", cbResponseBuffer);
         cbOutputBufferUsed = cbResponseBuffer;
     }
     else {
@@ -2834,6 +2874,98 @@ Done:
     return fLoadKey;
 }
 
+BOOL NfcCxSCInterfaceValidateSwitchProtocolCommand(
+    _In_bytecount_(InputBufferLength) PBYTE InputBuffer,
+    _In_ DWORD InputBufferLength
+)
+{
+    BOOL retval = FALSE;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    TRACE_LINE(LEVEL_INFO, "ValidateSwitchProtocolCommand Size = %x\n", InputBufferLength);
+    if (InputBufferLength < PCSC_SWITCH_PROTOCOL_APDU_SIZE)
+    {
+        TRACE_LINE(LEVEL_ERROR, "Invalid APDU buffer size");
+        goto Done;
+    }
+    else
+    {
+        PPcscCommandApduInfo cmdApdu = (PPcscCommandApduInfo)InputBuffer;
+        if ((0xFF == cmdApdu->Cla) &&
+            (PcscEnvelopeCmd == cmdApdu->Ins) &&
+            (0x00 == cmdApdu->P1) && ((0x02 == cmdApdu->P2)))
+        {
+            TRACE_LINE(LEVEL_INFO,"Command APDU is Switch Protocol \n");
+            retval = TRUE;
+        }
+        else
+        {
+            TRACE_LINE(LEVEL_INFO,"Command APDU is NOT Switch Protocol \n");
+        }
+    }
+
+Done:
+
+    TRACE_LINE(LEVEL_INFO,"%s (OUT) (return %d) \n", __FUNCTION__, retval);
+    return retval;
+}
+
+NTSTATUS NfcCxSCInterfaceLoadSelectedProtocol(
+    _In_ PNFCCX_SC_INTERFACE ScInterface,
+    _In_bytecount_(InputBufferLength) PBYTE InputBuffer,
+    _In_ DWORD InputBufferLength
+)
+{
+    NTSTATUS status = STATUS_UNSUCCESSFUL;
+    PcscSwitchProtocolAPDU SelProtocolApdu;
+    DWORD SelectedProtocol = 0;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    memcpy(&SelProtocolApdu, InputBuffer, InputBufferLength);
+
+    TRACE_LINE(LEVEL_INFO, "\n SelProtocolApdu.pbCLA = %x\n", SelProtocolApdu.pbCLA);
+    TRACE_LINE(LEVEL_INFO, "\n SelProtocolApdu.pbINS = %x\n", SelProtocolApdu.pbINS);
+    TRACE_LINE(LEVEL_INFO, "\n SelProtocolApdu.pbP1 = %x\n", SelProtocolApdu.pbP1);
+    TRACE_LINE(LEVEL_INFO, "\n SelProtocolApdu.pbP2 = %x\n", SelProtocolApdu.pbP2);
+    TRACE_LINE(LEVEL_INFO, "\n SelProtocolApdu.pbLc = %x\n", SelProtocolApdu.pbLc);
+    TRACE_LINE(LEVEL_INFO, "\n SelProtocolApdu.TlvMsg.Type = %x\n", SelProtocolApdu.PcscSwitchProtoData.Tag);
+    TRACE_LINE(LEVEL_INFO, "\n SelProtocolApdu.TlvMsg.Length = %x\n", SelProtocolApdu.PcscSwitchProtoData.Length);
+    TRACE_LINE(LEVEL_INFO, "\n SelProtocolApdu.TlvMsg.value[0]= %x\n", SelProtocolApdu.PcscSwitchProtoData.value[0]);
+    TRACE_LINE(LEVEL_INFO, "\n SelProtocolApdu.TlvMsg.value[1]= %x\n", SelProtocolApdu.PcscSwitchProtoData.value[1]);
+    TRACE_LINE(LEVEL_INFO, "\n SelProtocolApdu.pbLe = %x\n", SelProtocolApdu.pbLe);
+
+    //Parse APDU and select the prefered protocol
+
+    if (((SelProtocolApdu.PcscSwitchProtoData.value[0] == PCSC_SWITCH_PROTOCOL_STD_TYPE) && (SelProtocolApdu.PcscSwitchProtoData.value[1] == PCSC_SELECT_PROTOCOL_MIFARE)) ||
+            ((SelProtocolApdu.PcscSwitchProtoData.value[0] == PCSC_SWITCH_PROTOCOL_STD_TYPE) && (SelProtocolApdu.PcscSwitchProtoData.value[1] == PCSC_SELECT_PROTOCOL_ISO4A)))
+    {
+        if (PCSC_SELECT_PROTOCOL_ISO4A == SelProtocolApdu.PcscSwitchProtoData.value[1])
+        {
+            //Find 4A devinfo from the RemoteDeviceList return index
+            SelectedProtocol = NfcCxSCInterfaceGetIndexOfSelectedProtocol(ScInterface->FdoContext->RFInterface, phNfc_eISO14443_4A_PICC);
+            TRACE_LINE(LEVEL_INFO, "\n Selected protocol is 4A at index %d \n", SelectedProtocol);
+            status = STATUS_SUCCESS;
+        }
+        if (PCSC_SELECT_PROTOCOL_MIFARE == SelProtocolApdu.PcscSwitchProtoData.value[1])
+        {
+            //Find mifare devinfo from the RemoteDeviceList return index
+            SelectedProtocol = NfcCxSCInterfaceGetIndexOfSelectedProtocol(ScInterface->FdoContext->RFInterface, phNfc_eMifare_PICC);
+            TRACE_LINE(LEVEL_INFO, "\n Selected protocol is Mifare at index  %d \n", SelectedProtocol);
+            status = STATUS_SUCCESS;
+        }
+        ScInterface->FdoContext->RFInterface->pLibNfcContext->SelectedProtocolIndex = SelectedProtocol;
+    }
+
+    RtlCopyMemory(&ScInterface->RemoteDeviceInfo, ScInterface->FdoContext->RFInterface->pLibNfcContext->pRemDevList[SelectedProtocol].psRemoteDevInfo, sizeof(phNfc_sRemoteDevInformation_t));
+
+    NfcCxSCInterfaceLoadStorageClassFromAtrLocked(ScInterface);
+
+    TRACE_LINE(LEVEL_INFO, "%s (OUT) (return %d) \n", __FUNCTION__, status);
+    return status;
+}
+
 _Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
 NfcCxSCInterfaceLoadKeyLocked(
@@ -3668,4 +3800,134 @@ Routine Description:
     }
 
     return tck;
+}
+
+BOOLEAN
+NfcCxSCInterfaceIsMultiProtocolTag(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+)
+/*++
+
+Routine Description:
+
+This routine checks wheather smart card tag is multiprotocol Tag
+
+--*/
+{
+    BOOLEAN fResult = FALSE;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NT_ASSERT(ScInterface->SmartCardConnected);
+
+    if (ScInterface->FdoContext->RFInterface->pLibNfcContext != NULL)
+    {
+        if (ScInterface->FdoContext->RFInterface->pLibNfcContext->bIsMultiProtocolTag == TRUE &&
+            ScInterface->FdoContext->RFInterface->pLibNfcContext->uNoRemoteDevices > 1)
+        {
+            fResult = TRUE;
+        }
+    }
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+
+    return fResult;
+}
+
+_Requires_lock_not_held_(ScInterface->SmartCardLock)
+NTSTATUS
+NfcCxSCInterfaceDeactivateMultiProtocolTag(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+)
+/*++
+
+Routine Description:
+
+This routine DeActivates the smart card
+
+Arguments:
+
+ScInterface - The SC Interface
+
+Return Value:
+
+NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    TRACE_LINE(LEVEL_INFO, "Card DeactivateCommand Sent");
+
+    status = NfcCxRFInterfaceTargetDeactivate(ScInterface->FdoContext->RFInterface);
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
+    return status;
+}
+
+_Requires_lock_not_held_(ScInterface->SmartCardLock)
+NTSTATUS
+NfcCxSCInterfaceActivateMultiProtocolTag(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+)
+/*++
+
+Routine Description:
+
+This routine Activates the smart card
+
+Arguments:
+
+ScInterface - The SC Interface
+
+Return Value:
+
+NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    TRACE_LINE(LEVEL_INFO, "Card ActivateCommand Sent");
+
+    status = NfcCxRFInterfaceTargetActivate(ScInterface->FdoContext->RFInterface);
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
+    return status;
+}
+
+DWORD
+NfcCxSCInterfaceGetIndexOfSelectedProtocol(
+    _Inout_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ phNfc_eRemDevType_t RemDevType
+)
+{
+    DWORD bIndex = 0x00;
+    DWORD SelectedProtocolIndex = 0x00;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    if (RFInterface->pLibNfcContext->pRemDevList != NULL)
+    {
+        for (bIndex = 0; bIndex < RFInterface->pLibNfcContext->uNoRemoteDevices; bIndex++)
+        {
+             if (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo != NULL)
+             {
+                 if (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo->RemDevType == RemDevType)
+                 {
+                     SelectedProtocolIndex = bIndex;
+                 }
+             }
+         }
+    }
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+
+    return SelectedProtocolIndex;
 }

@@ -87,6 +87,13 @@ Environment:
 #define MIFARE_UL_AUTHENTICATE_RESPONSE_BUFFER_SIZE 9
 #define MIFARE_UL_AUTHENTICATE_RESPONSE_TIMEOUT     100
 
+#define PCSC_SELECT_PROTOCOL_MIFARE                 0x03
+#define PCSC_SELECT_PROTOCOL_ISO4A                  0x04
+#define PCSC_SWITCH_PROTOCOL_TYPE                   0X8F
+#define PCSC_SWITCH_PROTOCOL_LENGTH                 0X02
+#define PCSC_SWITCH_PROTOCOL_STD_TYPE               0X00
+#define PCSC_SWITCH_PROTOCOL_APDU_SIZE              0x09
+
 typedef
 NTSTATUS
 NFCCX_SC_DISPATCH_HANDLER(
@@ -155,6 +162,10 @@ typedef struct _NFCCX_SC_INTERFACE {
     phNfc_sRemoteDevInformation_t RemoteDeviceInfo;
 
     //
+    // Selected DeviceInfo Number from DeviceList
+    //
+    DWORD  SelectedProtocolIndex;
+    //
     // SmartCard storage card reference counted pointer
     //
     StorageCardManager* StorageCard;
@@ -218,7 +229,7 @@ NfcCxSCInterfaceRemoveClient(
 VOID
 NfcCxSCInterfaceHandleSmartCardConnectionEstablished(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_ phNfc_sRemoteDevInformation_t* pRemoteDeviceInfo
+    _In_ PNFCCX_RF_INTERFACE RFInterface
     );
 
 VOID
@@ -353,6 +364,12 @@ NfcCxSCInterfaceValidateLoadKeyCommand(
     _In_ DWORD InputBufferLength
     );
 
+BOOL
+NfcCxSCInterfaceValidateSwitchProtocolCommand(
+    _In_bytecount_(InputBufferLength) PBYTE InputBuffer,
+    _In_ DWORD InputBufferLength
+    );
+
 NTSTATUS
 NfcCxSCInterfaceValidateMifareLoadKeyParameters(
     _In_bytecount_(InputBufferLength) PBYTE InputBuffer,
@@ -460,11 +477,47 @@ NfcCxSCInterfaceResetCard(
     _In_ PNFCCX_SC_INTERFACE ScInterface
     );
 
+_Requires_lock_not_held_(ScInterface->SmartCardLock)
+BOOLEAN
+NfcCxSCInterfaceDetectMifareULC(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+    );
+
+_Requires_lock_not_held_(ScInterface->SmartCardLock)
+NTSTATUS
+NfcCxSCInterfaceDeactivateMultiProtocolTag(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+);
+
+_Requires_lock_not_held_(ScInterface->SmartCardLock)
+NTSTATUS
+NfcCxSCInterfaceActivateMultiProtocolTag(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+);
+
 BYTE
 NfcCxSCInterfaceComputeChecksum(
     _In_reads_bytes_(cbAtr) BYTE* pAtr,
     _In_ DWORD cbAtr
     );
+
+BOOLEAN
+NfcCxSCInterfaceIsMultiProtocolTag(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+    );
+
+NTSTATUS
+NfcCxSCInterfaceLoadSelectedProtocol(
+    _In_ PNFCCX_SC_INTERFACE ScInterface,
+    _In_bytecount_(InputBufferLength) PBYTE InputBuffer,
+    _In_ DWORD InputBufferLength
+);
+
+DWORD
+NfcCxSCInterfaceGetIndexOfSelectedProtocol(
+    _Inout_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ phNfc_eRemDevType_t RemDevType
+);
 
 //
 // Inline helper functions
