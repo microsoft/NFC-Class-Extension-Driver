@@ -18,6 +18,10 @@ Environment:
 
 #pragma once
 
+// To be removed once these Attribute IDs are defined in winsmcrd.h
+#define SCARD_ATTR_VENDOR_SPECIFIC_BRAND_INFO 0x0180
+#define SCARD_ATTR_VENDOR_SPECIFIC_DEVICECAP_INFO 0x0181
+
 #define HINIBBLE(b) ((BYTE)((b >> 4) & 0x0f))
 #define LONIBBLE(b) ((BYTE)(b & 0x0f))
 

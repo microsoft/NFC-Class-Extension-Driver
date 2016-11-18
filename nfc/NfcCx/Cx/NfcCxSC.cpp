@@ -1102,8 +1102,9 @@ Return Value:
     DWORD *pdwAttributeId = (DWORD*)InputBuffer;
     size_t cbOutputBuffer = OutputBufferLength;
     PNFCCX_SC_INTERFACE scInterface;
+    PNFCCX_FDO_CONTEXT fdoContext;
 
-    UNREFERENCED_PARAMETER(Request);
+
     UNREFERENCED_PARAMETER(InputBufferLength);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -1113,9 +1114,23 @@ Return Value:
     //
     _Analysis_assume_(sizeof(BYTE) <= OutputBufferLength);
 
+    fdoContext  = NfcCxFdoGetContext(Device);
+    scInterface = fdoContext->SCInterface;
 
-    scInterface = NfcCxFdoGetContext(Device)->SCInterface;
 
+    if ((*pdwAttributeId == SCARD_ATTR_VENDOR_SPECIFIC_BRAND_INFO) || (*pdwAttributeId == SCARD_ATTR_VENDOR_SPECIFIC_DEVICECAP_INFO))
+    {
+        if (NULL != fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl) {
+            fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl(fdoContext->Device,
+                Request,
+                OutputBufferLength,
+                InputBufferLength,
+                IOCTL_SMARTCARD_GET_ATTRIBUTE);
+            status = STATUS_PENDING;
+            goto Done;
+
+        }
+    }
     for (USHORT TableEntry = 0; TableEntry < ARRAYSIZE(g_ScAttributeDispatch); TableEntry++) {
         if (g_ScAttributeDispatch[TableEntry].dwAttributeId == *pdwAttributeId) {
 
@@ -1148,7 +1163,7 @@ Return Value:
         //
         status = STATUS_PENDING;
     }
-
+Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
 
@@ -1187,9 +1202,10 @@ Return Value:
 {
     NTSTATUS status = STATUS_NOT_SUPPORTED;
     DWORD *pdwAttributeId = (DWORD*)InputBuffer;
+    PNFCCX_FDO_CONTEXT fdoContext;
 
     UNREFERENCED_PARAMETER(Device);
-    UNREFERENCED_PARAMETER(Request);
+
     UNREFERENCED_PARAMETER(InputBufferLength);
     UNREFERENCED_PARAMETER(OutputBuffer);
     UNREFERENCED_PARAMETER(OutputBufferLength);
@@ -1201,10 +1217,27 @@ Return Value:
     //
     _Analysis_assume_(sizeof(DWORD) <= InputBufferLength);
 
+    fdoContext = NfcCxFdoGetContext(Device);
+
+    if (*pdwAttributeId == SCARD_ATTR_VENDOR_SPECIFIC_BRAND_INFO)
+    {
+        if (NULL != fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl) {
+            fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl(fdoContext->Device,
+                Request,
+                OutputBufferLength,
+                InputBufferLength,
+                IOCTL_SMARTCARD_SET_ATTRIBUTE);
+            status = STATUS_PENDING;
+            goto Done;
+
+        }
+    }
+
+
     if (*pdwAttributeId == SCARD_ATTR_DEVICE_IN_USE) {
         status = STATUS_SUCCESS;
     }
-
+Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
     

@@ -1059,6 +1059,8 @@ NfcCxBindClient(
         (PFN_NFC_CX)NfcCxEvtSetLlcpConfig,
         (PFN_NFC_CX)NfcCxEvtRegisterSequenceHandler,
         (PFN_NFC_CX)NfcCxEvtUnregisterSequenceHandler,
+        (PFN_NFC_CX)NfcCxEvtReleaseHardwareControl,
+        (PFN_NFC_CX)NfcCxEvtReacquireHardwareControl,
     };
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -1131,4 +1133,110 @@ NfcCxUnbindClient(
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+}
+
+NTSTATUS
+NfcCxEvtReleaseHardwareControl(
+    _In_ PNFCCX_DRIVER_GLOBALS NfcCxGlobals,
+    _In_ WDFDEVICE Device
+)
+/*++
+
+Routine Description:
+
+This routine is called by the CX client to make CX driver
+release the NFCC access.
+
+Arguments:
+
+Device - WDF device to initialize
+
+Return Value:
+
+NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    PNFCCX_FDO_CONTEXT fdoContext;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    if (!VerifyPrivateGlobals(NfcCxGlobals)) {
+        TRACE_LINE(LEVEL_ERROR, "Invalid CX global pointer");
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    fdoContext = NfcCxFdoGetContext(Device);
+
+    if (fdoContext->RFInterface == NULL) {
+        TRACE_LINE(LEVEL_ERROR, "CX not initialized");
+        status = STATUS_INVALID_DEVICE_STATE;
+        goto Done;
+    }
+
+    status = NfcCxFdoDeInitialize(fdoContext);
+
+Done:
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxEvtReacquireHardwareControl(
+    _In_ PNFCCX_DRIVER_GLOBALS NfcCxGlobals,
+    _In_ WDFDEVICE Device
+)
+/*++
+
+Routine Description:
+
+This routine is called by the CX client to make CX driver
+reacquire the NFCC access.
+
+Arguments:
+
+Device - WDF device to initialize
+
+Return Value:
+
+NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    PNFCCX_FDO_CONTEXT fdoContext;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    if (!VerifyPrivateGlobals(NfcCxGlobals)) {
+            TRACE_LINE(LEVEL_ERROR, "Invalid CX global pointer");
+            status = STATUS_INVALID_PARAMETER;
+            goto Done;
+    }
+    fdoContext = NfcCxFdoGetContext(Device);
+
+    if (fdoContext->RFInterface == NULL) {
+        TRACE_LINE(LEVEL_ERROR, "CX not initialized");
+        status = STATUS_INVALID_DEVICE_STATE;
+        goto Done;
+    }
+
+    status = NfcCxFdoInitialize(fdoContext);
+    if (STATUS_SUCCESS == status)
+    {
+        status = NfcCxRFInterfaceUpdateDiscoveryState(fdoContext->RFInterface);
+    }
+    else
+    {
+        TRACE_LINE(LEVEL_ERROR, "NfcCxFdoInitialize Failed");
+        status = STATUS_INVALID_DEVICE_STATE;
+    }
+
+Done:
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
 }
