@@ -32,6 +32,7 @@ Environment:
 #define APDU_STATUS_ERROR_DATA_OBJECT_MISSING       "\x69\x87"
 #define APDU_STATUS_ERROR_INCORRECT_DATA_OBJECT     "\x69\x88"
 #define APDU_STATUS_ERROR_INVALID_OBJECT_LENGTH     "\x69\x89"
+#define APDU_STATUS_ERROR_COMMAND_ABORTED           "\x6F\x00"
 #define APDU_STATUS_SUCCESS                         "\x90\x00"
 
 #define SAK_MIFARE_UL               0x00
@@ -97,6 +98,7 @@ Environment:
 #define PCSC_SWITCH_PROTOCOL_LENGTH                 0X02
 #define PCSC_SWITCH_PROTOCOL_STD_TYPE               0X00
 #define PCSC_SWITCH_PROTOCOL_APDU_SIZE              0x09
+#define PCSC_SWITCH_PROTOCOL_INDEX_NOT_FOUND        0xFF
 
 typedef
 NTSTATUS
@@ -511,14 +513,14 @@ NfcCxSCInterfaceIsMultiProtocolTag(
     );
 
 NTSTATUS
-NfcCxSCInterfaceLoadSelectedProtocol(
+NfcCxSCInterfaceLoadNewSelectedProtocol(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
     _In_bytecount_(InputBufferLength) PBYTE InputBuffer,
     _In_ DWORD InputBufferLength
 );
 
 DWORD
-NfcCxSCInterfaceGetIndexOfSelectedProtocol(
+NfcCxSCInterfaceGetIndexOfProtocolType(
     _Inout_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ phNfc_eRemDevType_t RemDevType
 );

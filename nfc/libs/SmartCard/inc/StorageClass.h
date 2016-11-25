@@ -28,6 +28,10 @@ Environment:
 #define COMMAND_BUFFER_SIZE             512
 #define DEFAULT_APDU_STATUS_SIZE        2
 
+#define PCSC_CLASS_BYTE                 0xFF
+#define PCSC_PARA1_SWITCH_BYTE          0x00
+#define PCSC_PARA2_SWITCH_BYTE          0x02
+
 enum ApduResult
 {
     RESULT_SUCCESS,

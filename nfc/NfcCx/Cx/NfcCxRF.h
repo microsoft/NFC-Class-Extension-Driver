@@ -69,7 +69,6 @@ typedef struct _NFCCX_LIBNFC_CONTEXT {
     BOOLEAN                       bIsTagWriteAttempted;
     BOOLEAN                       bIsTagReadOnlyAttempted;
     BOOLEAN                       bIsP2PConnected;
-    BOOLEAN                       bIsMultiProtocolTag;
     uint8_t                       uNoRemoteDevices;
     DWORD                         SelectedProtocolIndex;
     phLibNfc_eReleaseType_t       eReleaseType;
