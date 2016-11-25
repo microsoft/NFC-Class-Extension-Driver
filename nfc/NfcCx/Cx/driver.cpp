@@ -1231,8 +1231,7 @@ NTSTATUS
     }
     else
     {
-        TRACE_LINE(LEVEL_ERROR, "NfcCxFdoInitialize Failed");
-        status = STATUS_INVALID_DEVICE_STATE;
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize the Fdo, %!STATUS!", status);
     }
 
 Done:
