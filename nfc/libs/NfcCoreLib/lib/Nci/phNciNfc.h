@@ -18,27 +18,6 @@
 
 /**
  * \ingroup grp_nci_nfc
- * \brief The supported NCI version of the specification
- */
-#define PH_NCINFC_VERSION_MAJOR_MASK                (0xF0)
-#define PH_NCINFC_VERSION_MINOR_MASK                (0x0F)
-
-#define PH_NCINFC_VERSION_MAJOR_1x                  (0x01)
-#define PH_NCINFC_VERSION_MINOR_1x                  (0x00)
-#define PH_NCINFC_VERSION_MAJOR_2x                  (0x02)
-#define PH_NCINFC_VERSION_MINOR_2x                  (0x00)
-
-#define PH_NCINFC_VERSION_1x                        ((PH_NCINFC_VERSION_MAJOR_1x << 4) | PH_NCINFC_VERSION_MINOR_1x)
-#define PH_NCINFC_VERSION_IS_1x(x)                  ((x->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) <= \
-                                                     (PH_NCINFC_VERSION_1x & PH_NCINFC_VERSION_MAJOR_MASK))
-#define PH_NCINFC_VERSION_2x                        ((PH_NCINFC_VERSION_MAJOR_2x << 4) | PH_NCINFC_VERSION_MINOR_2x)
-#define PH_NCINFC_VERSION_IS_2x(x)                  ((x->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) == \
-                                                     (PH_NCINFC_VERSION_2x & PH_NCINFC_VERSION_MAJOR_MASK))
-
-
-
-/**
- * \ingroup grp_nci_nfc
  * \brief Max length of Higher layer inf of ATTRIB command
  */
 #define PH_NCINFC_MAX_HIGHER_LAYER_INF_LEN           (0x30U)
