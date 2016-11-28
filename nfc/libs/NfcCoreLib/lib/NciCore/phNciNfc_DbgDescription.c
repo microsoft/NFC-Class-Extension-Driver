@@ -11,6 +11,8 @@
 #define PHNCINFC_VALIDATE_PACKET_LENGTH(Expected, Actual) \
     if ((Expected) > (Actual)) { return; } \
 
+static uint8_t NciVer = 0;
+
 void phNciNfc_PrintCoreResetCmdDescription(uint8_t *pBuff, uint16_t wLen)
 {
     PHNCINFC_VALIDATE_PACKET_LENGTH(1, wLen);
@@ -306,9 +308,11 @@ void phNciNfc_PrintNfceeModeSetCmdDescription(uint8_t *pBuff, uint16_t wLen)
 
 void phNciNfc_PrintCoreResetRspDescription(uint8_t *pBuff, uint16_t wLen)
 {
-    PHNCINFC_VALIDATE_PACKET_LENGTH(3, wLen);
+    PHNCINFC_VALIDATE_PACKET_LENGTH(PHNCINFC_CORE_RESET_RSP_LEN_NCI2x, wLen);
     PH_LOG_NCI_INFO_STR("Status: %!NCI_STATUS!", pBuff[0]);
+    PHNCINFC_VALIDATE_PACKET_LENGTH(PHNCINFC_CORE_RESET_RSP_LEN_NCI1x, wLen);
     PH_LOG_NCI_INFO_X32MSG("NCI Version:", (uint32_t)pBuff[1]);
+    NciVer = pBuff[1];
     PH_LOG_NCI_INFO_STR("Configuration Status: %!NCI_RESET_TYPE!", pBuff[2]);
 }
 
@@ -581,9 +585,25 @@ void phNciNfc_PrintNfceeModeSetRspDescription(uint8_t *pBuff, uint16_t wLen)
 
 void phNciNfc_PrintCoreResetNtfDescription(uint8_t *pBuff, uint16_t wLen)
 {
+    uint8_t bCount = 0, bIndex = 0;
+    uint16_t bLen;
+
     PHNCINFC_VALIDATE_PACKET_LENGTH(2, wLen);
-    PH_LOG_NCI_INFO_X32MSG("Reason Code:", (uint32_t)pBuff[0]);
-    PH_LOG_NCI_INFO_STR("Configuration Status: %!NCI_RESET_TYPE!", pBuff[1]);
+    PH_LOG_NCI_INFO_X32MSG("Reason Code:", (uint32_t)pBuff[bIndex++]);
+    PH_LOG_NCI_INFO_STR("Configuration Status: %!NCI_RESET_TYPE!", pBuff[bIndex++]);
+    if (wLen >= 5)
+    {
+        NciVer = pBuff[bIndex];
+        PH_LOG_NCI_INFO_X32MSG("NCI Version:", (uint32_t)pBuff[bIndex++]);
+        PH_LOG_NCI_INFO_X32MSG("Manufacturer ID:", (uint32_t)pBuff[bIndex++]);
+        PH_LOG_NCI_INFO_X32MSG("Manufacturer Specific Length:", (uint32_t)pBuff[bIndex++]);
+
+        PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 5, wLen);
+        bLen = wLen - bIndex;
+        for (bCount = 0; bCount < bLen; bCount++) {
+            PH_LOG_NCI_INFO_STR("Manufacturer Specific Info Byte%d: 0x%x", (uint32_t)bCount + 1, (uint32_t)pBuff[bIndex++]);
+        }
+    }
 }
 
 void phNciNfc_PrintCoreConnCreditsNtfDescription(uint8_t *pBuff, uint16_t wLen)
