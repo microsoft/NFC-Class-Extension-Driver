@@ -151,6 +151,23 @@ typedef void (*pphNciNfc_ConnCreditsNtf_t)(void* pContext, uint8_t bCredits, NFC
   */
 #define PHNCINFC_CORE_PBF_BIT_OFFSET                (4U)
 
+/**
+  * \ingroup grp_nci_nfc_core
+  *
+  * \brief Core Reset Rsp length in NCI 1.x
+  * 1 byte for status / 1 byte for NCI version / 1 byte for Configuration Status
+  */
+#define PHNCINFC_CORE_RESET_RSP_LEN_NCI1x           (3U)
+
+/**
+  * \ingroup grp_nci_nfc_core
+  *
+  * \brief Core Reset Rsp length in NCI 2.x
+  * 1 byte for status
+  */
+#define PHNCINFC_CORE_RESET_RSP_LEN_NCI2x           (1U)
+
+
 /*-------------------------------------------------------------------------------*/
 /*Sets Header information in Byte format, Byte value to set is passed as n and
   v is the value*/
