@@ -25,10 +25,14 @@
 
 #define PH_NCINFC_VERSION_MAJOR_1x                  (0x01)
 #define PH_NCINFC_VERSION_MINOR_1x                  (0x00)
+#define PH_NCINFC_VERSION_MAJOR_2x                  (0x02)
+#define PH_NCINFC_VERSION_MINOR_2x                  (0x00)
 
 #define PH_NCINFC_VERSION_1x                        ((PH_NCINFC_VERSION_MAJOR_1x << 4) | PH_NCINFC_VERSION_MINOR_1x)
 #define PH_NCINFC_VERSION_IS_1x(x)                  ((x->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) <= \
                                                      (PH_NCINFC_VERSION_1x & PH_NCINFC_VERSION_MAJOR_MASK))
+#define PH_NCINFC_VERSION_2x                        ((PH_NCINFC_VERSION_MAJOR_2x << 4) | PH_NCINFC_VERSION_MINOR_2x)
+
 
 
 /**
