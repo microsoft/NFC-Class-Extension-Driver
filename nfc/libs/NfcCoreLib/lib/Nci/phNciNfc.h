@@ -32,6 +32,8 @@
 #define PH_NCINFC_VERSION_IS_1x(x)                  ((x->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) <= \
                                                      (PH_NCINFC_VERSION_1x & PH_NCINFC_VERSION_MAJOR_MASK))
 #define PH_NCINFC_VERSION_2x                        ((PH_NCINFC_VERSION_MAJOR_2x << 4) | PH_NCINFC_VERSION_MINOR_2x)
+#define PH_NCINFC_VERSION_IS_2x(x)                  ((x->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) == \
+                                                     (PH_NCINFC_VERSION_2x & PH_NCINFC_VERSION_MAJOR_MASK))
 
 
 
