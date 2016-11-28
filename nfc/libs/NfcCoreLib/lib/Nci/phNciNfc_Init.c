@@ -53,6 +53,10 @@ phNciNfc_SequenceP_t gphNciNfc_NfccResetSequence[] = {
 1 byte Manufacturer ID + 1 byte Manufacturer Specific Information Length (5)*/
 #define PHNFCINFC_CORE_RESET_NTF_MIN_LEN          (5)
 
+/** Core Reset Rsp min length
+Including at least 2 Rf interfaces (in NCI 1.x (17 + 2 = 19) in NCI 2.x (14 + 6 = 20))*/
+#define PH_NCINFC_MIN_CORE_RESET_RSP_LEN          (0x13U)
+
 /** Core Reset notification timeout */
 #define PHNCINFC_CORE_RESET_NTF_TIMEOUT_MS        (30)
 
@@ -93,7 +97,7 @@ static NFCSTATUS phNciNfc_ProcessInitRsp(void *pContext, NFCSTATUS Status)
     if(NULL != pNciContext)
     {
         pInitRsp = &(pNciContext->InitRspParams);
-        if (pNciContext->RspBuffInfo.wLen >= 19)
+        if (pNciContext->RspBuffInfo.wLen >= PH_NCINFC_MIN_CORE_RESET_RSP_LEN)
         {
             if (pNciContext->RspBuffInfo.pBuff[Offset++] == PH_NCINFC_STATUS_OK)
             {
