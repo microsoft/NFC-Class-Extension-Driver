@@ -10,6 +10,9 @@
 
 static NFCSTATUS phNciNfc_Init(void *pContext);
 static NFCSTATUS phNciNfc_ProcessInitRsp(void *pContext, NFCSTATUS wStatus);
+static NFCSTATUS phNciNfc_ProcessInitRspNci1x(void *pContext, NFCSTATUS wStatus);
+static NFCSTATUS phNciNfc_ProcessInitRspNci2x(void *pContext, NFCSTATUS wStatus);
+static void phNciNfc_DelayForCreditNtfCb(void* pContext, uint8_t bCredits, NFCSTATUS status);
 static NFCSTATUS phNciNfc_CompleteInitSequence(void *pContext, NFCSTATUS wStatus);
 
 static NFCSTATUS phNciNfc_DelayForResetNtfProc(void* pContext, NFCSTATUS wStatus);
@@ -71,8 +74,18 @@ static NFCSTATUS phNciNfc_Init(void *pContext)
     TxInfo.tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlCmd;
     TxInfo.tHeaderInfo.Group_ID = phNciNfc_e_CoreNciCoreGid;
     TxInfo.tHeaderInfo.Opcode_ID.OidType.NciCoreCmdOid = phNciNfc_e_NciCoreInitCmdOid;
-    TxInfo.Buff = (uint8_t *)&pNciContext->tInitInfo.bExtension;
-    TxInfo.wLen = 0;
+
+    if (PH_NCINFC_VERSION_IS_2x(PHNCINFC_GETNCICONTEXT()))
+    {
+        TxInfo.Buff = (uint8_t *)phOsalNfc_GetMemory(2);
+        TxInfo.wLen = 2;
+        phOsalNfc_SetMemory(TxInfo.Buff, 0x00, TxInfo.wLen);
+    }
+    else
+    {
+        TxInfo.Buff = (uint8_t *)&pNciContext->tInitInfo.bExtension;
+        TxInfo.wLen = 0;
+    }
 
     wStatus = phNciNfc_CoreIfTxRx(&(pNciContext->NciCoreContext),
                                     &TxInfo,
@@ -85,6 +98,153 @@ static NFCSTATUS phNciNfc_Init(void *pContext)
 }
 
 static NFCSTATUS phNciNfc_ProcessInitRsp(void *pContext, NFCSTATUS Status)
+{
+    NFCSTATUS wStatus = Status;
+    pphNciNfc_Context_t pNciContext = pContext;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NULL != pNciContext)
+    {
+        if (PH_NCINFC_VERSION_IS_1x(pNciContext))
+        {
+            wStatus = phNciNfc_ProcessInitRspNci1x(pContext, Status);
+        }
+        else if (PH_NCINFC_VERSION_IS_2x(pNciContext))
+        {
+            wStatus = phNciNfc_ProcessInitRspNci2x(pContext, Status);
+        }
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phNciNfc_ProcessInitRspNci2x(void *pContext, NFCSTATUS Status)
+{
+    NFCSTATUS wStatus = Status;
+    phNciNfc_sInitRspParams_t *pInitRsp = NULL;
+    pphNciNfc_Context_t pNciContext = pContext;
+    phNciNfc_TlvUtilInfo_t tTlvInfo;
+    uint8_t Offset = 0;
+    uint8_t bCount = 0;
+    uint8_t bType = 0;
+    uint8_t bLen = 0;
+    uint8_t *pValue = NULL;
+    uint16_t wTemp = 0;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NULL != pNciContext)
+    {
+        pInitRsp = &(pNciContext->InitRspParams);
+        if (pNciContext->RspBuffInfo.wLen >= PH_NCINFC_MIN_CORE_RESET_RSP_LEN)
+        {
+            if (pNciContext->RspBuffInfo.pBuff[Offset++] == PH_NCINFC_STATUS_OK)
+            {
+                wStatus = NFCSTATUS_SUCCESS;
+
+                /*NFCC Features*/
+                pInitRsp->NfccFeatures.DiscConfSuprt = pNciContext->RspBuffInfo.pBuff[Offset++];
+                pInitRsp->NfccFeatures.RoutingType = pNciContext->RspBuffInfo.pBuff[Offset++];
+                pInitRsp->NfccFeatures.PwrOffState = pNciContext->RspBuffInfo.pBuff[Offset++];
+                pInitRsp->NfccFeatures.Byte3 = pNciContext->RspBuffInfo.pBuff[Offset++];
+
+                /*Max No of Logical Connection supported*/
+                pInitRsp->MaxLogicalCon = pNciContext->RspBuffInfo.pBuff[Offset++];
+
+                /*Routing Table Size*/
+                pInitRsp->RoutingTableSize = pNciContext->RspBuffInfo.pBuff[Offset++]; /*LSB*/
+                wTemp = pNciContext->RspBuffInfo.pBuff[Offset++];
+                pInitRsp->RoutingTableSize = (pInitRsp->RoutingTableSize) | (wTemp << 8);
+
+                /*Control Packet Payload Length*/
+                pInitRsp->CntrlPktPayloadLen = pNciContext->RspBuffInfo.pBuff[Offset++];
+
+                /*Data Packet Payload Length of the static HCI connection*/
+                pInitRsp->DataHCIPktPayloadLen = pNciContext->RspBuffInfo.pBuff[Offset++];
+
+                /*Number of Credits of the Static HCI Connection*/
+                pInitRsp->DataHCINumCredits = pNciContext->RspBuffInfo.pBuff[Offset++];
+
+                /*Max NFC-V RF Frame Size*/
+                pInitRsp->MaxNFCVFrameSize = pNciContext->RspBuffInfo.pBuff[Offset++];
+                wTemp = (uint16_t)pNciContext->RspBuffInfo.pBuff[Offset++];
+                pInitRsp->MaxNFCVFrameSize = (pInitRsp->MaxNFCVFrameSize) | (wTemp << 8);
+
+                /*number of supported RF interfaces*/
+                pInitRsp->NoOfRfIfSuprt = pNciContext->RspBuffInfo.pBuff[Offset++];
+
+                if (pInitRsp->NoOfRfIfSuprt <= PH_NCINFC_CORE_MAX_SUP_RF_INTFS)
+                {
+                    /*Supported RF Interfaces
+                      RfInterfaces in NCI2.0 are coded with x + 2 byte:
+                       - 1 byte for Interface
+                       - 1 byte for Number of extension
+                       - x byte for Extension list
+                      Note: We ignore extensions for now */
+                    tTlvInfo.pBuffer = &(pNciContext->RspBuffInfo.pBuff[Offset]);
+                    tTlvInfo.dwLength = pNciContext->RspBuffInfo.wLen - Offset;
+                    tTlvInfo.sizeInfo.dwOffset = 0;
+                    for (bCount = 0; bCount < pInitRsp->NoOfRfIfSuprt &&
+                                     Offset < pNciContext->RspBuffInfo.wLen &&
+                                     wStatus == NFCSTATUS_SUCCESS; bCount++)
+                    {
+                        /* Parse the buffer */
+                        wStatus = phNciNfc_TlvUtilsGetNxtTlv(&tTlvInfo, &bType, &bLen, &pValue);
+                        Offset += bLen + 2;
+                    }
+
+                    if (wStatus == NFCSTATUS_SUCCESS && pInitRsp->DataHCIPktPayloadLen > 0)
+                    {
+                        /*Note: The HciContext will be created once back in phLibNfc_InitializeProcess*/
+                        wStatus = phNciNfc_CreateConn(UNASSIGNED_DESTID, phNciNfc_e_NFCEE);
+                        if (wStatus == NFCSTATUS_SUCCESS)
+                        {
+                            wStatus = phNciNfc_UpdateConnInfo(UNASSIGNED_DESTID, phNciNfc_e_NFCEE,
+                                CONNHCITYPE_STATIC,
+                                pInitRsp->DataHCINumCredits,
+                                pInitRsp->DataHCIPktPayloadLen);
+
+                            if (wStatus == NFCSTATUS_SUCCESS &&
+                                pInitRsp->DataHCIPktPayloadLen > 0 &&
+                                pInitRsp->DataHCINumCredits == 0)
+                            {
+                                wStatus = phNciNfc_RegForConnCredits(CONNHCITYPE_STATIC,
+                                    &phNciNfc_DelayForCreditNtfCb,
+                                    pNciContext, PHNCINFC_MIN_WAITCREDIT_TO);
+                            }
+                        }
+                    }
+
+                    if (wStatus == NFCSTATUS_SUCCESS)
+                    {
+                        wStatus = phNciNfc_CoreIfSetMaxCtrlPacketSize(&(pNciContext->NciCoreContext),
+                            pInitRsp->CntrlPktPayloadLen);
+                    }
+                }
+                else
+                {
+                    PH_LOG_NCI_CRIT_STR("Invalid number of supported Rf interfaces");
+                    wStatus = NFCSTATUS_FAILED;
+                }
+            }
+            else
+            {
+                wStatus = NFCSTATUS_FAILED;
+            }
+        }
+        else
+        {
+            wStatus = NFCSTATUS_FAILED;
+        }
+    }
+    else
+    {
+        wStatus = NFCSTATUS_INVALID_PARAMETER;
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phNciNfc_ProcessInitRspNci1x(void *pContext, NFCSTATUS Status)
 {
     NFCSTATUS wStatus = Status;
     phNciNfc_sInitRspParams_t *pInitRsp = NULL;
@@ -194,6 +354,40 @@ static NFCSTATUS phNciNfc_ProcessInitRsp(void *pContext, NFCSTATUS Status)
     }
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
+}
+
+static void phNciNfc_DelayForCreditNtfCb(void* pContext, uint8_t bCredits, NFCSTATUS status)
+{
+    pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t)pContext;
+    phNciNfc_TransactInfo_t tTranscInfo;
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+
+    if ((NFCSTATUS_SUCCESS != status) || (0 == bCredits))
+    {
+        /* setting generic WaitCreditTimeout event to enable processing of state machine even in failure case */
+        wStatus = NFCSTATUS_CREDIT_TIMEOUT;
+        PH_LOG_NCI_CRIT_STR("Credits Update from NciNfc_Init Module Failed");
+        phNciNfc_Notify(pNciContext, wStatus, NULL);
+    }
+    else
+    {
+        if (NULL != pNciContext && PH_NCINFC_VERSION_IS_2x(pNciContext))
+        {
+            tTranscInfo.pContext = (void*)pNciContext;
+            tTranscInfo.pbuffer = (void*)&pNciContext->ResetInfo.ResetTypeRsp;
+            tTranscInfo.wLength = sizeof(pNciContext->ResetInfo.ResetTypeRsp);
+            phNciNfc_Notify(pNciContext, wStatus, (void *)&tTranscInfo);
+        }
+        else
+        {
+            wStatus = NFCSTATUS_INVALID_STATE;
+            phNciNfc_Notify(pNciContext, wStatus, NULL);
+        }
+    }
+
+    PH_LOG_NCI_FUNC_EXIT();
 }
 
 static void phNciNfc_ResetNtfDelayCb(uint32_t dwTimerId, void *pContext)
@@ -400,10 +594,13 @@ static NFCSTATUS phNciNfc_CompleteInitSequence(void *pContext, NFCSTATUS wStatus
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL != pNciCtx)
     {
-        tTranscInfo.pContext = (void*)pNciCtx;
-        tTranscInfo.pbuffer = (void*)&pNciCtx->ResetInfo.ResetTypeRsp;
-        tTranscInfo.wLength = sizeof(pNciCtx->ResetInfo.ResetTypeRsp);
-        phNciNfc_Notify(pNciCtx, wStatus,(void *)&tTranscInfo);
+        if (PH_NCINFC_VERSION_IS_1x(pNciCtx))
+        {
+            tTranscInfo.pContext = (void*)pNciCtx;
+            tTranscInfo.pbuffer = (void*)&pNciCtx->ResetInfo.ResetTypeRsp;
+            tTranscInfo.wLength = sizeof(pNciCtx->ResetInfo.ResetTypeRsp);
+            phNciNfc_Notify(pNciCtx, wStatus, (void *)&tTranscInfo);
+        }
     }
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;

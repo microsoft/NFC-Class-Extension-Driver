@@ -14,6 +14,25 @@
 #define PHNCINFC_GETNCICORECONTEXT() gpphNciNfc_CoreContext
 
 /**
+* \ingroup grp_nci_nfc
+* \brief The supported NCI version of the specification
+*/
+#define PH_NCINFC_VERSION_MAJOR_MASK                (0xF0)
+#define PH_NCINFC_VERSION_MINOR_MASK                (0x0F)
+
+#define PH_NCINFC_VERSION_MAJOR_1x                  (0x01)
+#define PH_NCINFC_VERSION_MINOR_1x                  (0x00)
+#define PH_NCINFC_VERSION_MAJOR_2x                  (0x02)
+#define PH_NCINFC_VERSION_MINOR_2x                  (0x00)
+
+#define PH_NCINFC_VERSION_1x                        ((PH_NCINFC_VERSION_MAJOR_1x << 4) | PH_NCINFC_VERSION_MINOR_1x)
+#define PH_NCINFC_VERSION_IS_1x(x)                  ((x->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) <= \
+                                                     (PH_NCINFC_VERSION_1x & PH_NCINFC_VERSION_MAJOR_MASK))
+#define PH_NCINFC_VERSION_2x                        ((PH_NCINFC_VERSION_MAJOR_2x << 4) | PH_NCINFC_VERSION_MINOR_2x)
+#define PH_NCINFC_VERSION_IS_2x(x)                  ((x->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) == \
+                                                     (PH_NCINFC_VERSION_2x & PH_NCINFC_VERSION_MAJOR_MASK))
+
+/**
  * \ingroup grp_nci_nfc_core
  *
  * \brief Internal Callback for handling the sequence/state needs.
@@ -680,6 +699,14 @@ typedef struct phNciNfc_sInitRspParams
     uint16_t RoutingTableSize;                          /**<Maximum Routing table size*/
     uint8_t CntrlPktPayloadLen;                         /**<Maximum payload length of a NCI control Packet Valid range
                                                             32 to 255*/
+    uint8_t DataHCIPktPayloadLen;                       /**<Maximum payload length of a NCI data Packet that the NFCC
+                                                            is able to receive on the static HCI Connection Valid range
+                                                            32 to 255. If not, the value SHALL be 0*/
+    uint8_t DataHCINumCredits;                          /**<Initial Number of Credits for this Connection*/
+    uint16_t MaxNFCVFrameSize;                          /**<Maximum payload length of an NFC-V Standard Frame supported
+                                                            by the NFC Controller for transfer of Commands and reception
+                                                            of Responses, when configured to Poll for NFC-V technology.
+                                                            Value should be at least 64 bytes*/
     uint16_t MaxSizeLarge;                              /**<The maximum size in octets for the sum of the
                                                             sizes of PB_H_INFO and LB_H_INFO_RESP parameter values.*/
     uint8_t ManufacturerId;                             /**<IC Manufacturer ID */
