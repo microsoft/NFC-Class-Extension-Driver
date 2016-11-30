@@ -212,6 +212,7 @@ static NFCSTATUS phNciNfc_ProcessInitRspNci2x(void *pContext, NFCSTATUS Status)
                                      wStatus == NFCSTATUS_SUCCESS; bCount++)
                     {
                         /* Parse the buffer */
+                        /* The function will return an error status in case of invalid TLV format */
                         wStatus = phNciNfc_TlvUtilsGetNxtTlv(&tTlvInfo, &bType, &bLen, &pValue);
                         Offset += bLen + 2;
                     }
