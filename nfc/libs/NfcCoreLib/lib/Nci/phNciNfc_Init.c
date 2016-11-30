@@ -296,7 +296,11 @@ static NFCSTATUS phNciNfc_ProcessInitRspNci1x(void *pContext, NFCSTATUS Status)
                 /*number of supported RF interfaces*/
                 pInitRsp->NoOfRfIfSuprt = pNciContext->RspBuffInfo.pBuff[Offset++];
 
-                if(pInitRsp->NoOfRfIfSuprt <= PH_NCINFC_CORE_MAX_SUP_RF_INTFS)
+                /* Check RspBuffInfo len is egal to the core reset response min length +
+                   No Of Rf IfSuprt */
+                if(pInitRsp->NoOfRfIfSuprt <= PH_NCINFC_CORE_MAX_SUP_RF_INTFS &&
+                   pNciContext->RspBuffInfo.wLen == pInitRsp->NoOfRfIfSuprt +
+                                                    PH_NCINFC_MIN_CORE_INIT_RSP_LEN_1x)
                 {
                     /*Supported RF Interfaces */
                     phOsalNfc_MemCopy(pInitRsp->RfInterfaces, &(pNciContext->RspBuffInfo.pBuff[Offset]),
