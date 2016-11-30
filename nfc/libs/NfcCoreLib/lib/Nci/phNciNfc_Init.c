@@ -113,6 +113,10 @@ static NFCSTATUS phNciNfc_ProcessInitRsp(void *pContext, NFCSTATUS Status)
         {
             wStatus = phNciNfc_ProcessInitRspNci2x(pContext, Status);
         }
+        else
+        {
+            wStatus = NFCSTATUS_INVALID_PARAMETER;
+        }
     }
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
