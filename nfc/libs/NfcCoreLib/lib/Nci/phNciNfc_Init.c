@@ -440,7 +440,11 @@ static void phNciNfc_ResetNtfDelayCb(uint32_t dwTimerId, void *pContext)
 
         pNciContext->dwNtfTimerId = 0;
 
-        (void)phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
+        wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
+        if (wStatus != NFCSTATUS_SUCCESS)
+        {
+            PH_LOG_NCI_INFO_STR("phNciNfc_GenericSequence returned error %d", wStatus);
+        }
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return;
