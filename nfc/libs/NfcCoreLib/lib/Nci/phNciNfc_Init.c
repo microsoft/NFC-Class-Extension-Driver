@@ -52,9 +52,12 @@ phNciNfc_SequenceP_t gphNciNfc_NfccResetSequence[] = {
 };
 
 /** NCI2.x Core Reset notification min length
-1 byte Reset Trigger + 1 byte configuration + 1 byte NCI Version +
-1 byte Manufacturer ID + 1 byte Manufacturer Specific Information Length (5)*/
-#define PHNFCINFC_CORE_RESET_NTF_MIN_LEN          (5)
+    NCI2x Specification Table 5: Control Messages to Reset the NFCC - CORE_RESET_NTF*/
+#define PHNFCINFC_CORE_RESET_NTF_MIN_LEN          (sizeof(uint8_t) + /* Reset Trigger */\
+                                                   sizeof(uint8_t) + /* Configuration Status */\
+                                                   sizeof(uint8_t) + /* NCI Version */\
+                                                   sizeof(uint8_t) + /* ManufacturerId*/\
+                                                   sizeof(uint8_t)   /* Manufacturer Specific Information Length */)
 
 /** Core Reset Rsp min length NCI 1x
     NCI1.x Specification Table8: Control Messages to Initialize the NFCC - CORE_INIT_RSP*/
