@@ -343,6 +343,10 @@ static NFCSTATUS phNciNfc_ProcessInitRspNci1x(void *pContext, NFCSTATUS Status)
                                 pNciContext->InitRspParams.ManufacturerInfo.Length =
                                                                     PHNCINFC_CORE_MANUF_INFO_LEN_NCI1x;
                             }
+                            else
+                            {
+                                wStatus = NFCSTATUS_FAILED;
+                            }
                         }
                         else if (pNciContext->InitRspParams.ManufacturerInfo.Length !=
                                                                     PHNCINFC_CORE_MANUF_INFO_LEN_NCI1x)
