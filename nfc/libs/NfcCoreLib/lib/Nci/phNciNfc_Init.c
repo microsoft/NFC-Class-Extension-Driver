@@ -56,10 +56,6 @@ phNciNfc_SequenceP_t gphNciNfc_NfccResetSequence[] = {
 1 byte Manufacturer ID + 1 byte Manufacturer Specific Information Length (5)*/
 #define PHNFCINFC_CORE_RESET_NTF_MIN_LEN          (5)
 
-/** Core Reset Rsp min length
-Including at least 2 Rf interfaces (in NCI 1.x (17 + 2 = 19) in NCI 2.x (14 + 6 = 20))*/
-#define PH_NCINFC_MIN_CORE_RESET_RSP_LEN          (0x13U)
-
 /** Core Reset Rsp min length NCI 1x
     NCI1.x Specification Table8: Control Messages to Initialize the NFCC - CORE_INIT_RSP*/
 #define PH_NCINFC_MIN_CORE_INIT_RSP_LEN_1x         (sizeof(uint8_t) +  /* Status */\
@@ -71,6 +67,18 @@ Including at least 2 Rf interfaces (in NCI 1.x (17 + 2 = 19) in NCI 2.x (14 + 6 
                                                     sizeof(uint16_t) + /* MaxSizeLarge */\
                                                     sizeof(uint8_t) +  /* ManufacturerId */\
                                                     sizeof(uint32_t)   /* Manufacturer Specific information */)
+
+/** Core Reset Rsp min length NCI 2x
+    NCI2.x Specification Table8: Control Messages to Initialize the NFCC - CORE_INIT_RSP*/
+#define PH_NCINFC_MIN_CORE_INIT_RSP_LEN_2x         (sizeof(uint8_t) +  /* Status */\
+                                                    sizeof(phNciNfc_sCoreNfccFeatures_t) + /* NfccFeatures */\
+                                                    sizeof(uint8_t) +  /* MaxLogicalCon */\
+                                                    sizeof(uint16_t) + /* RoutingTableSize */\
+                                                    sizeof(uint8_t) +  /* CntrlPktPayloadLen*/\
+                                                    sizeof(uint8_t) +  /* DataHCIPktPayloadLen */\
+                                                    sizeof(uint8_t) +  /* DataHCINumCredits */\
+                                                    sizeof(uint16_t) + /* MaxNFCVFrameSize */\
+                                                    sizeof(uint8_t)    /* NoOfRfIfSuprt */)
 
 /** Core Reset notification timeout */
 #define PHNCINFC_CORE_RESET_NTF_TIMEOUT_MS        (30)
@@ -151,7 +159,7 @@ static NFCSTATUS phNciNfc_ProcessInitRspNci2x(void *pContext, NFCSTATUS Status)
     if (NULL != pNciContext)
     {
         pInitRsp = &(pNciContext->InitRspParams);
-        if (pNciContext->RspBuffInfo.wLen >= PH_NCINFC_MIN_CORE_RESET_RSP_LEN)
+        if (pNciContext->RspBuffInfo.wLen >= PH_NCINFC_MIN_CORE_INIT_RSP_LEN_2x)
         {
             if (pNciContext->RspBuffInfo.pBuff[Offset++] == PH_NCINFC_STATUS_OK)
             {
