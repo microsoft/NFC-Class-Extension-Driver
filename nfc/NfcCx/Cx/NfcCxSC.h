@@ -489,29 +489,13 @@ NfcCxSCInterfaceDetectMifareULC(
     _In_ PNFCCX_SC_INTERFACE ScInterface
     );
 
-_Requires_lock_not_held_(ScInterface->SmartCardLock)
-NTSTATUS
-NfcCxSCInterfaceDeactivateMultiProtocolTag(
-    _In_ PNFCCX_SC_INTERFACE ScInterface
-);
-
-_Requires_lock_not_held_(ScInterface->SmartCardLock)
-NTSTATUS
-NfcCxSCInterfaceActivateMultiProtocolTag(
-    _In_ PNFCCX_SC_INTERFACE ScInterface
-);
-
 BYTE
 NfcCxSCInterfaceComputeChecksum(
     _In_reads_bytes_(cbAtr) BYTE* pAtr,
     _In_ DWORD cbAtr
     );
 
-BOOLEAN
-NfcCxSCInterfaceIsMultiProtocolTag(
-    _In_ PNFCCX_SC_INTERFACE ScInterface
-    );
-
+_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
 NfcCxSCInterfaceLoadNewSelectedProtocol(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
