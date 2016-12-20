@@ -158,4 +158,16 @@ NfcCxEvtUnregisterSequenceHandler(
     _In_ NFC_CX_SEQUENCE Sequence
     );
 
+NTSTATUS
+NfcCxEvtReleaseHardwareControl(
+    _In_ PNFCCX_DRIVER_GLOBALS NfcCxGlobals,
+    _In_ WDFDEVICE Device
+);
+
+NTSTATUS
+NfcCxEvtReacquireHardwareControl(
+    _In_ PNFCCX_DRIVER_GLOBALS NfcCxGlobals,
+    _In_ WDFDEVICE Device
+);
+
 WDF_EXTERN_C_END

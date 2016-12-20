@@ -143,58 +143,80 @@ NfcCxRFInterfaceGetSEEvent(
 VOID FORCEINLINE
 NfcCxRFInterfaceClearRemoteDevList(
     _Inout_ PNFCCX_RF_INTERFACE RFInterface
-    )
+)
 {
-    if (RFInterface->pLibNfcContext->pRemDevList != NULL) {
-        if (RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo != NULL) {
-            if ((RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_A_PCD) ||
-                (RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_B_PCD)) {
-                RFInterface->pLibNfcContext->bIsHCEConnected = FALSE;
-            }
-            free(RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo);
-            RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo = NULL;
-        }
 
+    if (RFInterface->pLibNfcContext->pRemDevList != NULL) 
+    {
+        for (uint8_t bIndex = 0; bIndex < RFInterface->pLibNfcContext->uNoRemoteDevices; bIndex++)
+        {
+            if (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo != NULL)
+            {
+                if ((RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_A_PCD) ||
+                    (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_B_PCD))
+                {
+                    RFInterface->pLibNfcContext->bIsHCEConnected = FALSE;
+                }
+                free(RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo);
+                RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo = NULL;
+            }
+        }
         free(RFInterface->pLibNfcContext->pRemDevList);
         RFInterface->pLibNfcContext->pRemDevList = NULL;
     }
+
 }
+
 
 NTSTATUS FORCEINLINE
 NfcCxRFInterfaceSetRemoteDevList(
     _Inout_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ phLibNfc_RemoteDevList_t *psRemoteDevList
+    _In_ phLibNfc_RemoteDevList_t *psRemoteDevList,
+    _In_ uint8_t uNofRemoteDev
     )
 {
     NTSTATUS status = STATUS_SUCCESS;
 
+    RFInterface->pLibNfcContext->SelectedProtocolIndex = 0;
+
     NfcCxRFInterfaceClearRemoteDevList(RFInterface);
 
-    RFInterface->pLibNfcContext->pRemDevList = (phLibNfc_RemoteDevList_t*) malloc(sizeof(phLibNfc_RemoteDevList_t));
-    if (RFInterface->pLibNfcContext->pRemDevList != NULL) {
-        RFInterface->pLibNfcContext->pRemDevList->hTargetDev = psRemoteDevList->hTargetDev;
-        RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo =
-                                (phLibNfc_sRemoteDevInformation_t*) malloc(sizeof(phLibNfc_sRemoteDevInformation_t));
+    RFInterface->pLibNfcContext->uNoRemoteDevices = uNofRemoteDev;
 
-        if (RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo != NULL) {
-            RtlCopyMemory(RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo,
-                          psRemoteDevList->psRemoteDevInfo, sizeof(phLibNfc_sRemoteDevInformation_t));
+    RFInterface->pLibNfcContext->pRemDevList = (phLibNfc_RemoteDevList_t*)malloc(sizeof(phLibNfc_RemoteDevList_t) * uNofRemoteDev);
+    if (RFInterface->pLibNfcContext->pRemDevList != NULL) 
+    {
 
-            if ((RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_A_PCD) ||
-                (RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_B_PCD)) {
-                RFInterface->pLibNfcContext->bIsHCEConnected = TRUE;
+        for (uint8_t bIndex = 0; bIndex < uNofRemoteDev; bIndex++)
+        {
+            RFInterface->pLibNfcContext->pRemDevList[bIndex].hTargetDev = psRemoteDevList[bIndex].hTargetDev;
+            RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo =
+                (phLibNfc_sRemoteDevInformation_t*)malloc(sizeof(phLibNfc_sRemoteDevInformation_t));
+
+            if (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo != NULL) 
+            {
+                RtlCopyMemory(RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo,
+                    psRemoteDevList[bIndex].psRemoteDevInfo, sizeof(phLibNfc_sRemoteDevInformation_t));
+
+                if ((RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_A_PCD) ||
+                    (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_B_PCD)) 
+                {
+                    RFInterface->pLibNfcContext->bIsHCEConnected = TRUE;
+                }
+            }
+            else
+            {
+                status = STATUS_INSUFFICIENT_RESOURCES;
+                NfcCxRFInterfaceClearRemoteDevList(RFInterface);
+                break;
             }
         }
-        else {
-            status = STATUS_INSUFFICIENT_RESOURCES;
-            NfcCxRFInterfaceClearRemoteDevList(RFInterface);
-        }
     }
-    else {
+    else
+    {
         status = STATUS_INSUFFICIENT_RESOURCES;
-        NfcCxRFInterfaceClearRemoteDevList(RFInterface);
+        RFInterface->pLibNfcContext->pRemDevList = NULL;
     }
-
     return status;
 }
 
@@ -1263,6 +1285,89 @@ Done:
 }
 
 NTSTATUS
+NfcCxRFInterfaceTargetDeactivate(
+    _In_ PNFCCX_RF_INTERFACE RFInterface
+)
+/*++
+
+Routine Description:
+
+This routine is called from the SC module to
+reactivate a tag.
+
+Arguments:
+
+RFInterface - The RF Interface
+
+Return Value:
+
+NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
+    ResetEvent(RFInterface->hStartPresenceCheck);
+
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_TARGET_DEACTIVATE_SLEEP, NULL, NULL);
+
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Target deactivation failed, %!STATUS!", status);
+        SetEvent(RFInterface->hStartPresenceCheck);
+        goto Done;
+    }
+
+Done:
+    WdfWaitLockRelease(RFInterface->DeviceLock);
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxRFInterfaceTargetActivate(
+    _In_ PNFCCX_RF_INTERFACE RFInterface
+)
+/*++
+
+Routine Description:
+
+This routine is called from the SC module to
+reactivate a tag.
+
+Arguments:
+
+RFInterface - The RF Interface
+
+Return Value:
+
+NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
+
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_TARGET_ACTIVATE, NULL, NULL);
+
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Target Activation failed, %!STATUS!", status);
+    }
+    SetEvent(RFInterface->hStartPresenceCheck);
+
+    WdfWaitLockRelease(RFInterface->DeviceLock);
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
 NfcCxRFInterfaceTargetCheckPresence(
     _In_ PNFCCX_RF_INTERFACE RFInterface
     )
@@ -1671,7 +1776,7 @@ NfcCxRFInterfaceTagConnectionEstablished(
         RFInterface->pLibNfcContext->bIsTagConnected = TRUE;
         NfcCxNfpInterfaceHandleTagConnectionEstablished(NfcCxRFInterfaceGetNfpInterface(RFInterface), ArrivalBitMask);
         NfcCxSCInterfaceHandleSmartCardConnectionEstablished(NfcCxRFInterfaceGetScInterface(RFInterface),
-                                                             RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo);
+                                                             RFInterface);
     }
 
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
@@ -2237,11 +2342,21 @@ NfcCxRFInterfaceRemoteDevConnect(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
-    nfcStatus = phLibNfc_RemoteDev_Connect(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev,
+    nfcStatus = phLibNfc_RemoteDev_Connect(RFInterface->pLibNfcContext->pRemDevList[RFInterface->pLibNfcContext->SelectedProtocolIndex].hTargetDev,
                                            NfcCxRFInterfaceRemoteDevConnectCB,
                                            &LibNfcContext);
 
     Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+
+    if (NT_SUCCESS(Status))
+    {
+        TRACE_LINE(LEVEL_INFO, "Set Target Activation To %x", RFInterface->pLibNfcContext->SelectedProtocolIndex);
+    }
+    else
+    {
+        TRACE_LINE(LEVEL_INFO, "Set Target Activation Failed for Index %x", RFInterface->pLibNfcContext->SelectedProtocolIndex);
+    }
+
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
     return Status;
@@ -2283,13 +2398,22 @@ NfcCxRFInterfaceRemoteDevDisconnect(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
-    nfcStatus = phLibNfc_RemoteDev_Disconnect(RFInterface->pLibNfcContext->pRemDevList->hTargetDev,
+    nfcStatus = phLibNfc_RemoteDev_Disconnect(RFInterface->pLibNfcContext->pRemDevList[RFInterface->pLibNfcContext->SelectedProtocolIndex].hTargetDev,
                                               RFInterface->pLibNfcContext->eReleaseType, 
                                               NfcCxRFInterfaceRemoteDevDisconnectCB,
                                               &LibNfcContext);
 
     if (nfcStatus == NFCSTATUS_TARGET_NOT_CONNECTED) {
         nfcStatus = NFCSTATUS_SUCCESS;
+    }
+
+    if (NT_SUCCESS(Status))
+    {
+        TRACE_LINE(LEVEL_INFO, "Set Target DeActivation To %x", RFInterface->pLibNfcContext->SelectedProtocolIndex);
+    }
+    else
+    {
+        TRACE_LINE(LEVEL_INFO, "Set Target DeActivation Failed for Index %x", RFInterface->pLibNfcContext->SelectedProtocolIndex);
     }
 
     Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
@@ -2835,8 +2959,13 @@ NfcCxRFInterfaceTargetTransceive(
     NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
     phLibNfc_RemoteDevList_t* pRemDevList = RFInterface->pLibNfcContext->pRemDevList;
     static NFCCX_RF_LIBNFC_REQUEST_CONTEXT LibNfcContext;
+    DWORD SelectedProtocol = 0;
 
-    switch (pRemDevList->psRemoteDevInfo->RemDevType)
+    SelectedProtocol = RFInterface->pLibNfcContext->SelectedProtocolIndex;
+
+    TRACE_LINE(LEVEL_INFO, "SelectedProtocol  is = %x", SelectedProtocol);
+
+    switch (pRemDevList[SelectedProtocol].psRemoteDevInfo->RemDevType)
     {
     case phLibNfc_eISO14443_4A_PICC:
     case phLibNfc_eISO14443_4B_PICC:
@@ -2892,7 +3021,7 @@ NfcCxRFInterfaceTargetTransceive(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
-    nfcStatus = phLibNfc_RemoteDev_Transceive(pRemDevList->hTargetDev,
+    nfcStatus = phLibNfc_RemoteDev_Transceive(RFInterface->pLibNfcContext->pRemDevList[SelectedProtocol].hTargetDev,
                                               &RFInterface->sTransceiveBuffer,
                                               NfcCxRFInterfaceTargetTransceiveCB,
                                               &LibNfcContext);
@@ -2935,7 +3064,7 @@ NfcCxRFInterfaceTargetPresenceCheck(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
-    nfcStatus = phLibNfc_RemoteDev_CheckPresence(RFInterface->pLibNfcContext->pRemDevList->hTargetDev,
+    nfcStatus = phLibNfc_RemoteDev_CheckPresence(RFInterface->pLibNfcContext->pRemDevList[RFInterface->pLibNfcContext->SelectedProtocolIndex].hTargetDev,
                                                  NfcCxRFInterfaceTargetPresenceCheckCB,
                                                  &LibNfcContext);
 
@@ -2944,6 +3073,7 @@ NfcCxRFInterfaceTargetPresenceCheck(
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
     return Status;
 }
+
 
 NTSTATUS
 NfcCxRFInterfaceSENtfRegister(
@@ -3388,7 +3518,7 @@ NfcCxRFInterfaceRemoteDevNtfCB(
             TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
             TraceLoggingValue((DWORD)(psRemoteDev->psRemoteDevInfo->RemDevType), "DeviceType"));
 
-        status = NfcCxRFInterfaceSetRemoteDevList(rfInterface, psRemoteDev);
+        status = NfcCxRFInterfaceSetRemoteDevList(rfInterface, psRemoteDev, uNofRemoteDev);
 
         if (NT_SUCCESS(status)) {
             NfcCxStateInterfaceStateHandler(NfcCxRFInterfaceGetStateInterface(rfInterface), NfcCxEventDiscovered, NULL, NULL, NULL);
