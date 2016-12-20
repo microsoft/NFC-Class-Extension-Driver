@@ -46,7 +46,7 @@ typedef struct phNciNfc_Context
     phNciNfc_LstnModeRecvInfo_t tLstnModeRecvInfo;  /**<Holds information Data if received before
                                                         application invokes "RemoteDev_Receive" API  in listen mode*/
     void *pUpperLayerInfo;                      /**< Used to store data pointer of Upper layer */
-    uint32_t dwNtfTimerId;                      /**< Timer for to handle Reactivate NTF*/
+    uint32_t dwNtfTimerId;                      /**< Timer for to handle NTF*/
     phNciNfc_SeEventList_t  tSeEventList;       /**< Structure holding Se event registrations*/
 }phNciNfc_Context_t, *pphNciNfc_Context_t;      /**< pointer to #phNciNfc_Context_t structure */
 

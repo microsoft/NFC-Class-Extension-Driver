@@ -1071,9 +1071,14 @@ NFCSTATUS phNciNfc_UpdateDiscConfigParams(void *pNciHandle,
     pphNciNfc_Context_t     pNciContext = pNciHandle;
     /* Index to construct discover command payload */
     uint8_t bIndex=1;
+    bool_t fIsNci1x = PH_NCINFC_VERSION_IS_1x(pNciContext);
+    bool_t fIsNci2x = PH_NCINFC_VERSION_IS_2x(pNciContext);
     PH_LOG_NCI_FUNC_ENTRY();
 
-    if(pPollConfig->PollNfcAActive)
+    /*Note: ListenNfcFActive and PollNfcFActive exist only in NCI1.x specification.*/
+
+    if(pPollConfig->PollNfcAActive ||
+        (pPollConfig->PollNfcFActive && fIsNci2x))
     {
         pNciContext->NciDiscContext.pDiscPayload[bIndex++] =
         (uint8_t)phNciNfc_NFCA_Active_Poll;
@@ -1117,7 +1122,7 @@ NFCSTATUS phNciNfc_UpdateDiscConfigParams(void *pNciHandle,
     }
     /* Check whether Polling loop to be enabled for NFC-F Technology */
 
-    if(pPollConfig->PollNfcFActive)
+    if(pPollConfig->PollNfcFActive && fIsNci1x)
     {
         pNciContext->NciDiscContext.pDiscPayload[bIndex++] =
         (uint8_t)phNciNfc_NFCF_Active_Poll;
@@ -1188,7 +1193,8 @@ NFCSTATUS phNciNfc_UpdateDiscConfigParams(void *pNciHandle,
                 (uint8_t)PHNCINFC_LISTEN_DISCFREQ;
         }
 
-        if(1 == pPollConfig->ListenNfcAActive)
+        if(1 == pPollConfig->ListenNfcAActive ||
+            (1 == pPollConfig->ListenNfcFActive && fIsNci2x))
         {
             /* Configure for Listen mode in active technology */
             pNciContext->NciDiscContext.pDiscPayload[bIndex++] =
@@ -1213,7 +1219,7 @@ NFCSTATUS phNciNfc_UpdateDiscConfigParams(void *pNciHandle,
             pNciContext->NciDiscContext.pDiscPayload[bIndex++] =
                 (uint8_t)PHNCINFC_LISTEN_DISCFREQ;
         }
-        if(1 == pPollConfig->ListenNfcFActive)
+        if(1 == pPollConfig->ListenNfcFActive && fIsNci1x)
         {
             /* Configure for Listen mode in active technology */
             pNciContext->NciDiscContext.pDiscPayload[bIndex++] =

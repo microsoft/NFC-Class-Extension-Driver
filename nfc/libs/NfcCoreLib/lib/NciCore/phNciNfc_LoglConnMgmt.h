@@ -8,12 +8,15 @@
 
 #include "phNciNfc_Core.h"
 
-#define CONNTYPE_STATIC                 (0x00U)  /**< Static connection id/index */
+#define CONNRFTYPE_STATIC               (0x00U)  /**< Static RF connection id/index */
+#define CONNHCITYPE_STATIC              (0x01U)  /**< Static HCI connection id/index */
 #define MAX_LOGICAL_CONNS               (0x03U)  /**< Maximum number of Logical Connections Supported */
 #define INVALID_CONN_ID                 (0xFFU)  /**< Range beyond 15 is invalid connid */
 #define UNASSIGNED_DESTID               (0xFFU)  /**< Unassigned destination id */
 #define FLOW_CONTROL_DISABLED           (0xFFU)  /**< Flow control disabled during data exchange */
 #define MAX_CREDITS_LIMIT               (0xFEU)  /**< Max possible Credits for a connection */
+
+#define PHNCINFC_MIN_WAITCREDIT_TO      (250)
 
 typedef struct phNciNfc_LogConn_Rsp
 {

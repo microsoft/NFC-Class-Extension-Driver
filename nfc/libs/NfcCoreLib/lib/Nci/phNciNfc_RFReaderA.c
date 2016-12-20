@@ -135,6 +135,7 @@ phNciNfc_RdrAInit(
                     PH_LOG_NCI_INFO_STR(" Invalid UID Length received");
                 }
             }
+            break;
             case phNciNfc_eKovio_PICC:
             {
                 // The tag ID is all we get

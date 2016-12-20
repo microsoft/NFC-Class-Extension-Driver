@@ -11,6 +11,8 @@
 #define PHNCINFC_VALIDATE_PACKET_LENGTH(Expected, Actual) \
     if ((Expected) > (Actual)) { return; } \
 
+static uint8_t NciVer = 0;
+
 void phNciNfc_PrintCoreResetCmdDescription(uint8_t *pBuff, uint16_t wLen)
 {
     PHNCINFC_VALIDATE_PACKET_LENGTH(1, wLen);
@@ -306,13 +308,15 @@ void phNciNfc_PrintNfceeModeSetCmdDescription(uint8_t *pBuff, uint16_t wLen)
 
 void phNciNfc_PrintCoreResetRspDescription(uint8_t *pBuff, uint16_t wLen)
 {
-    PHNCINFC_VALIDATE_PACKET_LENGTH(3, wLen);
+    PHNCINFC_VALIDATE_PACKET_LENGTH(PHNCINFC_CORE_RESET_RSP_LEN_NCI2x, wLen);
     PH_LOG_NCI_INFO_STR("Status: %!NCI_STATUS!", pBuff[0]);
+    PHNCINFC_VALIDATE_PACKET_LENGTH(PHNCINFC_CORE_RESET_RSP_LEN_NCI1x, wLen);
     PH_LOG_NCI_INFO_X32MSG("NCI Version:", (uint32_t)pBuff[1]);
+    NciVer = pBuff[1];
     PH_LOG_NCI_INFO_STR("Configuration Status: %!NCI_RESET_TYPE!", pBuff[2]);
 }
 
-void phNciNfc_PrintCoreInitRspDescription(uint8_t *pBuff, uint16_t wLen)
+void phNciNfc_PrintCoreInitNci1xRspDescription(uint8_t *pBuff, uint16_t wLen)
 {
     uint8_t bCount = 0, bIndex = 0, bStatus, bNumInterfaces;
     uint16_t wMaxRoutingTableSize, wMaxSizeLargeParam;
@@ -383,6 +387,84 @@ void phNciNfc_PrintCoreInitRspDescription(uint8_t *pBuff, uint16_t wLen)
         PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex+4, wLen);
         for (bCount = 0; bCount < 4; bCount++) {
             PH_LOG_NCI_INFO_STR("Manufacturer Specific Info Byte%d: 0x%x", (uint32_t)bCount+1, (uint32_t)pBuff[bIndex++]);
+        }
+    }
+}
+
+void phNciNfc_PrintCoreInitNci2xRspDescription(uint8_t *pBuff, uint16_t wLen)
+{
+    uint8_t bCount = 0, bIndex = 0, bStatus, bNumInterfaces, bExtLen;
+    uint16_t wMaxRoutingTableSize, wMaxNFCVFrameSize;
+    phNciNfc_sCoreNfccFeatures_t tNfccFeatures;
+
+    PHNCINFC_VALIDATE_PACKET_LENGTH(1, wLen);
+    bStatus = pBuff[bIndex++];
+    PH_LOG_NCI_INFO_STR("Status: %!NCI_STATUS!", bStatus);
+
+    if (bStatus == PH_NCINFC_STATUS_OK)
+    {
+        PH_LOG_NCI_INFO_STR("Discovery Configuration Mode:");
+
+        PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 4, wLen);
+        tNfccFeatures.DiscConfSuprt = pBuff[bIndex++];
+        tNfccFeatures.RoutingType = pBuff[bIndex++];
+        tNfccFeatures.PwrOffState = pBuff[bIndex++];
+        tNfccFeatures.Byte3 = pBuff[bIndex++];
+
+        if (tNfccFeatures.DiscConfSuprt & 0x01) {
+            PH_LOG_NCI_INFO_STR("Discovery Frequency supported");
+        }
+        else {
+            PH_LOG_NCI_INFO_STR("Discovery Frequency value is ignored");
+        }
+
+        if ((tNfccFeatures.DiscConfSuprt & 0x06) == 0x00) {
+            PH_LOG_NCI_INFO_STR("DH is the only entity that configures the NFCC");
+        }
+        else {
+            PH_LOG_NCI_INFO_STR("NFCC can receive configurations from the DH and other NFCEEs");
+        }
+
+        PH_LOG_NCI_INFO_STR("Technology based routing %s", (tNfccFeatures.RoutingType & 0x02) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("Protocol based routing %s", (tNfccFeatures.RoutingType & 0x04) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("AID based routing %s", (tNfccFeatures.RoutingType & 0x08) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("Battery Off state %s", (tNfccFeatures.PwrOffState & 0x01) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("Switched Off state %s", (tNfccFeatures.PwrOffState & 0x02) ? "supported" : "not supported");
+
+        PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 1, wLen);
+        PH_LOG_NCI_INFO_X32MSG("Max Logical Connections:", (uint32_t)pBuff[bIndex++]);
+
+        PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 2, wLen);
+        wMaxRoutingTableSize = ((uint16_t)pBuff[bIndex] + ((uint16_t)pBuff[bIndex + 1] << 8));
+        PH_LOG_NCI_INFO_X32MSG("Max Routing Table Size:", (uint32_t)wMaxRoutingTableSize);
+        bIndex += 2;
+
+        PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 1, wLen);
+        PH_LOG_NCI_INFO_X32MSG("Max Control Packet Payload Size:", (uint32_t)pBuff[bIndex++]);
+
+        PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 1, wLen);
+        PH_LOG_NCI_INFO_X32MSG("Max Data Packet Payload Size of the Static HCI Connection:", (uint32_t)pBuff[bIndex++]);
+
+        PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 1, wLen);
+        PH_LOG_NCI_INFO_X32MSG("Number of Credits of the Static HCI Connection:", (uint32_t)pBuff[bIndex++]);
+
+        PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 2, wLen);
+        wMaxNFCVFrameSize = ((uint16_t)pBuff[bIndex] + ((uint16_t)pBuff[bIndex + 1] << 8));
+        PH_LOG_NCI_INFO_X32MSG("Max NFC-V RF Frame Size:", (uint32_t)wMaxNFCVFrameSize);
+        bIndex += 2;
+
+        PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 1, wLen);
+        bNumInterfaces = pBuff[bIndex++];
+        PH_LOG_NCI_INFO_X32MSG("Number of Supported RF Interfaces:", (uint32_t)bNumInterfaces);
+
+        for (bCount = 0; bCount < bNumInterfaces; bCount++) {
+            PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 2, wLen);
+            PH_LOG_NCI_INFO_STR("RF Interface: %!NCI_RF_INTERFACE!", pBuff[bIndex++]);
+            bExtLen = pBuff[bIndex++];
+            PH_LOG_NCI_INFO_STR("Number of Extensions: %d", bExtLen);
+            PH_LOG_NCI_INFO_HEXDUMP("Extension List: %!HEXDUMP!",
+                WppLogHex((void*)&pBuff[bIndex], (uint16_t)bExtLen));
+            bIndex += bExtLen;
         }
     }
 }
@@ -581,9 +663,25 @@ void phNciNfc_PrintNfceeModeSetRspDescription(uint8_t *pBuff, uint16_t wLen)
 
 void phNciNfc_PrintCoreResetNtfDescription(uint8_t *pBuff, uint16_t wLen)
 {
+    uint8_t bCount = 0, bIndex = 0;
+    uint16_t bLen;
+
     PHNCINFC_VALIDATE_PACKET_LENGTH(2, wLen);
-    PH_LOG_NCI_INFO_X32MSG("Reason Code:", (uint32_t)pBuff[0]);
-    PH_LOG_NCI_INFO_STR("Configuration Status: %!NCI_RESET_TYPE!", pBuff[1]);
+    PH_LOG_NCI_INFO_X32MSG("Reason Code:", (uint32_t)pBuff[bIndex++]);
+    PH_LOG_NCI_INFO_STR("Configuration Status: %!NCI_RESET_TYPE!", pBuff[bIndex++]);
+    if (wLen >= 5)
+    {
+        NciVer = pBuff[bIndex];
+        PH_LOG_NCI_INFO_X32MSG("NCI Version:", (uint32_t)pBuff[bIndex++]);
+        PH_LOG_NCI_INFO_X32MSG("Manufacturer ID:", (uint32_t)pBuff[bIndex++]);
+        PH_LOG_NCI_INFO_X32MSG("Manufacturer Specific Length:", (uint32_t)pBuff[bIndex++]);
+
+        PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 5, wLen);
+        bLen = wLen - bIndex;
+        for (bCount = 0; bCount < bLen; bCount++) {
+            PH_LOG_NCI_INFO_STR("Manufacturer Specific Info Byte%d: 0x%x", (uint32_t)bCount + 1, (uint32_t)pBuff[bIndex++]);
+        }
+    }
 }
 
 void phNciNfc_PrintCoreConnCreditsNtfDescription(uint8_t *pBuff, uint16_t wLen)
@@ -999,7 +1097,15 @@ void phNciNfc_PrintPacketDescription(
                     phNciNfc_PrintCoreResetRspDescription(pBuff, wLen);
                     break;
                 case phNciNfc_e_NciCoreInitRspOid:
-                    phNciNfc_PrintCoreInitRspDescription(pBuff, wLen);
+                    switch (NciVer & PH_NCINFC_VERSION_MAJOR_MASK)
+                    {
+                    case PH_NCINFC_VERSION_1x:
+                        phNciNfc_PrintCoreInitNci1xRspDescription(pBuff, wLen);
+                        break;
+                    case PH_NCINFC_VERSION_2x:
+                        phNciNfc_PrintCoreInitNci2xRspDescription(pBuff, wLen);
+                        break;
+                    }
                     break;
                 case phNciNfc_e_NciCoreSetConfigRspOid:
                     phNciNfc_PrintCoreSetConfigRspDescription(pBuff, wLen);

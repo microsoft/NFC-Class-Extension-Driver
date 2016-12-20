@@ -47,8 +47,8 @@ phLibNfc_Sequence_t gphLibNfc_HciInitSequence[] = {
 };
 
 phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequence[] = {
-    {&phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc},
     {&phLibNfc_HciSetWhiteList, &phLibNfc_HciSetWhiteListProc},
+    {&phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc},
     {NULL, &phLibNfc_HciChildDevInitComplete}
 };
 

@@ -611,6 +611,15 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
  
                 if(NULL != (void *)pSeHandle)
                 {
+                    for (bIndex = 0; bIndex < PHHCINFC_TOTAL_NFCEES; bIndex++)
+                    {
+                        if (pSeHandle == pLibContext->tSeInfo.tSeList[bIndex].hSecureElement)
+                        {
+                            pLibContext->sSeContext.pActiveSeInfo = &pLibContext->tSeInfo.tSeList[bIndex];
+                            break;
+                        }
+                    }
+
                     if(PH_NCINFC_EXT_NFCEEMODE_DISABLE == eNfceeMode)
                     {
                         pSetModeSeq = gphLibNfc_SetSeModeSeq;
@@ -624,14 +633,6 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
                         eNfceeMode = PH_NCINFC_EXT_NFCEEMODE_ENABLE;
                     }
 
-                    for(bIndex = 0; bIndex < PHHCINFC_TOTAL_NFCEES; bIndex++)
-                    {
-                        if( pSeHandle == pLibContext->tSeInfo.tSeList[bIndex].hSecureElement)
-                        {
-                            pLibContext->sSeContext.pActiveSeInfo = &pLibContext->tSeInfo.tSeList[bIndex];
-                            break;
-                        }
-                    }
                     pLibContext->sSeContext.eNfceeMode = eNfceeMode;
 
                     /* If there is no sequence existing to execute, return SUCCESS asuming that

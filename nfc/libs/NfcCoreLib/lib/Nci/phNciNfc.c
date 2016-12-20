@@ -288,6 +288,10 @@ NFCSTATUS phNciNfc_StartDiscovery(void* pNciHandle,
     NFCSTATUS               wStatus = NFCSTATUS_SUCCESS;
     /* Store the Number of Discovery configurations */
     uint8_t bNoofConfigs=0;
+    bool_t fIsNci1x = PH_NCINFC_VERSION_IS_1x(pNciContext);
+    bool_t fIsNci2x = PH_NCINFC_VERSION_IS_2x(pNciContext);
+
+    /*Note: ListenNfcFActive and PollNfcFActive exist only in NCI1.x specification.*/
 
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL == pNciHandle)
@@ -344,22 +348,24 @@ NFCSTATUS phNciNfc_StartDiscovery(void* pNciHandle,
             bNoofConfigs++;
         }
         /* Check whether Polling loop to be enabled for Listen NFC-F Technology */
-        if(pPollConfig->ListenNfcAActive)
+        if(pPollConfig->ListenNfcAActive ||
+            (1 == pPollConfig->ListenNfcFActive && fIsNci2x))
         {
             bNoofConfigs++;
         }
         /* Check whether Polling loop to be enabled for Listen NFC-F Technology */
-        if(pPollConfig->ListenNfcFActive)
+        if(pPollConfig->ListenNfcFActive && fIsNci1x)
         {
             bNoofConfigs++;
         }
         /* Check whether Polling loop to be enabled for Listen NFC-F Technology */
-        if(pPollConfig->PollNfcAActive)
+        if(pPollConfig->PollNfcAActive ||
+            (1 == pPollConfig->PollNfcFActive && fIsNci2x))
         {
             bNoofConfigs++;
         }
         /* Check whether Polling loop to be enabled for Listen NFC-F Technology */
-        if(pPollConfig->PollNfcFActive)
+        if(pPollConfig->PollNfcFActive && fIsNci1x)
         {
             bNoofConfigs++;
         }
@@ -1715,10 +1721,9 @@ NFCSTATUS phNciNfc_GetNfccFeatures(void *pNciCtx,
         /* Store the Manufacturer ID */
         pNfccFeatures->ManufacturerId = pNciContext->InitRspParams.ManufacturerId;
         /* Store the Manufacturer specific info */
-        pNfccFeatures->ManufactureInfo.Byte0 = pNciContext->InitRspParams.ManufacturerInfo.Byte0;
-        pNfccFeatures->ManufactureInfo.Byte1 = pNciContext->InitRspParams.ManufacturerInfo.Byte1;
-        pNfccFeatures->ManufactureInfo.Byte2 = pNciContext->InitRspParams.ManufacturerInfo.Byte2;
-        pNfccFeatures->ManufactureInfo.Byte3 = pNciContext->InitRspParams.ManufacturerInfo.Byte3;
+        pNfccFeatures->ManufactureInfo.Length = pNciContext->InitRspParams.ManufacturerInfo.Length;
+        pNfccFeatures->ManufactureInfo.Buffer = pNciContext->InitRspParams.ManufacturerInfo.Buffer;
+
         /* Store the version Number */
         pNfccFeatures->NciVer = pNciContext->ResetInfo.NciVer;
         /* Store the maximum routing table size */
@@ -2050,6 +2055,12 @@ phNciNfc_ReleaseNciHandle(void )
                 phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
                 pNciCtx->tSendPayload.pBuff = NULL;
                 pNciCtx->tSendPayload.wPayloadSize = 0;
+            }
+
+            if (NULL != pNciCtx->InitRspParams.ManufacturerInfo.Buffer) {
+                phOsalNfc_FreeMemory(pNciCtx->InitRspParams.ManufacturerInfo.Buffer);
+                pNciCtx->InitRspParams.ManufacturerInfo.Buffer = NULL;
+                pNciCtx->InitRspParams.ManufacturerInfo.Length = 0;
             }
 
             phNciNfc_ReleaseNfceeCntx();

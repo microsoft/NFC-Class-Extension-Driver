@@ -9,7 +9,6 @@
 #include "phNciNfc_CoreSend.tmh"
 
 #define PHNCINFC_WAITCREDIT_TO_REDUCTION    (50)
-#define PHNCINFC_MIN_WAITCREDIT_TO          (250)
 
 typedef NFCSTATUS (*phNciNfc_CoreSend_t)(phNciNfc_CoreContext_t *pContext);
 

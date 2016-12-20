@@ -18,19 +18,6 @@
 
 /**
  * \ingroup grp_nci_nfc
- * \brief The supported NCI version of the specification
- */
-#define PH_NCINFC_VERSION_MAJOR_MASK                (0xF0)
-#define PH_NCINFC_VERSION_MINOR_MASK                (0x0F)
-
-#define PH_NCINFC_VERSION_MAJOR                     (0x01)
-#define PH_NCINFC_VERSION_MINOR                     (0x00)
-
-#define PH_NCINFC_VERSION                           ((PH_NCINFC_VERSION_MAJOR << 4) | PH_NCINFC_VERSION_MINOR)
-
-
-/**
- * \ingroup grp_nci_nfc
  * \brief Max length of Higher layer inf of ATTRIB command
  */
 #define PH_NCINFC_MAX_HIGHER_LAYER_INF_LEN           (0x30U)
@@ -1135,10 +1122,8 @@ typedef struct phNciNfc_NfccFeatures
     uint8_t ManufacturerId;
     struct
     {
-        uint8_t Byte0;                      /**< Byte 0 */
-        uint8_t Byte1;                      /**< Byte 1 */
-        uint8_t Byte2;                      /**< Byte 2 */
-        uint8_t Byte3;                      /**< Byte 3 */
+        uint8_t Length;
+        uint8_t *Buffer;                    /**<Manufacturer information NCI*/
     }ManufactureInfo;
 }phNciNfc_NfccFeatures_t, *pphNciNfc_NfccFeatures_t;/**< pointer to #phNciNfc_NfccFeatures_t */
 
