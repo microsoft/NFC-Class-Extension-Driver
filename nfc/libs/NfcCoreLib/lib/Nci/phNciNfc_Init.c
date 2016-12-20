@@ -432,7 +432,7 @@ static void phNciNfc_ResetNtfDelayCb(uint32_t dwTimerId, void *pContext)
     /* Internal event is made failed in order to remain in same state */
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     UNUSED(dwTimerId);
-    PH_LOG_LIBNFC_FUNC_ENTRY();
+    PH_LOG_NCI_FUNC_ENTRY();
     if (NULL != pNciContext)
     {
         (void)phOsalNfc_Timer_Stop(pNciContext->dwNtfTimerId);
@@ -446,7 +446,7 @@ static void phNciNfc_ResetNtfDelayCb(uint32_t dwTimerId, void *pContext)
             PH_LOG_NCI_INFO_STR("phNciNfc_GenericSequence returned error %d", wStatus);
         }
     }
-    PH_LOG_LIBNFC_FUNC_EXIT();
+    PH_LOG_NCI_FUNC_EXIT();
     return;
 }
 
@@ -454,19 +454,23 @@ static NFCSTATUS phNciNfc_DelayForResetNtfProc(void* pContext, NFCSTATUS status)
 {
     UNUSED(status);
     UNUSED(pContext);
-    PH_LOG_LIBNFC_FUNC_ENTRY();
-    PH_LOG_LIBNFC_FUNC_EXIT();
+    PH_LOG_NCI_FUNC_ENTRY();
+    PH_LOG_NCI_FUNC_EXIT();
     return NFCSTATUS_SUCCESS;
 }
 
-NFCSTATUS phNciNfc_DelayForResetNtfInit(void* pContext)
+static NFCSTATUS phNciNfc_DelayForResetNtfInit(void* pContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t)pContext;
 
-    PH_LOG_LIBNFC_FUNC_ENTRY();
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NULL == pNciContext)
+    {
+        wStatus = NFCSTATUS_INVALID_STATE;
+    }
 
-    if (0 == pNciContext->tInitInfo.bSkipRegisterAllNtfs)
+    if (wStatus == NFCSTATUS_SUCCESS && 0 == pNciContext->tInitInfo.bSkipRegisterAllNtfs)
     {
         wStatus = phNciNfc_RegAllNtfs(pNciContext);
     }
@@ -475,7 +479,7 @@ NFCSTATUS phNciNfc_DelayForResetNtfInit(void* pContext)
     {
         wStatus = phNciNfc_DelayForResetNtf(pContext);
     }
-    PH_LOG_LIBNFC_FUNC_EXIT();
+    PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
 }
 
@@ -484,10 +488,10 @@ NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t)pContext;
 
-    PH_LOG_LIBNFC_FUNC_ENTRY();
+    PH_LOG_NCI_FUNC_ENTRY();
     if (NULL != pNciContext)
     {
-        PH_LOG_LIBNFC_CRIT_U32MSG("Delay to receive Core Reset ntf", PHNCINFC_CORE_RESET_NTF_TIMEOUT_MS);
+        PH_LOG_NCI_INFO_STR("Delay to receive Core Reset ntf %d", PHNCINFC_CORE_RESET_NTF_TIMEOUT_MS);
 
         pNciContext->dwNtfTimerId = phOsalNfc_Timer_Create();
         if (PH_OSALNFC_TIMER_ID_INVALID != pNciContext->dwNtfTimerId)
@@ -507,12 +511,17 @@ NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
                 wStatus = NFCSTATUS_FAILED;
             }
         }
+        else
+        {
+            wStatus = NFCSTATUS_FAILED;
+            PH_LOG_NCI_INFO_STR("Failed to create a timer instance");
+        }
     }
     else
     {
         wStatus = NFCSTATUS_INVALID_STATE;
     }
-    PH_LOG_LIBNFC_FUNC_EXIT();
+    PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
 }
 
@@ -792,10 +801,7 @@ phNciNfc_ResetNtfCb(void*     pContext,
                                 else
                                 {
                                     /*Reset Trigger*/
-                                    if (pTransInfo->pbuffer[0] == 0) /*If error is unrecoverable*/
-                                        wStatus = NFCSTATUS_FAILED;
-                                    else
-                                        wStatus = NFCSTATUS_SUCCESS;
+                                    wStatus = (pTransInfo->pbuffer[0] == 0) ? NFCSTATUS_FAILED : NFCSTATUS_SUCCESS;
                                 }
                             }
                             else

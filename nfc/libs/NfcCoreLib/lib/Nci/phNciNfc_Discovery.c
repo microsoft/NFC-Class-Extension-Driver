@@ -1071,14 +1071,14 @@ NFCSTATUS phNciNfc_UpdateDiscConfigParams(void *pNciHandle,
     pphNciNfc_Context_t     pNciContext = pNciHandle;
     /* Index to construct discover command payload */
     uint8_t bIndex=1;
-    bool_t bNci1x = PH_NCINFC_VERSION_IS_1x(pNciContext);
-    bool_t bNci2x = PH_NCINFC_VERSION_IS_2x(pNciContext);
+    bool_t fIsNci1x = PH_NCINFC_VERSION_IS_1x(pNciContext);
+    bool_t fIsNci2x = PH_NCINFC_VERSION_IS_2x(pNciContext);
     PH_LOG_NCI_FUNC_ENTRY();
 
     /*Note: ListenNfcFActive and PollNfcFActive exist only in NCI1.x specification.*/
 
     if(pPollConfig->PollNfcAActive ||
-        (pPollConfig->PollNfcFActive && bNci2x))
+        (pPollConfig->PollNfcFActive && fIsNci2x))
     {
         pNciContext->NciDiscContext.pDiscPayload[bIndex++] =
         (uint8_t)phNciNfc_NFCA_Active_Poll;
@@ -1122,7 +1122,7 @@ NFCSTATUS phNciNfc_UpdateDiscConfigParams(void *pNciHandle,
     }
     /* Check whether Polling loop to be enabled for NFC-F Technology */
 
-    if(pPollConfig->PollNfcFActive && bNci1x)
+    if(pPollConfig->PollNfcFActive && fIsNci1x)
     {
         pNciContext->NciDiscContext.pDiscPayload[bIndex++] =
         (uint8_t)phNciNfc_NFCF_Active_Poll;
@@ -1194,7 +1194,7 @@ NFCSTATUS phNciNfc_UpdateDiscConfigParams(void *pNciHandle,
         }
 
         if(1 == pPollConfig->ListenNfcAActive ||
-            (1 == pPollConfig->ListenNfcFActive && bNci2x))
+            (1 == pPollConfig->ListenNfcFActive && fIsNci2x))
         {
             /* Configure for Listen mode in active technology */
             pNciContext->NciDiscContext.pDiscPayload[bIndex++] =
@@ -1219,7 +1219,7 @@ NFCSTATUS phNciNfc_UpdateDiscConfigParams(void *pNciHandle,
             pNciContext->NciDiscContext.pDiscPayload[bIndex++] =
                 (uint8_t)PHNCINFC_LISTEN_DISCFREQ;
         }
-        if(1 == pPollConfig->ListenNfcFActive && bNci1x)
+        if(1 == pPollConfig->ListenNfcFActive && fIsNci1x)
         {
             /* Configure for Listen mode in active technology */
             pNciContext->NciDiscContext.pDiscPayload[bIndex++] =

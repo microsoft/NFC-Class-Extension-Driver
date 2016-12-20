@@ -325,7 +325,7 @@ typedef void (*pphNciNfc_ConnCreditsNtf_t)(void* pContext, uint8_t bCredits, NFC
  *
  * \brief Manufacturer Information size in NCI 1.x
   */
-#define PHNCINFC_CORE_MANUF_INFO_LEN_NCI1x		(4)
+#define PHNCINFC_CORE_MANUF_INFO_LEN_NCI1x      (4)
 
 /**
  * \ingroup grp_nci_nfc_core

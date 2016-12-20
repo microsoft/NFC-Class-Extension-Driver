@@ -23,7 +23,7 @@ phNciNfc_NfcDepLstnRdrAInit(
     uint8_t                     bCount = 7;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((0 != (wLen)) && (NULL != pBuff) && (NULL != pRemDevInf))
+    if((wLen > bCount + RfTechSpecParamsLen + PH_NCINFCTYPES_DATA_XCHG_PARAMS_LEN) && (NULL != pBuff) && (NULL != pRemDevInf))
     {
         /* No Technology specific parameters incase of Listen A as per NCI Spec */
         RfTechSpecParamsLen = pBuff[6];
@@ -56,11 +56,13 @@ phNciNfc_NfcDepLstnRdrAInit(
             bCount++;
             AtrLen = pBuff[bCount];
 
+            status = (wLen > bCount + AtrLen) ? NFCSTATUS_SUCCESS : NFCSTATUS_INVALID_PARAMETER;
+
             /* Holds ATR_RES if remote device is a P2P target and ATR_REQ if remote device is a
                P2P initiator */
             /* The relevant ATR Length is present in the first activation parameter.
                In the case of NCI 2.0, we ignore the Data Exchange Length Reduction parameter for now */
-            if (0 != AtrLen)
+            if (0 != AtrLen && status == NFCSTATUS_SUCCESS)
             {
                 pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = AtrLen;
                 bCount++;
@@ -81,7 +83,7 @@ phNciNfc_NfcDepLstnRdrAInit(
             }
         }
 
-        if(0 != RfTechSpecParamsLen)
+        if(0 != RfTechSpecParamsLen && status == NFCSTATUS_SUCCESS)
         {
             pRemDevInf->tRemoteDevInfo.NfcIP_Info.bATRInfo_Length = pRfNtfBuff[0];
             phOsalNfc_SetMemory(pRemDevInf->tRemoteDevInfo.NfcIP_Info.aAtrInfo, 0,
@@ -108,7 +110,9 @@ phNciNfc_NfcDepLstnRdrAInit(
            - Activation Parameters in case of Passive P2P
            If using Active Communication Mode the RF_INTF_ACTIVATED_INTF SHALL NOT include any
            Activation Parameters. */
-        if(0 != ActvnParamsLen && pRemDevInf->tRemoteDevInfo.NfcIP_Info.Nfcip_Active == 1 &&
+        if(status == NFCSTATUS_SUCCESS &&
+           ActvnParamsLen != 0 && 
+           pRemDevInf->tRemoteDevInfo.NfcIP_Info.Nfcip_Active == 1 &&
            PH_NCINFC_VERSION_IS_2x(PHNCINFC_GETNCICONTEXT()))
         {
             status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
