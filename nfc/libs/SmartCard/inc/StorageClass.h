@@ -28,6 +28,10 @@ Environment:
 #define COMMAND_BUFFER_SIZE             512
 #define DEFAULT_APDU_STATUS_SIZE        2
 
+#define PCSC_CLASS_BYTE                 0xFF
+#define PCSC_PARA1_SWITCH_BYTE          0x00
+#define PCSC_PARA2_SWITCH_BYTE          0x02
+
 enum ApduResult
 {
     RESULT_SUCCESS,
@@ -132,6 +136,25 @@ typedef enum _PcscIncrementDecrement
     BlkAddressCmd = 0x80,
     BlkValueCmd = 0x81,
 } PcscIncrementDecrement;
+
+
+typedef struct _PcscSwitchProtocolDataObject
+{
+    unsigned char  Tag;        // 0x8F
+    unsigned char  Length;     // 0x02
+    unsigned char  value[2];   // For values see spec
+}SwitchProtocolTlv_t;
+
+typedef struct _PcscSwitchProtocolAPDU
+{
+    unsigned char                   pbCLA;                  // 0xFF
+    unsigned char                   pbINS;                  // 0xC2
+    unsigned char                   pbP1;                   // 0x00
+    unsigned char                   pbP2;                   // 0x00
+    unsigned char                   pbLc;                   // 0x02
+    _PcscSwitchProtocolDataObject   PcscSwitchProtoData;
+    unsigned char                   pbLe;
+}PcscSwitchProtocolAPDU;
 
 class IStorageCard
 {
