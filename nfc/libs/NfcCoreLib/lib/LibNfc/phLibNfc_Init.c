@@ -118,15 +118,6 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                         pLibContext->tSeInfo.bSeState[phLibNfc_SE_Index_HciNwk] = phLibNfc_SeStateInitializing;
                         pLibContext->sSeContext.pActiveSeInfo = (pphLibNfc_SE_List_t)(&pLibContext->tSeInfo.tSeList[phLibNfc_SE_Index_HciNwk]);
                     }
-
-                    /* RF_ISO_DEP_NAK_PRESENCE_CMD and CORE_SET_POWER_SUB_STATE_CMD are NCI2.0 commands.
-                     * If the Nci Version is 2.0 force those flags to 1.
-                     */
-                    if (PH_NCINFC_VERSION_IS_2x(pNciContext))
-                    {
-                        pLibContext->Config.bIsoDepPresChkCmd = 1;
-                        pLibContext->Config.bSwitchedOnSubState = 1;
-                    }
                 }else
                 {
                     wStatus = NFCSTATUS_FAILED;
