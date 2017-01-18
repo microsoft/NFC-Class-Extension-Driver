@@ -436,9 +436,6 @@ static void phNciNfc_ResetNtfDelayCb(uint32_t dwTimerId, void *pContext)
     if (NULL != pNciContext)
     {
         (void)phOsalNfc_Timer_Stop(pNciContext->dwNtfTimerId);
-        (void)phOsalNfc_Timer_Delete(pNciContext->dwNtfTimerId);
-
-        pNciContext->dwNtfTimerId = 0;
 
         wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
         if (wStatus != NFCSTATUS_SUCCESS)
@@ -506,8 +503,6 @@ NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
             }
             else
             {
-                (void)phOsalNfc_Timer_Delete(pNciContext->dwNtfTimerId);
-                pNciContext->dwNtfTimerId = 0;
                 wStatus = NFCSTATUS_FAILED;
             }
         }
@@ -745,9 +740,6 @@ phNciNfc_ResetNtfCb(void*     pContext,
         if (pNciCtx->dwNtfTimerId != 0)
         {
             (void)phOsalNfc_Timer_Stop(pNciCtx->dwNtfTimerId);
-            (void)phOsalNfc_Timer_Delete(pNciCtx->dwNtfTimerId);
-
-            pNciCtx->dwNtfTimerId = 0;
 
             if (pTransInfo->wLength >= PHNFCINFC_CORE_RESET_NTF_MIN_LEN)
             {

@@ -220,7 +220,8 @@ typedef enum phNciNfc_DeActivateReason
     phNciNfc_e_DhRequest = 0,    /**<Deactivate to Idle Mode */
     phNciNfc_e_EndPoint = 1,   /**<Deactivate to Sleep Mode */
     phNciNfc_e_RfLinkLoss = 2,/**<Deactivate to SleepAF Mode */
-    phNciNfc_e_NfcB_BadAfi = 3   /**<Deactivate to Discovery Mode */
+    phNciNfc_e_NfcB_BadAfi = 3,   /**<Deactivate to Discovery Mode */
+    phNciNfc_e_DhRequestFailed = 4, /**<Deactivate to Idle Mode or Poll Active */
 }phNciNfc_DeActivateReason_t;
 
 /*!
