@@ -1442,6 +1442,24 @@ static NFCSTATUS phNciNfc_DeActvNtfCb(void *pContext,void *pInfo,NFCSTATUS wStat
                         wDeActvStatus = NFCSTATUS_SUCCESS;
                     }
                 }
+                else if (pTransInfo->pbuffer[1] == (uint8_t)phNciNfc_e_DhRequestFailed)
+                {
+                    if ((pNciContext->NciDiscContext.eDeActvType == phNciNfc_e_SleepMode) && \
+                        (pTransInfo->pbuffer[0] == phNciNfc_e_SleepMode))
+                    {
+                        wDeActvStatus = NFCSTATUS_SUCCESS;
+                    }
+                    if ((pNciContext->NciDiscContext.eDeActvType == phNciNfc_e_SleepAfMode) && \
+                        (pTransInfo->pbuffer[0] == phNciNfc_e_SleepAfMode))
+                    {
+                        wDeActvStatus = NFCSTATUS_SUCCESS;
+                    }
+                    else if ((pNciContext->NciDiscContext.eDeActvType == phNciNfc_e_IdleMode) && \
+                             (pTransInfo->pbuffer[0] == phNciNfc_e_IdleMode))
+                    {
+                        wDeActvStatus = NFCSTATUS_SUCCESS;
+                    }
+                }
             }
         }
         /* Invoke upper layer if the Deactivate Notification timeout has occured */
@@ -1798,6 +1816,8 @@ NFCSTATUS phNciNfc_ProcessDeActvNtf(void* pContext, void *pInfo, NFCSTATUS statu
             case phNciNfc_e_NfcB_BadAfi:
                 tRfDeactvInfo.tRfDeactvInfo.eRfDeactvReason = phNciNfc_e_NfcB_BadAfi;
                 break;
+            case phNciNfc_e_DhRequestFailed:
+                tRfDeactvInfo.tRfDeactvInfo.eRfDeactvReason = phNciNfc_e_DhRequestFailed;
             default:
                 break;
             }
