@@ -738,7 +738,9 @@ phNciNfc_ResetNtfCb(void*     pContext,
         PH_LOG_NCI_INFO_STR("Received RESET notification from NFCC");
 
         if (pNciCtx->dwNtfTimerId != 0)
+        {
             (void)phOsalNfc_Timer_Stop(pNciCtx->dwNtfTimerId);
+        }
 
         /* Reset Sender statemachine */
         (void)phNciNfc_CoreResetSenderStateMachine(&pNciCtx->NciCoreContext);
