@@ -2027,7 +2027,7 @@ phNciNfc_ReleaseNciHandle(void )
     if (NULL != pNciCtx)
     {
         (void)phOsalNfc_Timer_Delete(pNciCtx->dwNtfTimerId);
-        pNciCtx->dwNtfTimerId = 0;
+        pNciCtx->dwNtfTimerId = PH_OSALNFC_TIMER_ID_INVALID;
 
         /* Release Nci resources and Release Nci Handle (Nci context structure) */
         /* Release Memory related to Discovery module */
