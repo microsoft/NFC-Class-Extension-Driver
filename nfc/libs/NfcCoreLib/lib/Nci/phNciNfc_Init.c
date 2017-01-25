@@ -490,6 +490,11 @@ NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
     {
         PH_LOG_NCI_INFO_STR("Delay to receive Core Reset ntf %d", PHNCINFC_CORE_RESET_NTF_TIMEOUT_MS);
 
+        if (PH_OSALNFC_TIMER_ID_INVALID != pNciContext->dwNtfTimerId)
+        {
+            PH_LOG_NCI_WARN_STR("dwNtfTimerId looks to be already created");
+        }
+
         pNciContext->dwNtfTimerId = phOsalNfc_Timer_Create();
         if (PH_OSALNFC_TIMER_ID_INVALID != pNciContext->dwNtfTimerId)
         {
