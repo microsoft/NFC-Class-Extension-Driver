@@ -750,6 +750,11 @@ phNciNfc_ResetNtfCb(void*     pContext,
                 eNciNfc_NciResetNtf, pInfo, NFCSTATUS_SUCCESS);
         }
 
+        /* Nci Version is only available in Nci2.0 CORE_RESET_NTF frame.
+           Furthermore Nci1.x CORE_RESET_NTF frame is only 2 bytes long
+           (Reason code(1 byte) and Configuration status(1 byte).
+           We are assuming here that a CORE_RESET_NTF with a size longer
+           or egal to PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x(5) is a NCI2x frame.*/
         if (pTransInfo->wLength >= PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x)
         {
             /* Nfcc supported Nci version */
