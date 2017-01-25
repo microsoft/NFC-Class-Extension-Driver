@@ -53,11 +53,11 @@ phNciNfc_SequenceP_t gphNciNfc_NfccResetSequence[] = {
 
 /** NCI2.x Core Reset notification min length
     NCI2x Specification Table 5: Control Messages to Reset the NFCC - CORE_RESET_NTF*/
-#define PHNFCINFC_CORE_RESET_NTF_MIN_LEN_2x       (sizeof(uint8_t) + /* Reset Trigger */\
-                                                   sizeof(uint8_t) + /* Configuration Status */\
-                                                   sizeof(uint8_t) + /* NCI Version */\
-                                                   sizeof(uint8_t) + /* ManufacturerId*/\
-                                                   sizeof(uint8_t)   /* Manufacturer Specific Information Length */)
+#define PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x       (sizeof(uint8_t) + /* Reset Trigger */\
+                                                  sizeof(uint8_t) + /* Configuration Status */\
+                                                  sizeof(uint8_t) + /* NCI Version */\
+                                                  sizeof(uint8_t) + /* ManufacturerId*/\
+                                                  sizeof(uint8_t)   /* Manufacturer Specific Information Length */)
 
 /** Core Reset Rsp min length NCI 1x
     NCI1.x Specification Table8: Control Messages to Initialize the NFCC - CORE_INIT_RSP*/
@@ -750,7 +750,7 @@ phNciNfc_ResetNtfCb(void*     pContext,
                 eNciNfc_NciResetNtf, pInfo, NFCSTATUS_SUCCESS);
         }
 
-        if (pTransInfo->wLength >= PHNFCINFC_CORE_RESET_NTF_MIN_LEN_2x)
+        if (pTransInfo->wLength >= PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x)
         {
             /* Nfcc supported Nci version */
             pNciCtx->ResetInfo.NciVer = pTransInfo->pbuffer[2];
@@ -773,7 +773,7 @@ phNciNfc_ResetNtfCb(void*     pContext,
                 if (pNciCtx->InitRspParams.ManufacturerId != 0x00)
                 {
                     wDataLen = pTransInfo->pbuffer[4];
-                    if (wDataLen == pTransInfo->wLength - PHNFCINFC_CORE_RESET_NTF_MIN_LEN_2x)
+                    if (wDataLen == pTransInfo->wLength - PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x)
                     {
                         pBuff = pNciCtx->InitRspParams.ManufacturerInfo.Buffer;
                         if (pBuff == NULL)
@@ -794,7 +794,7 @@ phNciNfc_ResetNtfCb(void*     pContext,
                             pNciCtx->InitRspParams.ManufacturerInfo.Length == wDataLen)
                         {
                             if (NULL == memcpy(pBuff,
-                                                &pTransInfo->pbuffer[PHNFCINFC_CORE_RESET_NTF_MIN_LEN_2x],
+                                                &pTransInfo->pbuffer[PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x],
                                                 wDataLen))
                             {
                                 wStatus = NFCSTATUS_FAILED;
