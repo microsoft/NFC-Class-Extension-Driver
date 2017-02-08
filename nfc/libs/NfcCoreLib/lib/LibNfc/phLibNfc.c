@@ -694,7 +694,7 @@ void phLibNfc_ProcessDevInfo(void* pContext, phLibNfc_Event_t TrigEvent,
     else
     {
         PH_LOG_LIBNFC_CRIT_STR("NCI layer has returned NFCSTATUS_FAILED, Restart discovery ");
-        PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_ReDiscSeqWithDeact);
+        PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_ReDiscSeqWithDeactAndDisc);
         wProcStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,NULL);
     }
     PH_LOG_LIBNFC_FUNC_EXIT();

@@ -417,7 +417,7 @@ NFCSTATUS phLibNfc_ProcessDeactToDiscResp(void *pContext,NFCSTATUS wStatus,void 
         {
             /* Discovery started, update flag which tracks discovery progress */
             pLibContext->bDiscoverInProgress = 1;
-            PH_LOG_LIBNFC_INFO_STR("Deactivation to discovery success success");
+            PH_LOG_LIBNFC_INFO_STR("Deactivation to discovery success");
         }
         else
         {
