@@ -196,7 +196,6 @@ phNciNfc_Initialise(
         pNciContext->IfNtfCtx = pContext;
 
         /*Update default Values*/
-        PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_InitSequence);
         pCoreContext = &(pNciContext->NciCoreContext);
         pCoreContext->pHwRef = pHwRef;
         pCoreContext->bLogDataMessages = pNciContext->Config.bLogDataMessages;
@@ -210,6 +209,7 @@ phNciNfc_Initialise(
                 /* Init payload to display the build number in the init response */
                 pNciContext->tInitInfo.bExtension = 0x00;
                 pNciContext->tInitInfo.bSkipRegisterAllNtfs = 0x00;
+                PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_InitSequence);
                 wStatus = phNciNfc_GenericSequence((void *)pNciContext, NULL, NFCSTATUS_SUCCESS);
                 if(NFCSTATUS_PENDING != wStatus)
                 {
