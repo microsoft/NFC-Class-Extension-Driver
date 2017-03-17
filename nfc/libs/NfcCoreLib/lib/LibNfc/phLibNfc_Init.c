@@ -124,6 +124,11 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                             pHciContext->pNciContext = pLibContext->sHwReference.pNciHandle;
                             pLibContext->tSeInfo.bSeState[phLibNfc_SE_Index_HciNwk] = phLibNfc_SeStateInitializing;
                             pLibContext->sSeContext.pActiveSeInfo = (pphLibNfc_SE_List_t)(&pLibContext->tSeInfo.tSeList[phLibNfc_SE_Index_HciNwk]);
+                            pHciContext->pSeHandle = phOsalNfc_GetMemory(1);
+                            if (pHciContext->pSeHandle == NULL)
+                            {
+                                wStatus = NFCSTATUS_FAILED;
+                            }
                         }
                     }
                 }else
