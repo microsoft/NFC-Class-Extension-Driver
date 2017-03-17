@@ -129,6 +129,10 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                             {
                                 wStatus = NFCSTATUS_FAILED;
                             }
+                            else
+                            {
+                                wStatus = phNciNfc_UpdateConnDestInfo(UNASSIGNED_DESTID, phNciNfc_e_NFCEE, pHciContext->pSeHandle);
+                            }
                         }
                     }
                 }else
