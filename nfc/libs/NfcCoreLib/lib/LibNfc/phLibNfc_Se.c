@@ -58,6 +58,9 @@ phLibNfc_Sequence_t gphLibNfc_NfceeDiscCompleteSeq[] = {
     {NULL, &phLibNfc_NfceeDiscSeqComplete}
 };
 
+#define NFCEE_INIT_SEQUENCE_STARTED 0x01
+#define NFCEE_INIT_SEQUENCE_COMPLETED 0x02
+
 NFCSTATUS phLibNfc_SE_Enumerate(pphLibNfc_RspCb_t     pSEDiscoveryCb,
                                 void*                 pContext)
 {
@@ -693,6 +696,24 @@ void phLibNfc_SENtfHandler(
             case eNciNfc_NfceeDiscoverNtf:
             {
                 phLibNfc_UpdateSeInfo(pCtx, &pSEInfo->tNfceeInfo, status);
+            }
+            break;
+            case eNciNfc_NfceeStatusNtf:
+            {
+                switch (pSEInfo->tNfceeStatus.bNfceeStatus)
+                {
+                case NFCEE_INIT_SEQUENCE_COMPLETED:
+                    PH_LOG_LIBNFC_CRIT_STR("Stopping Hci Timer");
+                    if (pCtx->dwHciTimerId)
+                    {
+                        (void)phOsalNfc_Timer_Stop(pCtx->dwHciTimerId);
+                        (void)phOsalNfc_Timer_Delete(pCtx->dwHciTimerId);
+                        pCtx->dwHciTimerId = 0;
+
+                        phLibNfc_InternalSequence(pCtx, wStatus, NULL);
+                    }
+                    break;
+                }
             }
             break;
             case eNciNfc_NfceeDiscReqNtf:

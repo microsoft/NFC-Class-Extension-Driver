@@ -207,6 +207,7 @@ typedef enum phNciNfc_NotificationType
 {
     eNciNfc_DiscoverNtf,        /**< Tag Discovered Notification */
     eNciNfc_NfceeDiscoverNtf,   /**< Nfcee Discovered Notification */
+    eNciNfc_NfceeStatusNtf,     /**< Nfcee Status Notification */
     eNciNfc_NfceeDiscReqNtf,    /**< Nfcee Discovery Request notification */
     eNciNfc_NfceeActionNtf,     /**< Nfcee Action Notification */
     eNciNfc_NciResetNtf,        /**< Nci Reset Notification */
@@ -484,6 +485,12 @@ typedef struct phNciNfc_NfceeInfo
     uint8_t bNfceeId; /**< Nfcee Id */
     pphNciNfc_NfceeDeviceHandle_t pNfceeHandle;
 }phNciNfc_NfceeInfo_t,*pphNciNfc_NfceeInfo_t;
+
+typedef struct phNciNfc_NfceeStatus
+{
+    uint8_t bNfceeStatus; /**< 0 Unrecoverable error, 1 NFCEE Initialization started, 2 NFCEE Initialization completed */
+    uint8_t bNfceeId; /**< Nfcee Id */
+}phNciNfc_NfceeStatus_t, *pphNciNfc_NfceeStatus_t;
 
 /**
  * \ingroup grp_nci_nfc
@@ -1052,6 +1059,7 @@ typedef union phNciNfc_NotificationInfo
     phNciNfc_NfceeHciEventInfo_t  tEventInfo;      /**< Hci events info */
     phNciNfc_GenericErrInfo_t tGenericErrInfo;     /**< Generic error information */
     phNciNfc_NfceeInfo_t tNfceeInfo;        /**< Nfcee notification */
+    phNciNfc_NfceeStatus_t tNfceeStatus;    /**< Nfcee status */
 }phNciNfc_NotificationInfo_t,*pphNciNfc_NotificationInfo_t; /**< Notification info received by Nci module */
 
 /**
