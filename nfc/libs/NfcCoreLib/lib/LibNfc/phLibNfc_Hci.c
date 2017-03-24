@@ -1136,6 +1136,7 @@ NFCSTATUS phLibNfc_HciChildDevInitComplete(void* pContext, NFCSTATUS status, voi
             {
                 PH_LOG_LIBNFC_INFO_STR("NFCEE initialization success");
                 pLibCtx->tSeInfo.bSeState[bIndex] = phLibNfc_SeStateInitialized;
+                pLibCtx->tSeInfo.tSeList[bIndex].eSE_ActivationMode = phLibNfc_SE_ActModeVirtual;
             }
             else
             {
