@@ -191,6 +191,7 @@ static NFCSTATUS phNciNfc_CoreUtilsValidateNtfPktOID(uint8_t bGID, uint8_t bOID)
         {
             case phNciNfc_e_NfceeMgtNfceeDiscNtfOid:
             case phNciNfc_e_NfceeMgtModeSetNtfOid:
+            case phNciNfc_e_NfceeMgtStatusNtfOid:
                 bRetNfcStat = NFCSTATUS_SUCCESS;
                 break;
             default:
