@@ -272,6 +272,21 @@ static NFCSTATUS phNciNfc_RegAllNtfs(void*     pContext)
                 pContext
             );
         }
+
+        if (NFCSTATUS_SUCCESS == wStatus)
+        {
+            if (PH_OSALNFC_TIMER_ID_INVALID != pCtx->dwNtfTimerId)
+            {
+                phOsalNfc_Timer_Stop(pCtx->dwNtfTimerId);
+            }
+            else
+            {
+                pCtx->dwNtfTimerId = phOsalNfc_Timer_Create();
+                wStatus = (PH_OSALNFC_TIMER_ID_INVALID != pCtx->dwNtfTimerId)
+                    ? NFCSTATUS_SUCCESS
+                    : NFCSTATUS_INSUFFICIENT_RESOURCES;
+            }
+        }
     }
     else
     {

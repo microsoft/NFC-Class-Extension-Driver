@@ -15,26 +15,18 @@ static NFCSTATUS phNciNfc_ProcessInitRspNci2x(void *pContext, NFCSTATUS wStatus)
 static void phNciNfc_DelayForCreditNtfCb(void* pContext, uint8_t bCredits, NFCSTATUS status);
 static NFCSTATUS phNciNfc_CompleteInitSequence(void *pContext, NFCSTATUS wStatus);
 
-static NFCSTATUS phNciNfc_DelayForResetNtfProc(void* pContext, NFCSTATUS wStatus);
-static NFCSTATUS phNciNfc_DelayForResetNtfInit(void* pContext);
 static NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext);
 
-static NFCSTATUS phNciNfc_InitReset(void *pContext);
 static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS wStatus);
 static NFCSTATUS phNciNfc_SendReset(void *pContext);
 
 static NFCSTATUS phNciNfc_CompleteReleaseSequence(void *pContext, NFCSTATUS wStatus);
 static NFCSTATUS phNciNfc_CompleteNfccResetSequence(void *pContext, NFCSTATUS wStatus);
 
-static NFCSTATUS phNciNfc_ResetNtfCb(void* pContext, void* pInfo, NFCSTATUS status);
-
-static NFCSTATUS phNciNfc_RegAllNtfs(void* pContext);
-
 /*Global Varibales for Init Sequence Handler*/
 phNciNfc_SequenceP_t gphNciNfc_InitSequence[] = {
-    {&phNciNfc_DelayForResetNtfInit, &phNciNfc_DelayForResetNtfProc},
-    {&phNciNfc_InitReset, &phNciNfc_ProcessResetRsp},
-    {&phNciNfc_DelayForResetNtf, &phNciNfc_DelayForResetNtfProc},
+    {&phNciNfc_SendReset, &phNciNfc_ProcessResetRsp},
+    {&phNciNfc_DelayForResetNtf, NULL},
     {&phNciNfc_Init, &phNciNfc_ProcessInitRsp},
     {NULL, &phNciNfc_CompleteInitSequence}
 };
@@ -84,7 +76,11 @@ phNciNfc_SequenceP_t gphNciNfc_NfccResetSequence[] = {
                                                     sizeof(uint8_t)    /* NoOfRfIfSuprt */)
 
 /** Core Reset notification timeout */
-#define PHNCINFC_CORE_RESET_NTF_TIMEOUT_MS        (30)
+#define PHNCINFC_CORE_RESET_NTF_TIMEOUT_MS              (30)
+#define PHNCINFC_CORE_RESET_NTF_REASON_UNRECOVERABLE    (0)
+#define PHNCINFC_CORE_RESET_NTF_NFCC_POWER_ON           (1)
+#define PHNCINFC_CORE_RESET_NTF_CORE_RESET_CMD_RECEIVED (2)
+
 
 static NFCSTATUS phNciNfc_Init(void *pContext)
 {
@@ -447,39 +443,10 @@ static void phNciNfc_ResetNtfDelayCb(uint32_t dwTimerId, void *pContext)
     return;
 }
 
-static NFCSTATUS phNciNfc_DelayForResetNtfProc(void* pContext, NFCSTATUS status)
-{
-    UNUSED(status);
-    UNUSED(pContext);
-    PH_LOG_NCI_FUNC_ENTRY();
-    PH_LOG_NCI_FUNC_EXIT();
-    return NFCSTATUS_SUCCESS;
-}
-
-static NFCSTATUS phNciNfc_DelayForResetNtfInit(void* pContext)
-{
-    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-    pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t)pContext;
-
-    PH_LOG_NCI_FUNC_ENTRY();
-    if (NULL == pNciContext)
-    {
-        wStatus = NFCSTATUS_INVALID_STATE;
-    }
-
-    if (wStatus == NFCSTATUS_SUCCESS && 0 == pNciContext->tInitInfo.bSkipRegisterAllNtfs)
-    {
-        wStatus = phNciNfc_RegAllNtfs(pNciContext);
-    }
-
-    if (wStatus == NFCSTATUS_SUCCESS)
-    {
-        wStatus = phNciNfc_DelayForResetNtf(pContext);
-    }
-    PH_LOG_NCI_FUNC_EXIT();
-    return wStatus;
-}
-
+/* This sequence item can be reached only in case of NCI2x
+   According to NCI2.0, we should wait for CORE_RESET_NTF.
+   It will trigger phNciNfc_ResetNtfCb, which then will
+   resume the sequence witht phNciNfc_GenericSequence. */
 NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
@@ -490,12 +457,6 @@ NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
     {
         PH_LOG_NCI_INFO_STR("Delay to receive Core Reset ntf %d", PHNCINFC_CORE_RESET_NTF_TIMEOUT_MS);
 
-        if (PH_OSALNFC_TIMER_ID_INVALID != pNciContext->dwNtfTimerId)
-        {
-            PH_LOG_NCI_WARN_STR("dwNtfTimerId looks to be already created");
-        }
-
-        pNciContext->dwNtfTimerId = phOsalNfc_Timer_Create();
         if (PH_OSALNFC_TIMER_ID_INVALID != pNciContext->dwNtfTimerId)
         {
             wStatus = phOsalNfc_Timer_Start(pNciContext->dwNtfTimerId,
@@ -513,7 +474,7 @@ NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
         }
         else
         {
-            wStatus = NFCSTATUS_FAILED;
+            wStatus = NFCSTATUS_INVALID_STATE;
             PH_LOG_NCI_INFO_STR("Failed to create a timer instance");
         }
     }
@@ -525,35 +486,6 @@ NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
     return wStatus;
 }
 
-static NFCSTATUS phNciNfc_InitReset(void *pContext)
-{
-    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-    phNciNfc_CoreTxInfo_t TxInfo;
-    pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t)pContext;
-
-    PH_LOG_NCI_FUNC_ENTRY();
-    if(NULL != pNciContext)
-    {
-        phOsalNfc_SetMemory(&TxInfo, 0x00, sizeof(phNciNfc_CoreTxInfo_t));
-        TxInfo.tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlCmd;
-        TxInfo.tHeaderInfo.Group_ID = phNciNfc_e_CoreNciCoreGid;
-        TxInfo.tHeaderInfo.Opcode_ID.OidType.NciCoreCmdOid = phNciNfc_e_NciCoreResetCmdOid;
-        TxInfo.Buff = (uint8_t *)&pNciContext->ResetInfo.ResetTypeReq;
-        TxInfo.wLen = 1;
-        wStatus = phNciNfc_CoreIfTxRx(&(pNciContext->NciCoreContext),
-                                    &TxInfo,
-                                    &(pNciContext->RspBuffInfo),
-                                    PHNCINFC_NCI_CMD_RSP_TIMEOUT,
-                                    (pphNciNfc_CoreIfNtf_t)&phNciNfc_GenericSequence,
-                                    pContext);
-    }
-    else
-    {
-        wStatus = NFCSTATUS_INVALID_PARAMETER;
-    }
-    PH_LOG_NCI_FUNC_EXIT();
-    return wStatus;
-}
 
 static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS Status)
 {
@@ -586,8 +518,10 @@ static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS Status)
                             PH_LOG_NCI_INFO_STR("Nfcc reseted to 'phNciNfc_ResetType_ResetConfig'");
                             pNciContext->ResetInfo.ResetTypeRsp = phNciNfc_ResetType_ResetConfig;
                         }
-
                         wStatus = NFCSTATUS_SUCCESS;
+
+                        /* Next sequence item is NCI2x specific, so we skip it here. */
+                        phNciNfc_SkipSequenceSeq(pNciContext, pNciContext->pSeqHandler, 1);
                     }
                     else
                     {
@@ -605,18 +539,11 @@ static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS Status)
                 /*Check Status Byte*/
                 if (pNciContext->RspBuffInfo.pBuff[0] == PH_NCINFC_STATUS_OK)
                 {
-                    if (PH_NCINFC_VERSION_IS_2x(pNciContext))
-                    {
-                        wStatus = NFCSTATUS_SUCCESS;
-                    }
-                    else
-                    {
-                        PH_LOG_NCI_INFO_STR("Unsupported NCI version 0x%02x", pNciContext->ResetInfo.NciVer);
-                        wStatus = NFCSTATUS_FAILED;
-                    }
+                    wStatus = NFCSTATUS_SUCCESS;
                 }
                 else
                 {
+                    PH_LOG_NCI_CRIT_STR("CORE_RESET_RSP was received with Status Code == 0x%02x", pNciContext->RspBuffInfo.pBuff[0]);
                     wStatus = NFCSTATUS_FAILED;
                 }
             }
@@ -626,10 +553,12 @@ static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS Status)
             }
         }else
         {
+            PH_LOG_NCI_CRIT_STR("CORE_RESET_RSP was not received within response timeout!");
             wStatus = NFCSTATUS_FAILED;
         }
     }else
     {
+        PH_LOG_NCI_CRIT_STR("CORE_RESET_RSP is being processed with NULL context!");
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
     PH_LOG_NCI_FUNC_EXIT();
@@ -732,9 +661,7 @@ phNciNfc_ResetNtfCb(void*     pContext,
     pphNciNfc_TransactInfo_t pTransInfo = pInfo;
     uint8_t wDataLen;
     uint8_t *pBuff;
-    NFCSTATUS wStatus;
-
-    wStatus  = status;
+    NFCSTATUS wStatus = status;
 
     PH_LOG_NCI_FUNC_ENTRY();
     if((NULL != pNciCtx) && (NULL != pTransInfo))
@@ -761,7 +688,7 @@ phNciNfc_ResetNtfCb(void*     pContext,
            Furthermore Nci1.x CORE_RESET_NTF frame is only 2 bytes long
            (Reason code(1 byte) and Configuration status(1 byte).
            We are assuming here that a CORE_RESET_NTF with a size longer
-           or egal to PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x(5) is a NCI2x frame.*/
+           or equal to PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x(5) is a NCI2x frame.*/
         if (pTransInfo->wLength >= PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x)
         {
             /* Nfcc supported Nci version */
@@ -823,7 +750,13 @@ phNciNfc_ResetNtfCb(void*     pContext,
                         }
                     }
                 }
-                wStatus = phNciNfc_GenericSequence(pNciCtx, pInfo, status);
+
+                /* Resuming reset sequence only if notification Reset Trigger is different than
+                 * 0x01 NFCC was powered on (per NCI2.0, section 4.1) */
+                if (pTransInfo->pbuffer[0] != PHNCINFC_CORE_RESET_NTF_NFCC_POWER_ON)
+                {
+                    wStatus = phNciNfc_GenericSequence(pNciCtx, pInfo, status);
+                }
             }
             else
             {
