@@ -512,7 +512,7 @@ static void phLibNfc_UpdateSeInfo(void* pContext, pphNciNfc_NfceeInfo_t pNfceeIn
                             pCtx->pHciContext = pHciContext;
 
                             /* Initializing HCI Initialization sequence */
-                            phLibNfc_HciLaunchDevInitSequence(pCtx);
+                            phLibNfc_HciLaunchDevInitSequenceNci1x(pCtx);
                         }
                     }
                     else

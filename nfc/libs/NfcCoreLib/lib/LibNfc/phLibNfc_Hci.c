@@ -35,7 +35,7 @@ static NFCSTATUS phLibNfc_HciDataSendComplete(void* pContext,NFCSTATUS status,vo
 static void phHciNfc_eSETranseiveTimeOutCb(uint32_t dwTimerId, void *pContext);
 static NFCSTATUS phHciNfc_CreateSETranseiveTimer(phHciNfc_HciContext_t  *pHciContext);
 
-phLibNfc_Sequence_t gphLibNfc_HciInitSequence[] = {
+phLibNfc_Sequence_t gphLibNfc_HciInitSequenceNci1x[] = {
     {&phLibNfc_OpenLogConn, &phLibNfc_OpenLogConnProcess},
     {&phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc},
     {&phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc},
@@ -1140,7 +1140,7 @@ NFCSTATUS phLibNfc_HciChildDevInitComplete(void* pContext, NFCSTATUS status, voi
     return wStatus;
 }
 
-NFCSTATUS phLibNfc_HciLaunchDevInitSequence(void *pContext)
+NFCSTATUS phLibNfc_HciLaunchDevInitSequenceNci1x(void *pContext)
 {
     pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t)pContext;
     NFCSTATUS wStatus = NFCSTATUS_FAILED;
@@ -1151,7 +1151,7 @@ NFCSTATUS phLibNfc_HciLaunchDevInitSequence(void *pContext)
         pLibContext->sSeContext.pActiveSeInfo = (pphLibNfc_SE_List_t)(&pLibContext->tSeInfo.tSeList[phLibNfc_SE_Index_HciNwk]);
 
         /*Start the Sequence for HCI network*/
-        PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_HciInitSequence);
+        PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_HciInitSequenceNci1x);
         wStatus = phLibNfc_SeqHandler(pContext,NFCSTATUS_SUCCESS,NULL);
         if(NFCSTATUS_PENDING != wStatus)
         {
