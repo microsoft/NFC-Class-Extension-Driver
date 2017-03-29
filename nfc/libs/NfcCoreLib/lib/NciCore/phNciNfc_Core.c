@@ -23,7 +23,8 @@
 #define PHNCINFC_CORE_DEACTIVATE_CMD_PAYLOADLEN             (1U)
 #define PHNCINFC_CORE_T3TPOLL_CMD_PAYLOADLEN                (4U)
 #define PHNCINFC_CORE_PARAMUPDATE_CMD_PAYLOADLEN            (3U)
-#define PHNCINFC_CORE_NFCEEDISC_CMD_PAYLOADLEN              (1U)
+#define PHNCINFC_CORE_NFCEEDISC_CMD_PAYLOADLEN_1x           (1U)
+#define PHNCINFC_CORE_NFCEEDISC_CMD_PAYLOADLEN_2x           (0U)
 #define PHNCINFC_CORE_NFCEEMODESET_CMD_PAYLOADLEN           (2U)
 
 #define PHNCINFC_CORE_TESTANTENNA_CMD_PAYLOADMINLEN         (2U)
@@ -543,7 +544,7 @@ phNciNfc_CoreValidateNciPropCmd(pphNciNfc_CoreTxInfo_t pTxInfo,
     switch(OidVal)
     {
         case phNciNfc_e_CorePropSetPwrModeCmdOid:
-            if((PHNCINFC_CORE_NFCEEDISC_CMD_PAYLOADLEN == pTxInfo->wLen) && (NULL != pTxInfo->Buff))
+            if((PHNCINFC_CORE_NFCEEDISC_CMD_PAYLOADLEN_1x == pTxInfo->wLen) && (NULL != pTxInfo->Buff))
             {
                 wStatus = NFCSTATUS_SUCCESS;
             }
@@ -601,7 +602,8 @@ phNciNfc_CoreValidateNfceeMgtCmd(pphNciNfc_CoreTxInfo_t pTxInfo,
     switch(OidVal)
     {
         case phNciNfc_e_NfceeMgtNfceeDiscCmdOid:
-            if((PHNCINFC_CORE_NFCEEDISC_CMD_PAYLOADLEN == pTxInfo->wLen) && (NULL != pTxInfo->Buff))
+            if(((PHNCINFC_CORE_NFCEEDISC_CMD_PAYLOADLEN_1x == pTxInfo->wLen) && (NULL != pTxInfo->Buff)) ||
+               ((PHNCINFC_CORE_NFCEEDISC_CMD_PAYLOADLEN_2x == pTxInfo->wLen) && (NULL == pTxInfo->Buff)))
             {
                 wStatus = NFCSTATUS_SUCCESS;
             }
