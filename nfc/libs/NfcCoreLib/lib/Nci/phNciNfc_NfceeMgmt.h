@@ -51,6 +51,7 @@ typedef void (*pphNciNfc_Notification_CB_t) (
 
 extern phNciNfc_SequenceP_t gphNciNfc_NfceeDiscSequence[];
 extern phNciNfc_SequenceP_t gphNciNfc_ModeSetSequence[];
+extern phNciNfc_SequenceP_t gphNciNfc_SePowerAndLinkCtrlSequence[];
 
 NFCSTATUS phNciNfc_DeActivateNfcee(void *pContext);
 NFCSTATUS phNciNfc_RfFieldInfoNtfHandler(void *pContext, void *pInfo,NFCSTATUS Status);

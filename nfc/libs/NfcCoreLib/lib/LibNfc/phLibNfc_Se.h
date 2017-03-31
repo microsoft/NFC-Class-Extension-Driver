@@ -19,6 +19,7 @@
 #define PH_LIBNFC_SE_LSTN_NFC_F_SUPP    0x04
 
 extern phLibNfc_Sequence_t gphLibNfc_SetSeModeSeq[];
+extern phLibNfc_Sequence_t gphLibNfc_SePowerAndLinkCtrlSeq[];
 
 #include <phNfcStatus.h>
 #include "phNciNfcTypes.h"
