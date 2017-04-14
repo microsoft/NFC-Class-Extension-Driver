@@ -1063,6 +1063,21 @@ typedef struct phNfc_sUiccInfo
 
 }phNfc_sUiccInfo_t;
 
+typedef struct phNfc_seSEInfo
+{
+    /* AID and Parameter Information is obtained if the
+    * eventType is NFC_EVT_TRANSACTION.
+    */
+    phNfc_sData_t           aid; /**<TODO:*/
+    phNfc_sData_t           param; /**<TODO:*/
+
+}phNfc_sSeEventInfo_t;
+
+typedef struct phLibNfc_sSeWtxEvtInfo
+{
+    uint32_t dwWtxTime; /**< Waiting Time Extension Time in Milliseconds*/
+}phLibNfc_sSeWtxEvtInfo_t;
+
 /** \ingroup grp_hal_common
 *
 *  The <em> \ref phNfc_sEmuSupport structure </em> holds the type

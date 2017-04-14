@@ -118,6 +118,7 @@
     <ClCompile Include="..\fileObject.cpp" />
     <ClCompile Include="..\NfcCxDTA.cpp" />
     <ClCompile Include="..\NfcCxDTAInternal.cpp" />
+    <ClCompile Include="..\NfcCxESE.cpp" />
     <ClCompile Include="..\NfcCxLLCP.cpp" />
     <ClCompile Include="..\NfcCxNFP.cpp" />
     <ClCompile Include="..\NfcCxRF.cpp" />
@@ -136,6 +137,7 @@
     <ClInclude Include="..\driver.h" />
     <ClInclude Include="..\fileObject.h" />
     <ClInclude Include="..\NfcCxDTA.h" />
+    <ClInclude Include="..\NfcCxESE.h" />
     <ClInclude Include="..\NfcCxLLCP.h" />
     <ClInclude Include="..\NfcCxNFP.h" />
     <ClInclude Include="..\NfcCxPch.h" />
