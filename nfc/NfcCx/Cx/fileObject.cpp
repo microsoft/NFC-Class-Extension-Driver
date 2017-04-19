@@ -321,6 +321,15 @@ Return Value:
             goto Done;
         }
     }
+    else if (ROLE_EMBEDDED_SE == fileContext->Role) {
+        status = NfcCxEmbeddedSEInterfaceAddClient(NfcCxFileObjectGetSEInterface(fileContext),
+            fileContext);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to add a smartcard client %!STATUS!", status);
+            goto Done;
+        }
+    }
+
 
     TRACE_LINE(LEVEL_INFO, "Client Added");
     TRACE_LINE(LEVEL_INFO, "    Client Role = %!FILE_OBJECT_ROLE!",                     fileContext->Role);
@@ -549,6 +558,12 @@ Return Value:
             delete CNFCPayload::FromListEntry(ple);
         }
     }
+    else if (ROLE_EMBEDDED_SE == fileContext->Role) {
+
+        (void)NfcCxEmbeddedSEInterfaceSetEmulationModeForESE(fileContext, CardEmulationOff);
+        NfcCxEmbeddedSEInterfaceRemoveClient(NfcCxFileObjectGetSEInterface(fileContext),
+                                             fileContext);
+    }
 
     if (NULL != fileContext->pszTypes) {
         free(fileContext->pszTypes);
@@ -757,6 +772,19 @@ Return Value:
                                                 SMARTCARD_READER_NAMESPACE_LENGTH,
                                                 TRUE)) {
         FileContext->Role = ROLE_SMARTCARD;
+        goto Done;
+
+    } else if (CSTR_EQUAL == CompareStringOrdinal(pszFileName,
+                                                  min(EMBEDDED_SE_NAMESPACE_LENGTH, cchFileName),
+                                                  EMBEDDED_SE_NAMESPACE,
+                                                  EMBEDDED_SE_NAMESPACE_LENGTH,
+                                                  TRUE)) {
+        FileContext->Role = ROLE_EMBEDDED_SE;
+        status = NfcCxEmbeddedSEInterfaceSetEmulationModeForESE(FileContext, EmbeddedSeApduMode);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to set eSE into wired mode, %!STATUS!", status);
+        }
+
         goto Done;
 
     } else if (CSTR_EQUAL == CompareStringOrdinal(pszFileName,

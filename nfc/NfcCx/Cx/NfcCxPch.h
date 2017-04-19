@@ -132,6 +132,9 @@ DEFINE_GUID(GUID_NULL, 0,0,0,0,0,0,0,0,0,0,0);
 #define SEMANAGER_NAMESPACE                 L"SEManage"
 #define SEMANAGER_NAMESPACE_LENGTH          (ARRAYSIZE(SEMANAGER_NAMESPACE) - 1)
 
+#define EMBEDDED_SE_NAMESPACE                L"EmbeddedSE"
+#define EMBEDDED_SE_NAMESPACE_LENGTH         (ARRAYSIZE(EMBEDDED_SE_NAMESPACE) - 1)
+
 //
 // DDI Module Abstraction
 //
@@ -180,6 +183,7 @@ typedef struct _NFCCX_DDI_MODULE {
 #include "NfcCxNFP.h"
 #include "NfcCxSC.h"
 #include "NfcCxSE.h"
+#include "NfcCxESE.h"
 #include "NfcCxTml.h"
 #include "NciParsersLib.h" // for ETW events
 

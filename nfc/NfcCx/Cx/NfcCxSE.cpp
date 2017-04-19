@@ -20,6 +20,9 @@ Environment:
 
 #include "NfcCxSE.tmh"
 
+#define NFCCX_SE_FLAG_SET_POWER_REFERENCE 0x1
+#define NFCCX_SE_FLAG_SET_ROUTING_TABLE 0x2
+
 typedef struct _NFCCX_SE_DISPATCH_ENTRY {
     ULONG IoControlCode;
     BOOLEAN fPowerManaged;
@@ -121,6 +124,32 @@ Return Value:
         TRACE_LINE(LEVEL_ERROR, "Failed to create SEEventsLock, %!STATUS!", status);
         goto Done;
     }
+
+	// eSE Queue Is Present and Absent Queue
+
+	WDF_IO_QUEUE_CONFIG_INIT(&queueConfig, WdfIoQueueDispatchManual);
+	queueConfig.PowerManaged = WdfFalse;
+
+	status = WdfIoQueueCreate(seInterface->FdoContext->Device,
+		&queueConfig,
+		&objectAttrib,
+		&seInterface->PresentQueue);
+	if (!NT_SUCCESS(status)) {
+		TRACE_LINE(LEVEL_ERROR, "Failed to create the SmartCard Present IO Queue, %!STATUS!", status);
+		goto Done;
+	}
+
+	WDF_IO_QUEUE_CONFIG_INIT(&queueConfig, WdfIoQueueDispatchManual);
+	queueConfig.PowerManaged = WdfFalse;
+
+	status = WdfIoQueueCreate(seInterface->FdoContext->Device,
+		&queueConfig,
+		&objectAttrib,
+		&seInterface->AbsentQueue);
+	if (!NT_SUCCESS(status)) {
+		TRACE_LINE(LEVEL_ERROR, "Failed to create the SmartCard Absent IO Queue, %!STATUS!", status);
+		goto Done;
+	}
 
 Done:
 
@@ -771,7 +800,7 @@ Return Value:
     PNFCCX_RF_INTERFACE rfInterface = SEInterface->FdoContext->RFInterface;
     phLibNfc_SE_List_t SEList[MAX_NUMBER_OF_SE] = {0};
     uint8_t SECount = 0;
-    SECURE_ELEMENT_SET_CARD_EMULATION_MODE_INFO EmulationMode;
+	GUID secureElementId = { 0 };
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -804,9 +833,8 @@ Return Value:
                 continue;
             }
 
-            EmulationMode.eMode = EmulationOff;
-            EmulationMode.guidSecureElementId = NfcCxSEInterfaceGetSecureElementId(rfInterface, SEList[i].hSecureElement);
-            (void)NfcCxSEInterfaceSetCardEmulationMode(FileContext, &EmulationMode);
+			secureElementId = NfcCxSEInterfaceGetSecureElementId(rfInterface, SEList[i].hSecureElement);
+			(void)NfcCxSEInterfaceSetCardEmulationMode(FileContext, secureElementId, CardEmulationOff);
         }
         
     } else if (NfcCxFileObjectIsSEEvent(FileContext)) {
@@ -1398,7 +1426,9 @@ Return Value:
 
     TRACE_LINE(LEVEL_INFO, "SecureElement Id=%!GUID! Mode=%!SECURE_ELEMENT_CARD_EMULATION_MODE!", &pMode->guidSecureElementId, pMode->eMode);
 
-    status = NfcCxSEInterfaceSetCardEmulationMode(FileContext, pMode);
+    status = NfcCxSEInterfaceSetCardEmulationMode(FileContext, 
+		                                          pMode->guidSecureElementId,
+		                                          NfcCxSEInterfaceConvertEmulationMode(pMode->eMode));
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to set card emulation mode, %!STATUS!", status);
         TRACE_LOG_NTSTATUS_ON_FAILURE(status);
@@ -2262,7 +2292,7 @@ Done:
 BOOLEAN
 NfcCxSEInterfaceGetSecureElementHandle(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ GUID& guidSecureElementId,
+    _In_ const GUID& guidSecureElementId,
     _Outptr_result_maybenull_ phLibNfc_Handle *phSecureElement
     )
 {
@@ -2280,14 +2310,15 @@ NfcCxSEInterfaceGetSecureElementHandle(
 }
 
 
-NTSTATUS
+static NTSTATUS
 NfcCxSEInterfaceValidateCardEmulationState(
-    _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ PSECURE_ELEMENT_SET_CARD_EMULATION_MODE_INFO pMode,
-    _Inout_ uint8_t& RtngTableCount,
-    _Out_ phLibNfc_RtngConfig_t* pRtngTable,
-    _Out_ DWORD *pdwFlags
-    )
+	_In_ PNFCCX_RF_INTERFACE RFInterface,
+	_In_ const GUID& SecureElementId,
+	_In_ CARD_EMULATION_MODE_INTERNAL eMode,
+	_Inout_ uint8_t& RtngTableCount,
+	_Out_ phLibNfc_RtngConfig_t* pRtngTable,
+	_Out_ DWORD *pdwFlags
+)
 /*++
 
 Routine Description:
@@ -2319,24 +2350,24 @@ Return Value:
 
     *pdwFlags = 0;
 
-    status = NfcCxSEInterfaceGetSEInfo(RFInterface, pMode->guidSecureElementId, &SEInfo);
+    status = NfcCxSEInterfaceGetSEInfo(RFInterface, SecureElementId, &SEInfo);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_WARNING, "Failed NfcCxSEInterfaceGetSEInfo, %!STATUS!", status);
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
 
-    if (!NfcCxSEInterfaceVerifyCEState(pMode->eMode, SEInfo)) {
+    if (!NfcCxSEInterfaceVerifyCEState(eMode, SEInfo)) {
         TRACE_LINE(LEVEL_ERROR, "NfcCxSEInterfaceVerifyCEState failed");
         status = STATUS_INVALID_DEVICE_STATE;
         goto Done;
     }
 
-    if (NfcCxSEInterfaceGetActivationMode(pMode->eMode) != SEInfo.eSE_ActivationMode) {
-        *pdwFlags |= NFCCX_SE_FLAG_SET_POWER_REFERENCE;
-    }
+	if (NfcCxSEInterfaceConvertActivationMode(eMode) != SEInfo.eSE_ActivationMode) {
+		*pdwFlags |= NFCCX_SE_FLAG_SET_POWER_REFERENCE;
+	}
 
-    if (!NfcCxSEInterfaceGetPowerState(pMode->eMode,
+    if (!NfcCxSEInterfaceGetPowerState(eMode,
                                        RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities,
                                        &ePowerState)) {
         TRACE_LINE(LEVEL_ERROR, "NfcCxSEInterfaceGetPowerState failed");
@@ -2366,8 +2397,9 @@ Done:
 
 NTSTATUS
 NfcCxSEInterfaceSetCardEmulationMode(
-    _In_ PNFCCX_FILE_CONTEXT FileContext,
-    _In_ PSECURE_ELEMENT_SET_CARD_EMULATION_MODE_INFO pMode
+	_In_ PNFCCX_FILE_CONTEXT FileContext,
+	_In_ const GUID& SecureElementId,
+	_In_ CARD_EMULATION_MODE_INTERNAL eMode
     )
 /*++
 
@@ -2389,37 +2421,45 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_RF_INTERFACE rfInterface = NULL;
-    NCI_POWER_POLICY powerPol;
+    PNFCCX_SE_INTERFACE seInterface = NULL;
+    NCI_POWER_POLICY powerPolicy = {0};
     phLibNfc_RtngConfig_t RtngConfig[MAX_ROUTING_TABLE_SIZE] = {0};
     uint8_t RtngConfigCount = MAX_ROUTING_TABLE_SIZE;
-    phLibNfc_Handle hSecureElement;
+    phLibNfc_Handle hSecureElement = NULL;
     DWORD dwFlags = 0;
+    BOOLEAN wasInWiredMode = FALSE;
+    WDFREQUEST request = NULL;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     rfInterface = NfcCxFileObjectGetFdoContext(FileContext)->RFInterface;
+    seInterface = NfcCxFileObjectGetFdoContext(FileContext)->SEInterface;
+
+    wasInWiredMode = seInterface->IsInWiredMode;
+
     if (!NfcCxSEInterfaceGetSecureElementHandle(rfInterface,
-                                                pMode->guidSecureElementId,
+                                                SecureElementId,
                                                 &hSecureElement)) {
-        TRACE_LINE(LEVEL_ERROR, "Invalid secure element identifier %!GUID!", &pMode->guidSecureElementId);
+        TRACE_LINE(LEVEL_ERROR, "Invalid secure element identifier %!GUID!", &SecureElementId);
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
 
-    status = NfcCxSEInterfaceValidateCardEmulationState(rfInterface,
-                                                        pMode,
-                                                        RtngConfigCount,
-                                                        RtngConfig,
-                                                        &dwFlags);
+	status = NfcCxSEInterfaceValidateCardEmulationState(rfInterface,
+		                                                SecureElementId,
+		                                                eMode,
+		                                                RtngConfigCount,
+		                                                RtngConfig,
+		                                                &dwFlags);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Invalid card emulation state, %!STATUS!", status);
         goto Done;
     }
 
-    TRACE_LINE(LEVEL_INFO, "SE set emulation mode hSecureElement=%p, eEmulationMode=%!SECURE_ELEMENT_CARD_EMULATION_MODE!, dwFlags=0x%x",
-                                              hSecureElement,
-                                              pMode->eMode,
-                                              dwFlags);
+    TRACE_LINE(LEVEL_INFO, "SE set emulation mode hSecureElement=%p, eMode=%!CARD_EMULATION_MODE_INTERNAL!, dwFlags=0x%x",
+                           hSecureElement,
+                           eMode,
+                           dwFlags);
 
     if (dwFlags & NFCCX_SE_FLAG_SET_ROUTING_TABLE) {
         status = NfcCxRFInterfaceSetRoutingTable(rfInterface,
@@ -2431,26 +2471,52 @@ Return Value:
         }
     }
 
-    status = NfcCxRFInterfaceSetCardEmulationMode(rfInterface,
-                                                  hSecureElement,
-                                                  (pMode->eMode == EmulationOff) ? phLibNfc_SE_ActModeOff : phLibNfc_SE_ActModeVirtual,
-                                                  (pMode->eMode == EmulationOnPowerIndependent) ?
-                                                  phLibNfc_SE_LowPowerMode_On : phLibNfc_SE_LowPowerMode_Off);
+	status = NfcCxRFInterfaceSetCardEmulationMode(rfInterface,
+		                                          hSecureElement,
+		                                          (eMode == CardEmulationOff) ? phLibNfc_SE_ActModeOff : ((eMode == EmbeddedSeApduMode) ? phLibNfc_SE_ActModeApdu : phLibNfc_SE_ActModeVirtual),
+		                                          ((eMode == CardEmulationOnPowerIndependent) || (eMode == EmbeddedSeApduMode)) ? phLibNfc_SE_LowPowerMode_On : phLibNfc_SE_LowPowerMode_Off); // TODO: Do we need an eSE check?
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to set card emulation mode, %!STATUS!", status);
         goto Done;
     }
 
+    seInterface->IsInWiredMode = (eMode == EmbeddedSeApduMode);
+    TRACE_LINE(LEVEL_INFO, "IsInWiredMode = %u", seInterface->IsInWiredMode);
+
     if (dwFlags & NFCCX_SE_FLAG_SET_POWER_REFERENCE) {
-        powerPol.CanPowerDown = (pMode->eMode == EmulationOff);
+
+		/*Check whether the Power policy reference which is to be relased is eSE*/
+		if (IsEqualGUID(SecureElementId, ESE_SECUREELEMENT_ID) && (seInterface->IsInWiredMode == FALSE)) {			
+			powerPolicy.CanPowerDown = FALSE;
+			TRACE_LINE(LEVEL_ERROR, "To not release power reference for eSE");
+		}
+		else {
+			powerPolicy.CanPowerDown = (eMode == CardEmulationOff);
+			TRACE_LINE(LEVEL_ERROR, "To acquire power reference for eSE 0x%x", seInterface->IsInWiredMode);
+		}
         status = NfcCxPowerSetPolicy(NfcCxFileObjectGetFdoContext(FileContext),
                                      FileContext,
-                                     &powerPol);
+                                     &powerPolicy);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to set power policy reference, %!STATUS!", status);
             goto Done;
         }
     }
+
+	if (!wasInWiredMode && seInterface->IsInWiredMode) {
+		TRACE_LINE(LEVEL_VERBOSE, "Retrieve the request in the SE IO Present queue");
+		while (NT_SUCCESS(WdfIoQueueRetrieveNextRequest(seInterface->PresentQueue, &request))) {
+			TRACE_LINE(LEVEL_INFO, "Completing Request with Status, %!STATUS!", STATUS_SUCCESS);
+			WdfRequestComplete(request, STATUS_SUCCESS);
+		}
+	}
+	else if (wasInWiredMode && !seInterface->IsInWiredMode) {
+		TRACE_LINE(LEVEL_VERBOSE, "Retrieve the request in the SE IO Absent queue");
+		while (NT_SUCCESS(WdfIoQueueRetrieveNextRequest(seInterface->AbsentQueue, &request))) {
+			TRACE_LINE(LEVEL_INFO, "Completing Request with Status, %!STATUS!", STATUS_SUCCESS);
+			WdfRequestComplete(request, STATUS_SUCCESS);
+		}
+	}
 
 Done:
 
@@ -2689,7 +2755,7 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    SECURE_ELEMENT_CARD_EMULATION_MODE eEmulationMode;
+	CARD_EMULATION_MODE_INTERNAL eMode = CardEmulationOff;
     phLibNfc_SE_List_t SEInfo = {0};
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -2701,29 +2767,29 @@ Return Value:
         switch (pRoutingTable->TableEntries[i].eRoutingType) {
         case RoutingTypeTech:
             status = NfcCxSEInterfaceGetSEInfo(RFInterface, pRoutingTable->TableEntries[i].TechRoutingInfo.guidSecureElementId, &SEInfo);
-            eEmulationMode = NfcCxSEInterfaceGetEmulationMode(SEInfo);
+			eMode = NfcCxSEInterfaceGetEmulationMode(SEInfo);
             pRtngTable[i].hSecureElement = SEInfo.hSecureElement;
             pRtngTable[i].Type = phNfc_LstnModeRtngTechBased;
             pRtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tRfTechnology = (phNfc_eRfTechnologies_t) pRoutingTable->TableEntries[i].TechRoutingInfo.eRfTechType;
-            NfcCxSEInterfaceGetPowerState(eEmulationMode, RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities, &pRtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState);
+            NfcCxSEInterfaceGetPowerState(eMode, RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities, &pRtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState);
             break;
         case RoutingTypeProtocol:
             status = NfcCxSEInterfaceGetSEInfo(RFInterface, pRoutingTable->TableEntries[i].ProtoRoutingInfo.guidSecureElementId, &SEInfo);
-            eEmulationMode = NfcCxSEInterfaceGetEmulationMode(SEInfo);
+			eMode = NfcCxSEInterfaceGetEmulationMode(SEInfo);
             pRtngTable[i].hSecureElement = SEInfo.hSecureElement;
             pRtngTable[i].Type = phNfc_LstnModeRtngProtocolBased;
             pRtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tRfProtocol = (phNfc_eRfProtocols_t) pRoutingTable->TableEntries[i].ProtoRoutingInfo.eRfProtocolType;
-            NfcCxSEInterfaceGetPowerState(eEmulationMode, RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities, &pRtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState);
+            NfcCxSEInterfaceGetPowerState(eMode, RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities, &pRtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState);
             break;
         case RoutingTypeAid:
             status = NfcCxSEInterfaceGetSEInfo(RFInterface, pRoutingTable->TableEntries[i].AidRoutingInfo.guidSecureElementId, &SEInfo);
-            eEmulationMode = NfcCxSEInterfaceGetEmulationMode(SEInfo);
+			eMode = NfcCxSEInterfaceGetEmulationMode(SEInfo);
             pRtngTable[i].hSecureElement = SEInfo.hSecureElement;
             pRtngTable[i].Type = phNfc_LstnModeRtngAidBased;
             pRtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.bAidSize = (uint8_t) pRoutingTable->TableEntries[i].AidRoutingInfo.cbAid;
             // No need to validate the length here as it was validated before
             RtlCopyMemory(pRtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.aAid, pRoutingTable->TableEntries[i].AidRoutingInfo.pbAid, pRtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.bAidSize);
-            NfcCxSEInterfaceGetPowerState(eEmulationMode, RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities, &pRtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState);
+            NfcCxSEInterfaceGetPowerState(eMode, RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities, &pRtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState);
             break;
         default:
             status = STATUS_INVALID_PARAMETER;
@@ -2739,7 +2805,7 @@ Done:
 NTSTATUS
 NfcCxSEInterfaceGetSEInfo(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ GUID& SecureElementId,
+    _In_ const GUID& SecureElementId,
     _Out_ phLibNfc_SE_List_t* pSEInfo
     )
 /*++

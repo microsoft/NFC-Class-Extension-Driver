@@ -60,6 +60,9 @@
 #define PHHCINFC_PROP_DATA_EVENT                    0x10
 #define PHHCINFC_NO_PIPE_DATA                       0xFF
 
+/* HCI proprietary WTX event ID */
+#define PHHCINFC_PROP_EVENT_WTX_REQ                 0x11
+
 #define PHLIBNFC_TRANSACTION_AID                    0x81
 #define PHLIBNFC_TRANSACTION_PARAM                  0x82
 
@@ -98,6 +101,10 @@
 #define PHLIBNFC_MIFARESTD_SECTOR_NO32      32   /* Sector 32 for Mifare 4K*/
 #define PHLIBNFC_MIFARESTD_BLOCK_BYTES      16   /* Bytes per block after block 32 for Mifare 4K*/
 #define PHLIBNFC_MFC_EMBEDDED_KEY           0x10 /* Mifare classic use Embedded Key */
+
+#define PH_LIBNFC_MAX_WTX_BWI_VALUE                 (0x0F) /**<Maximum BWI Value used for WTC calculations*/
+#define PH_LIBNFC_WTX_BWI_DIVISOR                   (0x0A) /**<*/
+#define PH_LIBNFC_WTX_MILLI_SECOND_MULT             1000   /**<*/
 
 extern phLibNfc_Sequence_t gphLibNfc_ReDiscSeqWithDeact[];
 extern phLibNfc_Sequence_t gphLibNfc_DiscSeqWithDeactSleep[];
@@ -165,6 +172,10 @@ typedef struct phLibNfc_CB_Info
     pphLibNfc_TransceiveCallback_t pSeClientTransCb;
     void                           *pSeClientTransCntx;
 
+    /* Se WTX Event Call back & it's context */
+    pphLibNfc_SE_NtfEvtWtxReqCb_t  pSeClientEvtWtxCb;
+    void                           *pSeClientEvtWtxCntx;
+
     pphLibNfc_RspCb_t              pClientRdNdefCb;
     void                           *pClientRdNdefCntx;
 
@@ -209,6 +220,10 @@ typedef struct phLibNfc_CB_Info
 
     phLibNfc_NtfRegister_RspCb_t   pCeHostNtfCb;
     void                           *pCeHostNtfCntx;
+
+    /* Se Get Atr Call back & it's context */
+    pphLibNfc_GetAtrCallback_t     pSeClientGetAtrCb;
+    void                           *pSeClientGetAtrCntx;
 
 }phLibNfc_CB_Info_t;
 
@@ -377,6 +392,7 @@ typedef struct phLibNfc_LibContext
                                                             below transceive is used for that read purpose*/
 
     phLibNfc_sTransceiveInfo_t *psTransceiveInfo1; /**< This buffer is used for authentication command sent in form of RAW command*/
+    pphNfc_sSeAtrInfo_t     pAtrInfo; /**<Structure pointer to store Hci Get Atr receive buffers */
 
     phNfc_sData_t tTranscvBuff; /**< Holds the Transceive buffer passed by caller */
     uint8_t bT3tMax;            /**< The maximum index of LF_T3T_IDENTIFIERS supported by the NFCC */

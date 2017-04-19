@@ -262,6 +262,11 @@ Return Value:
                 TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
             goto Done;
         }
+
+		if (NT_SUCCESS(status)) {
+			TRACE_LINE(LEVEL_INFO, "Creating eSE PCSC Interface");
+			status = NfcCxEmbeddedSEInterfaceCreate(FdoContext->RFInterface);
+		}
     }
 
     FdoContext->NfpPowerPolicyReferences += nfpPowerPolicyReferencesDelta;
