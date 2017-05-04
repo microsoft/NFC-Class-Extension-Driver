@@ -59,6 +59,10 @@
 
 #define PHHCINFC_PROP_DATA_EVENT                    0x10
 #define PHHCINFC_NO_PIPE_DATA                       0xFF
+/* HCI EVT_ABORT and EVT_ATR as per ETSI12*/
+#define PHHCINFC_EVENT_ABORT                        0x11
+
+#define PHHCINFC_EVENT_ATR_RECV                     0x12
 
 /* HCI proprietary WTX event ID */
 #define PHHCINFC_PROP_EVENT_WTX_REQ                 0x11
@@ -416,6 +420,8 @@ typedef struct phLibNfc_LibContext
     phNfc_sData_t tRfRawConfig;         /**< Structure object containing buffer of Rf raw config */
     phNciNfc_PowerSubState_t PwrSubState;      /**< The current switched on sub state */
     phNciNfc_PowerSubState_t TgtPwrSubState;   /**< The targetted switched on sub state */
+	uint8_t eSE_delay;                         /**<Delay for eSE Init during Clear All during JCOP update*/
+	uint8_t eSE_SetMode_delay;                 /**<Delay for eSE during Clear All during JCOP update*/
 }phLibNfc_LibContext_t,*pphLibNfc_LibContext_t, *pphLibNfc_Context_t; /**< pointer to #phLibNfc_LibContext_t structure */
 
 /**< Global variable storing LibNfc conetxt structure pointer */
@@ -459,3 +465,6 @@ extern void phLibNfc_DeferredEventHandler(_In_ void* pContext);
 extern void phLibNfc_UpdateEvent(NFCSTATUS wStatus,phLibNfc_Event_t *pTrigEvent);
 extern NFCSTATUS phLibNfc_GetConnectedHandle(phLibNfc_Handle *pHandle);
 extern void phLibNfc_ClearLibContext(pphLibNfc_LibContext_t pLibContext);
+
+extern void phHciNfc_Process_eSE_ClearALLPipes(void);
+extern NFCSTATUS phLibNfc_DummyDisc(void *pContext, pphOsalNfc_TimerCallbck_t pTimerCb, uint32_t dwTimeOut);
