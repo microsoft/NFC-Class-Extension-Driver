@@ -40,6 +40,7 @@
 
 /*Register of IC manufacturers*/
 #define PH_LIBNFC_MANUFACTURER_UNKNOWN              (0x00)
+#define PH_LIBNFC_MANUFACTURER_STM                  (0x02)
 #define PH_LIBNFC_MANUFACTURER_NXP                  (0x04)
 #define PH_LIBNFC_MANUFACTURER_QC                   (0x57)
 #define PH_LIBNFC_MANUFACTURER_MARVELL              (0x88)
