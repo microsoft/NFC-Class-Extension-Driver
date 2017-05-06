@@ -1218,8 +1218,8 @@ NFCSTATUS phLibNfc_RemoteDev_Connect(phLibNfc_Handle                hRemoteDevic
                     case phNciNfc_e_RfProtocolsNfcDepProtocol:
                         eRfInterface = phNciNfc_e_RfInterfacesNFCDEP_RF;
                         break;
-                    case phNciNfc_e_RfProtocolsMifCProtocol:
-                        eRfInterface = phNciNfc_e_RfInterfacesTagCmd_RF;
+                    case phNciNfc_e_RfProtocolsNXPMifCProtocol:
+                        eRfInterface = phNciNfc_e_RfInterfacesNXPTagCmd_RF;
                         break;
                     default:
                         eRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
@@ -2409,7 +2409,7 @@ static NFCSTATUS phLibNfc_ParseDiscActivatedRemDevInfo(phLibNfc_sRemoteDevInform
             case phNciNfc_NFCA_Active_Poll:
             {
                 if((pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsT2tProtocol) ||
-                   (pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsMifCProtocol))
+                   (pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsNXPMifCProtocol))
                 {
                     pLibNfcDeviceInfo->RemDevType = phNfc_eMifare_PICC;
 
@@ -3257,7 +3257,7 @@ void phLibNfc_TranscvCb(void*   pContext,
             {
                 /*Reset flag*/
                 /* Reactivate sequence for Mifare classic tag if command is failed */
-                pLibContext->tSelInf.eRfIf = phNciNfc_e_RfInterfacesTagCmd_RF;
+                pLibContext->tSelInf.eRfIf = phNciNfc_e_RfInterfacesNXPTagCmd_RF;
 
                 /*If this flag is set,then change reactivation sequence*/
                 if(pLibContext->bReactivation_Flag == PH_LIBNFC_REACT_ONLYSELECT)
@@ -4442,7 +4442,7 @@ NFCSTATUS phLibNfc_ChkMfCTag(pphNciNfc_RemoteDevInformation_t RemoteDevInfo)
 
     if((NULL != RemoteDevInfo) &&\
        (RemoteDevInfo->eRFTechMode == phNciNfc_NFCA_Poll) &&\
-       (RemoteDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsMifCProtocol))
+       (RemoteDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsNXPMifCProtocol))
     {
         bSak = RemoteDevInfo->tRemoteDevInfo.Iso14443A_Info.Sak;
 

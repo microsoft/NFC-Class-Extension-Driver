@@ -802,8 +802,8 @@ static NFCSTATUS phLibNfc_InitSetMapping(void* pContext, NFCSTATUS status, void*
 
         ProtoIfMapping[count].Mode.bPollMode = 1;
         ProtoIfMapping[count].Mode.bLstnMode = 0;
-        ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesTagCmd_RF;
-        ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsMifCProtocol;
+        ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesNXPTagCmd_RF;
+        ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsNXPMifCProtocol;
         count++;
     }
 

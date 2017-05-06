@@ -191,7 +191,7 @@ phNciNfc_SendMfReq(
 
         if(0 != (psNciContext->tTranscvCtxt.tTranscvInfo.tSendData.wLen))
         {
-            if(pActivDev->eRfIf == phNciNfc_e_RfInterfacesTagCmd_RF)
+            if(pActivDev->eRfIf == phNciNfc_e_RfInterfacesNXPTagCmd_RF)
             {
                 switch((psNciContext->tTranscvCtxt.tTranscvInfo.uCmd.T2TCmd))
                 {
@@ -236,7 +236,7 @@ phNciNfc_SendMfReq(
             {
                 PH_LOG_NCI_INFO_STR(" Creating Request Payload (Header + Data)..");
                 /* obtain the size of data & header */
-                if(pActivDev->eRfIf == phNciNfc_e_RfInterfacesTagCmd_RF)
+                if(pActivDev->eRfIf == phNciNfc_e_RfInterfacesNXPTagCmd_RF)
                 {
                     /* Check if Authenticate command with Dynamic key is passed */
                      if( (phNciNfc_eT2TAuth == psNciContext->tTranscvCtxt.tTranscvInfo.uCmd.T2TCmd) &&\
@@ -270,7 +270,7 @@ phNciNfc_SendMfReq(
                     phOsalNfc_SetMemory((psNciContext->tTranscvCtxt.tSendPld.pBuff),0,
                         (psNciContext->tTranscvCtxt.tSendPld.wLen));
 
-                    if(pActivDev->eRfIf == phNciNfc_e_RfInterfacesTagCmd_RF)
+                    if(pActivDev->eRfIf == phNciNfc_e_RfInterfacesNXPTagCmd_RF)
                     {
                         (psNciContext->tTranscvCtxt.tSendPld.pBuff[bSendBuffIdx++]) = psNciContext->tTranscvCtxt.
                             tActiveExtn.ActivExtnId.ExtnReqId;
@@ -389,7 +389,7 @@ phNciNfc_RecvMfResp(
         {
             pActivDev = (psNciContext->tActvDevIf.pDevInfo);
 
-            if((NULL != pActivDev) && (pActivDev->eRfIf == phNciNfc_e_RfInterfacesTagCmd_RF))
+            if((NULL != pActivDev) && (pActivDev->eRfIf == phNciNfc_e_RfInterfacesNXPTagCmd_RF))
             {
                 RecvdExtnRspId = (phNciNfc_ExtnRespId_t)psNciContext->RspBuffInfo.pBuff[0];
 
@@ -504,7 +504,7 @@ phNciNfc_RecvMfResp(
                                 }
                             }
                             else if((PH_NCINFC_STATUS_RF_TIMEOUT_ERROR == (psNciContext->tTranscvCtxt.tActiveExtn.bParam[0])) &&
-                                (pActivDev->eRFProtocol == phNciNfc_e_RfProtocolsMifCProtocol))
+                                (pActivDev->eRFProtocol == phNciNfc_e_RfProtocolsNXPMifCProtocol))
                             {
                                 /* TODO:- use other relevant NFCSTATUS below when mapping is ready */
                                 status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_RF_TIMEOUT_ERROR);

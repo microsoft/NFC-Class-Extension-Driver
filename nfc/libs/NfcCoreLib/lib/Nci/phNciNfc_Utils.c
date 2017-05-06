@@ -415,8 +415,8 @@ phNciNfc_ValidateIfActParams(uint8_t *pNtfBuff, uint16_t wSize)
                     PH_LOG_NCI_CRIT_STR("ISO DEP interface mapped to wrong protocol!");
                     wStatus = NFCSTATUS_INVALID_PARAMETER;
                 }
-                else if( (phNciNfc_e_RfInterfacesTagCmd_RF == eRfIf) &&\
-                         (phNciNfc_e_RfProtocolsMifCProtocol != eRFProtocol) )
+                else if( ((phNciNfc_e_RfInterfacesNXPTagCmd_RF == eRfIf) &&\
+                          (phNciNfc_e_RfProtocolsNXPMifCProtocol != eRFProtocol)))
                 {
                     PH_LOG_NCI_CRIT_STR("TagCmd interface mapped to wrong protocol!");
                     wStatus = NFCSTATUS_INVALID_PARAMETER;

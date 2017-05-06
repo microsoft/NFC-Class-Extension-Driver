@@ -90,7 +90,8 @@ typedef enum phNciNfc_RfProtocols
     phNciNfc_e_RfProtocolsIsoDepProtocol = 0x04, /**<ISO DEP protocol */
     phNciNfc_e_RfProtocolsNfcDepProtocol = 0x05, /**<NFC DEP protocol */
     phNciNfc_e_RfProtocols15693Protocol = 0x06,  /**<15693 protocol */
-    phNciNfc_e_RfProtocolsMifCProtocol = 0x80,   /**<Mifare Classic protocol */
+    phNciNfc_e_RfProtocolsNXPMifCProtocol = 0x80,   /**<Mifare Classic protocol - NXP proprietary ID*/
+    phNciNfc_e_RfProtocolsSTMMifCProtocol = 0x90,   /**<Mifare Classic protocol - STM proprietary ID*/
     phNciNfc_e_RfProtocolsKovioProtocol = 0x8A,  /**<Kovio protocol */
 } phNciNfc_RfProtocols_t;
 
@@ -104,7 +105,8 @@ typedef enum phNciNfc_RfInterfaces
     phNciNfc_e_RfInterfacesFrame_RF = 0x01,         /**<Frame RF Interface */
     phNciNfc_e_RfInterfacesISODEP_RF = 0x02,        /**<ISO DEP RF Interface */
     phNciNfc_e_RfInterfacesNFCDEP_RF = 0x03,        /**<NFC DEP RF Interface */
-    phNciNfc_e_RfInterfacesTagCmd_RF = 0x80,        /**<Tag-Cmd RF Interface (Nxp prop) */
+    phNciNfc_e_RfInterfacesNXPTagCmd_RF = 0x80,     /**<Tag-Cmd RF Interface (Nxp prop) */
+    phNciNfc_e_RfInterfacesSTMTagCmd_RF = 0x90,     /**<Tag-Cmd RF Interface (STM prop) */
 } phNciNfc_RfInterfaces_t;
 
 /**
