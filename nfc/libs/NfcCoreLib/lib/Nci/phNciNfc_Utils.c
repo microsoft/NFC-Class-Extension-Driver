@@ -416,7 +416,9 @@ phNciNfc_ValidateIfActParams(uint8_t *pNtfBuff, uint16_t wSize)
                     wStatus = NFCSTATUS_INVALID_PARAMETER;
                 }
                 else if( ((phNciNfc_e_RfInterfacesNXPTagCmd_RF == eRfIf) &&\
-                          (phNciNfc_e_RfProtocolsNXPMifCProtocol != eRFProtocol)))
+                          (phNciNfc_e_RfProtocolsNXPMifCProtocol != eRFProtocol)) ||\
+                         ((phNciNfc_e_RfInterfacesSTMTagCmd_RF == eRfIf) && \
+                          (phNciNfc_e_RfProtocolsSTMMifCProtocol != eRFProtocol)))
                 {
                     PH_LOG_NCI_CRIT_STR("TagCmd interface mapped to wrong protocol!");
                     wStatus = NFCSTATUS_INVALID_PARAMETER;

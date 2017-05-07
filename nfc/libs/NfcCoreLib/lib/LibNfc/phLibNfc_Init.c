@@ -806,6 +806,14 @@ static NFCSTATUS phLibNfc_InitSetMapping(void* pContext, NFCSTATUS status, void*
         ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsNXPMifCProtocol;
         count++;
     }
+    else if (pCtx->tNfccFeatures.ManufacturerId == PH_LIBNFC_MANUFACTURER_STM)
+    {
+        ProtoIfMapping[count].Mode.bPollMode = 1;
+        ProtoIfMapping[count].Mode.bLstnMode = 0;
+        ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesSTMTagCmd_RF;
+        ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsSTMMifCProtocol;
+        count++;
+    }
 
     wStatus = phNciNfc_ConfigMapping(pCtx->sHwReference.pNciHandle,
                                      count,
