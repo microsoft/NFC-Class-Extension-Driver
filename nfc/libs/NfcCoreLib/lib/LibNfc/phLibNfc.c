@@ -2467,7 +2467,8 @@ static NFCSTATUS phLibNfc_ParseDiscActivatedRemDevInfo(phLibNfc_sRemoteDevInform
                         wStatus=NFCSTATUS_FAILED;
                     }
                 }
-                else if(pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsKovioProtocol)
+                else if(pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsNXPKovioProtocol ||
+                        pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsSTMKovioProtocol)
                 {
                     pLibNfcDeviceInfo->RemDevType = phNfc_eKovio_PICC;
                     wStatus = phLibNfc_MapRemoteDevKovio(&pLibNfcDeviceInfo->RemoteDevInfo.Kovio_Info, pNciDevInfo);

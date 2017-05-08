@@ -92,7 +92,8 @@ typedef enum phNciNfc_RfProtocols
     phNciNfc_e_RfProtocols15693Protocol = 0x06,  /**<15693 protocol */
     phNciNfc_e_RfProtocolsNXPMifCProtocol = 0x80,   /**<Mifare Classic protocol - NXP proprietary ID*/
     phNciNfc_e_RfProtocolsSTMMifCProtocol = 0x90,   /**<Mifare Classic protocol - STM proprietary ID*/
-    phNciNfc_e_RfProtocolsKovioProtocol = 0x8A,  /**<Kovio protocol */
+    phNciNfc_e_RfProtocolsNXPKovioProtocol = 0x8A,  /**<Kovio protocol - NXP proprietary ID*/
+    phNciNfc_e_RfProtocolsSTMKovioProtocol = 0x77,  /**<Kovio protocol - STM proprietary ID*/
 } phNciNfc_RfProtocols_t;
 
 /**

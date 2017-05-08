@@ -796,7 +796,7 @@ static NFCSTATUS phLibNfc_InitSetMapping(void* pContext, NFCSTATUS status, void*
             ProtoIfMapping[count].Mode.bPollMode = 1;
             ProtoIfMapping[count].Mode.bLstnMode = 0;
             ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
-            ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsKovioProtocol;
+            ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsNXPKovioProtocol;
             count++;
         }
 
@@ -808,6 +808,15 @@ static NFCSTATUS phLibNfc_InitSetMapping(void* pContext, NFCSTATUS status, void*
     }
     else if (pCtx->tNfccFeatures.ManufacturerId == PH_LIBNFC_MANUFACTURER_STM)
     {
+        if (1 == pCtx->tADDconfig.PollDevInfo.PollCfgInfo.EnableKovio)
+        {
+            ProtoIfMapping[count].Mode.bPollMode = 1;
+            ProtoIfMapping[count].Mode.bLstnMode = 0;
+            ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
+            ProtoIfMapping[count].tRfProtocol = phNciNfc_e_RfProtocolsSTMKovioProtocol;
+            count++;
+        }
+
         ProtoIfMapping[count].Mode.bPollMode = 1;
         ProtoIfMapping[count].Mode.bLstnMode = 0;
         ProtoIfMapping[count].tRfInterface = phNciNfc_e_RfInterfacesSTMTagCmd_RF;

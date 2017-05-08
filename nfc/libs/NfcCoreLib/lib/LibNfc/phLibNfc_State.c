@@ -1558,7 +1558,8 @@ NFCSTATUS phLibNfc_ChkRfListnerforNFCAPoll(void *pContext,\
             }
 
         }
-        else if (pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsKovioProtocol)
+        else if (pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsNXPKovioProtocol ||
+                 pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsSTMKovioProtocol)
         {
             LibNfc_RemDevType = phNfc_eKovio_PICC;
             wStatus = phLibNfc_RfListnerRegisterd(pContext, \
