@@ -289,7 +289,7 @@ typedef struct phLibNfc_MifareCInfo
     uint8_t                 addr;       /**< Internal Address Field required for only Mifare
                                              Family Proprietary Cards*/
     uint8_t                 key;        /**< The Authentication key>*/
-    uint8_t                 MFCKey[8];  /**< The user key is stored here>*/
+    uint8_t                 MFCKey[12];  /**< The user key is stored here>*/
 }phLibNfc_MifareCInfo_t;
 
 typedef struct phLibNfc_SE_Info

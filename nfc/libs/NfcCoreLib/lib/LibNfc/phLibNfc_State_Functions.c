@@ -852,6 +852,8 @@ static NFCSTATUS phLibNfc_SendAuthCmdResp(void *pContext,NFCSTATUS wStatus,void 
         }
         else
         {
+            pphNciNfc_RemoteDevInformation_t pRemDevHandle = (pphNciNfc_RemoteDevInformation_t)pCtx->Connected_handle;
+
             bKey = bKey | PHLIBNFC_MFC_EMBEDDED_KEY;
 
             /* Store the authentication info for using the same during Presence Check */
@@ -859,9 +861,20 @@ static NFCSTATUS phLibNfc_SendAuthCmdResp(void *pContext,NFCSTATUS wStatus,void 
             pCtx->tMfcInfo.addr= pCtx->psTransceiveInfo->addr;
             pCtx->tMfcInfo.key = bKey;
 
-            phOsalNfc_MemCopy(pCtx->tMfcInfo.MFCKey,
-                              pCtx->psTransceiveInfo->sSendData.buffer + PHLIBNFC_MFCUIDLEN_INAUTHCMD,
-                              PHLIBNFC_MFC_AUTHKEYLEN);
+            PH_LOG_LIBNFC_CRIT_STR("Addr: %d", pCtx->tMfcInfo.addr);
+
+            if (pRemDevHandle->eRFProtocol == phNciNfc_e_RfProtocolsNXPMifCProtocol)
+            {
+                phOsalNfc_MemCopy(pCtx->tMfcInfo.MFCKey,
+                                  pCtx->psTransceiveInfo->sSendData.buffer + PHLIBNFC_MFCUIDLEN_INAUTHCMD,
+                                  PHLIBNFC_MFC_AUTHKEYLEN);
+            }
+            else if (pRemDevHandle->eRFProtocol == phNciNfc_e_RfProtocolsSTMMifCProtocol)
+            {
+                phOsalNfc_MemCopy(pCtx->tMfcInfo.MFCKey,
+                    pCtx->psTransceiveInfo->sSendData.buffer,
+                    PHLIBNFC_MFC_AUTHKEYLEN + PHLIBNFC_MFCUIDLEN_INAUTHCMD);
+            }
         }
     }
     else
@@ -936,19 +949,33 @@ static NFCSTATUS phLibNfc_MfcChkPresAuth(void *pContext,NFCSTATUS wStatus,void *
         pRemDevHandle = (pphNciNfc_RemoteDevInformation_t )pCtx->Connected_handle;
 
         PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex++] = PHLIBNFC_GETCONTEXT()->tMfcInfo.cmd;
-        PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex++] = PHLIBNFC_GETCONTEXT()->tMfcInfo.addr;
-        PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex++] = PHLIBNFC_GETCONTEXT()->tMfcInfo.key;
 
-        phOsalNfc_MemCopy(&(PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex]),
-                            PHLIBNFC_GETCONTEXT()->tMfcInfo.MFCKey,
-                            PHLIBNFC_MFC_AUTHKEYLEN);
-
-        bIndex += PHLIBNFC_MFC_AUTHKEYLEN;
-
-        phOsalNfc_SetMemory(&tNciTranscvInfo,0x00,sizeof(phNciNfc_TransceiveInfo_t));
-
-        tNciTranscvInfo.uCmd.T2TCmd = phNciNfc_eT2TAuth;
+        phOsalNfc_SetMemory(&tNciTranscvInfo, 0x00, sizeof(phNciNfc_TransceiveInfo_t));
         tNciTranscvInfo.bAddr = gpphLibNfc_Context->tMfcInfo.addr;
+
+        if (pRemDevHandle->eRFProtocol == phNciNfc_e_RfProtocolsNXPMifCProtocol)
+        {
+            PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex++] = PHLIBNFC_GETCONTEXT()->tMfcInfo.addr;
+            PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex++] = PHLIBNFC_GETCONTEXT()->tMfcInfo.key;
+
+            phOsalNfc_MemCopy(&(PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex]),
+                                PHLIBNFC_GETCONTEXT()->tMfcInfo.MFCKey,
+                                PHLIBNFC_MFC_AUTHKEYLEN);
+
+            bIndex += PHLIBNFC_MFC_AUTHKEYLEN;
+            tNciTranscvInfo.uCmd.T2TCmd = phNciNfc_eT2TAuth;
+        }
+        else if (pRemDevHandle->eRFProtocol == phNciNfc_e_RfProtocolsSTMMifCProtocol)
+        {
+            PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex++] = PHLIBNFC_GETCONTEXT()->tMfcInfo.addr;
+            phOsalNfc_MemCopy(&(PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex]),
+                              PHLIBNFC_GETCONTEXT()->tMfcInfo.MFCKey,
+                              PHLIBNFC_MFC_AUTHKEYLEN + PHLIBNFC_MFCUIDLEN_INAUTHCMD);
+
+            bIndex += PHLIBNFC_MFC_AUTHKEYLEN + PHLIBNFC_MFCUIDLEN_INAUTHCMD;
+            tNciTranscvInfo.uCmd.T2TCmd = phNciNfc_eT2TRaw;
+        }
+
         tNciTranscvInfo.tSendData.pBuff = PHLIBNFC_GETCONTEXT()->aSendBuff;
         tNciTranscvInfo.tSendData.wLen = bIndex;
         tNciTranscvInfo.tRecvData.pBuff = PHLIBNFC_GETCONTEXT()->aRecvBuff;
