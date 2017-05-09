@@ -610,6 +610,36 @@ phNciNfc_RecvMfResp(
                     }
                 }
             }
+            else if ((NULL != pActivDev) && (pActivDev->eRfIf == phNciNfc_e_RfInterfacesSTMTagCmd_RF))
+            {
+                wPldDataSize = (psNciContext->RspBuffInfo.wLen);
+                /* Extract the data part from pBuff[0] & fill it to be sent to upper layer */
+                phOsalNfc_MemCopy((psNciContext->tTranscvCtxt.tTranscvInfo.tRecvData.pBuff),
+                    &(psNciContext->RspBuffInfo.pBuff[0]), (wPldDataSize));
+                (psNciContext->tTranscvCtxt.tTranscvInfo.tRecvData.wLen) = psNciContext->RspBuffInfo.wLen;
+
+                if (wPldDataSize > 1)
+                {
+                    status = NFCSTATUS_SUCCESS;
+                    PH_LOG_NCI_INFO_STR(" Mf XchgData Request is Successful!! ..");
+                }
+                else
+                {
+                    if (PH_NCINFC_STATUS_OK == (psNciContext->RspBuffInfo.pBuff[0]))
+                    {
+                        status = NFCSTATUS_SUCCESS;
+                        /* The upper layer StorageClassMifareStd.cpp expect a MIFARE_NAK_ACK in case of success.
+                           Replace the NCI SUCCESS status by a MIFARE "success" status MIFARE_NAK_ACK. */
+                        (psNciContext->tTranscvCtxt.tTranscvInfo.tRecvData.pBuff)[0] = 0x0a;
+                        PH_LOG_NCI_INFO_STR(" Mf XchgData Request is Successful!! ..");
+                    }
+                    else
+                    {
+                        status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_FAILED);
+                        PH_LOG_NCI_INFO_STR(" Mf XchgData Response failed Received ..");
+                    }
+                }
+            }
             else
             {
                  wPldDataSize = (psNciContext->RspBuffInfo.wLen);
