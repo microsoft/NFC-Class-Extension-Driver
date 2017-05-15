@@ -971,7 +971,7 @@ typedef struct phNciNfc_RfDiscConfigParams
     phNciNfc_CommonDiscParams_t     tCommonDiscParams;    /**< pointer to #phNciNfc_CommonDiscParams_t */
 }phNciNfc_RfDiscConfigParams_t,*pphNciNfc_RfDiscConfigParams_t; /**< pointer to #phNciNfc_RfDiscConfigParams_t */
 
-/** 
+/**
  * \ingroup grp_nci_nfc
  * \brief Contains Type of devices to be discovered.
  * This structure needs to passed as part of Discover API. This is used to send RF_DISCOVER_CMD
@@ -1212,16 +1212,6 @@ typedef enum phNciNfc_Iso15693CmdList
     phNciNfc_eIso15693Raw    = 0x00,  /**< Performs Raw communication over ISO15693 Tag*/
     phNciNfc_eIso15693InvalidCmd      /**< Invalid Command*/
 }phNciNfc_Iso15693CmdList_t;    /**< Type3 Tag specicific command list*/
-
-/*!
- * \ingroup grp_nci_nfc
- * \brief Register or Unregister Se event with NCI layer
- */
-typedef enum phNciNfc_SeEventRegInfo
-{
-    phNciNfc_eEventRegister    = 0x00,  /**< Register Se event*/
-    phNciNfc_eEventUnRegister           /**< Unregister Se event*/
-}phNciNfc_SeEventRegInfo_t;    /**< Se event registration information*/
 
 /*!
  * \ingroup grp_nci_nfc
@@ -1662,14 +1652,12 @@ phNciNfc_AbortDataTransfer(void *pNciHandle);
 /**
  * \ingroup grp_nci_nfc
  *
- * \brief This function allows the upper layer to register or unregister events
- * with a secure element.
+ * \brief This function allows the upper layer to register events with a secure element.
  *
  * \param[in] pNciCtx Nci Handle or the context of the NCI Layer.
  * \param[in] pSeHandle Secure element handle for which event shall be registered or unregistered.
- * \param[in] eEvent enum to specify register or unregister information (#phNciNfc_SeEventRegInfo_t)
  * \param[in] pSeEventCb upper layer call back function pointer which shall be invoked upon receiving event.
- * \param[in] pContext Upper layer context to be returned in the callback.
+ * \param[in] pContext Upper layer HCI context to be returned in the callback.
  *
  * \retval #NFCSTATUS_SUCCESS Se event successfulyl registered
  * \retval #NFCSTATUS_FAILED Registration failed as there are no slots available/logical conn not found
@@ -1677,11 +1665,10 @@ phNciNfc_AbortDataTransfer(void *pNciHandle);
  * \retval #NFCSTATUS_INVALID_PARAMETER One or more of the supplied parameters could not be interpreted properly.
  */
 extern NFCSTATUS
-phNciNfc_RegUnRegSeEvent(void *pNciCtx,
-                         void* pSeHandle,
-                         phNciNfc_SeEventRegInfo_t  eEvent,
-                         pphNciNfc_RegDataCb_t    pSeEventCb,
-                         void*                    pContext);
+phNciNfc_RegisterHciSeEvent(void *pNciCtx,
+                            void* pSeHandle,
+                            pphNciNfc_RegDataCb_t pSeEventCb,
+                            void* pContext);
 
 /**
  *  \ingroup grp_nci_nfc
@@ -1701,8 +1688,8 @@ phNciNfc_RegUnRegSeEvent(void *pNciCtx,
  *  \return NFCSTATUS_INSUFFICIENT_RESOURCES Failed to allocate memory
  */
 extern NFCSTATUS
-phNciNfc_SeSendData(void *pNciCtx,
-                    void *pSeDevHandle,
+phNciNfc_SeSendData(void* pNciCtx,
+                    void* pSeHandle,
                     pphNciNfc_IfNotificationCb_t pSendCb,
                     void* pContext,
                     phNfc_sData_t *pSendData);

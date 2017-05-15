@@ -53,63 +53,65 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
         {
             if(NULL != pInfo)
             {
-                (PHLIBNFC_GETCONTEXT())->sHwReference.pNciHandle=pTransactInfo->pContext;
+                pLibContext->sHwReference.pNciHandle = pTransactInfo->pContext;
                 pNciContext = pTransactInfo->pContext;
 
-                wStatus = phLibNfc_GetNfccFeatures((PHLIBNFC_GETCONTEXT())->sHwReference.pNciHandle);
+                wStatus = phLibNfc_GetNfccFeatures(pNciContext);
                 if(NFCSTATUS_SUCCESS == wStatus)
                 {
                     /*Register for Tag discovery*/
                     wStatus = phNciNfc_RegisterNotification(
-                        gpphLibNfc_Context->sHwReference.pNciHandle,
+                        pNciContext,
                         phNciNfc_e_RegisterTagDiscovery,
                         &phLibNfc_NotificationRegister_Resp_Cb,
-                        (void *)gpphLibNfc_Context);
+                        pLibContext);
 
                     if(NFCSTATUS_SUCCESS == wStatus)
                     {
                         /*Register for Rf Deactivate notification*/
                         wStatus = phNciNfc_RegisterNotification(
-                                gpphLibNfc_Context->sHwReference.pNciHandle,
+                                pNciContext,
                                 phNciNfc_e_RegisterRfDeActivate,
                                 &phLibNfc_DeActvNtfRegister_Resp_Cb,
-                                (void *)gpphLibNfc_Context);
+                                pLibContext);
                     }
 
                     /* Register for SE notification */
                     if(NFCSTATUS_SUCCESS == wStatus)
                     {
                         wStatus = phNciNfc_RegisterNotification(
-                                (void *)gpphLibNfc_Context->sHwReference.pNciHandle,\
+                                pNciContext,\
                                 phNciNfc_e_RegisterSecureElement,\
                                 &phLibNfc_SENtfHandler,\
-                                (void *)gpphLibNfc_Context);
+                                pLibContext);
                     }
 
                     /* Register for Generic error notification */
                     if(NFCSTATUS_SUCCESS == wStatus)
                     {
                         wStatus = phNciNfc_RegisterNotification(
-                                (void *)gpphLibNfc_Context->sHwReference.pNciHandle,\
+                                pNciContext,\
                                 phNciNfc_e_RegisterGenericError,\
                                 &phLibNfc_GenericErrorHandler,\
-                                (void *)gpphLibNfc_Context);
+                                pLibContext);
                     }
 
                     /* Register for Reset notification */
                     if(NFCSTATUS_SUCCESS == wStatus)
                     {
                         wStatus = phNciNfc_RegisterNotification(
-                                (void *)gpphLibNfc_Context->sHwReference.pNciHandle,\
+                                pNciContext,\
                                 phNciNfc_e_RegisterReset,\
                                 &phLibNfc_ResetNtfHandler,\
-                                (void *)gpphLibNfc_Context);
+                                pLibContext);
                     }
 
                     /*The Static HCI Connection exists after NFCC initialization without needing to be
                     *created using the connection Control Messages defined in Section 4.4.2 and is never closed
                     */
-                    if (pLibContext->pHciContext == NULL && pNciContext->InitRspParams.DataHCIPktPayloadLen > 0)
+                    if (pLibContext->pHciContext == NULL &&
+                        !PH_NCINFC_VERSION_IS_1x(pNciContext) &&
+                        pNciContext->InitRspParams.DataHCIPktPayloadLen > 0)
                     {
                         pHciContext = (phHciNfc_HciContext_t*)phOsalNfc_GetMemory(sizeof(phHciNfc_HciContext_t));
                         if (pHciContext == NULL)
@@ -121,18 +123,10 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                         {
                             pLibContext->pHciContext = pHciContext;
                             phOsalNfc_SetMemory(pHciContext, 0, sizeof(phHciNfc_HciContext_t));
-                            pHciContext->pNciContext = pLibContext->sHwReference.pNciHandle;
+                            pHciContext->pNciContext = pNciContext;
                             pLibContext->tSeInfo.bSeState[phLibNfc_SE_Index_HciNwk] = phLibNfc_SeStateInitializing;
                             pLibContext->sSeContext.pActiveSeInfo = (pphLibNfc_SE_List_t)(&pLibContext->tSeInfo.tSeList[phLibNfc_SE_Index_HciNwk]);
-                            pHciContext->pSeHandle = phOsalNfc_GetMemory(1);
-                            if (pHciContext->pSeHandle == NULL)
-                            {
-                                wStatus = NFCSTATUS_FAILED;
-                            }
-                            else
-                            {
-                                wStatus = phNciNfc_UpdateConnDestInfo(UNASSIGNED_DESTID, phNciNfc_e_NFCEE, pHciContext->pSeHandle);
-                            }
+                            wStatus = phNciNfc_UpdateConnDestInfo(UNASSIGNED_DESTID, phNciNfc_e_NFCEE, NULL);
                         }
                     }
                 }else
@@ -851,7 +845,7 @@ static NFCSTATUS phLibNfc_SetLsntModeRtng(void* pContext, NFCSTATUS status, void
 
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
-    
+
     if (!pCtx->tNfccFeatures.RoutingInfo.ProtocolBasedRouting)
     {
         PH_LOG_LIBNFC_INFO_STR("Protocol routing not supported");
@@ -911,11 +905,11 @@ static NFCSTATUS phLibNfc_InitializeComplete(void* pContext, NFCSTATUS status, v
         pUpperLayerContext = pLibContext->CBInfo.pClientInitCntx;
         pLibContext->CBInfo.pClientInitCb = NULL;
         pLibContext->CBInfo.pClientInitCntx = NULL;
-        
+
         if(NULL != pClientCb)
         {
             (*pClientCb)(pUpperLayerContext,pLibContext->eConfigStatus,wStatus);
-        }        
+        }
     }
     else
     {

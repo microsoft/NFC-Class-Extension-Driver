@@ -143,7 +143,7 @@ phNciNfc_ReceiveData(void *pNciCtx,
             /* Data has already been received and stored in temporary buffer.
             Instead of registering for the data message which has already been received,
             queue a deferred callback */
-            
+
             wStatus = phOsalNfc_QueueDeferredCallback(phNciNfc_TempReceiveCb,
                                                       pNciContext);
             if(NFCSTATUS_SUCCESS == wStatus)
@@ -320,16 +320,16 @@ phNciNfc_SendData(void *pNciCtx,
 }
 
 NFCSTATUS
-phNciNfc_SeSendData(void *pNciCtx,
-                  void *pSeDevHandle,
-                  pphNciNfc_IfNotificationCb_t pSendCb,
-                  void* pContext,
-                  phNfc_sData_t *pSendData)
+phNciNfc_SeSendData(void* pNciCtx,
+                    void* pSeHandle,
+                    pphNciNfc_IfNotificationCb_t pSendCb,
+                    void* pContext,
+                    phNfc_sData_t *pSendData)
 {
     NFCSTATUS               wStatus = NFCSTATUS_SUCCESS;
     phNciNfc_CoreTxInfo_t   TxInfo;
     uint16_t                wPldDataSize;
-    phNciNfc_Context_t *pNciContext = (phNciNfc_Context_t *)pNciCtx;
+    phNciNfc_Context_t* pNciContext = (phNciNfc_Context_t *)pNciCtx;
 
     PH_LOG_NCI_FUNC_ENTRY();
     if((NULL == pNciContext) || (pNciContext != gpphNciNfc_Context))
@@ -337,7 +337,7 @@ phNciNfc_SeSendData(void *pNciCtx,
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
     }
-    else if((NULL == pSendData) || (NULL == pSendCb) || (NULL == pSeDevHandle))
+    else if((NULL == pSendData) || (NULL == pSendCb))
     {
         wStatus = NFCSTATUS_INVALID_PARAMETER;
         PH_LOG_NCI_CRIT_STR("Invalid input parameter!");
@@ -353,7 +353,15 @@ phNciNfc_SeSendData(void *pNciCtx,
         {
             /* Fill the data packet details into TxInfo */
             TxInfo.tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeData;
-            wStatus = phNciNfc_GetConnId(pSeDevHandle, &(TxInfo.tHeaderInfo.bConn_ID));
+            if (!PH_NCINFC_VERSION_IS_1x(pNciContext))
+            {
+                TxInfo.tHeaderInfo.bConn_ID = CONNHCITYPE_STATIC;
+            }
+            else
+            {
+                wStatus = phNciNfc_GetConnId(pSeHandle, &(TxInfo.tHeaderInfo.bConn_ID));
+            }
+
             if(NFCSTATUS_SUCCESS == wStatus)
             {
                 wPldDataSize = (uint16_t)pSendData->length;

@@ -53,12 +53,11 @@ NFCSTATUS phHciNfc_CoreInit(void *pContext)
     {
         phHciNfc_HciContext_t      *pHciContext     = (phHciNfc_HciContext_t *) pContext;
         phHciNfc_CoreInitialiseContext(pContext);
-        wStatus = phNciNfc_RegUnRegSeEvent(pHciContext->pNciContext,
-                                           pHciContext->pSeHandle,
-                                           phNciNfc_eEventRegister,
-                                           &phHciNfc_CoreRecvCB,
-                                           pHciContext
-                                           );
+        wStatus = phNciNfc_RegisterHciSeEvent(pHciContext->pNciContext,
+                                              pHciContext->pSeHandle,
+                                              &phHciNfc_CoreRecvCB,
+                                              pHciContext);
+
         if(wStatus == NFCSTATUS_SUCCESS)
         {
             PH_LOG_LIBNFC_CRIT_STR("Receive Data Registeration Sucessfull with NCI");
@@ -111,7 +110,7 @@ static void phHciNfc_CoreInitialiseContext(void *pContext)
     phOsalNfc_SetMemory(&pHciCoreContext->tHciCtxSendMsgParams,0,sizeof(phHciNfc_SendParams_t));
     pHciCoreContext->phHciNfcCoreUpperLayerSendCb           = NULL;
     pHciCoreContext->pUpperLayerContext                     = NULL;
-    
+
     pHciCoreContext->tHciCtxRxMsgParams.bIns                = 0;
     pHciCoreContext->tHciCtxRxMsgParams.bMsgType            = 0;
     pHciCoreContext->tHciCtxRxMsgParams.bPipeId             = 0;
