@@ -54,6 +54,8 @@ typedef struct _NFCCX_FDO_CONTEXT {
     BOOLEAN SEPowerOffSystemOverride;   // TRUE == SE system state override is off
     BOOLEAN SEPowerOffPolicyOverride;   // TRUE == SE radio state is off
 
+    BOOLEAN PowerDeviceStopIdle;        // Exclusive to 'power.cpp'. TRUE == 'WdfDeviceStopIdle' has been called.
+
     //
     // Registry-provided config
     //

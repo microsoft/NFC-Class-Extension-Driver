@@ -288,6 +288,17 @@ Return Value:
             interfaceFailure = "SE";
             goto Done;
         }
+
+        //
+        // Initialize Power Manager
+        //
+        status = NfcCxPowerFdoInitialize(FdoContext);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to initialize power manager, %!STATUS!", status);
+            interfaceFailure = "POWER";
+            goto Done;
+        }
+
     } else if (NFC_CX_DEVICE_MODE_DTA == FdoContext->NfcCxClientGlobal->Config.DeviceMode) {
         //
         // Start Tml

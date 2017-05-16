@@ -23,6 +23,11 @@ typedef struct _NCI_POWER_POLICY {
 }NCI_POWER_POLICY, *PNCI_POWER_POLICY;
 
 NTSTATUS
+NfcCxPowerFdoInitialize(
+    _In_ PNFCCX_FDO_CONTEXT FdoContext
+    );
+
+NTSTATUS
 NfcCxPowerSetPolicy(
     _In_ PNFCCX_FDO_CONTEXT FdoContext,
     _In_ PNFCCX_FILE_CONTEXT FileContext,
@@ -62,6 +67,29 @@ NTSTATUS
 NfcCxPowerReleaseFdoContextReferenceLocked(
     _In_ PNFCCX_FDO_CONTEXT FdoContext,
     _In_ PNFCCX_FILE_CONTEXT FileContext
+    );
+
+_Requires_lock_held_(FdoContext->PowerPolicyWaitLock)
+NTSTATUS
+NfcCxPowerDeviceStopIdle(
+    _In_ PNFCCX_FDO_CONTEXT FdoContext,
+    _In_ BOOLEAN WaitForD0
+    );
+
+_Requires_lock_held_(FdoContext->PowerPolicyWaitLock)
+void
+NfcCxPowerDeviceResumeIdle(
+    _In_ PNFCCX_FDO_CONTEXT FdoContext
+    );
+
+BOOLEAN
+NfcCxPowerShouldDeviceStopIdle(
+    _In_ PNFCCX_FDO_CONTEXT FdoContext
+    );
+
+NTSTATUS
+NfcCxPowerUpdateRFPollingState(
+    _In_ PNFCCX_FDO_CONTEXT FdoContext
     );
 
 BOOLEAN

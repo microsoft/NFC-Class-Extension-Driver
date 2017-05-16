@@ -396,6 +396,7 @@ Return Value:
     fdoContext->SEPowerOffSystemOverride = FALSE;
     fdoContext->SEPowerOffPolicyOverride = FALSE;
     fdoContext->SEPowerPolicyReferences = 0;
+    fdoContext->PowerDeviceStopIdle = FALSE;
     fdoContext->NfcCxClientGlobal = nfcCxClientGlobal;
     fdoContext->LogNciDataMessages = FALSE;
     fdoContext->NumDriverRestarts = NFCCX_MAX_NUM_DRIVER_RESTARTS;
@@ -1225,17 +1226,13 @@ NTSTATUS
     }
 
     status = NfcCxFdoInitialize(fdoContext);
-    if (STATUS_SUCCESS == status)
-    {
-        status = NfcCxRFInterfaceUpdateDiscoveryState(fdoContext->RFInterface);
-    }
-    else
+    if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "Failed to initialize the Fdo, %!STATUS!", status);
+        goto Done;
     }
 
 Done:
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
