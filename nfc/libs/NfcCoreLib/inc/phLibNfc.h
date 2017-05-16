@@ -448,6 +448,25 @@ typedef void(*pphLibNfc_SE_SetModeRspCb_t)(
     );
 
 /**
+* \ingroup grp_lib_nfc
+* \brief Response Callback for secure element power mode settings
+*
+* This callback type is used to provide information if request SE mode set is successful or not
+*
+* \param[in] pContext LibNfc client context     passed in the activation request.
+* \param[in] hSecureElement     Handle to secure element.
+* \param[in] Status Indicates API status.
+*                   - #NFCSTATUS_SUCCESS    Secure element set power mode is successful
+*                   - #NFCSTATUS_SHUTDOWN   SE set mode failed because shutdown in progress
+*                   - #NFCSTATUS_FAILED     SE set mode failed
+*/
+typedef void(*pphLibNfc_SE_PowerAndLinkControlRspCb_t)(
+    void*            pContext,
+    phLibNfc_Handle  hSecureElement,
+    NFCSTATUS        Status
+    );
+
+/**
  * \ingroup grp_lib_nfc
  * \brief Notification callback for #phLibNfc_SE_NtfRegister().
  *
@@ -714,6 +733,47 @@ NFCSTATUS phLibNfc_SE_SetMode ( phLibNfc_Handle              hSE_Handle,
                                 pphLibNfc_SE_SetModeRspCb_t  pSE_SetMode_Rsp_cb,
                                 void *                       pContext
     );
+
+/**
+* \ingroup grp_lib_nfc
+* \brief Sets secure element mode
+*
+* This function configures SE to different power mode.
+*
+* -# If mode is set to #phLibNfc_SE_ActModeVirtual then external reader can communicate with
+*    this SE. \note This mode is applicable to both UICC and SmartMX.
+*
+* -# If mode is set to #phLibNfc_SE_ActModeWired then LibNfc client can communicate with this
+*    SE. In this mode NFC HW can act as reader and communicate with SE as a card. External reader
+*    cannot communicate with any of the SEs in this mode. RF field is not generated during this mode.
+*    The eSE power line remain active until a mode change.
+*         \note
+*               -# Wired Mode is applicable to only SmartMX not to UICC
+*               -# When SmartMX SE configured in Wired Mode, LibNfc client shall restart discovery
+*                  process.
+*               -# To exit wired mode ,LibNfc client has to disconnect with release type as "NFC_SMARTMX_RELEASE".
+* -# If mode is #phLibNfc_SE_ActModeOff This means SE is in off mode.
+*      \note This mode is applicable both UICC and SmartMX
+*
+* \param[in]  hSE_Handle           Secure element handle
+* \param[in]  eActivation_mode     SE mode to be configured
+* \param[in]  pSE_SetMode_Rsp_cb   Pointer to response callback
+* \param[in]  pContext             Client context which will be included in
+*                                  callback when the request is completed.
+*
+* \retval   #NFCSTATUS_PENDING             SE set mode transaction started
+* \retval   #NFCSTATUS_SHUTDOWN            Shutdown in progress
+* \retval   #NFCSTATUS_NOT_INITIALISED     LibNfc is not yet initialized
+* \retval   #NFCSTATUS_INVALID_HANDLE      Invalid handle
+* \retval   #NFCSTATUS_INVALID_PARAMETER   Invalid parameter
+* \retval   #NFCSTATUS_REJECTED            Invalid request
+* \retval   #NFCSTATUS_FAILED              Request failed
+*/
+NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handle,
+    phLibNfc_eSE_ActivationMode  eActivation_mode,
+    pphLibNfc_SE_PowerAndLinkControlRspCb_t  pSE_PowerAndLinkControl_Rsp_cb,
+    void *                       pContext
+);
 
 /**
 * \ingroup grp_lib_nfc

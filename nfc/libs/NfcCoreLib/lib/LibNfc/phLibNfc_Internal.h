@@ -257,6 +257,7 @@ typedef enum phLibNfc_DummyEventType
     phLibNfc_DummyEventIsoDepChkPresExtn,   /**<Check presence IsoDep event*/
     phLibNfc_DummyEventChkPresMFC,          /**<Check presence extension event*/
     phLibNfc_DummyEventSetRtngCfg,          /**<Set routing table configuration event*/
+    phLibNfc_DummyEventPowerAndLinkCtrl,    /**<Set SE Power And Link Control*/
     phLibNfc_DummyEventInvalid              /**<Invalid Dummy event*/
 }phLibNfc_DummyEventType_t; /**< Dummy event enum type*/
 
@@ -270,6 +271,7 @@ typedef struct phLibNfc_SeCtxt
 {
     pphLibNfc_SE_List_t             pActiveSeInfo;
     phNciNfc_NfceeModes_t           eNfceeMode;
+    phNciNfc_PowerLinkModes_t       ePowerLinkMode;
     pphNciNfc_RtngConfig_t          pRoutingCfgBuffer;
     phLibNfc_eSE_ActivationMode     eActivationMode;    /* User rquested SE activation mode */
     phLibNfc_SE_LowPowerMode_t      eLowPowerMode;      /* User rquested SE low power mode */

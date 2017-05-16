@@ -976,6 +976,19 @@ void phNciNfc_PrintNfceeDiscoverNtfDescription(uint8_t *pBuff, uint16_t wLen)
     PH_LOG_NCI_INFO_X32MSG("Number of TLVs are", (uint32_t)pBuff[bIndex++]);
 }
 
+void phNciNfc_PrintNfceeModeSetNtfDescription(uint8_t *pBuff, uint16_t wLen)
+{
+    PHNCINFC_VALIDATE_PACKET_LENGTH(1, wLen);
+    PH_LOG_NCI_INFO_STR("Status: %!NCI_STATUS!", pBuff[0]);
+}
+
+void phNciNfc_PrintNfceeStatusNtfDescription(uint8_t *pBuff, uint16_t wLen)
+{
+    PHNCINFC_VALIDATE_PACKET_LENGTH(2, wLen);
+    PH_LOG_NCI_INFO_X32MSG("NFCEE ID", pBuff[0]);
+    PH_LOG_NCI_INFO_STR("Status: %!NCI_NFCEE_STATUS!", pBuff[1]);
+}
+
 void phNciNfc_PrintPacketDescription(
     pphNciNfc_sCoreHeaderInfo_t pHeaderInfo,
     uint8_t *pBuff,
@@ -1240,6 +1253,12 @@ void phNciNfc_PrintPacketDescription(
                 {
                 case phNciNfc_e_NfceeMgtNfceeDiscNtfOid:
                     phNciNfc_PrintNfceeDiscoverNtfDescription(pBuff, wLen);
+                    break;
+                case phNciNfc_e_NfceeMgtModeSetNtfOid:
+                    phNciNfc_PrintNfceeModeSetNtfDescription(pBuff, wLen);
+                    break;
+                case phNciNfc_e_NfceeMgtStatusNtfOid:
+                    phNciNfc_PrintNfceeStatusNtfDescription(pBuff, wLen);
                     break;
                 }
                 break;

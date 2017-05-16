@@ -656,6 +656,26 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
                 }
             }
             break;
+            case phLibNfc_DummyEventPowerAndLinkCtrl:
+            {
+                phLibNfc_eSE_ActivationMode ActMode = *(phLibNfc_eSE_ActivationMode *)(pInfo->Params);
+                phNciNfc_PowerLinkModes_t PowerLinkMode = PH_NCINFC_NFCEE_POWER_LINK_UNKNOWN;
+
+                if (ActMode == phLibNfc_SE_ActModeApdu)
+                    PowerLinkMode = PH_NCINFC_NFCEEPOWER_NFCC_LINK_ALWAYS_ON;
+                else
+                    PowerLinkMode = PH_NCINFC_EXT_NFCEENFCC_DECIDES;
+
+                pLibContext->sSeContext.ePowerLinkMode = PowerLinkMode;
+
+                PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_SePowerAndLinkCtrlSeq);
+                wStatus = phLibNfc_SeqHandler(pLibContext, NFCSTATUS_SUCCESS, NULL);
+                if (NFCSTATUS_PENDING != wStatus)
+                {
+                    wStatus = NFCSTATUS_FAILED;
+                }
+            }
+            break;
             case phLibNfc_DummyEventSetP2PConfigs:
             {
                 pRfConfParam = (pphNciNfc_RfDiscConfigParams_t) pInfo->Params;
