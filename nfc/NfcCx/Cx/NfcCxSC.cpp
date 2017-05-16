@@ -2945,27 +2945,24 @@ BOOL NfcCxSCInterfaceValidateSwitchProtocolCommand(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    TRACE_LINE(LEVEL_INFO, "ValidateSwitchProtocolCommand Size = %x", InputBufferLength);
-    if (InputBufferLength < PCSC_SWITCH_PROTOCOL_APDU_SIZE)
+    if (InputBufferLength != PCSC_SWITCH_PROTOCOL_APDU_SIZE)
     {
-        TRACE_LINE(LEVEL_ERROR, "Invalid APDU buffer size");
+        TRACE_LINE(LEVEL_ERROR, "Invalid APDU buffer size = %x", InputBufferLength);
         goto Done;
+    }
+
+    PPcscCommandApduInfo cmdApdu = (PPcscCommandApduInfo)InputBuffer;
+    if ((PCSC_CLASS_BYTE == cmdApdu->Cla) &&
+        (PcscEnvelopeCmd == cmdApdu->Ins) &&
+        (PCSC_PARA1_SWITCH_BYTE == cmdApdu->P1) &&
+        ((PCSC_PARA2_SWITCH_BYTE == cmdApdu->P2)))
+    {
+        TRACE_LINE(LEVEL_INFO, "Command APDU is a valid Switch Protocol Command");
+        retval = TRUE;
     }
     else
     {
-        PPcscCommandApduInfo cmdApdu = (PPcscCommandApduInfo)InputBuffer;
-        if ((PCSC_CLASS_BYTE == cmdApdu->Cla) &&
-            (PcscEnvelopeCmd == cmdApdu->Ins) &&
-            (PCSC_PARA1_SWITCH_BYTE == cmdApdu->P1) &&
-            ((PCSC_PARA2_SWITCH_BYTE == cmdApdu->P2)))
-        {
-            TRACE_LINE(LEVEL_INFO, "Command APDU is a valid Switch Protocol Command");
-            retval = TRUE;
-        }
-        else
-        {
-            TRACE_LINE(LEVEL_ERROR, "Command APDU is NOT a Switch Protocol Command");
-        }
+        TRACE_LINE(LEVEL_ERROR, "Command APDU is NOT a Switch Protocol Command");
     }
 
 Done:
@@ -2987,6 +2984,9 @@ NTSTATUS NfcCxSCInterfaceLoadNewSelectedProtocol(
     phNfc_eRemDevType_t RemDevType;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    // Validated in NfcCxSCInterfaceValidateSwitchProtocolCommand
+    _Analysis_assume_(InputBufferLength == sizeof(SelProtocolApdu));
 
     memcpy(&SelProtocolApdu, InputBuffer, InputBufferLength);
 

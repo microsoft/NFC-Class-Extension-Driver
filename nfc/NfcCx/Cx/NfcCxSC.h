@@ -314,7 +314,6 @@ NfcCxSCInterfaceDispatchAttributeCurrentProtocolTypeLocked(
     );
 
 _Requires_lock_not_held_(ScInterface->SmartCardLock)
-_Requires_lock_not_held_(ScInterface->AtrLock)
 NTSTATUS
 NfcCxSCInterfaceDispatchAttributeAtr(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
