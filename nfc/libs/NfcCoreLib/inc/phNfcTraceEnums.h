@@ -80,6 +80,7 @@ Environment:
 // CUSTOM_TYPE(phNciNfc_LstnModeRtngType_t, ItemEnum(phNciNfc_LstnModeRtngType) );
 // CUSTOM_TYPE(phNciNfc_NotificationType_t, ItemEnum(phNciNfc_NotificationType) );
 // CUSTOM_TYPE(phNciNfc_GenericErrCode_t, ItemEnum(phNciNfc_GenericErrCode) );
+// CUSTOM_TYPE(phNciNfc_ResetTrigger_t, ItemEnum(phNciNfc_ResetTrigger) );
 // end_wpp
 
 // begin_wpp config

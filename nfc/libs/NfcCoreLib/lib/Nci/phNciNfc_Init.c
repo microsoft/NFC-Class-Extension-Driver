@@ -492,10 +492,15 @@ NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
 
         if (PH_OSALNFC_TIMER_ID_INVALID != pNciContext->dwNtfTimerId)
         {
-            PH_LOG_NCI_WARN_STR("dwNtfTimerId looks to be already created");
+            PH_LOG_NCI_INFO_STR("Notifications timer already exists. Stopping it...");
+            phOsalNfc_Timer_Stop(pNciContext->dwNtfTimerId);
         }
-
-        pNciContext->dwNtfTimerId = phOsalNfc_Timer_Create();
+        else
+        {
+            PH_LOG_NCI_INFO_STR("Creating notifications timer..");
+            pNciContext->dwNtfTimerId = phOsalNfc_Timer_Create();
+        }
+        
         if (PH_OSALNFC_TIMER_ID_INVALID != pNciContext->dwNtfTimerId)
         {
             wStatus = phOsalNfc_Timer_Start(pNciContext->dwNtfTimerId,
@@ -514,7 +519,7 @@ NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
         else
         {
             wStatus = NFCSTATUS_FAILED;
-            PH_LOG_NCI_INFO_STR("Failed to create a timer instance");
+            PH_LOG_NCI_CRIT_STR("Failed to create notification timer instance.");
         }
     }
     else
@@ -732,6 +737,7 @@ phNciNfc_ResetNtfCb(void*     pContext,
     pphNciNfc_TransactInfo_t pTransInfo = pInfo;
     uint8_t wDataLen;
     uint8_t *pBuff;
+    phNciNfc_ResetTrigger_t resetTrigger;
     NFCSTATUS wStatus;
 
     wStatus  = status;
@@ -761,7 +767,7 @@ phNciNfc_ResetNtfCb(void*     pContext,
            Furthermore Nci1.x CORE_RESET_NTF frame is only 2 bytes long
            (Reason code(1 byte) and Configuration status(1 byte).
            We are assuming here that a CORE_RESET_NTF with a size longer
-           or egal to PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x(5) is a NCI2x frame.*/
+           or equal to PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x(5) is a NCI2x frame.*/
         if (pTransInfo->wLength >= PHNCINFC_CORE_RESET_NTF_MIN_LEN_2x)
         {
             /* Nfcc supported Nci version */
@@ -811,11 +817,6 @@ phNciNfc_ResetNtfCb(void*     pContext,
                             {
                                 wStatus = NFCSTATUS_FAILED;
                             }
-                            else
-                            {
-                                /*Reset Trigger*/
-                                wStatus = (pTransInfo->pbuffer[0] == 0) ? NFCSTATUS_FAILED : NFCSTATUS_SUCCESS;
-                            }
                         }
                         else
                         {
@@ -823,7 +824,19 @@ phNciNfc_ResetNtfCb(void*     pContext,
                         }
                     }
                 }
-                wStatus = phNciNfc_GenericSequence(pNciCtx, pInfo, status);
+
+                resetTrigger = pTransInfo->pbuffer[0];
+                if (NFCSTATUS_SUCCESS == wStatus
+                    && (resetTrigger == PH_NCINFC_RESETTRIGGER_NFCC_POWER_ON ||
+                        resetTrigger == PH_NCINFC_RESETTRIGGER_CMD_RESET_RECEIVED))
+                {
+                    wStatus = phNciNfc_GenericSequence(pNciCtx, pInfo, status);
+                }
+                else
+                {
+                    PH_LOG_NCI_WARN_STR("Unexpected Reset Trigger: %!phNciNfc_ResetTrigger_t!", resetTrigger);
+                    wStatus = NFCSTATUS_FAILED;
+                }
             }
             else
             {

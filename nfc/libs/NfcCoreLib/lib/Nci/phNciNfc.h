@@ -163,6 +163,17 @@
 
 /**
  * \ingroup grp_nci_nfc
+ * \brief CORE_RESET_NTF Reset Trigger, ref NCI2.0 section 4.1
+ */
+typedef enum phNciNfc_ResetTrigger
+{
+    PH_NCINFC_RESETTRIGGER_NFCC_INTERNAL_ERROR = 0x00,  /**< Unrecoverable error occurred within the NFCC */
+    PH_NCINFC_RESETTRIGGER_NFCC_POWER_ON = 0x01,        /**< NFCC was powered on */
+    PH_NCINFC_RESETTRIGGER_CMD_RESET_RECEIVED = 0x02    /**< CORE_RESET_CMD was received */
+} phNciNfc_ResetTrigger_t;
+
+/**
+ * \ingroup grp_nci_nfc
  * \brief Reset Types
  */
 typedef enum phNciNfc_ResetType
