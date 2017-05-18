@@ -69,6 +69,14 @@
   */
 #define PH_NCINFC_STATUS_MESSAGE_SIZE_EXCEEDED                      (0x000A)
 
+/**
+  * \ingroup grp_nci_nfc_core
+  *
+  * \brief NFC status is OK criterea
+  */
+#define PH_NCINFC_IS_STATUS_OK(_nfcstatus_) ((_nfcstatus_) == PH_NCINFC_STATUS_OK ||\
+                                             (((_nfcstatus_) >= 0x0011) && ((_nfcstatus_) <= 0x0017)))
+
 /* RF Discovery Specific Status Codes */
 /**
   * \ingroup grp_nci_nfc_core
