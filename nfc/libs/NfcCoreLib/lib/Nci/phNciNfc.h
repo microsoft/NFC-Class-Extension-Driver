@@ -218,6 +218,7 @@ typedef enum phNciNfc_NotificationType
 {
     eNciNfc_DiscoverNtf,        /**< Tag Discovered Notification */
     eNciNfc_NfceeDiscoverNtf,   /**< Nfcee Discovered Notification */
+    eNciNfc_NfceeStatusNtf,     /**< Nfcee Status Notification */
     eNciNfc_NfceeDiscReqNtf,    /**< Nfcee Discovery Request notification */
     eNciNfc_NfceeActionNtf,     /**< Nfcee Action Notification */
     eNciNfc_NciResetNtf,        /**< Nci Reset Notification */
@@ -285,6 +286,24 @@ typedef enum phNciNfc_NfceeModes
    /** Future or unknown identifier */
    PH_NCINFC_NFCEEDISC_UNKNOWN
 }phNciNfc_NfceeModes_t;
+
+/**
+* \ingroup grp_nci_nfc
+* \brief NFCEE Power and Link Control Info contains power related identifier..
+*/
+typedef enum phNciNfc_PowerLinkMode
+{
+    /** NFCEE  NFCC decides identifier*/
+    PH_NCINFC_EXT_NFCEENFCC_DECIDES = 0x00,
+    /** NFCEE  power supply always on*/
+    PH_NCINFC_EXT_NFCEEPOWER_SUPPLY_ALWAYS_ON = 0x01,
+    /** NFCEE  NFCC to NFCEE Communication link always active when the NFCEE is powered on*/
+    PH_NCINFC_NFCEENFCC_COM_LINK_ACTIVE_ON_POWER_ON = 0x02,
+    /** NFCEE Power supply and NFCC to NFCEE communication link are always on*/
+    PH_NCINFC_NFCEEPOWER_NFCC_LINK_ALWAYS_ON = 0x03,
+    /** Future or unknown identifier */
+    PH_NCINFC_NFCEE_POWER_LINK_UNKNOWN,
+}phNciNfc_PowerLinkModes_t;
 
 /*!
  * \ingroup grp_nci_nfc
@@ -472,6 +491,7 @@ typedef struct phNciNfc_NfceeDeviceInfo
     /** Number of NFCEE TLV present into the information field*/
     uint8_t bNumTypeInfo;
     uint8_t *pTlvInfo;
+    uint32_t TlvInfoLen;
     /** HW ID and ATR(looks will be present for almost all the NFCEEs) so kept outside
         of this discovery information Other are part of the */
     phNciNfc_NfceeDiscTlvInfo_t aAdditionalInfo[PH_NCINFC_NFCEE_INFO_TLV_MAX];
@@ -494,6 +514,12 @@ typedef struct phNciNfc_NfceeInfo
     uint8_t bNfceeId; /**< Nfcee Id */
     pphNciNfc_NfceeDeviceHandle_t pNfceeHandle;
 }phNciNfc_NfceeInfo_t,*pphNciNfc_NfceeInfo_t;
+
+typedef struct phNciNfc_NfceeStatus
+{
+    uint8_t bNfceeStatus; /**< 0 Unrecoverable error, 1 NFCEE Initialization started, 2 NFCEE Initialization completed */
+    uint8_t bNfceeId; /**< Nfcee Id */
+}phNciNfc_NfceeStatus_t, *pphNciNfc_NfceeStatus_t;
 
 /**
  * \ingroup grp_nci_nfc
@@ -1062,6 +1088,7 @@ typedef union phNciNfc_NotificationInfo
     phNciNfc_NfceeHciEventInfo_t  tEventInfo;      /**< Hci events info */
     phNciNfc_GenericErrInfo_t tGenericErrInfo;     /**< Generic error information */
     phNciNfc_NfceeInfo_t tNfceeInfo;        /**< Nfcee notification */
+    phNciNfc_NfceeStatus_t tNfceeStatus;    /**< Nfcee status */
 }phNciNfc_NotificationInfo_t,*pphNciNfc_NotificationInfo_t; /**< Notification info received by Nci module */
 
 /**
@@ -1464,6 +1491,31 @@ phNciNfc_Nfcee_ModeSet(void * pNciHandle,
                        phNciNfc_NfceeModes_t eNfceeMode,
                        pphNciNfc_IfNotificationCb_t pNotifyCb,
                        void *pContext);
+
+/**
+* \ingroup grp_nci_nfc
+*
+* \brief This is a Nfcee power mode set Api, to establish a control power with
+* a SE or NFCEE.(establishing connection is prereqisite of Nfcee communication)
+*
+* \param[in]  pNciHandle        NCI layer specific context.
+* \param[in]  pNfceeHandle      Nfcee Handle for which Mode set is executed.
+* \param[in]  eActivationMode   NFCEE and NFCC Power and Link mode
+* \param[in]  pNotifyCb         Upper layer call back function
+* \param[in]  pContext          Context of the Upper Layer.
+*
+* \retval NFCSTATUS_PENDING                If the command is yet to be processed.
+* \retval NFCSTATUS_INVALID_PARAMETER      At least one parameter of the function is invalid.
+* \retval NFCSTATUS_INVALID_DEVICE         The device has not been opened or has
+*                                          been disconnected meanwhile
+*/
+extern NFCSTATUS
+phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
+                                     void * pNfceeHandle,
+                                     phNciNfc_PowerLinkModes_t eActivationMode,
+                                     pphNciNfc_IfNotificationCb_t pNotifyCb,
+                                     void *pContext);
+
 
 /**
  * \ingroup grp_nci_nfc

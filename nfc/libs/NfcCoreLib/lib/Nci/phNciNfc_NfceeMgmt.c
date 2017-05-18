@@ -45,10 +45,16 @@ static NFCSTATUS phNciNfc_ModeSet(void *pContext);
 static NFCSTATUS phNciNfc_ProcessModeSetRsp(void *pContext, NFCSTATUS wStatus);
 static NFCSTATUS phNciNfc_CompleteModeSetSequence(void *pContext, NFCSTATUS wStatus);
 
+static NFCSTATUS phNciNfc_PowerAndLinkCtrl(void *pContext);
+static NFCSTATUS phNciNfc_PowerAndLinkCtrlRsp(void *pContext, NFCSTATUS wStatus);
+static NFCSTATUS phNciNfc_CompletePowerAndLinkCtrlSequence(void *pContext, NFCSTATUS wStatus);
+
 static NFCSTATUS phNciNfc_NfceeDiscover(void *pContext);
 static NFCSTATUS phNciNfc_ProcessNfceeDiscoverRsp(void *pContext, NFCSTATUS Status);
 static NFCSTATUS phNciNfc_CompleteNfceeDiscoverSequence(void *pContext, NFCSTATUS Status);
 static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext, void *pInfo, NFCSTATUS wDiscStatus);
+static NFCSTATUS phNciNfc_NfceeModeSetNtfHandler(void *pContext, void *pInfo, NFCSTATUS wModeSetStatus);
+static NFCSTATUS phNciNfc_NfceeStatusNtfHandler(void *pContext, void *pInfo, NFCSTATUS wNfceetatus);
 
 static NFCSTATUS phNciNfc_StoreTlvInfo(pphNciNfc_NfceeDevDiscInfo_t pDevInfo, uint8_t bNoOfTlv,uint8_t *pTlv);
 static NFCSTATUS phNciNfc_StoreNfceeProtocols(pphNciNfc_NfceeDevDiscInfo_t pDevInfo, uint8_t *pBuff, uint8_t *pIndex);
@@ -62,6 +68,11 @@ static NFCSTATUS phNciNfc_NfceeStoreTlv(pphNciNfc_NfceeDiscReqNtfInfo_t pDiscReq
 phNciNfc_SequenceP_t gphNciNfc_ModeSetSequence[] = {
     {&phNciNfc_ModeSet, &phNciNfc_ProcessModeSetRsp},
     {NULL, &phNciNfc_CompleteModeSetSequence}
+};
+
+phNciNfc_SequenceP_t gphNciNfc_SePowerAndLinkCtrlSequence[] = {
+    { &phNciNfc_PowerAndLinkCtrl, &phNciNfc_PowerAndLinkCtrlRsp },
+    { NULL, &phNciNfc_CompletePowerAndLinkCtrlSequence }
 };
 
 phNciNfc_SequenceP_t gphNciNfc_NfceeDiscSequence[] = {
@@ -109,11 +120,14 @@ static NFCSTATUS phNciNfc_ProcessModeSetRsp(void *pContext, NFCSTATUS wStatus)
         {
             /* Validate the Response of Mode Set Command */
             if( (NULL != pNciContext->RspBuffInfo.pBuff) &&
-                (PH_NCINFC_STATUS_OK == pNciContext->RspBuffInfo.pBuff[0]) )
+                (PH_NCINFC_STATUS_OK == pNciContext->RspBuffInfo.pBuff[0]))
             {
-                pNciContext->tNfceeContext.pNfceeDevInfo[0].tDevInfo.eNfceeStatus = \
-                    pNciContext->tNfceeContext.eNfceeMode;
-                PH_LOG_NCI_INFO_STR("NFCEE Mode Set process Success");
+                if (PH_NCINFC_VERSION_IS_1x(pNciContext))
+                {
+                    pNciContext->tNfceeContext.pNfceeDevInfo[0].tDevInfo.eNfceeStatus = \
+                        pNciContext->tNfceeContext.eNfceeMode;
+                    PH_LOG_NCI_INFO_STR("NFCEE Mode Set process Success");
+                }
             }
             else
             {
@@ -140,6 +154,75 @@ static NFCSTATUS phNciNfc_CompleteModeSetSequence(void *pContext, NFCSTATUS wSta
             pNciCtx->tSendPayload.pBuff = NULL;
             pNciCtx->tSendPayload.wPayloadSize = 0;
         }
+
+        if (PH_NCINFC_VERSION_IS_1x(pNciCtx) ||
+             (PH_NCINFC_VERSION_IS_2x(pNciCtx) &&
+                wStatus != NFCSTATUS_SUCCESS))
+        {
+            phNciNfc_Notify(pNciCtx, wStatus, NULL);
+        }
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phNciNfc_PowerAndLinkCtrl(void *pContext)
+{
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    phNciNfc_CoreTxInfo_t TxInfo = { 0 };
+    pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t)pContext;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NULL != pNciContext)
+    {
+        if (PH_NCINFC_VERSION_IS_2x(pNciContext))
+        {
+            phOsalNfc_SetMemory(&TxInfo, 0x00, sizeof(phNciNfc_CoreTxInfo_t));
+            /* Build the Discover Command Header */
+            TxInfo.tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlCmd;
+            TxInfo.tHeaderInfo.Group_ID = phNciNfc_e_CoreNfceeMgtGid;
+            TxInfo.tHeaderInfo.Opcode_ID.OidType.NfceeMgtCmdOid = phNciNfc_e_NfceeMgtPowerAndLinkCtrlCmdOid;
+            TxInfo.Buff = (uint8_t *)pNciContext->tSendPayload.pBuff;
+            TxInfo.wLen = pNciContext->tSendPayload.wPayloadSize;
+            wStatus = phNciNfc_CoreIfTxRx(&(pNciContext->NciCoreContext),
+                                          &TxInfo,
+                                          &(pNciContext->RspBuffInfo),
+                                          PHNCINFC_NCI_CMD_RSP_TIMEOUT,
+                                          (pphNciNfc_CoreIfNtf_t)&phNciNfc_GenericSequence,
+                                          pContext);
+        }
+        else
+        {
+            wStatus = NFCSTATUS_FEATURE_NOT_SUPPORTED;
+        }
+    }
+    else
+    {
+        wStatus = NFCSTATUS_FAILED;
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phNciNfc_PowerAndLinkCtrlRsp(void *pContext, NFCSTATUS wStatus)
+{
+    UNUSED(pContext);
+    return wStatus;
+}
+
+static NFCSTATUS phNciNfc_CompletePowerAndLinkCtrlSequence(void *pContext, NFCSTATUS wStatus)
+{
+    pphNciNfc_Context_t pNciCtx = pContext;
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NULL != pNciCtx)
+    {
+        if (NULL != pNciCtx->tSendPayload.pBuff)
+        {
+            phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
+            pNciCtx->tSendPayload.pBuff = NULL;
+            pNciCtx->tSendPayload.wPayloadSize = 0;
+        }
+
         phNciNfc_Notify(pNciCtx, wStatus, NULL);
     }
     PH_LOG_NCI_FUNC_EXIT();
@@ -185,9 +268,9 @@ static NFCSTATUS phNciNfc_ProcessNfceeDiscoverRsp(void *pContext, NFCSTATUS Stat
         if(NULL != pNciContext)
         {
             /* Validate the Response of Discover Command */
-            if( (NULL != pNciContext->RspBuffInfo.pBuff) &&
-                (PH_NCINFC_STATUS_OK == pNciContext->RspBuffInfo.pBuff[0])&&
-                (PH_NCINFC_NFCEEDISC_RESP_LEN == pNciContext->RspBuffInfo.wLen) )
+            if ((NULL != pNciContext->RspBuffInfo.pBuff) &&
+                (PH_NCINFC_STATUS_OK == pNciContext->RspBuffInfo.pBuff[0]) &&
+                (PH_NCINFC_NFCEEDISC_RESP_LEN == pNciContext->RspBuffInfo.wLen))
             {
                 PH_LOG_NCI_INFO_STR("NFCEE Discovery process Started");
                 /* This parameter is not stored. Once discover notifications are encountered,
@@ -236,6 +319,18 @@ static NFCSTATUS phNciNfc_CompleteNfceeDiscoverSequence(void *pContext, NFCSTATU
                     wStatus = phNciNfc_CoreIfRegRspNtf(&(pNciContext->NciCoreContext),
                                                 &(tNtfInfo),
                                                 &phNciNfc_NfceeDiscNtfHandler,
+                                                pContext
+                                               );
+                    tNtfInfo.Opcode_ID.OidType.NfceeMgtNtfOid = phNciNfc_e_NfceeMgtModeSetNtfOid;
+                    wStatus = phNciNfc_CoreIfRegRspNtf(&(pNciContext->NciCoreContext),
+                                                &(tNtfInfo),
+                                                &phNciNfc_NfceeModeSetNtfHandler,
+                                                pContext
+                                               );
+                    tNtfInfo.Opcode_ID.OidType.NfceeMgtNtfOid = phNciNfc_e_NfceeMgtStatusNtfOid;
+                    wStatus = phNciNfc_CoreIfRegRspNtf(&(pNciContext->NciCoreContext),
+                                                &(tNtfInfo),
+                                                &phNciNfc_NfceeStatusNtfHandler,
                                                 pContext
                                                );
                 }
@@ -399,7 +494,7 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
     uint8_t *pBuff;
     uint16_t wLen;
     uint8_t bIndex = 0;
-    uint8_t bCount = 0;
+    uint16_t bCount = 0;
     uint8_t bDevIndex = 0;
     uint8_t bNfceeStatus = TRUE;
     uint8_t bNewNfceeId = FALSE;
@@ -488,16 +583,13 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
             if(NFCSTATUS_SUCCESS == wStatus)
             {
                 /* Index points to the Number of NFCEE info TLVs
-                   Calculate the length of TLV parameters sent in the command
-                   Number of TLV bytes = Total Length - length of other parameters in discover NTF -
+                   Calculate the remaining data length including TLV parameters sent in the command
+                   Number of remaining data length = Total Length - length of other parameters in discover NTF -
                                             Length of Number of TLVs */
-                bCount = (uint8_t)(wLen - bIndex - 1);
-                if(bCount > 0)
-                {
-                    wStatus = phNciNfc_TlvUtilsParseTLV(&pBuff[bIndex + 1],(uint16_t)bCount);
-                }
+                phNciNfc_TlvUtilsGetTLVLength(&pBuff[bIndex + 1], (wLen - bIndex - 1), &bCount);
                 if( (NFCSTATUS_SUCCESS == wStatus) && (bCount > 0) )
                 {
+                    pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.TlvInfoLen = bCount;
                     pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.bNumTypeInfo = \
                         (uint8_t)pBuff[bIndex];
                     pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.pTlvInfo = \
@@ -550,6 +642,111 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
             }
         }
     }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phNciNfc_NfceeModeSetNtfHandler(void *pContext,
+                                                 void *pInfo,
+                                                 NFCSTATUS wModeSetStatus)
+{
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    pphNciNfc_TransactInfo_t pTransactInfo = pInfo;
+    pphNciNfc_Context_t pCtx = pContext;
+    uint8_t *pBuff;
+    uint16_t wLen;
+    uint8_t bIndex = 0;
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NFCSTATUS_SUCCESS != wModeSetStatus)
+    {
+        wStatus = wModeSetStatus;
+    }
+    else if (NULL == pCtx)
+    {
+        wStatus = NFCSTATUS_NOT_INITIALISED;
+    }
+    else if ((NULL == pTransactInfo) || \
+        (NULL == pTransactInfo->pbuffer) || \
+        (0 == pTransactInfo->wLength))
+    {
+        wStatus = NFCSTATUS_INVALID_PARAMETER;
+    }
+    else
+    {
+        pBuff = pTransactInfo->pbuffer;
+        wLen = pTransactInfo->wLength;
+        if (wLen == 1)
+        {
+            wStatus = pBuff[bIndex];
+        }
+        else
+        {
+            wStatus = NFCSTATUS_FAILED;
+        }
+
+        if (wStatus == NFCSTATUS_OK)
+        {
+            /* With NCI2.0 If an NFCEE is disabled, the DH and the NFCC SHALL NOT consider the NFCEE
+             * enabled until the DH gets a NFCEE_MODE_SET_NTF with a Status set to STATUS_OK following
+             * a NFCEE_MODE_SET_CMD(Enable).
+             */
+            pCtx->tNfceeContext.pNfceeDevInfo[0].tDevInfo.eNfceeStatus = \
+                pCtx->tNfceeContext.eNfceeMode;
+            PH_LOG_NCI_INFO_STR("NFCEE Mode Set process Success");
+        }
+    }
+    phNciNfc_Notify(pCtx, wStatus, NULL);
+
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+static
+NFCSTATUS phNciNfc_NfceeStatusNtfHandler(void *pContext, void *pInfo, NFCSTATUS wNfceeStatus)
+{
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    pphNciNfc_TransactInfo_t pTransactInfo = pInfo;
+    phNciNfc_NotificationInfo_t tInfo = { 0 };
+    pphNciNfc_Context_t pCtx = pContext;
+    uint8_t *pBuff;
+    uint16_t wLen;
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NFCSTATUS_SUCCESS != wNfceeStatus)
+    {
+        wStatus = wNfceeStatus;
+    }
+    else if (NULL == pCtx)
+    {
+        wStatus = NFCSTATUS_NOT_INITIALISED;
+    }
+    else if ((NULL == pTransactInfo) || \
+        (NULL == pTransactInfo->pbuffer) || \
+        (0 == pTransactInfo->wLength))
+    {
+        wStatus = NFCSTATUS_INVALID_PARAMETER;
+    }
+    else
+    {
+        pBuff = pTransactInfo->pbuffer;
+        wLen = pTransactInfo->wLength;
+
+        if (wLen != 2)
+        {
+            wStatus = NFCSTATUS_INVALID_PARAMETER;
+        }
+        else
+        {
+            wStatus = NFCSTATUS_SUCCESS;
+            if (NULL != pCtx->tRegListInfo.pNfceeNotification)
+            {
+                tInfo.tNfceeStatus.bNfceeId = pTransactInfo->pbuffer[0];
+                tInfo.tNfceeStatus.bNfceeStatus = pTransactInfo->pbuffer[1];
+                pCtx->tRegListInfo.pNfceeNotification(pCtx, eNciNfc_NfceeStatusNtf, \
+                    &tInfo, wStatus);
+            }
+        }
+    }
+
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
 }

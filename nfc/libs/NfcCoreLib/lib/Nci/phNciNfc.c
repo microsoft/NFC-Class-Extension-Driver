@@ -13,7 +13,9 @@
 /** Value indicates length of Deactivate command payload */
 #define PHNCINFC_DEACTIVATE_PAYLOADLEN              (0x01)
 /** Value indicates length of Nfcee Discover command payload */
-#define PHNCINFC_NFCEEDISC_PAYLOADLEN               (0x01)
+#define PHNCINFC_NFCEEDISC_PAYLOADLEN_1x            (0x01)
+#define PHNCINFC_NFCEEDISC_PAYLOADLEN_2x            (0x00)
+
 /** Value indicates length of Set Power substate command payload */
 #define PHNCINFC_SETPOWERSUBSTATE_PAYLOADLEN        (0x01)
 
@@ -418,7 +420,7 @@ NFCSTATUS phNciNfc_Nfcee_StartDiscovery(void * pNciHandle,
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     phNciNfc_Context_t * pNciContext= (phNciNfc_Context_t *)pNciHandle;
-    uint8_t *pTargetInfo;
+    uint8_t *pTargetInfo = NULL;
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL == pNciContext)
     {
@@ -433,31 +435,45 @@ NFCSTATUS phNciNfc_Nfcee_StartDiscovery(void * pNciHandle,
     }
     else
     {
-        pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEDISC_PAYLOADLEN);
-        if(NULL == pTargetInfo)
-        {
-            PH_LOG_NCI_CRIT_STR("Memory not available(phNciNfc_Nfcee_StartDiscovery)");
-            wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
-        }
-        else
-        {
-            /* Reset tSeEventList and NFCEE context */
-            phOsalNfc_SetMemory(&pNciContext->tSeEventList,0,sizeof(phNciNfc_SeEventList_t));
-            phNciNfc_ReleaseNfceeCntx();
+        /* Reset tSeEventList and NFCEE context */
+        phOsalNfc_SetMemory(&pNciContext->tSeEventList,0,sizeof(phNciNfc_SeEventList_t));
+        phNciNfc_ReleaseNfceeCntx();
 
-            /* Store the state of NFCEE discovery to enabled */
-            pNciContext->tNfceeContext.bNfceeDiscState = \
-                        PH_NCINFC_NFCEE_DISC_ENABLE;
-            /* Build the Payload */
-            pTargetInfo[0] = PH_NCINFC_NFCEE_DISC_ENABLE;
-            pNciContext->tSendPayload.pBuff = pTargetInfo;
+        /* Store the state of NFCEE discovery to enabled */
+        pNciContext->tNfceeContext.bNfceeDiscState = \
+                    PH_NCINFC_NFCEE_DISC_ENABLE;
+
+        if (PH_NCINFC_VERSION_IS_1x(pNciContext))
+        {
+            pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEDISC_PAYLOADLEN_1x);
+            if (NULL == pTargetInfo)
+            {
+                PH_LOG_NCI_CRIT_STR("Memory not available(phNciNfc_Nfcee_StartDiscovery)");
+                wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
+            }
+            else
+            {
+                /* Build the Payload */
+                pTargetInfo[0] = PH_NCINFC_NFCEE_DISC_ENABLE;
+                pNciContext->tSendPayload.pBuff = pTargetInfo;
+                pNciContext->tSendPayload.wPayloadSize = \
+                    (uint16_t)PHNCINFC_NFCEEDISC_PAYLOADLEN_1x;
+            }
+        }
+        else if (PH_NCINFC_VERSION_IS_2x(pNciContext))
+        {
+            pNciContext->tSendPayload.pBuff = NULL;
             pNciContext->tSendPayload.wPayloadSize = \
-                        (uint16_t)PHNCINFC_NFCEEDISC_PAYLOADLEN;
+                (uint16_t)PHNCINFC_NFCEEDISC_PAYLOADLEN_2x;
+        }
+
+        if (wStatus == NFCSTATUS_SUCCESS)
+        {
             pNciContext->IfNtf = pNfceeDisCb;
             pNciContext->IfNtfCtx = pContext;
-            PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_NfceeDiscSequence);
+            PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_NfceeDiscSequence);
             wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
-            if(NFCSTATUS_PENDING != wStatus)
+            if (NFCSTATUS_PENDING != wStatus)
             {
                 PH_LOG_NCI_CRIT_STR("Nfcee Discover Sequence failed!");
                 phOsalNfc_FreeMemory(pTargetInfo);
@@ -475,7 +491,7 @@ NFCSTATUS phNciNfc_Nfcee_StopDiscovery(void * pNciHandle,
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     phNciNfc_Context_t * pNciContext= (phNciNfc_Context_t *)pNciHandle;
-    uint8_t *pTargetInfo;
+    uint8_t *pTargetInfo = NULL;
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL == pNciContext)
     {
@@ -490,7 +506,7 @@ NFCSTATUS phNciNfc_Nfcee_StopDiscovery(void * pNciHandle,
     }
     else
     {
-        pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEDISC_PAYLOADLEN);
+        pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEDISC_PAYLOADLEN_1x);
         if(NULL == pTargetInfo)
         {
             PH_LOG_NCI_CRIT_STR("Memory not available(phNciNfc_Nfcee_StopDiscovery)");
@@ -504,7 +520,7 @@ NFCSTATUS phNciNfc_Nfcee_StopDiscovery(void * pNciHandle,
             /* Build the Payload */
             pTargetInfo[0] = PH_NCINFC_NFCEE_DISC_DISABLE;
             pNciContext->tSendPayload.pBuff = pTargetInfo;
-            pNciContext->tSendPayload.wPayloadSize = PHNCINFC_NFCEEDISC_PAYLOADLEN;
+            pNciContext->tSendPayload.wPayloadSize = PHNCINFC_NFCEEDISC_PAYLOADLEN_1x;
             pNciContext->IfNtf = pNfceeDisCb;
             pNciContext->IfNtfCtx = pContext;
             PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_NfceeDiscSequence);
@@ -615,6 +631,70 @@ NFCSTATUS phNciNfc_Nfcee_ModeSet(void * pNciHandle,
                 if(NFCSTATUS_PENDING != wStatus)
                 {
                     PH_LOG_NCI_CRIT_STR("Nfcee ModeSet Sequence failed!");
+                    phOsalNfc_FreeMemory(pTargetInfo);
+                    pNciContext->tSendPayload.pBuff = NULL;
+                }
+            }
+        }
+        else
+        {
+            wStatus = NFCSTATUS_INVALID_PARAMETER;
+        }
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+NFCSTATUS phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
+                                               void * pNfceeHandle,
+                                               phNciNfc_PowerLinkModes_t eActivationMode,
+                                               pphNciNfc_IfNotificationCb_t pNotifyCb,
+                                               void *pContext)
+{
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    phNciNfc_Context_t * pNciContext = (phNciNfc_Context_t *)pNciHandle;
+    pphNciNfc_NfceeDeviceHandle_t pDevHandle = \
+        (pphNciNfc_NfceeDeviceHandle_t)pNfceeHandle;
+    uint8_t *pTargetInfo;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NULL == pNciContext)
+    {
+        PH_LOG_NCI_CRIT_STR("Stack not initialized (phNciNfc_Nfcee_SePowerAndLinkCtrlSet)");
+        wStatus = NFCSTATUS_NOT_INITIALISED;
+    }
+    else if (NULL == pNotifyCb)
+    {
+        PH_LOG_NCI_CRIT_STR("Invalid parameter passed(phNciNfc_Nfcee_SePowerAndLinkCtrlSet)");
+        wStatus = NFCSTATUS_INVALID_PARAMETER;
+    }
+    else
+    {
+        if ((NULL != pDevHandle) && \
+            (0 != pDevHandle->tDevInfo.bNfceeID) && \
+            (PHNCINFC_INVALID_DISCID != pDevHandle->tDevInfo.bNfceeID))
+        {
+            pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEMODESET_PAYLOADLEN);
+            if (NULL == pTargetInfo)
+            {
+                PH_LOG_NCI_CRIT_STR("Memory not available(phNciNfc_Nfcee_SePowerAndLinkCtrlSet)");
+                wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
+            }
+            else if (PH_NCINFC_VERSION_IS_2x(pNciContext))
+            {
+                /* Store the Payload */
+                pTargetInfo[0] = pDevHandle->tDevInfo.bNfceeID;
+                pTargetInfo[1] = (uint8_t)eActivationMode;
+                pNciContext->tSendPayload.pBuff = pTargetInfo;
+                pNciContext->tSendPayload.wPayloadSize = \
+                    (uint16_t)PHNCINFC_NFCEEMODESET_PAYLOADLEN;
+                pNciContext->IfNtf = pNotifyCb;
+                pNciContext->IfNtfCtx = pContext;
+                PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_SePowerAndLinkCtrlSequence);
+                wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
+                if (NFCSTATUS_PENDING != wStatus)
+                {
+                    PH_LOG_NCI_CRIT_STR("Nfcee PowerAndLinkCtrlSet Sequence failed!");
                     phOsalNfc_FreeMemory(pTargetInfo);
                     pNciContext->tSendPayload.pBuff = NULL;
                 }
