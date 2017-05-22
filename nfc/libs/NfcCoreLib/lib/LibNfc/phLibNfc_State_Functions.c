@@ -369,21 +369,15 @@ NFCSTATUS phLibNfc_IsInitialisedState(void *pContext)
 
 NFCSTATUS phLibNfc_IsInitialised(void *pContext)
 {
-    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-    pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t )pContext;
+    pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t)pContext;
 
-    if(pLibContext != NULL)
+    if (NULL == pLibContext ||
+        pLibContext->StateContext.CurrState < phLibNfc_StateInit)
     {
-        if(pLibContext->StateContext.CurrState < phLibNfc_StateInit)
-        {
-            wStatus = NFCSTATUS_NOT_INITIALISED;
-        }
+        return NFCSTATUS_NOT_INITIALISED;
     }
-    else
-    {
-        wStatus = NFCSTATUS_NOT_INITIALISED;
-    }
-    return wStatus;
+
+    return NFCSTATUS_SUCCESS;
 }
 
 NFCSTATUS phLibNfc_IsShutDownInProgress(void *pContext)

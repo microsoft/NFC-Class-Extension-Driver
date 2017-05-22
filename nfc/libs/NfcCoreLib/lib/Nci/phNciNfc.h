@@ -497,11 +497,18 @@ typedef struct phNciNfc_NfceeInfo
     pphNciNfc_NfceeDeviceHandle_t pNfceeHandle;
 }phNciNfc_NfceeInfo_t,*pphNciNfc_NfceeInfo_t;
 
-typedef struct phNciNfc_NfceeStatus
+typedef enum phNciNfc_NfceeInitSequenceStatus
 {
-    uint8_t bNfceeStatus; /**< 0 Unrecoverable error, 1 NFCEE Initialization started, 2 NFCEE Initialization completed */
-    uint8_t bNfceeId; /**< Nfcee Id */
-}phNciNfc_NfceeStatus_t, *pphNciNfc_NfceeStatus_t;
+    phNciNfc_NfceeInitSequenceError = 0x00,   /**< Unrecoverable error */
+    phNciNfc_NfceeInitSequenceStarted = 0x01,   /**< NFCEE Initialization sequence started */
+    phNciNfc_NfceeInitSequenceCompleted = 0x02   /**< NFCEE Initialization sequence completed */
+} phNciNfc_NfceeInitSequenceStatus_t; /**< NFCEE Status field in NFCEE_STATUS_NTF, Table 122, NCI2.0 */
+
+typedef struct phNciNfc_NfceeStatusInfo
+{
+    phNciNfc_NfceeInitSequenceStatus_t bNfceeStatus;
+    uint8_t bNfceeId;
+}phNciNfc_NfceeStatusInfo_t, *pphNciNfc_NfceeStatusInfo_t; /**< NFCEE_STATUS_NTF, NCI2.0 */
 
 /**
  * \ingroup grp_nci_nfc
@@ -1070,7 +1077,7 @@ typedef union phNciNfc_NotificationInfo
     phNciNfc_NfceeHciEventInfo_t  tEventInfo;      /**< Hci events info */
     phNciNfc_GenericErrInfo_t tGenericErrInfo;     /**< Generic error information */
     phNciNfc_NfceeInfo_t tNfceeInfo;        /**< Nfcee notification */
-    phNciNfc_NfceeStatus_t tNfceeStatus;    /**< Nfcee status */
+    phNciNfc_NfceeStatusInfo_t tNfceeStatusInfo; /**< Nfcee status info (NCI2.0 specific) */
 }phNciNfc_NotificationInfo_t,*pphNciNfc_NotificationInfo_t; /**< Notification info received by Nci module */
 
 /**
@@ -1677,7 +1684,7 @@ phNciNfc_RegisterHciSeEvent(void *pNciCtx,
  *  It shall send the data received from upper layer to the NFCEE.
  *
  *  \param[in] pNciCtx pointer to the NCI context structure
- *  \param[in] pSeDevHandle SE handle
+ *  \param[in] pSeHandle SE handle
  *  \param[in] pSendCb pointer to call back function of type #pphNciNfc_IfNotificationCb_t
  *  \param[in] pContext upper layer context
  *  \param[in] pSendData Data to be sent to the SE

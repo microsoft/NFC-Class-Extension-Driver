@@ -1066,7 +1066,7 @@ static NFCSTATUS phLibNfc_NfceeModeSet(void *pContext,NFCSTATUS wStatus,void *pI
 {
     NFCSTATUS wIntStatus = NFCSTATUS_INVALID_PARAMETER;
     pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t)pContext;
-    pphNciNfc_NfceeDeviceHandle_t pNfceeHandle; 
+    pphNciNfc_NfceeDeviceHandle_t pNfceeHandle;
     UNUSED(pInfo);
     UNUSED(wStatus);
     PH_LOG_LIBNFC_FUNC_ENTRY();
@@ -1164,40 +1164,28 @@ NFCSTATUS phLibNfc_HciChildDevInitComplete(void* pContext, NFCSTATUS status, voi
     return wStatus;
 }
 
-NFCSTATUS phLibNfc_HciLaunchDevInitSequenceNci2x(void *pContext)
+NFCSTATUS phLibNfc_HciLaunchDevInitSequence(void *pContext)
 {
     pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t)pContext;
     NFCSTATUS wStatus = NFCSTATUS_FAILED;
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if (pLibContext != NULL)
     {
-        /*Start the Sequence for HCI network*/
-        PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_HciInitSequenceNci2x);
-        wStatus = phLibNfc_SeqHandler(pContext, NFCSTATUS_SUCCESS, NULL);
-        if (NFCSTATUS_PENDING != wStatus)
-        {
-            PH_LOG_LIBNFC_CRIT_STR("Hci init sequence could not start!");
-            wStatus = NFCSTATUS_FAILED;
-        }
-    }
-    PH_LOG_LIBNFC_FUNC_EXIT();
-    return wStatus;
-}
-
-NFCSTATUS phLibNfc_HciLaunchDevInitSequenceNci1x(void *pContext)
-{
-    pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t)pContext;
-    NFCSTATUS wStatus = NFCSTATUS_FAILED;
-    PH_LOG_LIBNFC_FUNC_ENTRY();
-    if(pLibContext != NULL)
-    {
         pLibContext->tSeInfo.bSeState[phLibNfc_SE_Index_HciNwk] = phLibNfc_SeStateInitializing;
         pLibContext->sSeContext.pActiveSeInfo = (pphLibNfc_SE_List_t)(&pLibContext->tSeInfo.tSeList[phLibNfc_SE_Index_HciNwk]);
+        if (PH_NCINFC_VERSION_IS_1x(PHNCINFC_GETNCICONTEXT()))
+        {
+            PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_HciInitSequenceNci1x);
+        }
+        else
+        {
+            PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_HciInitSequenceNci2x);
+        }
 
         /*Start the Sequence for HCI network*/
-        PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_HciInitSequenceNci1x);
-        wStatus = phLibNfc_SeqHandler(pContext,NFCSTATUS_SUCCESS,NULL);
-        if(NFCSTATUS_PENDING != wStatus)
+        wStatus = phLibNfc_SeqHandler(pContext, NFCSTATUS_SUCCESS, NULL);
+
+        if (NFCSTATUS_PENDING != wStatus)
         {
             PH_LOG_LIBNFC_CRIT_STR("Hci init sequence could not start!");
             pLibContext->tSeInfo.bSeState[phLibNfc_SE_Index_HciNwk] = phLibNfc_SeStateInvalid;

@@ -666,8 +666,8 @@ NFCSTATUS phNciNfc_NfceeStatusNtfHandler(void *pContext, void *pInfo, NFCSTATUS 
             wStatus = NFCSTATUS_SUCCESS;
             if (NULL != pCtx->tRegListInfo.pNfceeNotification)
             {
-                tInfo.tNfceeStatus.bNfceeId = pTransactInfo->pbuffer[0];
-                tInfo.tNfceeStatus.bNfceeStatus = pTransactInfo->pbuffer[1];
+                tInfo.tNfceeStatusInfo.bNfceeId = pTransactInfo->pbuffer[0];
+                tInfo.tNfceeStatusInfo.bNfceeStatus = pTransactInfo->pbuffer[1];
                 pCtx->tRegListInfo.pNfceeNotification(pCtx, eNciNfc_NfceeStatusNtf, \
                     &tInfo, wStatus);
             }
