@@ -1673,7 +1673,7 @@ static NFCSTATUS phNciNfc_GetConfigOpt(void *pContext)
                     /* Copy the parameters length and payload parameters */
                     *pPayloadBuff = bParamCount;
                     phOsalNfc_MemCopy( (pPayloadBuff + 1),aRfConfigParams,bParamLen);
-                
+
                     pNciCtx->tSendPayload.pBuff = pPayloadBuff;
                     pNciCtx->tSendPayload.wPayloadSize = wPayloadLen;
 
@@ -2306,7 +2306,7 @@ phNciNfc_ProcessGetRtngNtf(pphNciNfc_RtngConfInfo_t pRtngConfInfo,
     if(0 != bNumEntries)
     {
         /* Parse the buffer */
-        wStatus = phNciNfc_TlvUtilsParseTLV(pRtngConfInfo->pRtngNtfPayload,pRtngConfInfo->wPayloadSize);
+        wStatus = phNciNfc_TlvUtilsValidate(pRtngConfInfo->pRtngNtfPayload, pRtngConfInfo->wPayloadSize, NULL);
         if(NFCSTATUS_SUCCESS == wStatus)
         {
             /* Valid TLVs received */

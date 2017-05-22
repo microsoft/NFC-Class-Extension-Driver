@@ -76,16 +76,12 @@ extern uint8_t phNciNfc_TlvUtilsRemoveTlv(
                            uint8_t btag                         /**< 'tag' part of the TLV */
                            );
 
-extern NFCSTATUS phNciNfc_TlvUtilsGetTLVLength(
+extern NFCSTATUS phNciNfc_TlvUtilsValidate(
                           uint8_t *pBuffer,
                           uint16_t wLength,
-                          uint16_t *tlvLength
+                          uint16_t *pwBufferLeftoverLength
                           );
 
-extern NFCSTATUS phNciNfc_TlvUtilsParseTLV(
-                          uint8_t *pBuffer,
-                          uint16_t wLength
-                         );
 
 extern NFCSTATUS phNciNfc_TlvUtilsGetNxtTlv(
                            pphNciNfc_TlvUtilInfo_t ptTlvInfo,

@@ -30,6 +30,8 @@
 #define PH_NCINFC_NFCEE_ACTIVATEDNFCEEIDSLOT    0x03
 /** Invalid NFCEE Id dedicated for future use */
 #define PH_NCINFC_NFCEE_INVALIDID               0xFF
+/** Length of NFCEE Power Supply data */
+#define PH_NCINFC_NFCEE_POWER_SUPPLY_LENGTH     0x01
 
 /** Value indicates NFCEE response length */
 #define PH_NCINFC_NFCEEDISC_RESP_LEN            (0x02)
@@ -510,12 +512,9 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
                                                     ,pBuff,&bIndex);
             if(NFCSTATUS_SUCCESS == wStatus)
             {
-                /* Index points to the Number of NFCEE info TLVs
-                   Calculate the remaining data length including TLV parameters sent in the command
-                   Number of remaining data length = Total Length - length of other parameters in discover NTF -
-                                            Length of Number of TLVs */
-                phNciNfc_TlvUtilsGetTLVLength(&pBuff[bIndex + 1], (wLen - bIndex - 1), &bCount);
-                if( (NFCSTATUS_SUCCESS == wStatus) && (bCount > 0) )
+                wStatus = phNciNfc_TlvUtilsValidate(&pBuff[bIndex + 1], (wLen - bIndex - 1), &bCount);
+                if ((NFCSTATUS_SUCCESS == wStatus) ||
+                    (bCount == PH_NCINFC_NFCEE_POWER_SUPPLY_LENGTH))
                 {
                     pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.TlvInfoLen = bCount;
                     pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.bNumTypeInfo = \
