@@ -50,7 +50,9 @@ typedef enum _NFCCX_LIBNFC_MESSAGE {
     LIBNFC_STATE_HANDLER,
     LIBNFC_SEQUENCE_HANDLER,
     LIBNFC_DTA_MESSAGE,
-    LIBNFC_MESSAGE_MAX,
+    LIBNFC_EMEBEDDED_SE_TRANSCEIVE,
+    LIBNFC_EMBEDDED_SE_GET_ATR_STRING,
+    LIBNFC_MESSAGE_MAX
 } NFCCX_LIBNFC_MESSAGE, *PNFCCX_LIBNFC_MESSAGE;
 
 C_ASSERT(LIBNFC_MESSAGE_MAX <= PH_OSALNFC_MESSAGE_BASE);
@@ -146,6 +148,12 @@ typedef struct _NFCCX_RF_INTERFACE {
     phNfc_sTransceiveInfo_t sTransceiveBuffer;
     phNfc_sData_t sReceiveBuffer;
     phNfc_sData_t sSendBuffer;
+
+    //
+    // Buffers for eSE
+    //
+    phNfc_sSeTransceiveInfo_t pSeTransceiveInfo;
+    phNfc_sSeAtrInfo_t pSeATRInfo;
 
     //
     // Background workers
@@ -263,6 +271,17 @@ NfcCxRFInterfaceWriteP2P(
 
 NTSTATUS
 NfcCxRFInterfaceTransmit(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_reads_bytes_(InputBufferLength) PBYTE InputBuffer,
+    _In_ size_t InputBufferLength,
+    _Out_writes_bytes_to_(OutputBufferLength, *pOutputBufferUsed) PBYTE OutputBuffer,
+    _In_ size_t OutputBufferLength,
+    _Out_ size_t* pOutputBufferUsed,
+    _In_ USHORT Timeout
+    );
+
+NTSTATUS
+NfcCxRFInterfaceEmbeddedSETransmit(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_reads_bytes_(InputBufferLength) PBYTE InputBuffer,
     _In_ size_t InputBufferLength,
@@ -402,6 +421,14 @@ NfcCxRFInterfaceHandleSecureElementEvent(
     _In_ NFCSTATUS Status
     );
 
+NTSTATUS
+NfcCxRFInterfaceEmbeddedSEGetATRString(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _Out_writes_bytes_to_(OutputBufferLength, *pOutputBufferUsed) PBYTE OutputBuffer,
+    _In_ size_t OutputBufferLength
+    );
+
+
 //
 // State Handlers
 //
@@ -515,6 +542,9 @@ FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfacePostRecovery;
 
 #define RF_INTERFACE_TARGET_TRANSCEIVE_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceTargetTransceive)
 #define RF_INTERFACE_TARGET_PRESENCE_CHECK_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceTargetPresenceCheck)
+
+#define RF_INTERFACE_EMBEDDEDSE_APDU_MODE_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceEmbeddedSEAPDUTransceive)
+#define RF_INTERFACE_EMBEDDEDSE_APDU_GET_ATR_STRING_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceESEGetATRString)
 
 #define RF_INTERFACE_SE_NTF_REGISTER_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSENtfRegister)
 

@@ -362,3 +362,7 @@
 /** \ingroup grp_retval
 ** Indicates RF time out */
 #define NFCSTATUS_RF_TIMEOUT_ERROR                              (0x00B2)
+
+/** \ingroup grp_retval
+** Indicates WTX Event received */
+#define NFCSTATUS_WAIT_ON_WTX                                   (0x0028)

@@ -29,6 +29,13 @@
 #define PHHCINFC_FIRST_TIME_HCI_NWK_FORMATION_TIME_OUT      2000U /* 2 Secs*/
 #define PHHCINFC_HCI_NWK_FORMATION_TIME_OUT                 500U /* 0.5 Secs*/
 
+/**
+* \ingroup grp_hci_core
+*
+* \brief Default HCI Get Atr (Timeout) in Milliseconds
+*/
+#define PHHCINFC_DEFAULT_HCI_GET_ATR_TIMEOUT           2000U /* 2 Secs*/
+
 #define PHHCINFC_HCI_NWK_INIT_RETRY_COUNT           1
 
 #define PHHCINFC_HCI_CONNECTIVITY_GATE_PIPE_ID      0x16
@@ -126,9 +133,10 @@ typedef enum phHciNfc_HostID
 } phHciNfc_HostID_t;
 
 typedef enum phHciNfc_GateID{
-    phHciNfc_e_LoopBackGate                       = 0x04U,
-    phHciNfc_e_ConnectivityGate                   = 0x41U,
-    phHciNfc_e_ApduGate                           = 0xF0U
+    phHciNfc_e_LoopBackGate                       = 0x04U,    
+	phHciNfc_e_ApduGate                           = 0x30U,
+	phHciNfc_e_ConnectivityGate                   = 0x41U,
+	phHciNfc_e_PropApduGate                       = 0xF0U
 } phHciNfc_GateID_t;
 
 typedef enum phHciNfc_PipeID
@@ -225,6 +233,11 @@ typedef struct phHciNfc_HciContext
     uint8_t                          bNoOfHosts;
     uint8_t                          bClearpipes;
     uint8_t                          bCreatePipe;
+	uint8_t aHostTypeList[16];/**< List of Host in HCI network --> 2*PHHCINFC_HCI_MAX_NO_OF_HOSTS */
+    phHciNfc_TimerInfo_t             tHciSeGetAtrTimerInfo; /**< Timer data for Get Atr */
+	uint8_t    eSE_Compliancy;/* Store the compliancy of eSE*/
+	uint8_t    bClearALL_eSE_pipes;/* Flag to indicate clear all pipe has come*/
+	uint8_t    bClearALL_HostId;/* Flag to indicate clear all pipe has come for which host*/
 } phHciNfc_HciContext_t,*pphHciNfc_HciContext_t;
 
 extern phHciNfc_HciContext_t volatile *gppHciContext;
@@ -296,3 +309,14 @@ typedef struct phHciNfc_AnyOkParams
     uint32_t     dwLenOfData;
     uint8_t      *pData;
 } phHciNfc_AnyOkParams_t;
+
+/**
+*  \ingroup grp_hci_core
+*
+*  \brief This function will check if any wired mode transactions are in progress
+*
+*  \return Nfc status
+*          NFCSTATUS_BUSY - When a transaction is in progress on APDU pipe
+*          NFCSTATUS_SUCCESS- When there are no transactions pending on the APDU pipe
+*/
+extern NFCSTATUS phHciNfc_CheckTransOnApduPipe(void);

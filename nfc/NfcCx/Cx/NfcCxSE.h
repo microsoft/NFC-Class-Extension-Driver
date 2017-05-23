@@ -32,6 +32,13 @@ EXTERN_C __declspec(selectany) const GUID DH_SECUREELEMENT_ID =
 
 #define NFCCX_MAX_HCE_PACKET_QUEUE_LENGTH (5)
 
+typedef enum _CARD_EMULATION_MODE_INTERNAL {
+	CardEmulationOff = 0,
+	CardEmulationOnPowerIndependent = 1,
+	CardEmulationOnPowerDependent = 2,
+	EmbeddedSeApduMode = 3
+} CARD_EMULATION_MODE_INTERNAL;
+
 typedef
 NTSTATUS
 NFCCX_SE_DISPATCH_HANDLER(
@@ -57,6 +64,12 @@ typedef struct _NFCCX_SE_INTERFACE {
     //
     BOOLEAN InterfaceCreated;
 
+	//
+	// eSE
+	//
+	BOOLEAN IsInWiredMode;
+	GUID EmbeddedSeId;
+
     //
     // Sequential Dispatch IO Queue
     //
@@ -75,6 +88,15 @@ typedef struct _NFCCX_SE_INTERFACE {
     WDFWAITLOCK SEEventsLock;
     _Guarded_by_(SEEventsLock)
     LIST_ENTRY SEEventsList;
+
+	//
+	// Present / Absent for eSE Subsystem
+	//
+	WDFQUEUE PresentQueue;
+	WDFQUEUE AbsentQueue;
+
+	_Guarded_by_(SmartCardLock)
+	PNFCCX_FILE_CONTEXT eSEPCSCCurrentClient;
 
 } NFCCX_SE_INTERFACE, *PNFCCX_SE_INTERFACE;
 
@@ -215,7 +237,7 @@ NfcCxSEInterfaceGetSecureElementId(
 BOOLEAN
 NfcCxSEInterfaceGetSecureElementHandle(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ GUID& guidSecureElementId,
+    _In_ const GUID& guidSecureElementId,
     _Outptr_result_maybenull_ phLibNfc_Handle *phSecureElement
     );
 
@@ -241,9 +263,10 @@ NfcCxSEInterfaceValidateCardEmulationState(
 
 NTSTATUS
 NfcCxSEInterfaceSetCardEmulationMode(
-    _In_ PNFCCX_FILE_CONTEXT FileContext,
-    _In_ PSECURE_ELEMENT_SET_CARD_EMULATION_MODE_INFO pMode
-    );
+	_In_ PNFCCX_FILE_CONTEXT FileContext,
+	_In_ const GUID& SecureElementId,
+	_In_ CARD_EMULATION_MODE_INTERNAL eMode
+);
 
 NTSTATUS
 NfcCxSEInterfaceGetRoutingTable(
@@ -285,7 +308,7 @@ NfcCxSEInterfaceConvertRoutingTable(
 NTSTATUS
 NfcCxSEInterfaceGetSEInfo(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ GUID& SecureElementId,
+	_In_ const GUID& SecureElementId,
     _Out_ phLibNfc_SE_List_t* pSEInfo
     );
 
@@ -312,77 +335,102 @@ NfcCxSEInterfaceValidateEmulationMode(
             eMode == EmulationOnPowerDependent);
 }
 
+CARD_EMULATION_MODE_INTERNAL FORCEINLINE
+NfcCxSEInterfaceConvertEmulationMode(
+	_In_ SECURE_ELEMENT_CARD_EMULATION_MODE eMode
+)
+{
+	switch (eMode) {
+	case EmulationOnPowerDependent:
+		return CardEmulationOnPowerDependent;
+	case EmulationOnPowerIndependent:
+		return CardEmulationOnPowerIndependent;
+	default:
+		return CardEmulationOff;
+	}
+}
+
 phLibNfc_eSE_ActivationMode FORCEINLINE
-NfcCxSEInterfaceGetActivationMode(
-    _In_ SECURE_ELEMENT_CARD_EMULATION_MODE eMode
+NfcCxSEInterfaceConvertActivationMode(
+    _In_ CARD_EMULATION_MODE_INTERNAL eMode
     )
 {
     switch (eMode) {
     case EmulationOnPowerDependent:
     case EmulationOnPowerIndependent:
         return phLibNfc_SE_ActModeVirtual;
+    case EmbeddedSeApduMode:
+        return phLibNfc_SE_ActModeApdu;
     default:
         return phLibNfc_SE_ActModeOff;
     }
 }
 
-SECURE_ELEMENT_CARD_EMULATION_MODE FORCEINLINE
+CARD_EMULATION_MODE_INTERNAL FORCEINLINE
 NfcCxSEInterfaceGetEmulationMode(
-    _In_ const phLibNfc_SE_List_t& SEInfo
-    )
+	_In_ const phLibNfc_SE_List_t& SEInfo
+)
 {
-    if (SEInfo.eSE_ActivationMode == phLibNfc_SE_ActModeOff) {
-        return EmulationOff;
-    }
-    else if (SEInfo.eLowPowerMode == phLibNfc_SE_LowPowerMode_Off) {
-        return  EmulationOnPowerDependent;
-    }
-    else {
-        return EmulationOnPowerIndependent;
-    }
+	if (SEInfo.eSE_ActivationMode == phLibNfc_SE_ActModeOff) {
+		return CardEmulationOff;
+	}
+	else if (SEInfo.eSE_ActivationMode == phLibNfc_SE_ActModeApdu) {
+		return EmbeddedSeApduMode;
+	}
+	else if (SEInfo.eLowPowerMode == phLibNfc_SE_LowPowerMode_Off) {
+		return  CardEmulationOnPowerDependent;
+	}
+	else {
+		return CardEmulationOnPowerIndependent;
+	}
 }
 
 BOOLEAN FORCEINLINE
 NfcCxSEInterfaceGetPowerState(
-    _In_ SECURE_ELEMENT_CARD_EMULATION_MODE eMode,
+    _In_ CARD_EMULATION_MODE_INTERNAL eMode,
     _In_ const phNfc_sDeviceCapabilities_t& Caps,
     _Out_ phNfc_PowerState_t *pPowerState
     )
 {
-    switch (eMode) {
-    case EmulationOnPowerDependent:
-    case EmulationOnPowerIndependent:
-        pPowerState->bSwitchedOn = 0x1;
-        pPowerState->bSwitchedOff = (eMode == EmulationOnPowerIndependent) && Caps.PowerStateInfo.SwitchOffState;
-        pPowerState->bBatteryOff = (eMode == EmulationOnPowerIndependent) && Caps.PowerStateInfo.BatteryOffState;
-        return TRUE;
-    case EmulationOff:
-        pPowerState->bSwitchedOn = 0x1;
-        pPowerState->bSwitchedOff = pPowerState->bBatteryOff = 0x0;
-        return TRUE;
-    default:
-        pPowerState->bSwitchedOn = 0x0;
-        pPowerState->bSwitchedOff = pPowerState->bBatteryOff = 0x0;
-        return FALSE;
-    }
+	switch (eMode) {
+	case EmulationOff:
+	case EmulationOnPowerDependent:
+		pPowerState->bSwitchedOn = 0x1;
+		pPowerState->bSwitchedOff = 0x0;
+		pPowerState->bBatteryOff = 0x0;
+		return TRUE;
+	case EmulationOnPowerIndependent:
+	case EmbeddedSeApduMode:
+		pPowerState->bSwitchedOn = 0x1;
+		pPowerState->bSwitchedOff = Caps.PowerStateInfo.SwitchOffState;
+		pPowerState->bBatteryOff = Caps.PowerStateInfo.BatteryOffState;
+		return TRUE;
+	default:
+		pPowerState->bSwitchedOn = 0x0;
+		pPowerState->bSwitchedOff = 0x0;
+		pPowerState->bBatteryOff = 0x0;
+		return FALSE;
+	}
 }
 
 BOOLEAN FORCEINLINE
 NfcCxSEInterfaceVerifyCEState(
-    _In_ SECURE_ELEMENT_CARD_EMULATION_MODE eMode,
-    _In_ const phLibNfc_SE_List_t& SEInfo
-    )
+	_In_ CARD_EMULATION_MODE_INTERNAL eMode,
+	_In_ const phLibNfc_SE_List_t& SEInfo
+)
 {
     switch (eMode) {
-    case EmulationOff:
+    case CardEmulationOff:
         return ((SEInfo.eSE_ActivationMode != phLibNfc_SE_ActModeOff) ||
                 (SEInfo.eLowPowerMode != phLibNfc_SE_LowPowerMode_Off));
-    case EmulationOnPowerIndependent:
+    case CardEmulationOnPowerIndependent:
         return ((SEInfo.eSE_ActivationMode != phLibNfc_SE_ActModeVirtual) ||
                 (SEInfo.eLowPowerMode != phLibNfc_SE_LowPowerMode_On));
-    case EmulationOnPowerDependent:
+    case CardEmulationOnPowerDependent:
         return ((SEInfo.eSE_ActivationMode != phLibNfc_SE_ActModeVirtual) ||
                 (SEInfo.eLowPowerMode != phLibNfc_SE_LowPowerMode_Off));
+    case EmbeddedSeApduMode:
+        return (SEInfo.eSE_ActivationMode != phLibNfc_SE_ActModeApdu);
     default:
         return FALSE;
     }

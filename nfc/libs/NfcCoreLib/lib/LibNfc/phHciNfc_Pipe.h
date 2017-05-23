@@ -39,6 +39,13 @@
 
 #define PHHCINFC_MAX_PIPES                  0x03
 
+#define PHHCINFC_PIPE_HOST_LIST_INDEX       0x04U
+#define PHHCINFC_PIPE_HOST_TYPE_INDEX       0x06U
+#define PHHCINFC_PIPE_HOST_TYPE_LIST_INDEX  0x07U
+#define PHHCINFC_PIPE_HOST_TYPE_LIST_LEN    0x02U
+#define PHHCINFC_ESE_COMPLIANT_9            0x09U
+#define PHHCINFC_ESE_COMPLIANT_12           0x12U
+
 /*
     Note on Session ID Management:
     The Session id is implemented as per IR SC32582.
@@ -90,6 +97,13 @@ typedef struct phHciNfc_HciRegData
     phNciNfc_eHciMsgType_t  eMsgType;
     uint8_t                 bPipeId;       /**< Group ID */
 }phHciNfc_HciRegData_t, *pphHciNfc_HciRegData_t; /**< pointer to #phHciNfc_HciRegData_t */
+
+typedef struct phHciNfc_AdmPipeCreateCmdParams
+{
+	uint8_t     bSourceGID;
+	uint8_t     bDestHID;
+	uint8_t     bDestGID;
+} phHciNfc_AdmPipeCreateCmdParams_t;
 
 extern NFCSTATUS
 phHciNfc_Transceive(
@@ -195,3 +209,34 @@ NFCSTATUS
 phHciNfc_GetPipeId(void *pContext, uint8_t bGateType, uint8_t *bPipeId);
 
 extern void phHciNfc_CmdSendCb(void *pContext, NFCSTATUS wStatus);
+
+
+
+/**
+*  \ingroup grp_hci_nfc_pipe
+*
+*  \brief This function shall be invoked to Create a HCI pipe
+*
+*  \param[in] pHciContext - pointer to the HCI context
+*  \param[in]  bPipeId - Pipe Id
+*  \param[in] pRspCb        Call Back function from upper layer
+*  \param[in] pContext                Context of upper Layer
+*
+*  \return Nfc status
+*/
+extern
+NFCSTATUS
+phHciNfc_CreateApduPipe(
+	void                    *pHciContext,
+	uint8_t                 bPipeId,
+	pphHciNfc_RspCb_t       pRspCb,
+	void                    *pContext
+);
+
+NFCSTATUS
+phHciNfc_eSE_EvtAbort(
+	void  *pHciContext,
+	uint8_t bPipeId,
+	pphHciNfc_RspCb_t     pRspCb,
+	void            *pContext
+);

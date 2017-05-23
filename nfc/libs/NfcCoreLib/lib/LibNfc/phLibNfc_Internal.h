@@ -59,6 +59,13 @@
 
 #define PHHCINFC_PROP_DATA_EVENT                    0x10
 #define PHHCINFC_NO_PIPE_DATA                       0xFF
+/* HCI EVT_ABORT and EVT_ATR as per ETSI12*/
+#define PHHCINFC_EVENT_ABORT                        0x11
+
+#define PHHCINFC_EVENT_ATR_RECV                     0x12
+
+/* HCI proprietary WTX event ID */
+#define PHHCINFC_PROP_EVENT_WTX_REQ                 0x11
 
 #define PHLIBNFC_TRANSACTION_AID                    0x81
 #define PHLIBNFC_TRANSACTION_PARAM                  0x82
@@ -98,6 +105,10 @@
 #define PHLIBNFC_MIFARESTD_SECTOR_NO32      32   /* Sector 32 for Mifare 4K*/
 #define PHLIBNFC_MIFARESTD_BLOCK_BYTES      16   /* Bytes per block after block 32 for Mifare 4K*/
 #define PHLIBNFC_MFC_EMBEDDED_KEY           0x10 /* Mifare classic use Embedded Key */
+
+#define PH_LIBNFC_MAX_WTX_BWI_VALUE                 (0x0F) /**<Maximum BWI Value used for WTC calculations*/
+#define PH_LIBNFC_WTX_BWI_DIVISOR                   (0x0A) /**<*/
+#define PH_LIBNFC_WTX_MILLI_SECOND_MULT             1000   /**<*/
 
 extern phLibNfc_Sequence_t gphLibNfc_ReDiscSeqWithDeact[];
 extern phLibNfc_Sequence_t gphLibNfc_DiscSeqWithDeactSleep[];
@@ -165,6 +176,10 @@ typedef struct phLibNfc_CB_Info
     pphLibNfc_TransceiveCallback_t pSeClientTransCb;
     void                           *pSeClientTransCntx;
 
+    /* Se WTX Event Call back & it's context */
+    pphLibNfc_SE_NtfEvtWtxReqCb_t  pSeClientEvtWtxCb;
+    void                           *pSeClientEvtWtxCntx;
+
     pphLibNfc_RspCb_t              pClientRdNdefCb;
     void                           *pClientRdNdefCntx;
 
@@ -209,6 +224,10 @@ typedef struct phLibNfc_CB_Info
 
     phLibNfc_NtfRegister_RspCb_t   pCeHostNtfCb;
     void                           *pCeHostNtfCntx;
+
+    /* Se Get Atr Call back & it's context */
+    pphLibNfc_GetAtrCallback_t     pSeClientGetAtrCb;
+    void                           *pSeClientGetAtrCntx;
 
 }phLibNfc_CB_Info_t;
 
@@ -377,6 +396,7 @@ typedef struct phLibNfc_LibContext
                                                             below transceive is used for that read purpose*/
 
     phLibNfc_sTransceiveInfo_t *psTransceiveInfo1; /**< This buffer is used for authentication command sent in form of RAW command*/
+    pphNfc_sSeAtrInfo_t     pAtrInfo; /**<Structure pointer to store Hci Get Atr receive buffers */
 
     phNfc_sData_t tTranscvBuff; /**< Holds the Transceive buffer passed by caller */
     uint8_t bT3tMax;            /**< The maximum index of LF_T3T_IDENTIFIERS supported by the NFCC */
@@ -400,6 +420,8 @@ typedef struct phLibNfc_LibContext
     phNfc_sData_t tRfRawConfig;         /**< Structure object containing buffer of Rf raw config */
     phNciNfc_PowerSubState_t PwrSubState;      /**< The current switched on sub state */
     phNciNfc_PowerSubState_t TgtPwrSubState;   /**< The targetted switched on sub state */
+	uint8_t eSE_delay;                         /**<Delay for eSE Init during Clear All during JCOP update*/
+	uint8_t eSE_SetMode_delay;                 /**<Delay for eSE during Clear All during JCOP update*/
 }phLibNfc_LibContext_t,*pphLibNfc_LibContext_t, *pphLibNfc_Context_t; /**< pointer to #phLibNfc_LibContext_t structure */
 
 /**< Global variable storing LibNfc conetxt structure pointer */
@@ -443,3 +465,6 @@ extern void phLibNfc_DeferredEventHandler(_In_ void* pContext);
 extern void phLibNfc_UpdateEvent(NFCSTATUS wStatus,phLibNfc_Event_t *pTrigEvent);
 extern NFCSTATUS phLibNfc_GetConnectedHandle(phLibNfc_Handle *pHandle);
 extern void phLibNfc_ClearLibContext(pphLibNfc_LibContext_t pLibContext);
+
+extern void phHciNfc_Process_eSE_ClearALLPipes(void);
+extern NFCSTATUS phLibNfc_DummyDisc(void *pContext, pphOsalNfc_TimerCallbck_t pTimerCb, uint32_t dwTimeOut);

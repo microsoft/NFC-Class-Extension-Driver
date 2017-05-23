@@ -31,8 +31,29 @@ phHciNfc_ProcessClearAllPipeNotifyCmd(phHciNfc_ReceiveParams_t *pReceivedParams,
 
 static void phHciNfc_AnyOkCb(void *pContext, NFCSTATUS wStatus)
 {
-    UNUSED(pContext);
-    UNUSED(wStatus);
+
+
+	pphHciNfc_HciContext_t    pHciContext = NULL;
+
+	PH_LOG_HCI_FUNC_ENTRY();
+	PH_LOG_HCI_INFO_X32MSG("phHciNfc_AnyOkCb:", wStatus);
+
+	
+	if (NULL != pContext) 
+	{
+		pHciContext = (pphHciNfc_HciContext_t)pContext;
+		if (pHciContext->bClearALL_eSE_pipes == TRUE) {
+			PH_LOG_HCI_CRIT_STR("Launching clear all pipes !!!");
+			pHciContext->bClearALL_eSE_pipes = FALSE;
+			phHciNfc_Process_eSE_ClearALLPipes();
+		}
+
+	}
+	else
+	{
+		PH_LOG_HCI_CRIT_STR("phHciNfc_AnyOkCb:Invalid Context received");
+	}
+	PH_LOG_HCI_FUNC_EXIT();
 }
 
 void phHciNfc_CmdSendCb(void *pContext, NFCSTATUS wStatus)
@@ -276,7 +297,7 @@ phHciNfc_AnyGetParameter(
             }
         break;
         case PHHCINFC_ADM_GATEID:
-            if((1 < bIdentifier)&&(4 < bIdentifier))
+            if((1 < bIdentifier)&&(9 < bIdentifier))
             {
                 return wStatus;
             }
@@ -410,7 +431,8 @@ phHciNfc_AnySetParameter(
                     return wStatus;
                 }
             }
-            else if(PHHCINFC_PIPE_WHITELIST_INDEX == bIdentifier)
+            else if(PHHCINFC_PIPE_WHITELIST_INDEX == bIdentifier || (PHHCINFC_PIPE_HOST_TYPE_INDEX == bIdentifier)
+				|| (PHHCINFC_PIPE_HOST_TYPE_LIST_INDEX == bIdentifier))
             {
                 (pSendParams)->dwLen = bSetDataLen + PHHCINFC_IDENTITY_LENGTH;
             }
@@ -1056,7 +1078,9 @@ phHciNfc_ReceiveAdminNotifyCmd( void *pContext,NFCSTATUS wStatus, void *pInfo)
             case phHciNfc_e_AdmNotifyAllPipeCleared:
             {
                 bSendAnyOk = 1;
-                wStatus = phHciNfc_ProcessClearAllPipeNotifyCmd(pReceivedParams,pHciContext);
+                wStatus = phHciNfc_ProcessClearAllPipeNotifyCmd(pReceivedParams,pHciContext);				
+				pHciContext->bClearALL_HostId = pReceivedParams->pData[0];
+				
                 break;
             }
             default:
@@ -1144,6 +1168,18 @@ phHciNfc_ReceiveOpenPipeNotifyCmd(void *pContext,NFCSTATUS wStatus, void *pInfo)
                                                 &tHciRegData,
                                                 &phHciNfc_ProcessEventsOnPipe,
                                                 pHciContext);
+                        /* According to ETSI12 spec, when CLEAR_PIPE notification arrives at DH, we need to recreate the pipe
+						   ToDo : PipeId comparision magic no(0x16) to be updated with ADM_NOTIFY_PIPE_CREATED and 
+						          HostId comparision magic no(0xc0) to be updated with NFCEE_DISCOVERY_NTF */												
+						if ((pReceivedParams->bPipeId == 0x16) && (pHciContext->bClearALL_HostId == 0xc0)) 
+						{
+							pHciContext->bClearALL_eSE_pipes = TRUE;
+							pHciContext->bClearALL_HostId = 0x0;
+						}
+						else
+						{
+							PH_LOG_HCI_CRIT_STR("No need to launch  sequence");
+						}
                     }
                 }
             }
@@ -1240,4 +1276,244 @@ phHciNfc_GetPipeId(void *pContext, uint8_t bGateType, uint8_t *bPipeId)
 
     PH_LOG_HCI_FUNC_EXIT();
     return wStatus;
+}
+
+static void phHciNfc_CreateApduPipeCb(void *pContext, NFCSTATUS wStatus, void *pInfo)
+{
+	NFCSTATUS wIntStatus = NFCSTATUS_FAILED;
+	pphHciNfc_HciContext_t    pHciContext = NULL;
+	phHciNfc_ReceiveParams_t *pReceivedParams = (phHciNfc_ReceiveParams_t *)pInfo;
+	pphHciNfc_RspCb_t pClientCb = NULL;
+	phHciNfc_AdmNotfPipeCrCmdParams_t tPipeCreatedNtfParams = { 0 };
+	PH_LOG_HCI_FUNC_ENTRY();
+
+	PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb Entered!!!!!");
+
+	if (NULL != pContext)
+	{
+		pHciContext = (pphHciNfc_HciContext_t)pContext;
+		if (NULL != pHciContext->pSendParams)
+		{
+			PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb: Releasing memory");
+			if (NULL != pHciContext->pSendParams->pData)
+			{
+				phOsalNfc_FreeMemory(pHciContext->pSendParams->pData);
+				pHciContext->pSendParams->pData = NULL;
+			}
+			phOsalNfc_FreeMemory(pHciContext->pSendParams);
+			pHciContext->pSendParams = NULL;
+		}
+		pClientCb = pHciContext->Cb_Info.pClientInitCb;
+
+		/*Check for Receive Response*/
+		if (NFCSTATUS_SUCCESS == wStatus)
+		{
+			if (phHciNfc_e_RspAnyOk == (phHciNfc_RspType_t)(pReceivedParams->bIns))
+			{
+				/* Retreive the Pipe Info from ANY_OK */
+				PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb received Success!!!");
+				if (sizeof(tPipeCreatedNtfParams) == pReceivedParams->wLen)
+				{
+					PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb Length matched!!!");
+					phOsalNfc_MemCopy(&tPipeCreatedNtfParams,
+						(phHciNfc_AdmNotfPipeCrCmdParams_t*)&pReceivedParams->pData[0], sizeof(phHciNfc_AdmNotfPipeCrCmdParams_t));
+                    /* bDestHID comparision magic no(0xC0) to be updated with NFCEE_DISCOVERY_NTF */	
+					if (tPipeCreatedNtfParams.bSourceGID == 0x30 &&
+						tPipeCreatedNtfParams.bSourceHID == phHciNfc_e_TerminalHostID &&
+						tPipeCreatedNtfParams.bDestGID == 0x30 &&
+						tPipeCreatedNtfParams.bDestHID == 0xC0)
+					{
+						PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb Data matched!!!");
+						wStatus = phHciNfc_ProcessPipeCreateNotifyCmd(pReceivedParams, pHciContext);
+						pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId = tPipeCreatedNtfParams.bDestGID;
+						pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = tPipeCreatedNtfParams.bPipeID;
+						wIntStatus = NFCSTATUS_SUCCESS;
+						PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb:Suceessfull");
+					}
+					else
+					{
+						pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = 0xFF;
+						PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb:UnExpected Rsp Values");
+						wIntStatus = NFCSTATUS_FAILED;
+					}
+				}
+				else
+				{
+					pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = 0xFF;
+					PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb:UnExpected Len received");
+					wIntStatus = NFCSTATUS_FAILED;
+				}
+			}
+			else
+			{
+				pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = 0xFF;
+				PH_LOG_LIBNFC_CRIT_U32MSG("phHciNfc_CreateApduPipeCb:UnExpected Rsp Ins Received, Ins =", pReceivedParams->bIns);
+			}
+		}
+		else
+		{
+			pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = 0xFF;
+			wIntStatus = NFCSTATUS_FAILED;
+			PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb status failed!!!");
+
+		}
+		if (NULL != pClientCb)
+		{
+			PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb:Call Upper Layer ");
+			/* Invoke upper layer callback function */
+			pHciContext->Cb_Info.pClientInitCb = NULL;
+			pClientCb(pHciContext->Cb_Info.pClientCntx, wIntStatus, NULL);
+		}
+		else
+		{
+			PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb:Upper Layer Callback not defined");
+		}
+	}
+	else
+	{
+		PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb:NULL context passed!!!");
+	}
+	PH_LOG_HCI_FUNC_EXIT();
+}
+NFCSTATUS
+phHciNfc_CreateApduPipe(void  *pHciContext,
+	uint8_t  bPipeId,
+	pphHciNfc_RspCb_t  pRspCb,
+	void  *pContext)
+{
+	NFCSTATUS wStatus = NFCSTATUS_FAILED;
+	phHciNfc_SendParams_t *pSendParams = NULL;
+	pphHciNfc_HciContext_t pHciCtxt = (pphHciNfc_HciContext_t)pHciContext;
+	phHciNfc_AdmPipeCreateCmdParams_t tPipeCreateParams;
+	PH_LOG_HCI_FUNC_ENTRY();
+
+	if (NULL != pHciCtxt)
+	{
+		PH_LOG_HCI_CRIT_STR("HCI context not null");
+
+		PH_LOG_HCI_CRIT_STR("Before allocating memory for pSendParams");
+		pSendParams = (phHciNfc_SendParams_t *)phOsalNfc_GetMemory(sizeof(phHciNfc_SendParams_t));
+		PH_LOG_HCI_CRIT_STR("After allocating memory for pSendParams");
+		if (NULL != pSendParams)
+		{
+			PH_LOG_HCI_CRIT_STR("Psend params not NULL");
+			/* Copy send parameters to hci context */
+			pHciCtxt->pSendParams = pSendParams;
+			/* Reset the data pointer */
+			pHciCtxt->pSendParams->pData = NULL;
+			/*Message Type is Command */
+			pSendParams->bMsgType = phHciNfc_e_HcpMsgTypeCommand;
+			/*Pipe id for the command */
+			pSendParams->bPipeId = bPipeId;
+			/*Instruction on the pipe */
+			pSendParams->bIns = 0x10;
+			tPipeCreateParams.bDestGID = 0x30;
+			tPipeCreateParams.bSourceGID = 0x30;
+			tPipeCreateParams.bDestHID = 0xC0;
+
+			/* Frame HCI payload for Create Pipe */
+			pSendParams->pData = (uint8_t *)phOsalNfc_GetMemory(sizeof(tPipeCreateParams));
+			if (NULL != pSendParams->pData)
+			{
+				phOsalNfc_MemCopy(pSendParams->pData, (uint8_t*)&tPipeCreateParams, sizeof(tPipeCreateParams));
+				(pSendParams)->dwLen = sizeof(tPipeCreateParams);
+				wStatus = phHciNfc_CoreSend(pHciCtxt, pSendParams, &phHciNfc_CmdSendCb, pHciCtxt);
+				if (NFCSTATUS_PENDING == wStatus)
+				{
+					/* Store the call back and the context of upper layer that can be called later*/
+					pHciCtxt->Cb_Info.pClientInitCb = pRspCb;
+					pHciCtxt->Cb_Info.pClientCntx = pContext;
+					/* Store the call back of the Send command can be called on send complete*/
+					pHciCtxt->SendCb_Info.pClientInitCb = &phHciNfc_CreateApduPipeCb;
+					pHciCtxt->SendCb_Info.pClientCntx = pHciCtxt;
+				}
+				else
+				{
+					phOsalNfc_FreeMemory(pSendParams);
+					pHciCtxt->pSendParams = NULL;
+					PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipe:Failed to send to lower layer");
+				}
+			}
+			else
+			{
+			}
+		}
+		else
+		{
+			PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipe:Failed to Get Memory");
+		}
+	}
+	else
+	{
+		PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipe::Failed to Get Memory");
+	}
+
+	PH_LOG_HCI_FUNC_EXIT();
+	return wStatus;
+}
+
+NFCSTATUS
+phHciNfc_eSE_EvtAbort(
+	void  *pHciContext,
+	uint8_t bPipeId,
+	pphHciNfc_RspCb_t     pRspCb,
+	void            *pContext
+)
+{
+	NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+	phHciNfc_SendParams_t *pSendParams = NULL;
+	pphHciNfc_HciContext_t pHciCtxt = (pphHciNfc_HciContext_t)pHciContext;
+	UNUSED(pContext);
+	UNUSED(pRspCb);
+	PH_LOG_HCI_FUNC_ENTRY();
+
+	if (NULL != pHciContext)
+	{
+		pSendParams = (phHciNfc_SendParams_t *)phOsalNfc_GetMemory(sizeof(phHciNfc_SendParams_t));
+		if (NULL != pSendParams)
+		{
+			/* Copy send parameters to hci context */
+			pHciCtxt->pSendParams = pSendParams;
+			/* Ins value is Wired Mode Shutdown */
+			pSendParams->bIns = PHHCINFC_EVENT_ABORT;
+			/* Message Type is Event */
+			pSendParams->bMsgType = phHciNfc_e_HcpMsgTypeEvent;
+			/* Data */
+			pSendParams->pData = NULL;
+			/* DataLength */
+			pSendParams->dwLen = 0x00;
+			/*Pipe id for the command */
+			pSendParams->bPipeId = bPipeId;
+
+			wStatus = phHciNfc_CoreSend(pHciCtxt, pSendParams, &phHciNfc_CmdSendCb, pHciCtxt);
+			if (NFCSTATUS_PENDING == wStatus)
+			{
+				PH_LOG_HCI_CRIT_STR("phHciNfc_eSE_EvtAbort::Pending!!!");
+				/* Store the call back and the context of upper layer that can be called later*/
+				pHciCtxt->Cb_Info.pClientInitCb = NULL;
+				pHciCtxt->Cb_Info.pClientCntx = NULL;
+				/* Store the call back of the Send command can be called on send complete*/
+				pHciCtxt->SendCb_Info.pClientInitCb = NULL;
+				pHciCtxt->SendCb_Info.pClientCntx = NULL;
+			}
+			else
+			{
+				phOsalNfc_FreeMemory(pHciCtxt->pSendParams);
+				pHciCtxt->pSendParams = NULL;
+				PH_LOG_HCI_CRIT_STR("phHciNfc_eSE_EvtAbort:Failed Status from lower layer");
+			}
+		}
+		else
+		{
+			PH_LOG_HCI_CRIT_STR("phHciNfc_eSE_EvtAbort:Memory Allocation failed");
+		}
+
+	}
+	else
+	{
+		wStatus = NFCSTATUS_FAILED;
+		PH_LOG_HCI_CRIT_STR("phHciNfc_eSE_EvtAbort:Invalid HCI Context");
+	}
+	PH_LOG_HCI_FUNC_EXIT();
+	return wStatus;
 }

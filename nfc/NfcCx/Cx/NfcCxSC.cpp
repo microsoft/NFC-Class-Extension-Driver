@@ -334,6 +334,12 @@ Return Value:
                                          &GUID_DEVINTERFACE_SMARTCARD_READER,
                                          &nfcScReaderReference,
                                          TRUE);
+        /* Create a PCSC interface for eSE. As the eSE is accessed only thorugh eSE PCSC interface.
+           this function will create an instance of PCSC interface for eSE. All the wired mode transactions
+           are performed through this nterface. This interface is created irrespective of whether eSE is available in the platform.
+           This interface is enabled when an eSE is enumerated. Only one app shall access the interface at any time. 
+        */
+        NfcCxEmbeddedSEInterfaceStart(fdoContext->SCInterface);
     }
 
 Done:
@@ -1545,7 +1551,7 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_SC_INTERFACE scInterface;
+    PNFCCX_SC_INTERFACE scInterface;	
 
     UNREFERENCED_PARAMETER(InputBuffer);
     UNREFERENCED_PARAMETER(OutputBuffer);
@@ -1564,7 +1570,7 @@ Return Value:
         goto Done;
     }
 
-    scInterface = NfcCxFdoGetContext(Device)->SCInterface;
+    scInterface = NfcCxFdoGetContext(Device)->SCInterface;	
 
     WdfWaitLockAcquire(scInterface->SmartCardLock, NULL);
 
