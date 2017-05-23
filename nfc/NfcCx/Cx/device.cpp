@@ -1028,6 +1028,14 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
+    TRACE_LINE(LEVEL_INFO,
+        "Queue 0x%p, Request 0x%p, OutputBufferLength %Iu, InputBufferLength %Iu, IoControlCode %!NFC_IOCTL!",
+        Queue,
+        Request,
+        OutputBufferLength,
+        InputBufferLength,
+        IoControlCode);
+
     fdoContext = NfcCxFdoGetContext(WdfIoQueueGetDevice(Queue));
     fileContext = NfcCxFileGetContext(WdfRequestGetFileObject(Request));
 

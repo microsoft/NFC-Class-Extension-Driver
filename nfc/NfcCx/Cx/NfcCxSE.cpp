@@ -20,8 +20,6 @@ Environment:
 
 #include "NfcCxSE.tmh"
 
-#define NFCCX_SE_FLAG_SET_POWER_REFERENCE 0x1
-#define NFCCX_SE_FLAG_SET_ROUTING_TABLE 0x2
 
 typedef struct _NFCCX_SE_DISPATCH_ENTRY {
     ULONG IoControlCode;
@@ -125,31 +123,31 @@ Return Value:
         goto Done;
     }
 
-	// eSE Queue Is Present and Absent Queue
+    // eSE Queue Is Present and Absent Queue
 
-	WDF_IO_QUEUE_CONFIG_INIT(&queueConfig, WdfIoQueueDispatchManual);
-	queueConfig.PowerManaged = WdfFalse;
+    WDF_IO_QUEUE_CONFIG_INIT(&queueConfig, WdfIoQueueDispatchManual);
+    queueConfig.PowerManaged = WdfFalse;
 
-	status = WdfIoQueueCreate(seInterface->FdoContext->Device,
-		&queueConfig,
-		&objectAttrib,
-		&seInterface->PresentQueue);
-	if (!NT_SUCCESS(status)) {
-		TRACE_LINE(LEVEL_ERROR, "Failed to create the SmartCard Present IO Queue, %!STATUS!", status);
-		goto Done;
-	}
+    status = WdfIoQueueCreate(seInterface->FdoContext->Device,
+        &queueConfig,
+        &objectAttrib,
+        &seInterface->PresentQueue);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to create the SmartCard Present IO Queue, %!STATUS!", status);
+        goto Done;
+    }
 
-	WDF_IO_QUEUE_CONFIG_INIT(&queueConfig, WdfIoQueueDispatchManual);
-	queueConfig.PowerManaged = WdfFalse;
+    WDF_IO_QUEUE_CONFIG_INIT(&queueConfig, WdfIoQueueDispatchManual);
+    queueConfig.PowerManaged = WdfFalse;
 
-	status = WdfIoQueueCreate(seInterface->FdoContext->Device,
-		&queueConfig,
-		&objectAttrib,
-		&seInterface->AbsentQueue);
-	if (!NT_SUCCESS(status)) {
-		TRACE_LINE(LEVEL_ERROR, "Failed to create the SmartCard Absent IO Queue, %!STATUS!", status);
-		goto Done;
-	}
+    status = WdfIoQueueCreate(seInterface->FdoContext->Device,
+        &queueConfig,
+        &objectAttrib,
+        &seInterface->AbsentQueue);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to create the SmartCard Absent IO Queue, %!STATUS!", status);
+        goto Done;
+    }
 
 Done:
 
@@ -2363,9 +2361,9 @@ Return Value:
         goto Done;
     }
 
-	if (NfcCxSEInterfaceConvertActivationMode(eMode) != SEInfo.eSE_ActivationMode) {
-		*pdwFlags |= NFCCX_SE_FLAG_SET_POWER_REFERENCE;
-	}
+    if (NfcCxSEInterfaceConvertActivationMode(eMode) != SEInfo.eSE_ActivationMode) {
+        *pdwFlags |= NFCCX_SE_FLAG_SET_POWER_REFERENCE;
+    }
 
     if (!NfcCxSEInterfaceGetPowerState(eMode,
                                        RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities,

@@ -56,7 +56,6 @@ NfcCxEmbeddedSEInterfaceDispatchSetAttribute(
     _In_ size_t OutputBufferLength
     );
 
-_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
 NfcCxEmbeddedSEInterfaceDispatchAttributeLocked(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
@@ -66,7 +65,6 @@ NfcCxEmbeddedSEInterfaceDispatchAttributeLocked(
     _Inout_ size_t* pcbOutputBuffer
     );
 
-_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
 NfcCxEmbeddedSEInterfaceDispatchAttributeCurrentProtocolTypeLocked(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
@@ -76,7 +74,6 @@ NfcCxEmbeddedSEInterfaceDispatchAttributeCurrentProtocolTypeLocked(
     _Inout_ size_t* pcbOutputBuffer
     );
 
-_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
 NfcCxEmbeddedSEInterfaceDispatchAttributePresentLocked(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
@@ -202,10 +199,10 @@ NfcCxEmbeddedSEInterfaceRemoveClient(
 
 NTSTATUS
 NfcCxEmbeddedSEInterfaceDispatchSetPower(
-	_In_ WDFDEVICE Device,
-	_In_ WDFREQUEST Request,
-	_In_opt_bytecount_(InputBufferLength) PVOID InputBuffer,
-	_In_ size_t InputBufferLength,
-	_Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
-	_In_ size_t OutputBufferLength
+    _In_ WDFDEVICE Device,
+    _In_ WDFREQUEST Request,
+    _In_opt_bytecount_(InputBufferLength) PVOID InputBuffer,
+    _In_ size_t InputBufferLength,
+    _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
+    _In_ size_t OutputBufferLength
 );

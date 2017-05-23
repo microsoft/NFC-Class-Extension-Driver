@@ -1116,12 +1116,6 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    UNREFERENCED_PARAMETER(RFInterface);
-    UNREFERENCED_PARAMETER(InputBuffer);
-    UNREFERENCED_PARAMETER(OutputBuffer);
-    UNREFERENCED_PARAMETER(pOutputBufferUsed);
-    UNREFERENCED_PARAMETER(Timeout);
-
     //
     // Validating the buffer sizes to safeguard the DWORD cast.
     // 
@@ -1601,6 +1595,7 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_INVALID_PARAMETER;
+	const UINT32 restartDiscDelay = 300;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -1635,7 +1630,11 @@ Return Value:
 
 
             if (fDiscoveryConfig) {
-                Sleep(300);
+                //
+                //Start the discovery after some delay because if system has Embedded SE, eSE PCSC interface is to be enabled and there are 
+                //instances of restarting discovery and enabling the discovery ends in a synchronisation issue 
+                //
+                Sleep(restartDiscDelay);
                 NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
             }
         else {
@@ -3283,11 +3282,19 @@ NfcCxRFInterfaceESEGetATRString(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
-    for (uint8_t i = 0; i < MAX_NUMBER_OF_SE; i++) {
-        if (RFInterface->pLibNfcContext->SEList[i].eSE_Type == phLibNfc_SE_Type_eSE) {
-            hSE_handle = RFInterface->pLibNfcContext->SEList[i].hSecureElement;
-            TRACE_LINE(LEVEL_VERBOSE, "Libnfc based eSE handle is %p", hSE_handle);
+    if (RFInterface->pLibNfcContext->SECount > 0) {
+        for (uint8_t i = 0; i < RFInterface->pLibNfcContext->SECount; i++) {
+            if (RFInterface->pLibNfcContext->SEList[i].eSE_Type == phLibNfc_SE_Type_eSE) {
+                hSE_handle = RFInterface->pLibNfcContext->SEList[i].hSecureElement;
+                TRACE_LINE(LEVEL_VERBOSE, "Libnfc based eSE handle is %p", hSE_handle);
+            }
         }
+    }
+    else {
+        TRACE_LINE(LEVEL_VERBOSE, "No eSE is found");
+        nfcStatus = NFCSTATUS_FAILED;
+        goto DONE;
+
     }
 
     pSeATRInfo->pBuff = RFInterface->pSeATRInfo.pBuff;
@@ -3296,6 +3303,7 @@ NfcCxRFInterfaceESEGetATRString(
 
     nfcStatus = phLibNfc_eSE_GetAtr(hSE_handle, pSeATRInfo, NfcCxRFInterfaceEmbeddedSEGetATRStringCB, &LibNfcContext);
 
+    DONE:
     Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
     return Status;
@@ -6518,10 +6526,7 @@ Return Value:
 
     RtlZeroMemory(&RFInterface->sSendBuffer, sizeof(RFInterface->sSendBuffer));
     RtlZeroMemory(&RFInterface->sReceiveBuffer, sizeof(RFInterface->sReceiveBuffer));
-#if 0
-    RFInterface->sReceiveBuffer.buffer = OutputBuffer;
-    RFInterface->sReceiveBuffer.length = (DWORD)OutputBufferLength;
-#endif
+
 
     RFInterface->pSeATRInfo.pBuff = OutputBuffer;
     RFInterface->pSeATRInfo.dwLength = (DWORD)OutputBufferLength;

@@ -59,7 +59,7 @@ typedef struct _EmbeddedSE_ATTRIBUTE_DISPATCH_ENTRY {
     PFN_NFCCX_SC_ATTRIBUTE_DISPATCH_HANDLER pfnDispatchHandler;
 } EmbeddedSE_ATTRIBUTE_DISPATCH_ENTRY, *PEmbeddedSEATTRIBUTE_DISPATCH_ENTRY;
 
-static const CHAR eSEReaderVendorName[] = "NXP";
+static const CHAR eSEReaderVendorName[] = "Microsoft";
 static const CHAR eSEReaderVendorIfd[] = "eSE";
 static const DWORD eSEReaderVendorIfdVersion = ((IFD_MAJOR_VER & 0x3) << 6) | ((IFD_MINOR_VER & 0x3) << 4) | (IFD_BUILD_NUM & 0xF);
 static const DWORD eSEReaderChannelId = SCARD_READER_TYPE_EMBEDDEDSE << 16;
@@ -149,7 +149,7 @@ Done:
     return status;
 }
 
-_Requires_lock_held_(ScInterface->SmartCardLock)
+
 NTSTATUS
 NfcCxEmbeddedSEInterfaceDispatchAttributeLocked(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
@@ -190,7 +190,7 @@ NfcCxEmbeddedSEInterfaceDispatchAttributeLocked(
     return status;
 }
 
-_Requires_lock_held_(ScInterface->SmartCardLock)
+
 NTSTATUS
 NfcCxEmbeddedSEInterfaceDispatchAttributeCurrentProtocolTypeLocked(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
@@ -232,7 +232,6 @@ NfcCxEmbeddedSEInterfaceDispatchAttributeCurrentProtocolTypeLocked(
 }
 
 
-_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
 NfcCxEmbeddedSEInterfaceDispatchAttributePresentLocked(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
@@ -456,20 +455,12 @@ NfcCxEmbeddedSEInterfaceDispatchGetAttribute(
     for (USHORT TableEntry = 0; TableEntry < ARRAYSIZE(g_EmbeddedSEAttributeDispatch); TableEntry++) {
         if (g_EmbeddedSEAttributeDispatch[TableEntry].dwAttributeId == *pdwAttributeId) {
 
-            if (g_EmbeddedSEAttributeDispatch[TableEntry].fRequireLock) {
-                WdfWaitLockAcquire(scInterface->SmartCardLock, NULL);
-            }
-
             status = (*g_EmbeddedSEAttributeDispatch[TableEntry].pfnDispatchHandler)(
                 scInterface,
                 g_EmbeddedSEAttributeDispatch[TableEntry].pbResultBuffer,
                 g_EmbeddedSEAttributeDispatch[TableEntry].cbResultBuffer,
                 (PBYTE)OutputBuffer,
                 (size_t*)&cbOutputBuffer);
-
-            if (g_EmbeddedSEAttributeDispatch[TableEntry].fRequireLock) {
-                WdfWaitLockRelease(scInterface->SmartCardLock);
-            }
 
             break;
         }
@@ -524,7 +515,6 @@ NfcCxEmbeddedSEInterfaceDispatchGetState(
     --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_SC_INTERFACE scInterface;
     PNFCCX_SE_INTERFACE eSEInterface;
     DWORD *pdwState = (DWORD*)OutputBuffer;
 
@@ -539,10 +529,7 @@ NfcCxEmbeddedSEInterfaceDispatchGetState(
     //
     _Analysis_assume_(sizeof(DWORD) <= OutputBufferLength);
 
-    scInterface = NfcCxFdoGetContext(Device)->SCInterface;
     eSEInterface = NfcCxFdoGetContext(Device)->SEInterface;
-
-    WdfWaitLockAcquire(scInterface->SmartCardLock, NULL);
 
     if (eSEInterface->IsInWiredMode) {
         *pdwState = SCARD_SPECIFIC;
@@ -550,8 +537,6 @@ NfcCxEmbeddedSEInterfaceDispatchGetState(
     else {
         *pdwState = SCARD_ABSENT;
     }
-
-    WdfWaitLockRelease(scInterface->SmartCardLock);
 
     if (NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_INFO,
@@ -1058,7 +1043,6 @@ NfcCxEmbeddedSEInterfaceDispatchIsPresent(
     --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_SC_INTERFACE scInterface = NULL;
     PNFCCX_SE_INTERFACE eSEInterface = NULL;
 
     UNREFERENCED_PARAMETER(InputBuffer);
@@ -1079,18 +1063,14 @@ NfcCxEmbeddedSEInterfaceDispatchIsPresent(
     }
 
     eSEInterface = NfcCxFdoGetContext(Device)->SEInterface;
-    scInterface = NfcCxFdoGetContext(Device)->SCInterface;
+    
 
-    WdfWaitLockAcquire(scInterface->SmartCardLock, NULL);
-
-    if (eSEInterface->IsInWiredMode) {
-        WdfWaitLockRelease(scInterface->SmartCardLock);
+    if (eSEInterface->IsInWiredMode) {        
         WdfRequestComplete(Request, STATUS_SUCCESS);
         TRACE_LINE(LEVEL_INFO, "eSE is present, completing request immediately");
         goto Done;
     }
-
-    WdfWaitLockRelease(scInterface->SmartCardLock);
+    
 
     TRACE_LINE(LEVEL_INFO, "eSE is not present, queueing request");
 
@@ -1189,7 +1169,6 @@ NfcCxEmbeddedSEInterfaceDispatchIsAbsent(
     --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_SC_INTERFACE scInterface = NULL;
     PNFCCX_SE_INTERFACE eSEInterface = NULL;
 
     UNREFERENCED_PARAMETER(InputBuffer);
@@ -1209,19 +1188,13 @@ NfcCxEmbeddedSEInterfaceDispatchIsAbsent(
         goto Done;
     }
 
-    scInterface = NfcCxFdoGetContext(Device)->SCInterface;
     eSEInterface = NfcCxFdoGetContext(Device)->SEInterface;
 
-    WdfWaitLockAcquire(scInterface->SmartCardLock, NULL);
-
     if (!eSEInterface->IsInWiredMode) {
-        WdfWaitLockRelease(scInterface->SmartCardLock);
         WdfRequestComplete(Request, STATUS_SUCCESS);
         TRACE_LINE(LEVEL_INFO, "eSE is absent, completing request immediately");
         goto Done;
     }
-
-    WdfWaitLockRelease(scInterface->SmartCardLock);
 
     TRACE_LINE(LEVEL_INFO, "eSE is not absent, queueing request");
 
@@ -1272,7 +1245,6 @@ NfcCxEmbeddedSEInterfaceDispatchSetProtocol(
 {
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_SE_INTERFACE seInterface;
-    PNFCCX_SC_INTERFACE scInterface;
     DWORD *pdwProtocol = (DWORD*)InputBuffer;
     DWORD *pdwSelectedProtocol = (DWORD*)OutputBuffer;
 
@@ -1288,18 +1260,12 @@ NfcCxEmbeddedSEInterfaceDispatchSetProtocol(
     _Analysis_assume_(sizeof(DWORD) <= OutputBufferLength);
 
     seInterface = NfcCxFdoGetContext(Device)->SEInterface;
-    scInterface = NfcCxFdoGetContext(Device)->SCInterface;
-
-    WdfWaitLockAcquire(scInterface->SmartCardLock, NULL);
 
     if (!seInterface->IsInWiredMode) {
         TRACE_LINE(LEVEL_ERROR, "eSE not in Wired Mode");
         status = STATUS_NO_MEDIA;
-        WdfWaitLockRelease(scInterface->SmartCardLock);
         goto Done;
     }
-
-    WdfWaitLockRelease(scInterface->SmartCardLock);
 
     if (*pdwProtocol == SCARD_PROTOCOL_OPTIMAL) {
         *pdwSelectedProtocol = eSEReaderCurrentProtocolType;
@@ -1360,62 +1326,7 @@ Done:
     return status;
 }
 
-#if 0
-static VOID CALLBACK
-NfcCxEmbeddedSEAPDUThread(
-    _In_ PTP_CALLBACK_INSTANCE pInstance,
-    _In_ PVOID pContext,
-    _In_ PTP_WORK pWork
-    )
-{
-    NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_FILE_CONTEXT FileContext = (PNFCCX_FILE_CONTEXT)pContext;
-    PNFCCX_SE_INTERFACE seInterface = NfcCxFileObjectGetFdoContext(FileContext)->SEInterface;
-    //PNFCCX_SC_INTERFACE scInterface = NfcCxFileObjectGetFdoContext(FileContext)->SCInterface;
-    CARD_EMULATION_MODE_INTERNAL eMode = CardEmulationOff;
 
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    UNREFERENCED_PARAMETER(pInstance);
-    UNREFERENCED_PARAMETER(pWork);
-
-    if (seInterface->isAPDUThreadFlag == TRUE) {
-        eMode = EmbeddedSeApduMode;
-        TRACE_LINE(LEVEL_INFO, "Turning on APDU Mode");
-    }
-    else {
-        eMode = CardEmulationOff;
-        TRACE_LINE(LEVEL_INFO, "Turning off APDU Mode");
-    }
-
-    status = NfcCxSEInterfaceSetCardEmulationMode(FileContext, seInterface->EmbeddedSeId, eMode);
-
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to set card emulation mode, %!STATUS!", status);
-        //TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-        /*
-        if (eMode == CardEmulationOff) {
-            //
-            // Stop the device interface to have a clean exit
-            //
-            NfcCxEmbeddedSEInterfaceStop(scInterface);
-        }
-        */
-
-        goto Done;
-    }
-
-    /*
-    if (eMode == CardEmulationOff) {
-        TRACE_LINE(LEVEL_INFO, "Stop the eSE pcsc Interface and APDU Mode");
-        NfcCxEmbeddedSEInterfaceStop(scInterface);
-    }
-    */
-
-Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-}
-#endif
 
 NTSTATUS
 NfcCxEmbeddedSEInterfaceDispatchAttributeAtr(
@@ -1439,12 +1350,9 @@ NfcCxEmbeddedSEInterfaceDispatchAttributeAtr(
     // Buffer size is validated at dispatch time
     _Analysis_assume_(DWORD_MAX >= *pcbOutputBuffer);
 
-    WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
-
     if (!seInterface->IsInWiredMode) {
         TRACE_LINE(LEVEL_ERROR, "SmartCard not connected");
         status = STATUS_INVALID_DEVICE_STATE;
-        WdfWaitLockRelease(ScInterface->SmartCardLock);
         goto Done;
     }
 
@@ -1462,7 +1370,6 @@ NfcCxEmbeddedSEInterfaceDispatchAttributeAtr(
     *pcbOutputBuffer = rfInterface->pSeATRInfo.dwLength;
 
 Done:
-    WdfWaitLockRelease(ScInterface->SmartCardLock);
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 
