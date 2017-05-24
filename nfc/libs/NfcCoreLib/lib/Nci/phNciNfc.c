@@ -1157,7 +1157,7 @@ phNciNfc_SetRtngTableConfig(void*                     pNciHandle,
         if(NFCSTATUS_SUCCESS == wStatus)
         {
             /* Check if total size of the routing configuration information
-               exceeds the �Max Routing Table Size� (indicated during Initialization) supported by NFCC */
+               exceeds the 'Max Routing Table Size' (indicated during Initialization) supported by NFCC */
             if(wPayloadSize > pNciContext->InitRspParams.RoutingTableSize)
             {
                 PH_LOG_NCI_WARN_STR("Input Routing config size exceeds Max routing table size \

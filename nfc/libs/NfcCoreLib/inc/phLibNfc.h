@@ -182,13 +182,13 @@ typedef struct phLibNfc_SE_List
  * \ingroup grp_lib_nfc
  * \brief Strucuture for secure element transceive
  */
-typedef struct phNfc_sSeTransceiveInfo 
-{ 
-    phNfc_sData_t               sSendData; /**Data buffer and data length to be sent*/ 
-    phNfc_sData_t               sRecvData; /**Data buffer pointer and buffer lenght to receive data*/ 
+typedef struct phNfc_sSeTransceiveInfo
+{
+    phNfc_sData_t               sSendData; /**Data buffer and data length to be sent*/
+    phNfc_sData_t               sRecvData; /**Data buffer pointer and buffer lenght to receive data*/
     uint32_t                    timeout;   /**< specifies the timeout value (in msec) for SE transceive
                                                 (use 0 to disable timer) */
-}phNfc_sSeTransceiveInfo_t,*pphNfc_sSeTransceiveInfo_t;/**< Refer #phNfc_sSeTransceiveInfo_t */ 
+}phNfc_sSeTransceiveInfo_t,*pphNfc_sSeTransceiveInfo_t;/**< Refer #phNfc_sSeTransceiveInfo_t */
 
 /**
  * \ingroup grp_lib_nfc
@@ -606,7 +606,7 @@ typedef void (*pphLibNfc_LlcpSocketSendCb_t) ( void*        pContext,
  *                                            interpreted
  * \retval #NFCSTATUS_INSUFFICIENT_RESOURCES  Insufficient resource
  */
-NFCSTATUS 
+NFCSTATUS
 phLibNfc_Mgt_Initialize (_In_ void *                    pDriverHandle,
                          _In_ phLibNfc_InitType_t       eInitType,
                          _In_ pphLibNfc_sConfig_t       psConfig,
@@ -637,7 +637,7 @@ phLibNfc_Mgt_Initialize (_In_ void *                    pDriverHandle,
  * \retval #NFCSTATUS_BUSY                Previous De-Init request in progress
  * \retval #NFCSTATUS_FAILED              Request failed
  */
-NFCSTATUS 
+NFCSTATUS
 phLibNfc_Mgt_DeInitialize (_In_ void *                  pDriverHandle,
                            _In_ pphLibNfc_RspCb_t       pDeInitCb,
                            _In_ void *                  pContext
