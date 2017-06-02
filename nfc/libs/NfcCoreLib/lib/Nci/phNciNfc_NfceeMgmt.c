@@ -424,7 +424,8 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
     uint8_t *pBuff;
     uint16_t wLen;
     uint8_t bIndex = 0;
-    uint16_t bCount = 0;
+    uint16_t wLeftOver = 0;
+    uint16_t wTlvLen = 0;
     uint8_t bDevIndex = 0;
     uint8_t bNfceeStatus = TRUE;
     uint8_t bNewNfceeId = FALSE;
@@ -512,22 +513,22 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
                                                     ,pBuff,&bIndex);
             if(NFCSTATUS_SUCCESS == wStatus)
             {
-                wStatus = phNciNfc_TlvUtilsValidate(&pBuff[bIndex + 1], (wLen - bIndex - 1), &bCount);
+                wStatus = phNciNfc_TlvUtilsValidate(&pBuff[bIndex + 1], (wLen - bIndex - 1), &wLeftOver);
+                wTlvLen = wLen - bIndex - 1 - wLeftOver;
                 if ((NFCSTATUS_SUCCESS == wStatus) ||
-                    (bCount == PH_NCINFC_NFCEE_POWER_SUPPLY_LENGTH))
+                    (wLeftOver == PH_NCINFC_NFCEE_POWER_SUPPLY_LENGTH))
                 {
-                    pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.TlvInfoLen = bCount;
-                    pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.bNumTypeInfo = \
-                        (uint8_t)pBuff[bIndex];
-                    pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.pTlvInfo = \
-                                phOsalNfc_GetMemory(bCount);
+                    pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.TlvInfoLen = wTlvLen;
+                    pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.bNumTypeInfo = (uint8_t)pBuff[bIndex];
+                    pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.pTlvInfo = phOsalNfc_GetMemory(wTlvLen);
+
                     if(NULL != pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.pTlvInfo)
                     {
-                        phOsalNfc_MemCopy(pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.pTlvInfo,\
-                                    &pBuff[bIndex + 1],bCount);
-                        wStatus = phNciNfc_StoreTlvInfo(&pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo,\
-                                            pBuff[bIndex],\
-                                            pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.pTlvInfo);
+                        phOsalNfc_MemCopy(pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.pTlvInfo,
+                                          &pBuff[bIndex + 1], wTlvLen);
+                        wStatus = phNciNfc_StoreTlvInfo(&pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo,
+                                                        pBuff[bIndex],
+                                                        pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.pTlvInfo);
                     }
                     else
                     {
