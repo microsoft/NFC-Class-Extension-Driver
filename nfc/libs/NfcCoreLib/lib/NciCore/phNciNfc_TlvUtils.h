@@ -26,6 +26,9 @@
 /* Offset to the Proprietary value field in tlv buffer */
 #define PHNCINFC_TLVUTIL_NXP_PROP_VALUE_BYTEOFFSET      (3u)
 
+/* TLV Coding for Host ID in the HCI Network (NCI2.0) */
+#define PHNCINFC_TLVUTIL_NCI_PROP_HCINWK_HOST_ID        (0x03)
+
 #define PHNCINFC_TLVUTIL_SUCCESS                           (10u)
 #define PHNCINFC_TLVUTIL_BUFFER_NOT_EMPTY                  (11u)
 #define PHNCINFC_TLVUTIL_BUFFER_EMPTY                      (12u)
@@ -73,10 +76,12 @@ extern uint8_t phNciNfc_TlvUtilsRemoveTlv(
                            uint8_t btag                         /**< 'tag' part of the TLV */
                            );
 
-extern NFCSTATUS phNciNfc_TlvUtilsParseTLV(
+extern NFCSTATUS phNciNfc_TlvUtilsValidate(
                           uint8_t *pBuffer,
-                          uint16_t wLength
-                         );
+                          uint16_t wLength,
+                          uint16_t *pwBufferLeftoverLength
+                          );
+
 
 extern NFCSTATUS phNciNfc_TlvUtilsGetNxtTlv(
                            pphNciNfc_TlvUtilInfo_t ptTlvInfo,

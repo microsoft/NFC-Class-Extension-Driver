@@ -244,57 +244,45 @@ phNciNfc_UpdateConnInfo(
 }
 
 NFCSTATUS
-phNciNfc_UpdateConnDestInfo(
-                        uint8_t  bDestId,
-                        phNciNfc_DestType_t tDestType,
-                        void *pHandle
-                    )
+phNciNfc_UpdateConnDestInfo(uint8_t  bDestId,
+                            phNciNfc_DestType_t tDestType,
+                            void *pHandle)
 {
     NFCSTATUS    wStatus = NFCSTATUS_SUCCESS;
     uint8_t      bConnIdx;
     uint8_t      bConnId;
-
     PH_LOG_NCI_FUNC_ENTRY();
 
-    if(NULL == pHandle)
+    if( (phNciNfc_e_NFCEE == tDestType) ||
+        (phNciNfc_e_NFCC_LOOPBACK == tDestType) )
     {
-        wStatus = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
-        PH_LOG_NCI_CRIT_STR(" Invalid Params supplied!!");
-    }
-    else
-    {
-        if( (phNciNfc_e_NFCEE == tDestType) ||\
-            (phNciNfc_e_NFCC_LOOPBACK == tDestType) )
-        {
-            wStatus = phNciNfc_GetConnInfo(bDestId,tDestType,&bConnId);
+        wStatus = phNciNfc_GetConnInfo(bDestId,tDestType,&bConnId);
 
-            if( (NFCSTATUS_SUCCESS != wStatus)
-                || (NFCSTATUS_SUCCESS != phNciNfc_GetConnIndex(bConnId,&bConnIdx) )
-                )
-            {
-                wStatus = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_FAILED);
-            }
-            else
-            {
-                gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnIdx].pActvDevHandle = pHandle;
-            }
-        }
-        else if(phNciNfc_e_REMOTE_NFC_ENDPOINT == tDestType)
+        if( (NFCSTATUS_SUCCESS != wStatus) ||
+            (NFCSTATUS_SUCCESS != phNciNfc_GetConnIndex(bConnId,&bConnIdx)) )
         {
-            pphNciNfc_RemoteDevInformation_t  pActvDev = (pphNciNfc_RemoteDevInformation_t)pHandle;
-
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bDestId = pActvDev->bRfDiscId;
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bDestType = tDestType;
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].tConn.bMaxDpldSize = pActvDev->bMaxPayLoadSize;
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].tConn.bNumCredits = pActvDev->bInitialCredit;
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bIfActive = TRUE;
-            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].pActvDevHandle = pActvDev;
+            wStatus = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_FAILED);
         }
         else
         {
-            wStatus = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
-            PH_LOG_NCI_CRIT_STR(" Unsupported Destination Type!!");
+            gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[bConnIdx].pActvDevHandle = pHandle;
         }
+    }
+    else if(phNciNfc_e_REMOTE_NFC_ENDPOINT == tDestType && NULL != pHandle)
+    {
+        pphNciNfc_RemoteDevInformation_t  pActvDev = (pphNciNfc_RemoteDevInformation_t)pHandle;
+
+        gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bDestId = pActvDev->bRfDiscId;
+        gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bDestType = tDestType;
+        gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].tConn.bMaxDpldSize = pActvDev->bMaxPayLoadSize;
+        gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].tConn.bNumCredits = pActvDev->bInitialCredit;
+        gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].bIfActive = TRUE;
+        gphNciNfc_ConnMgmtInt.tConnInfo.tConnList[CONNRFTYPE_STATIC].pActvDevHandle = pActvDev;
+    }
+    else
+    {
+        wStatus = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
+        PH_LOG_NCI_CRIT_STR("Invalid parameters supplied: bDestId=%d tDestType=%!phNciNfc_DestType_t! pHandle=%p", bDestId, tDestType, pHandle);
     }
 
     PH_LOG_NCI_FUNC_EXIT();

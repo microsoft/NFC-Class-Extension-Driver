@@ -66,9 +66,9 @@ NFCSTATUS phLibNfc_SE_Enumerate(pphLibNfc_RspCb_t     pSEDiscoveryCb,
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
 
-    wStatus = phLibNfc_IsInitialised(pCtx); 
+    wStatus = phLibNfc_IsInitialised(pCtx);
 
-    if (NFCSTATUS_SUCCESS != wStatus)  
+    if (NFCSTATUS_SUCCESS != wStatus)
     {
         PH_LOG_LIBNFC_CRIT_STR("Libnfc Stack is not initialised");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -553,7 +553,7 @@ static void phLibNfc_UpdateSeInfo(void* pContext, pphNciNfc_NfceeInfo_t pNfceeIn
                         pCtx->tSeInfo.bSeState[phLibNfc_SE_Index_eSE] = phLibNfc_SeStateNotInitialized;
                         pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_eSE].hSecureElement = pNfceeInfo->pNfceeHandle;
                         pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_eSE].eSE_Type = phLibNfc_SE_Type_eSE;
-                        pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_eSE].eSE_ActivationMode = 
+                        pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_eSE].eSE_ActivationMode =
                             (PH_NCINFC_EXT_NFCEEMODE_ENABLE == pNfceeInfo->pNfceeHandle->tDevInfo.eNfceeStatus) ? phLibNfc_SE_ActModeVirtual : phLibNfc_SE_ActModeOff;
 
                         wStatus = phLibNfc_SE_GetIndex(pCtx, phLibNfc_SeStateInitializing, &bIndex);
@@ -578,11 +578,18 @@ static void phLibNfc_UpdateSeInfo(void* pContext, pphNciNfc_NfceeInfo_t pNfceeIn
         {
             pCtx->sSeContext.nNfceeDiscNtf--;
             wStatus = phLibNfc_SE_GetIndex(pCtx, phLibNfc_SeStateInitializing, &bIndex);
-            if((wStatus == NFCSTATUS_FAILED) && (pCtx->sSeContext.nNfceeDiscNtf == 0))
+            if(pCtx->sSeContext.nNfceeDiscNtf == 0)
             {
-                /*Decrement the count of the NFCEE discovery notification and if the discovery process has completed
-                  and there is no other NFCEE init sequence in progress launch the NFCEE discovery complete sequence*/
-                phLibNfc_LaunchNfceeDiscCompleteSequence(pCtx,NFCSTATUS_SUCCESS,NULL);
+                if(wStatus == NFCSTATUS_FAILED)
+                {
+                    /*Decrement the count of the NFCEE discovery notification and if the discovery process has completed
+                    and there is no other NFCEE init sequence in progress launch the NFCEE discovery complete sequence*/
+                    phLibNfc_LaunchNfceeDiscCompleteSequence(pCtx, NFCSTATUS_SUCCESS, NULL);
+                }
+                else if(!PH_NCINFC_VERSION_IS_1x((PHNCINFC_GETNCICONTEXT())))
+                {
+                    phLibNfc_HciLaunchDevInitSequence(pCtx);
+                }
             }
         }
     }
@@ -686,6 +693,31 @@ void phLibNfc_SENtfHandler(
             case eNciNfc_NfceeDiscoverNtf:
             {
                 phLibNfc_UpdateSeInfo(pCtx, &pSEInfo->tNfceeInfo, status);
+            }
+            break;
+            case eNciNfc_NfceeStatusNtf:
+            {
+                switch (pSEInfo->tNfceeStatusInfo.bNfceeStatus)
+                {
+                case phNciNfc_NfceeInitSequenceError:
+                    PH_LOG_LIBNFC_CRIT_STR("Unrecoverable error while communicating with NFCEE. NFCEE ID = %d",
+                        pSEInfo->tNfceeStatusInfo.bNfceeId);
+                    break;
+                case phNciNfc_NfceeInitSequenceStarted:
+                    PH_LOG_LIBNFC_INFO_STR("NFCEE initialization started");
+                    break;
+                case phNciNfc_NfceeInitSequenceCompleted:
+                    if (0 != pCtx->dwHciTimerId)
+                    {
+                        PH_LOG_LIBNFC_INFO_STR("Stopping Hci Timer");
+                        (void)phOsalNfc_Timer_Stop(pCtx->dwHciTimerId);
+                        (void)phOsalNfc_Timer_Delete(pCtx->dwHciTimerId);
+                        pCtx->dwHciTimerId = 0;
+
+                        phLibNfc_InternalSequence(pCtx, wStatus, NULL);
+                    }
+                    break;
+                }
             }
             break;
             case eNciNfc_NfceeDiscReqNtf:
@@ -868,7 +900,7 @@ static NFCSTATUS phLibNfc_UpdateRtngInfo(pphNciNfc_RtngConfig_t pNciRtngCfg,
                     pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn;
                 pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOnSub1 = 0;
                 pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOnSub2 = 0;
-                pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOnSub3 = 
+                pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOnSub3 =
                     (0 == pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn) ? 0 : pLibCtx->Config.bSwitchedOnSubState;
                 pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tRfTechnology = (phNciNfc_RfTechnologies_t)
                     pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tRfTechnology;
@@ -884,7 +916,7 @@ static NFCSTATUS phLibNfc_UpdateRtngInfo(pphNciNfc_RtngConfig_t pNciRtngCfg,
                     pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn;
                 pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub1 = 0;
                 pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub2 = 0;
-                pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub3 = 
+                pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub3 =
                     (0 == pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn) ? 0 : pLibCtx->Config.bSwitchedOnSubState;
                 pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tRfProtocol = (phNciNfc_RfProtocols_t)
                     pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tRfProtocol;
@@ -900,7 +932,7 @@ static NFCSTATUS phLibNfc_UpdateRtngInfo(pphNciNfc_RtngConfig_t pNciRtngCfg,
                     pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOn;
                 pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOnSub1 = 0;
                 pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOnSub2 = 0;
-                pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOnSub3 = 
+                pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOnSub3 =
                     (0 == pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOn) ? 0 : pLibCtx->Config.bSwitchedOnSubState;
                 if(pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.bAidSize <= PH_NCINFC_MAX_AID_LEN)
                 {
@@ -974,7 +1006,7 @@ static NFCSTATUS phLibNfc_StartNfceeDisc(void* pContext, NFCSTATUS status, void*
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t) pContext;
 
-    UNUSED(status); 
+    UNUSED(status);
     UNUSED(pInfo);
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
@@ -1016,7 +1048,7 @@ static NFCSTATUS phLibNfc_StopNfceeDisc(void* pContext, NFCSTATUS status, void* 
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t) pContext;
 
-    UNUSED(status); 
+    UNUSED(status);
     UNUSED(pInfo);
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
@@ -1419,7 +1451,14 @@ NFCSTATUS phLibNfc_SE_GetIndex(void *pContext, phLibNfc_SE_Status_t bSeState, ui
 phLibNfc_SE_Type_t phLibNfc_SE_GetType(void* pContext, pphNciNfc_NfceeInfo_t pNfceeInfo)
 {
     pphLibNfc_LibContext_t pLibContext = pContext;
-    if((NULL != pLibContext) && (NULL != pNfceeInfo))
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    uint8_t bType = 0;
+    uint8_t bLen = 0;
+    uint8_t bCount = 0;
+    uint8_t bHciHostId = 0;
+    phNciNfc_TlvUtilInfo_t tTlvInfo;
+    uint8_t *pValue = NULL;
+    if ((NULL != pLibContext) && (NULL != pNfceeInfo))
     {
         /*If the NFCC supports the HCI Network, it SHALL return NFCEE_DISCOVER_NTF with a Protocol type of "HCI Access"
           An NFCEE_DISCOVER_NTF that contains a Protocol type of "HCI Access" SHALL NOT contain any other additional Protocol*/
@@ -1434,11 +1473,35 @@ phLibNfc_SE_Type_t phLibNfc_SE_GetType(void* pContext, pphNciNfc_NfceeInfo_t pNf
         /*The NFCEE ID returned by the NFCC in the NFCEE_DISCOVER_NTF is used by the DH to address the HCI network*/
         if(0 == pLibContext->Config.bHciNwkPerNfcee)
         {
-            switch(pNfceeInfo->bNfceeId)
+            if (PH_NCINFC_VERSION_IS_1x(PHNCINFC_GETNCICONTEXT()))
+            {
+                /* In NCI1.0, HCI Host ID equals NFCEE ID */
+                bHciHostId = pNfceeInfo->bNfceeId;
+            }
+            else
+            {
+                /* In NCI2.0, HCI Host ID is stored in TLV fields */
+                tTlvInfo.pBuffer = pNfceeInfo->pNfceeHandle->tDevInfo.pTlvInfo;
+                tTlvInfo.dwLength = pNfceeInfo->pNfceeHandle->tDevInfo.TlvInfoLen;
+                tTlvInfo.sizeInfo.dwOffset = 0;
+                for (bCount = 0; bCount < pNfceeInfo->pNfceeHandle->tDevInfo.bNumTypeInfo; bCount++)
+                {
+                    wStatus = phNciNfc_TlvUtilsGetNxtTlv(&tTlvInfo, &bType, &bLen, &pValue);
+                    if (NFCSTATUS_SUCCESS == wStatus)
+                    {
+                        if (bType == PHNCINFC_TLVUTIL_NCI_PROP_HCINWK_HOST_ID && bLen == 1)
+                        {
+                            bHciHostId = pValue[0];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            switch (bHciHostId)
             {
             case phHciNfc_e_UICCHostID:
                 return phLibNfc_SE_Type_UICC;
-
             case phHciNfc_e_SEHostID:
                 return phLibNfc_SE_Type_eSE;
             }

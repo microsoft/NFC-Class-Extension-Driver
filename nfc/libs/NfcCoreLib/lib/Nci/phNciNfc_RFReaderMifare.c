@@ -616,7 +616,7 @@ phNciNfc_RecvMfResp(
                  wRecvDataSz = (psNciContext->tTranscvCtxt.tTranscvInfo.tRecvData.wLen);
 
                  /* check the status byte */
-                 if(PH_NCINFC_STATUS_OK == (psNciContext->RspBuffInfo.pBuff[wPldDataSize-1]))
+                 if (PH_NCINFC_IS_STATUS_OK(psNciContext->RspBuffInfo.pBuff[wPldDataSize - 1]))
                  {
                      status = NFCSTATUS_SUCCESS;
                      PH_LOG_NCI_INFO_STR(" Mf XchgData Request is Successful!! ..");
@@ -692,7 +692,7 @@ phNciNfc_MfCreateAuthCmdHdr(phNciNfc_Context_t     *psNciContext,
         (psNciContext->tTranscvCtxt.tActiveExtn.ActivExtnId.ExtnReqId) = phNciNfc_e_MfcAuthReq;
         (psNciContext->tTranscvCtxt.tActiveExtn.bParamsNumsPresent) = 2;
         (psNciContext->tTranscvCtxt.tActiveExtn.bParam[0]) = bBlockAddr;
-        (psNciContext->tTranscvCtxt.tActiveExtn.bParam[1]) = 
+        (psNciContext->tTranscvCtxt.tActiveExtn.bParam[1]) =
                             psNciContext->tTranscvCtxt.tTranscvInfo.tSendData.pBuff[2];
 
         /* Check if Dynamic Key is passed */

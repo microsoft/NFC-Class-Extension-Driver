@@ -218,6 +218,7 @@ typedef enum phNciNfc_NotificationType
 {
     eNciNfc_DiscoverNtf,        /**< Tag Discovered Notification */
     eNciNfc_NfceeDiscoverNtf,   /**< Nfcee Discovered Notification */
+    eNciNfc_NfceeStatusNtf,     /**< Nfcee Status Notification */
     eNciNfc_NfceeDiscReqNtf,    /**< Nfcee Discovery Request notification */
     eNciNfc_NfceeActionNtf,     /**< Nfcee Action Notification */
     eNciNfc_NciResetNtf,        /**< Nci Reset Notification */
@@ -472,6 +473,7 @@ typedef struct phNciNfc_NfceeDeviceInfo
     /** Number of NFCEE TLV present into the information field*/
     uint8_t bNumTypeInfo;
     uint8_t *pTlvInfo;
+    uint32_t TlvInfoLen;
     /** HW ID and ATR(looks will be present for almost all the NFCEEs) so kept outside
         of this discovery information Other are part of the */
     phNciNfc_NfceeDiscTlvInfo_t aAdditionalInfo[PH_NCINFC_NFCEE_INFO_TLV_MAX];
@@ -494,6 +496,19 @@ typedef struct phNciNfc_NfceeInfo
     uint8_t bNfceeId; /**< Nfcee Id */
     pphNciNfc_NfceeDeviceHandle_t pNfceeHandle;
 }phNciNfc_NfceeInfo_t,*pphNciNfc_NfceeInfo_t;
+
+typedef enum phNciNfc_NfceeInitSequenceStatus
+{
+    phNciNfc_NfceeInitSequenceError = 0x00,   /**< Unrecoverable error */
+    phNciNfc_NfceeInitSequenceStarted = 0x01,   /**< NFCEE Initialization sequence started */
+    phNciNfc_NfceeInitSequenceCompleted = 0x02   /**< NFCEE Initialization sequence completed */
+} phNciNfc_NfceeInitSequenceStatus_t; /**< NFCEE Status field in NFCEE_STATUS_NTF, Table 122, NCI2.0 */
+
+typedef struct phNciNfc_NfceeStatusInfo
+{
+    phNciNfc_NfceeInitSequenceStatus_t bNfceeStatus;
+    uint8_t bNfceeId;
+}phNciNfc_NfceeStatusInfo_t, *pphNciNfc_NfceeStatusInfo_t; /**< NFCEE_STATUS_NTF, NCI2.0 */
 
 /**
  * \ingroup grp_nci_nfc
@@ -963,7 +978,7 @@ typedef struct phNciNfc_RfDiscConfigParams
     phNciNfc_CommonDiscParams_t     tCommonDiscParams;    /**< pointer to #phNciNfc_CommonDiscParams_t */
 }phNciNfc_RfDiscConfigParams_t,*pphNciNfc_RfDiscConfigParams_t; /**< pointer to #phNciNfc_RfDiscConfigParams_t */
 
-/** 
+/**
  * \ingroup grp_nci_nfc
  * \brief Contains Type of devices to be discovered.
  * This structure needs to passed as part of Discover API. This is used to send RF_DISCOVER_CMD
@@ -1062,6 +1077,7 @@ typedef union phNciNfc_NotificationInfo
     phNciNfc_NfceeHciEventInfo_t  tEventInfo;      /**< Hci events info */
     phNciNfc_GenericErrInfo_t tGenericErrInfo;     /**< Generic error information */
     phNciNfc_NfceeInfo_t tNfceeInfo;        /**< Nfcee notification */
+    phNciNfc_NfceeStatusInfo_t tNfceeStatusInfo; /**< Nfcee status info (NCI2.0 specific) */
 }phNciNfc_NotificationInfo_t,*pphNciNfc_NotificationInfo_t; /**< Notification info received by Nci module */
 
 /**
@@ -1203,16 +1219,6 @@ typedef enum phNciNfc_Iso15693CmdList
     phNciNfc_eIso15693Raw    = 0x00,  /**< Performs Raw communication over ISO15693 Tag*/
     phNciNfc_eIso15693InvalidCmd      /**< Invalid Command*/
 }phNciNfc_Iso15693CmdList_t;    /**< Type3 Tag specicific command list*/
-
-/*!
- * \ingroup grp_nci_nfc
- * \brief Register or Unregister Se event with NCI layer
- */
-typedef enum phNciNfc_SeEventRegInfo
-{
-    phNciNfc_eEventRegister    = 0x00,  /**< Register Se event*/
-    phNciNfc_eEventUnRegister           /**< Unregister Se event*/
-}phNciNfc_SeEventRegInfo_t;    /**< Se event registration information*/
 
 /*!
  * \ingroup grp_nci_nfc
@@ -1653,14 +1659,12 @@ phNciNfc_AbortDataTransfer(void *pNciHandle);
 /**
  * \ingroup grp_nci_nfc
  *
- * \brief This function allows the upper layer to register or unregister events
- * with a secure element.
+ * \brief This function allows the upper layer to register events with a secure element.
  *
  * \param[in] pNciCtx Nci Handle or the context of the NCI Layer.
  * \param[in] pSeHandle Secure element handle for which event shall be registered or unregistered.
- * \param[in] eEvent enum to specify register or unregister information (#phNciNfc_SeEventRegInfo_t)
  * \param[in] pSeEventCb upper layer call back function pointer which shall be invoked upon receiving event.
- * \param[in] pContext Upper layer context to be returned in the callback.
+ * \param[in] pContext Upper layer HCI context to be returned in the callback.
  *
  * \retval #NFCSTATUS_SUCCESS Se event successfulyl registered
  * \retval #NFCSTATUS_FAILED Registration failed as there are no slots available/logical conn not found
@@ -1668,11 +1672,10 @@ phNciNfc_AbortDataTransfer(void *pNciHandle);
  * \retval #NFCSTATUS_INVALID_PARAMETER One or more of the supplied parameters could not be interpreted properly.
  */
 extern NFCSTATUS
-phNciNfc_RegUnRegSeEvent(void *pNciCtx,
-                         void* pSeHandle,
-                         phNciNfc_SeEventRegInfo_t  eEvent,
-                         pphNciNfc_RegDataCb_t    pSeEventCb,
-                         void*                    pContext);
+phNciNfc_RegisterHciSeEvent(void *pNciCtx,
+                            void* pSeHandle,
+                            pphNciNfc_RegDataCb_t pSeEventCb,
+                            void* pContext);
 
 /**
  *  \ingroup grp_nci_nfc
@@ -1681,7 +1684,7 @@ phNciNfc_RegUnRegSeEvent(void *pNciCtx,
  *  It shall send the data received from upper layer to the NFCEE.
  *
  *  \param[in] pNciCtx pointer to the NCI context structure
- *  \param[in] pSeDevHandle SE handle
+ *  \param[in] pSeHandle SE handle
  *  \param[in] pSendCb pointer to call back function of type #pphNciNfc_IfNotificationCb_t
  *  \param[in] pContext upper layer context
  *  \param[in] pSendData Data to be sent to the SE
@@ -1692,8 +1695,8 @@ phNciNfc_RegUnRegSeEvent(void *pNciCtx,
  *  \return NFCSTATUS_INSUFFICIENT_RESOURCES Failed to allocate memory
  */
 extern NFCSTATUS
-phNciNfc_SeSendData(void *pNciCtx,
-                    void *pSeDevHandle,
+phNciNfc_SeSendData(void* pNciCtx,
+                    void* pSeHandle,
                     pphNciNfc_IfNotificationCb_t pSendCb,
                     void* pContext,
                     phNfc_sData_t *pSendData);

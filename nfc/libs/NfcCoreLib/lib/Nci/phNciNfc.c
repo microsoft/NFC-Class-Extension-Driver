@@ -13,7 +13,9 @@
 /** Value indicates length of Deactivate command payload */
 #define PHNCINFC_DEACTIVATE_PAYLOADLEN              (0x01)
 /** Value indicates length of Nfcee Discover command payload */
-#define PHNCINFC_NFCEEDISC_PAYLOADLEN               (0x01)
+#define PHNCINFC_NFCEEDISC_PAYLOADLEN_1x            (0x01)
+#define PHNCINFC_NFCEEDISC_PAYLOADLEN_2x            (0x00)
+
 /** Value indicates length of Set Power substate command payload */
 #define PHNCINFC_SETPOWERSUBSTATE_PAYLOADLEN        (0x01)
 
@@ -418,7 +420,7 @@ NFCSTATUS phNciNfc_Nfcee_StartDiscovery(void * pNciHandle,
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     phNciNfc_Context_t * pNciContext= (phNciNfc_Context_t *)pNciHandle;
-    uint8_t *pTargetInfo;
+    uint8_t *pTargetInfo = NULL;
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL == pNciContext)
     {
@@ -433,31 +435,45 @@ NFCSTATUS phNciNfc_Nfcee_StartDiscovery(void * pNciHandle,
     }
     else
     {
-        pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEDISC_PAYLOADLEN);
-        if(NULL == pTargetInfo)
-        {
-            PH_LOG_NCI_CRIT_STR("Memory not available(phNciNfc_Nfcee_StartDiscovery)");
-            wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
-        }
-        else
-        {
-            /* Reset tSeEventList and NFCEE context */
-            phOsalNfc_SetMemory(&pNciContext->tSeEventList,0,sizeof(phNciNfc_SeEventList_t));
-            phNciNfc_ReleaseNfceeCntx();
+        /* Reset tSeEventList and NFCEE context */
+        phOsalNfc_SetMemory(&pNciContext->tSeEventList,0,sizeof(phNciNfc_SeEventList_t));
+        phNciNfc_ReleaseNfceeCntx();
 
-            /* Store the state of NFCEE discovery to enabled */
-            pNciContext->tNfceeContext.bNfceeDiscState = \
-                        PH_NCINFC_NFCEE_DISC_ENABLE;
-            /* Build the Payload */
-            pTargetInfo[0] = PH_NCINFC_NFCEE_DISC_ENABLE;
-            pNciContext->tSendPayload.pBuff = pTargetInfo;
+        /* Store the state of NFCEE discovery to enabled */
+        pNciContext->tNfceeContext.bNfceeDiscState = \
+                    PH_NCINFC_NFCEE_DISC_ENABLE;
+
+        if (PH_NCINFC_VERSION_IS_1x(pNciContext))
+        {
+            pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEDISC_PAYLOADLEN_1x);
+            if (NULL == pTargetInfo)
+            {
+                PH_LOG_NCI_CRIT_STR("Memory not available(phNciNfc_Nfcee_StartDiscovery)");
+                wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
+            }
+            else
+            {
+                /* Build the Payload */
+                pTargetInfo[0] = PH_NCINFC_NFCEE_DISC_ENABLE;
+                pNciContext->tSendPayload.pBuff = pTargetInfo;
+                pNciContext->tSendPayload.wPayloadSize = \
+                    (uint16_t)PHNCINFC_NFCEEDISC_PAYLOADLEN_1x;
+            }
+        }
+        else if (PH_NCINFC_VERSION_IS_2x(pNciContext))
+        {
+            pNciContext->tSendPayload.pBuff = NULL;
             pNciContext->tSendPayload.wPayloadSize = \
-                        (uint16_t)PHNCINFC_NFCEEDISC_PAYLOADLEN;
+                (uint16_t)PHNCINFC_NFCEEDISC_PAYLOADLEN_2x;
+        }
+
+        if (wStatus == NFCSTATUS_SUCCESS)
+        {
             pNciContext->IfNtf = pNfceeDisCb;
             pNciContext->IfNtfCtx = pContext;
-            PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_NfceeDiscSequence);
+            PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_NfceeDiscSequence);
             wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
-            if(NFCSTATUS_PENDING != wStatus)
+            if (NFCSTATUS_PENDING != wStatus)
             {
                 PH_LOG_NCI_CRIT_STR("Nfcee Discover Sequence failed!");
                 phOsalNfc_FreeMemory(pTargetInfo);
@@ -475,7 +491,7 @@ NFCSTATUS phNciNfc_Nfcee_StopDiscovery(void * pNciHandle,
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     phNciNfc_Context_t * pNciContext= (phNciNfc_Context_t *)pNciHandle;
-    uint8_t *pTargetInfo;
+    uint8_t *pTargetInfo = NULL;
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL == pNciContext)
     {
@@ -490,7 +506,7 @@ NFCSTATUS phNciNfc_Nfcee_StopDiscovery(void * pNciHandle,
     }
     else
     {
-        pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEDISC_PAYLOADLEN);
+        pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEDISC_PAYLOADLEN_1x);
         if(NULL == pTargetInfo)
         {
             PH_LOG_NCI_CRIT_STR("Memory not available(phNciNfc_Nfcee_StopDiscovery)");
@@ -504,7 +520,7 @@ NFCSTATUS phNciNfc_Nfcee_StopDiscovery(void * pNciHandle,
             /* Build the Payload */
             pTargetInfo[0] = PH_NCINFC_NFCEE_DISC_DISABLE;
             pNciContext->tSendPayload.pBuff = pTargetInfo;
-            pNciContext->tSendPayload.wPayloadSize = PHNCINFC_NFCEEDISC_PAYLOADLEN;
+            pNciContext->tSendPayload.wPayloadSize = PHNCINFC_NFCEEDISC_PAYLOADLEN_1x;
             pNciContext->IfNtf = pNfceeDisCb;
             pNciContext->IfNtfCtx = pContext;
             PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_NfceeDiscSequence);
@@ -1141,7 +1157,7 @@ phNciNfc_SetRtngTableConfig(void*                     pNciHandle,
         if(NFCSTATUS_SUCCESS == wStatus)
         {
             /* Check if total size of the routing configuration information
-               exceeds the ‘Max Routing Table Size’ (indicated during Initialization) supported by NFCC */
+               exceeds the 'Max Routing Table Size' (indicated during Initialization) supported by NFCC */
             if(wPayloadSize > pNciContext->InitRspParams.RoutingTableSize)
             {
                 PH_LOG_NCI_WARN_STR("Input Routing config size exceeds Max routing table size \
@@ -1461,111 +1477,77 @@ phNciNfc_Transceive(  void*                               pNciHandle,
     return wTransceiveStatus;
 }
 
-NFCSTATUS phNciNfc_RegUnRegSeEvent(void *pNciCtx,
-                                   void* pSeHandle,
-                                   phNciNfc_SeEventRegInfo_t  eEvent,
-                                   pphNciNfc_RegDataCb_t    pSeEventCb,
-                                   void*                    pContext)
+NFCSTATUS phNciNfc_RegisterHciSeEvent(void* pNciCtx,
+                                      void* pSeHandle,
+                                      pphNciNfc_RegDataCb_t pSeEventCb,
+                                      void* pContext)
 {
-    NFCSTATUS               wStatus = NFCSTATUS_INVALID_PARAMETER;
-    pphNciNfc_Context_t     pNciContext = (pphNciNfc_Context_t )pNciCtx;
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t )pNciCtx;
     uint8_t bConnId = 0x00;
     phNciNfc_sCoreHeaderInfo_t tHeaderInfo;
     uint8_t bSlotIndex;
     PH_LOG_NCI_FUNC_ENTRY();
-    if(NULL == pNciContext)
-    {
-        PH_LOG_NCI_CRIT_STR("Stack not initialized ");
-        wStatus = NFCSTATUS_NOT_INITIALISED;
-    }
-    else if(gpphNciNfc_Context != pNciContext)
-    {
-        PH_LOG_NCI_CRIT_STR("Invalid Nci context handle passed");
-        wStatus = NFCSTATUS_INVALID_PARAMETER;
-    }
-    else if( (NULL == pSeHandle) ||\
-             (NULL == pSeEventCb) )
+    if (NULL == pContext || NULL == pSeEventCb)
     {
         PH_LOG_NCI_CRIT_STR("Invalid parameters");
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
-    else
+
+    if (wStatus == NFCSTATUS_SUCCESS &&
+        (NULL == pNciContext || gpphNciNfc_Context != pNciContext) )
     {
-        /* Get Logical Connection ID from the SE handle */
-        wStatus = phNciNfc_GetConnId(pSeHandle,&bConnId);
+        PH_LOG_NCI_CRIT_STR("Invalid Nci context!");
+        wStatus = NFCSTATUS_INVALID_STATE;
+    }
+
+    if (wStatus == NFCSTATUS_SUCCESS)
+    {
+        if (!PH_NCINFC_VERSION_IS_1x(pNciContext))
+        {
+            bConnId = CONNHCITYPE_STATIC;
+        }
+        else
+        {
+            wStatus = phNciNfc_GetConnId(pSeHandle,&bConnId);
+        }
+
         if(NFCSTATUS_SUCCESS == wStatus)
         {
-            if(phNciNfc_eEventRegister == eEvent)
+            /* Get available free slot index */
+            wStatus = phLibNfc_GetAvailableSlotIndex(&pNciContext->tSeEventList, &bSlotIndex);
+            if(NFCSTATUS_SUCCESS == wStatus)
             {
-                /* Get available free slot index */
-                wStatus = phLibNfc_GetAvailableSlotIndex(&pNciContext->tSeEventList, &bSlotIndex);
+                /* Register local static function with the NCI core receive manager */
+                PH_LOG_NCI_CRIT_STR("Registering SE event with NCI Core");
+                tHeaderInfo.bEnabled = PHNCINFC_DISABLE_AUTO_DEREG;
+                tHeaderInfo.bConn_ID = bConnId;
+                tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeData;
+                /* Register with Data manager the Callback function to be invoked
+                    when there is data on this logical connection */
+                wStatus = phNciNfc_CoreIfRegRspNtf(&(pNciContext->NciCoreContext),
+                                                    &(tHeaderInfo),
+                                                    &phNciNfc_SeEventCb,
+                                                    pSeHandle);
                 if(NFCSTATUS_SUCCESS == wStatus)
                 {
-                    /* Register local static function with the NCI core receive manager */
-                    PH_LOG_NCI_CRIT_STR("Registering SE event with NCI Core");
-                    tHeaderInfo.bEnabled = PHNCINFC_DISABLE_AUTO_DEREG;
-                    tHeaderInfo.bConn_ID = bConnId;
-                    tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeData;
-                    /* Register with Data manager the Callback function to be invoked
-                       when there is data on this logical connection */
-                    wStatus = phNciNfc_CoreIfRegRspNtf(&(pNciContext->NciCoreContext),
-                                                       &(tHeaderInfo),
-                                                       &phNciNfc_SeEventCb,
-                                                       pSeHandle);
-                    if(NFCSTATUS_SUCCESS == wStatus)
-                    {
-                        /* Register upper layer call back function (Store SE handle also) */
-                        pNciContext->tSeEventList.aSeEventList[bSlotIndex].pSeHandle = pSeHandle;
-                        pNciContext->tSeEventList.aSeEventList[bSlotIndex].pUpperLayerCb = pSeEventCb;
-                        pNciContext->tSeEventList.aSeEventList[bSlotIndex].pUpperLayerCtx = pContext;
-                        pNciContext->tSeEventList.aSeEventList[bSlotIndex].bEnable = 1;
-                    }
-                    else
-                    {
-                        /* Failed to register with Nci core */
-                        wStatus = NFCSTATUS_FAILED;
-                        PH_LOG_NCI_CRIT_STR("Failed to register with Nci core");
-                    }
+                    /* Register upper layer call back function (Store SE handle also) */
+                    pNciContext->tSeEventList.aSeEventList[bSlotIndex].pSeHandle = pSeHandle;
+                    pNciContext->tSeEventList.aSeEventList[bSlotIndex].pUpperLayerCb = pSeEventCb;
+                    pNciContext->tSeEventList.aSeEventList[bSlotIndex].pUpperLayerCtx = pContext;
+                    pNciContext->tSeEventList.aSeEventList[bSlotIndex].bEnable = 1;
                 }
                 else
                 {
-                    PH_LOG_NCI_CRIT_STR("No free slots available, registration failed!");
+                    /* Failed to register with Nci core */
                     wStatus = NFCSTATUS_FAILED;
+                    PH_LOG_NCI_CRIT_STR("Failed to register with Nci core");
                 }
             }
-            else /* Event Unregister */
+            else
             {
-                /* Get the registration slot index */
-                wStatus = phLibNfc_GetRegisteredSlotIndex(&pNciContext->tSeEventList, pSeHandle,
-                                    &bSlotIndex);
-                if(NFCSTATUS_SUCCESS == wStatus)
-                {
-                    /* Unregister by the NCI core receive manager */
-                    PH_LOG_NCI_CRIT_STR("Unregistering SE event");
-                    tHeaderInfo.bConn_ID = bConnId;
-                    tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeData;
-                    wStatus = phNciNfc_CoreIfUnRegRspNtf(&(pNciContext->NciCoreContext),
-                                                            &(tHeaderInfo),
-                                                            pSeEventCb);
-                    if(NFCSTATUS_SUCCESS == wStatus)
-                    {
-                        pNciContext->tSeEventList.aSeEventList[bSlotIndex].pSeHandle = NULL;
-                        pNciContext->tSeEventList.aSeEventList[bSlotIndex].pUpperLayerCb = NULL;
-                        pNciContext->tSeEventList.aSeEventList[bSlotIndex].pUpperLayerCtx = NULL;
-                        pNciContext->tSeEventList.aSeEventList[bSlotIndex].bEnable = 0;
-                    }
-                    else
-                    {
-                        /* Failed to Unregister with Nci core */
-                        wStatus = NFCSTATUS_FAILED;
-                        PH_LOG_NCI_CRIT_STR("Failed to unregister with Nci core");
-                    }
-                }
-                else
-                {
-                    PH_LOG_NCI_CRIT_STR("No registration found!");
-                    wStatus = NFCSTATUS_FAILED;
-                }
+                PH_LOG_NCI_CRIT_STR("No free slots available, registration failed!");
+                wStatus = NFCSTATUS_FAILED;
             }
         }
     }
@@ -2091,10 +2073,12 @@ static NFCSTATUS phNciNfc_SeEventCb(void* pContext, void *pInfo, NFCSTATUS wStat
     phNciNfc_TransactInfo_t tTransInfo;
     pphNciNfc_RegDataCb_t pUpperLayerCb = NULL;
     uint8_t bCount = 0;
+    void* pSeHandle = pContext;
     void* pUpperLayerCtx;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pNciContext) && (NULL != pContext))
+    if( (NULL != pNciContext) &&
+        (!PH_NCINFC_VERSION_IS_1x(pNciContext) || (NULL != pSeHandle)) )
     {
         if(NULL != pInfo)
         {
@@ -2109,13 +2093,13 @@ static NFCSTATUS phNciNfc_SeEventCb(void* pContext, void *pInfo, NFCSTATUS wStat
         for(bCount = 0; bCount < PHNCINFC_MAX_SE_EVENT_REGS; bCount++)
         {
             if((1 == pNciContext->tSeEventList.aSeEventList[bCount].bEnable) &&
-                (pContext == pNciContext->tSeEventList.aSeEventList[bCount].pSeHandle))
+                (pSeHandle == pNciContext->tSeEventList.aSeEventList[bCount].pSeHandle))
             {
                 pUpperLayerCtx = pNciContext->tSeEventList.aSeEventList[bCount].pUpperLayerCtx;
                 pUpperLayerCb = pNciContext->tSeEventList.aSeEventList[bCount].pUpperLayerCb;
                 if(NULL != pUpperLayerCb)
                 {
-                    pTransInfo->pContext = pContext;
+                    pTransInfo->pContext = pSeHandle;
                     pUpperLayerCb(pUpperLayerCtx,(void *)pTransInfo,wStatus);
                 }
             }

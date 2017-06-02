@@ -272,30 +272,31 @@ static bool_t phNciNfc_TlvUtilsFindTlv( phNciNfc_TlvUtilInfo_t *pttlvInfo, uint8
 }
 
 NFCSTATUS
-phNciNfc_TlvUtilsParseTLV(uint8_t *pBuffer,
-                          uint16_t wLength)
+phNciNfc_TlvUtilsValidate(uint8_t *pBuffer,
+                          uint16_t wLength,
+                          uint16_t *pwBufferLeftoverLength)
 {
-    uint16_t wCount = 0;
+    uint16_t wTlvDataLength = 0;
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pBuffer) && (wLength >= PHNCINFC_TLVUTIL_TLV_HEADER_LEN))
+    if (NULL != pBuffer)
     {
-        for(;wCount < wLength ; wCount += (uint16_t)(pBuffer[wCount + 1] + PHNCINFC_TLVUTIL_TLV_HEADER_LEN))
+        while (wTlvDataLength + 1 < wLength &&
+               wTlvDataLength + pBuffer[wTlvDataLength + 1] + PHNCINFC_TLVUTIL_TLV_HEADER_LEN <= wLength)
         {
-            /*Parse it till end to assure tlv format consistency in the input buffer */
+            wTlvDataLength += pBuffer[wTlvDataLength + 1] + PHNCINFC_TLVUTIL_TLV_HEADER_LEN;
         }
-        /* If input Tlv buffer contains valid tlv's */
-        if(wCount == wLength)
+
+        PH_LOG_NCI_INFO_STR("TLV data length: %u buffer length: %u", wTlvDataLength, wLength);
+        if (NULL != pwBufferLeftoverLength)
         {
-            /* Number of tlv's present in the buffer */
-            wStatus = NFCSTATUS_SUCCESS;
+            *pwBufferLeftoverLength = wLength - wTlvDataLength;
         }
-        else
-        {
-            PH_LOG_NCI_CRIT_STR("Inconsistent tlv's!");
-            wStatus = NFCSTATUS_FAILED;
-        }
+
+        wStatus = (wTlvDataLength == wLength)
+                  ? NFCSTATUS_SUCCESS
+                  : NFCSTATUS_FAILED;
     }
     else
     {

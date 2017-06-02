@@ -6,12 +6,6 @@
 
 #pragma once
 
-/**<Hci Init sequence */
-extern phLibNfc_Sequence_t gphLibNfc_HciInitSequence[];
-
-/**<Hci Init  for individual NFCEE's sequence */
-extern phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequence[];
-
 extern void phLibNfc_HciDeInit(void );
 
 extern NFCSTATUS phLibNfc_HciSetSessionIdentity(void* pContext,NFCSTATUS status,void* pInfo);

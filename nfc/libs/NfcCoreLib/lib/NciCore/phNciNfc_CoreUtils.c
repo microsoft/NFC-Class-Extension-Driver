@@ -187,13 +187,16 @@ static NFCSTATUS phNciNfc_CoreUtilsValidateNtfPktOID(uint8_t bGID, uint8_t bOID)
     }
     else if(bGID == phNciNfc_e_CoreNfceeMgtGid)
     {
-        if(phNciNfc_e_NfceeMgtNfceeDiscNtfOid == bOID)
+        switch(bOID)
         {
-            bRetNfcStat = NFCSTATUS_SUCCESS;
-        }
-        else
-        {
-            PH_LOG_NCI_CRIT_STR("Unknown OID received");
+            case phNciNfc_e_NfceeMgtNfceeDiscNtfOid:
+            case phNciNfc_e_NfceeMgtModeSetNtfOid:
+            case phNciNfc_e_NfceeMgtStatusNtfOid:
+                bRetNfcStat = NFCSTATUS_SUCCESS;
+                break;
+            default:
+                PH_LOG_NCI_CRIT_STR("Unknown OID received");
+                break;
         }
     }
     else if(bGID == phNciNfc_e_CorePropGid)
