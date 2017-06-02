@@ -54,10 +54,17 @@ phLibNfc_Sequence_t gphLibNfc_HciInitSequenceNci2x[] = {
     {NULL, &phLibNfc_HciInitComplete}
 };
 
-phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequence[] = {
+phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequenceNci1x[] = {
     {&phLibNfc_HciSetWhiteList, &phLibNfc_HciSetWhiteListProc},
     {&phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc},
     {NULL, &phLibNfc_HciChildDevInitComplete}
+};
+
+phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequenceNci2x[] = {
+    { &phLibNfc_HciSetWhiteList, &phLibNfc_HciSetWhiteListProc },
+    { &phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc },
+    { &phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc },
+    { NULL, &phLibNfc_HciChildDevInitComplete }
 };
 
 static phLibNfc_Sequence_t gphLibNfc_HciTransceiveSequence[] = {
@@ -1209,7 +1216,15 @@ NFCSTATUS phLibNfc_HciLaunchChildDevInitSequence(void *pContext,phLibNfc_SE_Inde
         pLibContext->sSeContext.pActiveSeInfo = &pLibContext->tSeInfo.tSeList[bIndex];
 
         /*Start the Sequence for active element*/
-        PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_HciChildDevInitSequence);
+        if (PH_NCINFC_VERSION_IS_1x(PHNCINFC_GETNCICONTEXT()))
+        {
+            PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_HciChildDevInitSequenceNci1x);
+        }
+        else
+        {
+            pLibContext->dwHciInitDelay = PHHCINFC_FIRST_TIME_HCI_NWK_FORMATION_TIME_OUT;
+            PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_HciChildDevInitSequenceNci2x);
+        }
         wStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,NULL);
         if(NFCSTATUS_PENDING != wStatus)
         {
