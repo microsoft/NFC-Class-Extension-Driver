@@ -35,6 +35,12 @@ static NFCSTATUS phLibNfc_HciDataSendComplete(void* pContext,NFCSTATUS status,vo
 
 static void phHciNfc_eSETranseiveTimeOutCb(uint32_t dwTimerId, void *pContext);
 static NFCSTATUS phHciNfc_CreateSETranseiveTimer(phHciNfc_HciContext_t  *pHciContext);
+static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInfo);
+static NFCSTATUS phHciNfc_CreateSEGetAtrTimer(phHciNfc_HciContext_t  *pHciContext);
+void phHciNfc_RegisterForEvents(pphHciNfc_HciContext_t pHciContext, uint8_t bPipeId);
+
+static uint32_t phHciNfc_CalcPower(uint16_t wNum, uint16_t wPow);
+static uint32_t phHciNfc_CalcWtxTimeout(uint8_t bWtxBwi);
 
 phLibNfc_Sequence_t gphLibNfc_HciInitSequenceNci1x[] = {
     {&phLibNfc_OpenLogConn, &phLibNfc_OpenLogConnProcess},
@@ -113,9 +119,13 @@ NFCSTATUS phLibNfc_eSE_Transceive (phLibNfc_Handle hSE_Handle,
     }
     else
     {
-        if((NULL != pSeTransceiveInfo->sSendData.buffer) && (0 != pSeTransceiveInfo->sSendData.length) &&
-            (NULL != pSeTransceiveInfo->sRecvData.buffer) && (0 != pSeTransceiveInfo->sRecvData.length))
+        /* Check if any Wired Mode Transactions are in progress */
+        wStatus = phHciNfc_CheckTransOnApduPipe();
+        if (wStatus == NFCSTATUS_SUCCESS)
         {
+            if ((NULL != pSeTransceiveInfo->sSendData.buffer) && (0 != pSeTransceiveInfo->sSendData.length) &&
+                (NULL != pSeTransceiveInfo->sRecvData.buffer) && (0 != pSeTransceiveInfo->sRecvData.length))
+            {
                 /*Validate the SE Handle.Traverse through the SE list saved in PhLibNfc context and check if the
                 input SE handle is valid */
                 for(bIndex = 0; bIndex < PHHCINFC_TOTAL_NFCEES ; bIndex++)
@@ -156,16 +166,22 @@ NFCSTATUS phLibNfc_eSE_Transceive (phLibNfc_Handle hSE_Handle,
                         PH_LOG_LIBNFC_CRIT_STR("phLibNfc_eSE_Transceive: Invalid SE Type or SE Mode");
                     }
                 }
+                else
+                {
+                    wStatus = NFCSTATUS_FAILED;
+                    PH_LOG_LIBNFC_CRIT_STR("Invalid SE Handle");
+                }
+            }
             else
             {
-                wStatus = NFCSTATUS_FAILED;
-                PH_LOG_LIBNFC_CRIT_STR("Invalid SE Handle");
+                PH_LOG_LIBNFC_CRIT_STR("Send or Receive data invalid");
+                wStatus = NFCSTATUS_INVALID_PARAMETER;
             }
         }
         else
         {
-            PH_LOG_LIBNFC_CRIT_STR("Send or Receive data invalid");
-            wStatus = NFCSTATUS_INVALID_PARAMETER;
+            /* Returns Status as NFCSTATUS_BUSY*/
+            PH_LOG_LIBNFC_CRIT_STR("phLibNfc_eSE_Transceive: Stack BUSY");
         }
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
@@ -329,6 +345,10 @@ static NFCSTATUS phLibNfc_HciSetWhiteList(void* pContext,NFCSTATUS status,void* 
                     /* If NFCC supports a HCI network per NFCEE set the whitelist as part of HCI init sequence */
                     aSetWhiteListSe[bCount++] = pHciCtx->aHostList[0];
                 }
+                /* Enable the white list for embedded SE, so that we will get Admin Pipe Created Notification. 
+                   If there is no eSE, then NFCEE discovery ntf for eSE will not be generated and enabling white 
+                   list for eSE will not have any side effects*/
+                aSetWhiteListSe[bCount++] = phHciNfc_e_SEHostID;
 
                 wStatus = NFCSTATUS_SUCCESS;
             }
@@ -520,6 +540,37 @@ static NFCSTATUS phLibNfc_HciInitComplete(void* pContext,NFCSTATUS status,void* 
     return wStatus;
 }
 
+static void phLibNfc_SeSendCb(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    phHciNfc_ReceiveParams_t tRxParams = { 0 };
+    phHciNfc_HciContext_t *pHciContext;
+    pphLibNfc_Context_t pLibCtx;
+    UNUSED(pInfo);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (NULL != pContext)
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        if (NULL != pLibCtx->pHciContext)
+        {
+            pHciContext = (phHciNfc_HciContext_t *)pLibCtx->pHciContext;
+            if (NULL != pHciContext)
+            {
+                if (NFCSTATUS_SUCCESS != status)
+                {
+                    tRxParams.bMsgType = pHciContext->pHciCoreContext.tHciCtxSendMsgParams.bMsgType;
+                    tRxParams.bIns = pHciContext->pHciCoreContext.tHciCtxSendMsgParams.bIns;
+                    tRxParams.bPipeId = pHciContext->pHciCoreContext.tHciCtxSendMsgParams.bPipeId;
+                    tRxParams.pData = NULL;
+                    tRxParams.wLen = 0;
+                    PH_LOG_LIBNFC_CRIT_STR("SeSendCb: Call back received with status != success");
+                    phHciNfc_ReceiveHandler((void *)pHciContext, &tRxParams, NFCSTATUS_SUCCESS);
+                }
+            }
+        }
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+}
+
 static NFCSTATUS phLibNfc_HciDataSend(void* pContext,NFCSTATUS status,void* pInfo)
 {
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
@@ -550,6 +601,8 @@ static NFCSTATUS phLibNfc_HciDataSend(void* pContext,NFCSTATUS status,void* pInf
                                         pContext);
                 if(wStatus == NFCSTATUS_PENDING)
                 {
+                    pHciContext->Cb_Info.pClientInitCb = &phLibNfc_SeSendCb;
+                    pHciContext->Cb_Info.pClientCntx = pContext;
                     /*Store Timeout Value to be used for Transeive*/
                     if(pLibCtx->pSeTransInfo->timeout != 0)
                     {
@@ -616,6 +669,7 @@ static void phHciNfc_eSETranseiveTimeOutCb(uint32_t dwTimerId, void *pContext)
     pphLibNfc_Context_t pLibCtx;
     phHciNfc_HciContext_t *pHciContext;
     PHNFC_UNUSED_VARIABLE(dwTimerId); /* No Data Expected from lower Layer */
+    PH_LOG_LIBNFC_FUNC_ENTRY();
     PH_LOG_LIBNFC_CRIT_STR("HCI SE TxRx Timer Expired");
     if(pContext != NULL)
     {
@@ -628,6 +682,7 @@ static void phHciNfc_eSETranseiveTimeOutCb(uint32_t dwTimerId, void *pContext)
         /* Set the Default Timeout for eSE Transeive */
         (void)phLibNfc_InternalSequence(pLibCtx,NFCSTATUS_RESPONSE_TIMEOUT,NULL);
     }
+    PH_LOG_LIBNFC_FUNC_EXIT();
 }
 static NFCSTATUS phLibNfc_HciDataSendProc(void* pContext,NFCSTATUS status,void* pInfo)
 {
@@ -635,6 +690,8 @@ static NFCSTATUS phLibNfc_HciDataSendProc(void* pContext,NFCSTATUS status,void* 
     phHciNfc_ReceiveParams_t *pReceivedParams = (phHciNfc_ReceiveParams_t *) pInfo;
     pphLibNfc_Context_t pLibCtx;
     phHciNfc_HciContext_t *pHciContext;
+    pphLibNfc_TransceiveCallback_t pClientCb = NULL;
+    void *pClientCntx = NULL;
 
     UNUSED(pHciContext);
     PH_LOG_LIBNFC_FUNC_ENTRY();
@@ -649,30 +706,44 @@ static NFCSTATUS phLibNfc_HciDataSendProc(void* pContext,NFCSTATUS status,void* 
                 pHciContext = (phHciNfc_HciContext_t *) pLibCtx->pHciContext;
                 if((0 != pReceivedParams->wLen) && (NULL != pReceivedParams->pData))
                 {
-                    if(pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId != PH_OSALNFC_TIMER_ID_INVALID)
+                    /* Process the received Data only if Transeive Timeout has not occurred
+                    ** NFCSTATUS_BUSY indicates we are waiting for Transeive response
+                    */
+                    wStatus = phHciNfc_CheckTransOnApduPipe();
+
+                    if (wStatus == NFCSTATUS_BUSY)
                     {
-                        (void)phOsalNfc_Timer_Stop(pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId);
-                        (void)phOsalNfc_Timer_Delete(pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId);
-                        pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId = 0;
-                        pHciContext->tHciSeTxRxTimerInfo.dwTimeOut = PHHCINFC_DEFAULT_HCI_TX_RX_TIME_OUT;
-                        PH_LOG_LIBNFC_INFO_STR("SE TxRx Timer Deleted");
+                        wStatus = status;/* Sucessfull scenario retain the status*/
+                                         /* Stop and Delete the Transeive Timer Started Earlier */
+                        if (pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId != PH_OSALNFC_TIMER_ID_INVALID)
+                        {
+                            (void)phOsalNfc_Timer_Stop(pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId);
+                            (void)phOsalNfc_Timer_Delete(pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId);
+                            pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId = 0;
+                            pHciContext->tHciSeTxRxTimerInfo.dwTimeOut = PHHCINFC_DEFAULT_HCI_TX_RX_TIME_OUT;
+                            PH_LOG_LIBNFC_INFO_STR("SE TxRx Timer Deleted");
+                        }
+                        PH_LOG_LIBNFC_INFO_STR("Received valid data");
+                        if ((NULL != pLibCtx->pSeTransInfo->sRecvData.buffer) && (0 != pLibCtx->pSeTransInfo->sRecvData.length))
+                        {
+                            if (pReceivedParams->wLen <= pLibCtx->pSeTransInfo->sRecvData.length)
+                            {
+                                phOsalNfc_MemCopy(pLibCtx->pSeTransInfo->sRecvData.buffer,
+                                    pReceivedParams->pData, pReceivedParams->wLen);
+                                pLibCtx->pSeTransInfo->sRecvData.length = pReceivedParams->wLen;
+                            }
+                            else
+                            {
+                                PH_LOG_LIBNFC_CRIT_STR("Could not copy entire received data");
+                                wStatus = NFCSTATUS_MORE_INFORMATION;
+                            }
+                        }
                     }
-                    PH_LOG_LIBNFC_INFO_STR("Received valid data");
-                    if((NULL != pLibCtx->pSeTransInfo->sRecvData.buffer) && (0 != pLibCtx->pSeTransInfo->sRecvData.length))
+                    else
                     {
-                        if(pReceivedParams->wLen <= pLibCtx->pSeTransInfo->sRecvData.length)
-                        {
-                            phOsalNfc_MemCopy(pLibCtx->pSeTransInfo->sRecvData.buffer,
-                                pReceivedParams->pData,pReceivedParams->wLen);
-                            pLibCtx->pSeTransInfo->sRecvData.length = pReceivedParams->wLen;
-                        }
-                        else
-                        {
-                            PH_LOG_LIBNFC_CRIT_STR("Could not copy entire received data");
-                            wStatus = NFCSTATUS_MORE_INFORMATION;
-                        }
+                        PH_LOG_LIBNFC_CRIT_STR("phLibNfc_HciDataSendProc:eSE Transeive received data after Timeout");
                     }
-                }
+                }                
                 else
                 {
                     PH_LOG_LIBNFC_CRIT_STR("Invalid data received!");
@@ -683,6 +754,18 @@ static NFCSTATUS phLibNfc_HciDataSendProc(void* pContext,NFCSTATUS status,void* 
                 PH_LOG_LIBNFC_CRIT_STR("Invalid HCI Context");
                 wStatus = NFCSTATUS_FAILED;
             }
+        }
+
+        pClientCb = pLibCtx->CBInfo.pSeClientTransCb;
+        pClientCntx = pLibCtx->CBInfo.pSeClientTransCntx;
+        pLibCtx->CBInfo.pSeClientTransCb = NULL;
+        pLibCtx->CBInfo.pSeClientTransCntx = NULL;
+        if (NULL != pClientCb)
+        {
+            pClientCb(pClientCntx, NULL, &pLibCtx->pSeTransInfo->sRecvData, wStatus);
+            PH_LOG_LIBNFC_INFO_STR("phLibNfc_HciDataSendProc:APP Callback Invoked");
+            /* eSE transceive buffer information clean up */
+            pLibCtx->pSeTransInfo = NULL;
         }
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
@@ -788,6 +871,157 @@ phLibNfc_HciGetSessionIdentity(void* pContext,NFCSTATUS status,void* pInfo)
     return wStatus;
 
 }
+
+void
+phHciNfc_ProcessEventsOnApduPipe(void *pContext, NFCSTATUS wStatus, void *pInfo)
+{
+    NFCSTATUS wSETxRxTimerStatus;
+    pphHciNfc_HciContext_t    pHciContext = NULL;
+    phHciNfc_ReceiveParams_t *pReceivedParams = (phHciNfc_ReceiveParams_t *)pInfo;
+    phLibNfc_uSeEvtInfo_t tSeEvtInfo = { 0 };
+    phLibNfc_Handle hSecureElement = (phLibNfc_Handle)NULL;
+    uint8_t bCount = 0;
+    pphLibNfc_LibContext_t  pLibContext = PHLIBNFC_GETCONTEXT();
+
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if ((NULL != pContext) && (wStatus == NFCSTATUS_SUCCESS)  \
+        && (NULL != pLibContext) && (NULL != pReceivedParams))
+    {
+        pHciContext = (pphHciNfc_HciContext_t)pContext;
+        switch (pReceivedParams->bIns)
+        {
+        case PHHCINFC_PROP_DATA_EVENT:
+            (void)phLibNfc_HciDataSendProc(pLibContext, wStatus, pInfo);
+            break;
+        case PHHCINFC_PROP_EVENT_WTX_REQ:
+        {
+            PH_LOG_LIBNFC_INFO_STR("phHciNfc_ProcessEventsOnApduPipe:EVENT_WTX_REQ received");
+            if (pLibContext->CBInfo.pSeClientEvtWtxCb != NULL)
+            {
+                /* Assuming Only One Byte of Data will be sent by the eSE, calculate the WTX timeout */
+                tSeEvtInfo.tWtxInfo.dwWtxTime = phHciNfc_CalcWtxTimeout(pReceivedParams->pData[0]);
+                /* Invoke the upper call back */
+                for (bCount = 0; bCount< PHHCINFC_TOTAL_NFCEES; bCount++)
+                {
+                    if ((pLibContext->tSeInfo.tSeList[bCount].eSE_Type == phLibNfc_SE_Type_eSE))
+                    {
+                        hSecureElement = pLibContext->tSeInfo.tSeList[bCount].hSecureElement;
+                        break;
+                    }
+                }
+                pLibContext->CBInfo.pSeClientEvtWtxCb(pLibContext->CBInfo.pSeClientEvtWtxCntx,
+                    hSecureElement,
+                    &tSeEvtInfo,
+                    NFCSTATUS_WAIT_ON_WTX);
+                /* Restart the Transeive Timer with WTX timeout value*/
+                if (tSeEvtInfo.tWtxInfo.dwWtxTime > 0)
+                {
+                }
+                else
+                {
+                    tSeEvtInfo.tWtxInfo.dwWtxTime = PHHCINFC_DEFAULT_HCI_TX_RX_TIME_OUT;
+                }
+                pHciContext->tHciSeTxRxTimerInfo.dwTimeOut = tSeEvtInfo.tWtxInfo.dwWtxTime;
+
+                (void)phOsalNfc_Timer_Stop(pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId);
+                wSETxRxTimerStatus = phOsalNfc_Timer_Start(pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId,
+                    pHciContext->tHciSeTxRxTimerInfo.dwTimeOut,
+                    &phHciNfc_eSETranseiveTimeOutCb,
+                    pLibContext);
+                if (wSETxRxTimerStatus != NFCSTATUS_SUCCESS)
+                {
+                    phOsalNfc_Timer_Delete(pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId);
+                    wStatus = NFCSTATUS_SUCCESS;
+                    PH_LOG_LIBNFC_CRIT_STR("phLibNfc_HciDataSend: SE TxRx Timer Start Failed");
+                }
+                else
+                {
+                    PH_LOG_LIBNFC_INFO_STR("phHciNfc_ProcessEventsOnApduPipe:eSe Transeive Timer restarted with WTX timeout value");
+                }
+            }
+            else
+            {
+                /* WTX Call Back not defined so dont Invoke it*/
+                PH_LOG_LIBNFC_INFO_STR("phHciNfc_ProcessEventsOnApduPipe:WTX Call Back not defined by App");
+            }
+        }
+        break;
+        default:
+            break;
+        }
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+}
+
+static uint32_t phHciNfc_CalcWtxTimeout(uint8_t bWtxBwi)
+{
+    float dwWtxTimeout;
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    bWtxBwi = bWtxBwi >> 4 & 0x0F;
+    if (bWtxBwi > PH_LIBNFC_MAX_WTX_BWI_VALUE)
+    {
+        dwWtxTimeout = 0;
+    }
+    else
+    {
+        dwWtxTimeout = (float)phHciNfc_CalcPower(2, bWtxBwi);
+        dwWtxTimeout = dwWtxTimeout / PH_LIBNFC_WTX_BWI_DIVISOR;
+        dwWtxTimeout = dwWtxTimeout*PH_LIBNFC_WTX_MILLI_SECOND_MULT;
+    }
+    PH_LOG_LIBNFC_INFO_X32MSG("phHciNfc_CalcWtxTimeout:WTX Timeout", (uint32_t)dwWtxTimeout);
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return (uint32_t)dwWtxTimeout;
+}
+
+static uint32_t phHciNfc_CalcPower(uint16_t wNum, uint16_t wPow)
+{
+    uint16_t wCnt = 1;
+    uint32_t wSum = 1;
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    while (wCnt <= wPow)
+    {
+        wSum = wSum*wNum;
+        wCnt++;
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wSum;
+}
+
+void phHciNfc_RegisterForEvents(pphHciNfc_HciContext_t pHciContext, uint8_t bPipeId)
+{
+    phHciNfc_HciRegData_t tHciRegData;
+
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (bPipeId == pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId)
+    {
+        /* Register a receive handling Funciton to APDU Pipe */
+        PH_LOG_LIBNFC_INFO_STR("phHciNfc_RegisterForEvents:APDU Pipe");
+        tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+        tHciRegData.bPipeId = bPipeId;
+        (void)phHciNfc_RegisterCmdRspEvt(pHciContext,
+            &tHciRegData,
+            &phHciNfc_ProcessEventsOnApduPipe,
+            pHciContext);
+    }
+    else if (bPipeId == pHciContext->aSEPipeList[PHHCI_ESE_CONN_PIPE_LIST_INDEX].bPipeId ||
+        pHciContext->aUICCPipeList[PHHCI_UICC_CONN_PIPE_LIST_INDEX].bPipeId)
+    {
+        /* Register for Events for the pipe on Connectivity Gate */
+        PH_LOG_LIBNFC_INFO_STR("phHciNfc_RegisterForEvents:Connectivity Pipe");
+        tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+        tHciRegData.bPipeId = bPipeId;
+        (void)phHciNfc_RegisterCmdRspEvt(pHciContext,
+            &tHciRegData,
+            &phHciNfc_ProcessEventsOnPipe,
+            pHciContext);
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_U32MSG("No registerations done for PipeId", bPipeId);
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+}
+
 static NFCSTATUS
 phLibNfc_HciGetSessionIdentityProc(void* pContext,NFCSTATUS status,void* pInfo)
 {
@@ -842,6 +1076,8 @@ phLibNfc_HciGetSessionIdentityProc(void* pContext,NFCSTATUS status,void* pInfo)
                 {
                     pHciCtx->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = pReadSessionIdentity->pData[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX];
                     pHciCtx->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId = phHciNfc_e_ApduGate;
+                    /* Register for Events for the pipe on APDU Gate Pipe*/
+                    phHciNfc_RegisterForEvents(pHciCtx, pReadSessionIdentity->pData[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX]);
                 }
                 /* Check a Pipe present on CONNECTIVITY GATE for eSE */
                 if(0 == (uint8_t)GET_BITS8(bCheckPipePresence,PHHCI_ESE_CONNECTIVITY_PIPE_CREATED_BIT_INDEX,1))
@@ -1232,6 +1468,273 @@ NFCSTATUS phLibNfc_HciLaunchChildDevInitSequence(void *pContext,phLibNfc_SE_Inde
             pLibContext->tSeInfo.bSeState[bIndex] = phLibNfc_SeStateInvalid;
             wStatus = NFCSTATUS_FAILED;
         }
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+static void phHciNfc_eSEGetAtrTimeOutCb(uint32_t dwTimerId, void *pContext)
+{
+    pphLibNfc_Context_t pLibCtx;
+    phHciNfc_HciContext_t *pHciContext;
+    PHNFC_UNUSED_VARIABLE(dwTimerId); /* No Data Expected from lower Layer */
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    PH_LOG_LIBNFC_CRIT_STR("******HCI SE Get Atr Timer Expired********");
+    if (pContext != NULL)
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        pHciContext = (phHciNfc_HciContext_t *)pLibCtx->pHciContext;
+        (void)phOsalNfc_Timer_Stop(dwTimerId);
+        (void)phOsalNfc_Timer_Delete(dwTimerId);
+        pHciContext->tHciSeGetAtrTimerInfo.dwTimeOut = PHHCINFC_DEFAULT_HCI_GET_ATR_TIMEOUT;
+        pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId = PH_OSALNFC_TIMER_ID_INVALID;
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        pLibCtx->pAtrInfo->pBuff = NULL;
+        pLibCtx->pAtrInfo->dwLength = 0;
+        (void)phLibNfc_eSE_GetAtrProc(pLibCtx, NFCSTATUS_RESPONSE_TIMEOUT, NULL);
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("phHciNfc_eSEGetAtrTimeOutCb:Invalid Context");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+}
+
+static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    pphLibNfc_Context_t pLibCtx = PHLIBNFC_GETCONTEXT();
+    phHciNfc_HciContext_t *pHciContext = NULL;
+    phHciNfc_ReceiveParams_t *pReceivedParams;
+    pphLibNfc_GetAtrCallback_t pClientCb = NULL;
+    void *pClientCntx = NULL;
+    NFCSTATUS wStatus = NFCSTATUS_FAILED;
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (NULL != pLibCtx)
+    {
+        if ((status == NFCSTATUS_SUCCESS) && (pInfo != NULL))
+        {
+            pReceivedParams = (phHciNfc_ReceiveParams_t*)pInfo;
+            if ((NULL != pLibCtx->pHciContext) && (pContext == pLibCtx->pHciContext))
+            {
+                pHciContext = pLibCtx->pHciContext;
+                /* Stop the timer started earlier */
+                if (pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId != PH_OSALNFC_TIMER_ID_INVALID)
+                {
+                    (void)phOsalNfc_Timer_Stop(pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId);
+                    (void)phOsalNfc_Timer_Delete(pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId);
+                    pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId = PH_OSALNFC_TIMER_ID_INVALID;
+                    pHciContext->tHciSeGetAtrTimerInfo.dwTimeOut = PHHCINFC_DEFAULT_HCI_TX_RX_TIME_OUT;
+                    PH_LOG_LIBNFC_INFO_STR("phLibNfc_HciDataSendProc:SE Get Atr Timer Deleted");
+                }
+                /* Process the received Data only if Transeive Timeout has not occurred
+                ** NFCSTATUS_BUSY indicates we are waiting for Transeive response
+                */
+                wStatus = phHciNfc_CheckTransOnApduPipe();
+                if (wStatus == NFCSTATUS_BUSY)
+                {
+                    pLibCtx->pAtrInfo->dwLength = 0x108;
+                    if (pReceivedParams->wLen <= pLibCtx->pAtrInfo->dwLength)
+                    {
+                        pLibCtx->pAtrInfo->dwLength = pReceivedParams->wLen;
+                        phOsalNfc_MemCopy(pLibCtx->pAtrInfo->pBuff, pReceivedParams->pData, pReceivedParams->wLen);
+                        /* TBD - Calculate the BWI time (command waiting time)*/
+                        /* As per Spec it is BWI = 2^TB1/10 secs */
+                        wStatus = NFCSTATUS_SUCCESS;
+                        PH_LOG_LIBNFC_INFO_STR("phLibNfc_eSE_GetAtrProc: Sucessfull");
+                    }
+                    else
+                    {
+                        PH_LOG_LIBNFC_CRIT_STR("phLibNfc_eSE_GetAtrProc: Invalid Input Buffer Length");
+                        wStatus = NFCSTATUS_BUFFER_TOO_SMALL;
+                    }
+                }
+                else
+                {
+                    PH_LOG_LIBNFC_CRIT_STR("phLibNfc_eSE_GetAtrProc:eSE Get Atr received data after Timeout!!!");
+                }
+            }
+            else
+            {
+                PH_LOG_LIBNFC_CRIT_STR("phLibNfc_eSE_GetAtrProc: Invalid Hci context received!");
+            }
+        }
+        else
+        {
+            PH_LOG_LIBNFC_CRIT_STR("phLibNfc_eSE_GetAtrProc: Received FAILED status or pInfo Invalid");
+        }
+        pClientCb = pLibCtx->CBInfo.pSeClientGetAtrCb;
+        pClientCntx = pLibCtx->CBInfo.pSeClientGetAtrCntx;
+        pLibCtx->CBInfo.pSeClientGetAtrCb = NULL;
+        pLibCtx->CBInfo.pSeClientGetAtrCntx = NULL;
+        /* Invoke Uppler Layer Callback*/
+        if (NULL != pClientCb)
+        {
+            pClientCb(pClientCntx, pLibCtx->pAtrInfo, wStatus);
+            PH_LOG_LIBNFC_INFO_STR("phLibNfc_eSE_GetAtrProc: App layer Callback Invoked");
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("phLibNfc_eSE_GetAtrProc: LibNfc context invalid");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+}
+
+NFCSTATUS
+phLibNfc_eSE_GetAtr(phLibNfc_Handle                 hSE_Handle,
+    phNfc_sSeAtrInfo_t*          pAtrInfo,
+    pphLibNfc_GetAtrCallback_t      pGetAtr_RspCb,
+    void*                           pContext)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    NFCSTATUS wSEGetAtrTimerStatus = NFCSTATUS_INVALID_PARAMETER;
+    pphLibNfc_Context_t pLibCtx = PHLIBNFC_GETCONTEXT();
+    uint8_t bCount = 0;
+    phHciNfc_HciContext_t *pHciContext = NULL;
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    wStatus = phLibNfc_IsInitialised(PHLIBNFC_GETCONTEXT());
+    if ((NFCSTATUS_SUCCESS != wStatus) || (NULL == pLibCtx))
+    {
+        PH_LOG_LIBNFC_CRIT_STR("LibNfc Stack not Initialised");
+        wStatus = NFCSTATUS_NOT_INITIALISED;
+    }
+    else if ((NULL == (void *)hSE_Handle) || (NULL == pGetAtr_RspCb) ||
+        (NULL == pAtrInfo))
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid input parameters");
+        wStatus = NFCSTATUS_INVALID_PARAMETER;
+    }
+    else
+    {
+        /* Check if any Wired Mode Transactions are in progress */
+        wStatus = phHciNfc_CheckTransOnApduPipe();
+        if (wStatus == NFCSTATUS_SUCCESS)
+        {
+            wStatus = NFCSTATUS_INVALID_PARAMETER;
+            if ((NULL != pAtrInfo->pBuff) && (0 != pAtrInfo->dwLength))
+            {
+                for (bCount = 0; bCount< PHHCINFC_TOTAL_NFCEES; bCount++)
+                {
+                    if ((pLibCtx->tSeInfo.tSeList[bCount].hSecureElement == hSE_Handle) && \
+                        (pLibCtx->tSeInfo.tSeList[bCount].eSE_Type == phLibNfc_SE_Type_eSE) && \
+                        (pLibCtx->tSeInfo.tSeList[bCount].eSE_ActivationMode == phLibNfc_SE_ActModeApdu))
+                    {
+                        wStatus = NFCSTATUS_SUCCESS;
+                        break;
+                    }
+                }
+                pHciContext = (phHciNfc_HciContext_t *)pLibCtx->pHciContext;
+                if ((NULL != pLibCtx->pHciContext) && (wStatus == NFCSTATUS_SUCCESS))
+                {
+                    if ((pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId != PHHCINFC_NO_PIPE_DATA) &&
+                        (pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId != PHHCINFC_NO_PIPE_DATA))
+                    {
+                        wStatus = phHciNfc_AnyGetParameter(
+                            pLibCtx->pHciContext,
+                            pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId,
+                            PHHCINFC_APDU_GATE_ATR_REG_ID,
+                            pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId,
+                            &phLibNfc_eSE_GetAtrProc,
+                            pLibCtx->pHciContext);
+                        if (NFCSTATUS_PENDING != wStatus)
+                        {
+                            PH_LOG_LIBNFC_CRIT_STR("phLibNfc_eSE_GetAtr Failed!");
+                            wStatus = NFCSTATUS_FAILED;
+                            pLibCtx->CBInfo.pSeClientGetAtrCb = NULL;
+                            pLibCtx->CBInfo.pSeClientGetAtrCntx = NULL;
+                        }
+                        else
+                        {
+                            PH_LOG_LIBNFC_INFO_STR("phLibNfc_eSE_GetAtr Cmd Sent to lower layer");
+                            /* Store upper layer call back and its context */
+                            pLibCtx->CBInfo.pSeClientGetAtrCb = pGetAtr_RspCb;
+                            pLibCtx->CBInfo.pSeClientGetAtrCntx = pContext;
+                            pLibCtx->pAtrInfo = pAtrInfo;
+
+                            wSEGetAtrTimerStatus = phHciNfc_CreateSEGetAtrTimer(pHciContext);
+                            if (wSEGetAtrTimerStatus == NFCSTATUS_SUCCESS)
+                            {
+                                /* Start the SE TxRx Timer*/
+                                pHciContext = (phHciNfc_HciContext_t *)pLibCtx->pHciContext;
+                                pHciContext->tHciSeGetAtrTimerInfo.dwTimeOut = PHHCINFC_DEFAULT_HCI_TX_RX_TIME_OUT;
+                                wSEGetAtrTimerStatus = phOsalNfc_Timer_Start(pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId,
+                                    pHciContext->tHciSeGetAtrTimerInfo.dwTimeOut,
+                                    &phHciNfc_eSEGetAtrTimeOutCb,
+                                    pLibCtx);
+                                if (wSEGetAtrTimerStatus != NFCSTATUS_SUCCESS)
+                                {
+                                    //wStatus = phOsalNfc_Timer_Delete(pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId);
+                                    phOsalNfc_Timer_Delete(pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId);
+                                    PH_LOG_LIBNFC_CRIT_STR("SE Get Atr Timer Start Failed");
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        PH_LOG_LIBNFC_CRIT_STR("Failed, Pipe Info not Available");
+                        wStatus = NFCSTATUS_FAILED;
+                    }
+                }
+                else
+                {
+                    PH_LOG_LIBNFC_CRIT_STR("Invalid Hci context received or Invalid SE Handle");
+                }
+            }
+            else
+            {
+                PH_LOG_LIBNFC_CRIT_STR("Invalid Input Buffer!");
+            }
+        }
+        else
+        {
+            /* Returns NFCSTATUS_BUSY to the Application*/
+            PH_LOG_LIBNFC_CRIT_STR("BUSY, eSE Transeive or eSE_GetAtr API is in progress");
+        }
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+NFCSTATUS phHciNfc_CheckTransOnApduPipe(void)
+{
+    NFCSTATUS wStatus = NFCSTATUS_FAILED;
+    pphLibNfc_Context_t pLibCtx = PHLIBNFC_GETCONTEXT();
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (pLibCtx->CBInfo.pSeClientTransCb != NULL ||
+        pLibCtx->CBInfo.pSeClientGetAtrCb != NULL)
+    {
+        /* Indicates that either eSE Transeive or
+        ** eSE_GetAtr API is in progress
+        */
+        wStatus = NFCSTATUS_BUSY;
+        PH_LOG_LIBNFC_INFO_STR("phHciNfc_CheckTransOnApduPipe:eSE Transeive or Get ATR API in progress");
+    }
+    else
+    {
+        wStatus = NFCSTATUS_SUCCESS;
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phHciNfc_CreateSEGetAtrTimer(phHciNfc_HciContext_t  *pHciContext)
+{
+
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    /* Create a TImer for HCI Send and Receive */
+    pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId = phOsalNfc_Timer_Create();
+    if ((0 == pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId) ||
+        (PH_OSALNFC_TIMER_ID_INVALID == pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId))
+    {
+        PH_LOG_LIBNFC_CRIT_STR("HCI SE Get Atr Timer Create failed");
+        wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("HCI SE Get Atr Timer Created Successfully");
+        wStatus = NFCSTATUS_SUCCESS;
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;

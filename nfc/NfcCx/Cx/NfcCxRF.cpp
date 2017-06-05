@@ -288,6 +288,8 @@ NfcCxRFInterfaceGetEventType(
     case LIBNFC_SE_ENUMERATE:
     case LIBNFC_SE_SET_MODE:
     case LIBNFC_SE_SET_ROUTING_TABLE:
+    case LIBNFC_EMEBEDDED_SE_TRANSCEIVE:
+    case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
         return NfcCxEventConfig;
     default:
         return NfcCxEventInvalid;
@@ -1078,6 +1080,86 @@ Done:
 }
 
 NTSTATUS
+NfcCxRFInterfaceEmbeddedSEAPDU(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_reads_bytes_(InputBufferLength) PBYTE InputBuffer,
+    _In_ size_t InputBufferLength,
+    _Out_writes_bytes_to_(OutputBufferLength, *pOutputBufferUsed) PBYTE OutputBuffer,
+    _In_ size_t OutputBufferLength,
+    _Out_ size_t* pOutputBufferUsed,
+    _In_ USHORT Timeout
+    )
+/*++
+
+Routine Description:
+
+    This routine is called from the EmbeddedSE module to perform a APDU transceive
+
+Arguments:
+
+    RFInterface - The RF Interface
+    RequestId - The request Id of the transmit operation
+    InputBuffer - Pointer to the buffer to be transmitted
+    InputBufferLength - Length of the input buffer
+    OutputBuffer - Pointer to the buffer to be filled by the transmit response
+    OutputBufferLength - Length of the output buffer
+    pOutputBufferUsed - Pointer to the length of the output buffer used
+    Timeout - Transceive timeout in milliseconds
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    UNREFERENCED_PARAMETER(RFInterface);
+    UNREFERENCED_PARAMETER(InputBuffer);
+    UNREFERENCED_PARAMETER(OutputBuffer);
+    UNREFERENCED_PARAMETER(pOutputBufferUsed);
+    UNREFERENCED_PARAMETER(Timeout);
+
+    //
+    // Validating the buffer sizes to safeguard the DWORD cast.
+    // 
+    if (DWORD_MAX < InputBufferLength ||
+        DWORD_MAX < OutputBufferLength) {
+        NT_ASSERTMSG("Buffer size is validated at dispatch time, this should never be larger then DWORD_MAX", FALSE);
+        status = STATUS_INVALID_BUFFER_SIZE;
+        goto Done;
+    }
+
+    *pOutputBufferUsed = 0;
+
+    if ((InputBufferLength == 0) || (InputBuffer == NULL) || (Timeout > MAX_TRANSCEIVE_TIMEOUT)) {
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
+
+    RtlZeroMemory(&RFInterface->sTransceiveBuffer, sizeof(RFInterface->sTransceiveBuffer));
+
+
+    RFInterface->sTransceiveBuffer.timeout = Timeout;
+    RFInterface->sTransceiveBuffer.sSendData.buffer = InputBuffer;
+    RFInterface->sTransceiveBuffer.sSendData.length = (DWORD)InputBufferLength;
+    RFInterface->sTransceiveBuffer.sRecvData.buffer = OutputBuffer;
+    RFInterface->sTransceiveBuffer.sRecvData.length = (DWORD)OutputBufferLength;
+
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_EMEBEDDED_SE_TRANSCEIVE, NULL, NULL);
+    *pOutputBufferUsed = (UINT32)RFInterface->sTransceiveBuffer.sRecvData.length;
+    _Analysis_assume_(OutputBufferLength >= *pOutputBufferUsed);
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
 NfcCxRFInterfaceTransmit(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_reads_bytes_(InputBufferLength) PBYTE InputBuffer,
@@ -1551,8 +1633,13 @@ Return Value:
                                          (UINT_PTR)pSecureElement,
                                          (UINT_PTR)((UINT_PTR)eActivationMode | (UINT_PTR)eLowPowerMode << 4 * sizeof(UINT_PTR)));
 
-        if (fDiscoveryConfig) {
-            NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
+
+            if (fDiscoveryConfig) {
+                Sleep(300);
+                NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
+            }
+        else {
+            fDiscoveryConfig = FALSE;
         }
         break;
     }
@@ -3074,6 +3161,146 @@ NfcCxRFInterfaceTargetPresenceCheck(
     return Status;
 }
 
+static VOID
+NfcCxRFInterfaceEmbeddedSEAPDUCB(
+    _In_ VOID* pContext,
+    _In_ phLibNfc_Handle hRemoteDev,
+    _In_ phNfc_sData_t* pResBuffer,
+    _In_ NFCSTATUS NfcStatus
+    )
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    PNFCCX_RF_INTERFACE rfInterface = ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->RFInterface;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    UNREFERENCED_PARAMETER(hRemoteDev);
+
+    status = NfcCxNtStatusFromNfcStatus(NfcStatus);
+
+    if (!NT_SUCCESS(status)) {
+        if (pResBuffer->length > rfInterface->pSeTransceiveInfo.sSendData.length) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            TRACE_LINE(LEVEL_ERROR, "Receive buffer too small for response. Receive buffer size = %u, Sent buffer size = %u",
+                                    pResBuffer->length,
+                                    rfInterface->pSeTransceiveInfo.sSendData.length);
+        }
+    }
+    else {
+        TRACE_LINE(LEVEL_INFO, "eSE transceive succeeded. Received buffer length = %u", rfInterface->pSeTransceiveInfo.sRecvData.length);
+    }
+
+    NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, NULL, NULL);
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+}
+
+NTSTATUS
+NfcCxRFInterfaceEmbeddedSEAPDUTransceive(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS Status,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+    )
+{
+    NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
+    static NFCCX_RF_LIBNFC_REQUEST_CONTEXT LibNfcContext;
+    phLibNfc_Handle hSE_handle = NULL;
+    pphNfc_sSeTransceiveInfo_t pSeTransceiveInfo = &RFInterface->pSeTransceiveInfo;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    for (uint8_t i = 0; i < MAX_NUMBER_OF_SE; i++) {
+        if (RFInterface->pLibNfcContext->SEList[i].eSE_Type == phLibNfc_SE_Type_eSE) {
+            hSE_handle = RFInterface->pLibNfcContext->SEList[i].hSecureElement;
+            TRACE_LINE(LEVEL_VERBOSE, "Libnfc based eSE handle is %p", hSE_handle);
+        }
+    }
+
+    LibNfcContext.RFInterface = RFInterface;
+    LibNfcContext.Sequence = RFInterface->pSeqHandler;
+
+    pSeTransceiveInfo->sRecvData.buffer = RFInterface->pSeTransceiveInfo.sRecvData.buffer;
+    pSeTransceiveInfo->sSendData.buffer = RFInterface->pSeTransceiveInfo.sSendData.buffer;
+    pSeTransceiveInfo->sRecvData.length = RFInterface->pSeTransceiveInfo.sRecvData.length;
+    pSeTransceiveInfo->sSendData.length = RFInterface->pSeTransceiveInfo.sSendData.length;
+    RFInterface->pSeTransceiveInfo.timeout = DEFAULT_HCI_TX_RX_TIME_OUT;
+    pSeTransceiveInfo->timeout = DEFAULT_HCI_TX_RX_TIME_OUT;
+
+    nfcStatus = phLibNfc_eSE_Transceive(hSE_handle,
+                                        pSeTransceiveInfo,
+                                        NfcCxRFInterfaceEmbeddedSEAPDUCB,
+                                        &LibNfcContext);
+
+    Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    return Status;
+}
+
+static VOID
+NfcCxRFInterfaceEmbeddedSEGetATRStringCB(
+    _In_ void* pContext,
+    _In_ pphNfc_sSeAtrInfo_t pResAtrInfo,
+    _In_ NFCSTATUS NfcStatus
+    )
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    PNFCCX_RF_INTERFACE rfInterface = ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->RFInterface;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    UNREFERENCED_PARAMETER(pResAtrInfo);
+
+    status = NfcCxNtStatusFromNfcStatus(NfcStatus);
+
+    if (NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_INFO, "Get ATR was successful. Length = %u", rfInterface->pSeATRInfo.dwLength);
+    }
+    else {
+        TRACE_LINE(LEVEL_ERROR, "Failed to get ATR %!STATUS!", status);
+    }
+
+    NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, NULL, NULL);
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+}
+
+NTSTATUS
+NfcCxRFInterfaceESEGetATRString(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS Status,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+    )
+{
+    NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
+    static NFCCX_RF_LIBNFC_REQUEST_CONTEXT LibNfcContext;
+    pphNfc_sSeAtrInfo_t pSeATRInfo = &RFInterface->pSeATRInfo;
+    phLibNfc_Handle hSE_handle = NULL;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    LibNfcContext.RFInterface = RFInterface;
+    LibNfcContext.Sequence = RFInterface->pSeqHandler;
+
+    for (uint8_t i = 0; i < MAX_NUMBER_OF_SE; i++) {
+        if (RFInterface->pLibNfcContext->SEList[i].eSE_Type == phLibNfc_SE_Type_eSE) {
+            hSE_handle = RFInterface->pLibNfcContext->SEList[i].hSecureElement;
+            TRACE_LINE(LEVEL_VERBOSE, "Libnfc based eSE handle is %p", hSE_handle);
+        }
+    }
+
+    pSeATRInfo->pBuff = RFInterface->pSeATRInfo.pBuff;
+    pSeATRInfo->dwLength = RFInterface->pSeATRInfo.dwLength;
+    TRACE_LINE(LEVEL_VERBOSE, "Receive Buffer length is %u", pSeATRInfo->dwLength);
+
+    nfcStatus = phLibNfc_eSE_GetAtr(hSE_handle, pSeATRInfo, NfcCxRFInterfaceEmbeddedSEGetATRStringCB, &LibNfcContext);
+
+    Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    return Status;
+}
+
 NTSTATUS
 NfcCxRFInterfaceSENtfRegister(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
@@ -4205,6 +4432,8 @@ NfcCxRFInterfaceLibNfcMessageHandler(
     case LIBNFC_TARGET_TRANSCEIVE:
     case LIBNFC_TARGET_SEND:
     case LIBNFC_TARGET_PRESENCE_CHECK:
+    case LIBNFC_EMEBEDDED_SE_TRANSCEIVE:
+    case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
     case LIBNFC_SE_ENUMERATE:
     case LIBNFC_SE_SET_MODE:
     case LIBNFC_SE_SET_ROUTING_TABLE:
@@ -5331,6 +5560,56 @@ NfcCxRFInterfaceStateRfDiscovered2RfDataXchg(
 }
 
 static NTSTATUS
+NfcCxRFInterfaceEmbeddedSEAPDUModeSeqComplete(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS Status,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+    )
+{
+    PNFCCX_STATE_INTERFACE stateInterface = NfcCxRFInterfaceGetStateInterface(RFInterface);
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    RFInterface->pLibNfcContext->Status = Status;
+
+    if (NT_SUCCESS(Status)) {
+        NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventReqCompleted, NULL, NULL, NULL);
+    }
+    else {
+        NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventFailed, NULL, NULL, NULL);
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    return Status;
+}
+
+static NTSTATUS
+NfcCxRFInterfaceEmbeddedSEGetATRStringSeqComplete(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS Status,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+    )
+{
+    PNFCCX_STATE_INTERFACE stateInterface = NfcCxRFInterfaceGetStateInterface(RFInterface);
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    RFInterface->pLibNfcContext->Status = Status;
+
+    if (NT_SUCCESS(Status)) {
+        NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventReqCompleted, NULL, NULL, NULL);
+    }
+    else {
+        NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventFailed, NULL, NULL, NULL);
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    return Status;
+}
+
+static NTSTATUS
 NfcCxRFInterfaceSESetModeSeqComplete(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ NTSTATUS Status,
@@ -5471,6 +5750,34 @@ NfcCxRFInterfaceStateRfIdle(
             }
             break;
 
+        case LIBNFC_EMEBEDDED_SE_TRANSCEIVE:
+            {
+                NFCCX_CX_BEGIN_SEQUENCE_MAP(EmbeddedSEAPDUModeSequence)
+                    RF_INTERFACE_EMBEDDEDSE_APDU_MODE_SEQUENCE
+                NFCCX_CX_END_SEQUENCE_MAP()
+
+                EmbeddedSEAPDUModeSequence[ARRAYSIZE(EmbeddedSEAPDUModeSequence) - 1].SequenceProcess =
+                    NfcCxRFInterfaceEmbeddedSEAPDUModeSeqComplete;
+
+                NFCCX_INIT_SEQUENCE(rfInterface, EmbeddedSEAPDUModeSequence);
+                status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+            }
+            break;
+
+        case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
+            {
+                NFCCX_CX_BEGIN_SEQUENCE_MAP(EmbeddedSEGetATRStringSequence)
+                    RF_INTERFACE_EMBEDDEDSE_APDU_GET_ATR_STRING_SEQUENCE
+                NFCCX_CX_END_SEQUENCE_MAP()
+
+                EmbeddedSEGetATRStringSequence[ARRAYSIZE(EmbeddedSEGetATRStringSequence) - 1].SequenceProcess =
+                    NfcCxRFInterfaceEmbeddedSEGetATRStringSeqComplete;
+
+                NFCCX_INIT_SEQUENCE(rfInterface, EmbeddedSEGetATRStringSequence);
+                status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+            }
+            break;
+
         default:
             status = STATUS_INVALID_DEVICE_REQUEST;
             break;
@@ -5571,6 +5878,34 @@ NfcCxRFInterfaceStateRfDiscovery(
                 status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
             }
             break;
+
+        case LIBNFC_EMEBEDDED_SE_TRANSCEIVE:
+        {
+            NFCCX_CX_BEGIN_SEQUENCE_MAP(EmbeddedSEAPDUModeSequence)
+                RF_INTERFACE_EMBEDDEDSE_APDU_MODE_SEQUENCE
+                NFCCX_CX_END_SEQUENCE_MAP()
+
+                EmbeddedSEAPDUModeSequence[ARRAYSIZE(EmbeddedSEAPDUModeSequence) - 1].SequenceProcess =
+                NfcCxRFInterfaceEmbeddedSEAPDUModeSeqComplete;
+
+            NFCCX_INIT_SEQUENCE(rfInterface, EmbeddedSEAPDUModeSequence);
+            status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+        }
+        break;
+
+        case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
+        {
+            NFCCX_CX_BEGIN_SEQUENCE_MAP(EmbeddedSEGetATRStringSequence)
+                RF_INTERFACE_EMBEDDEDSE_APDU_GET_ATR_STRING_SEQUENCE
+                NFCCX_CX_END_SEQUENCE_MAP()
+
+                EmbeddedSEGetATRStringSequence[ARRAYSIZE(EmbeddedSEGetATRStringSequence) - 1].SequenceProcess =
+                NfcCxRFInterfaceEmbeddedSEGetATRStringSeqComplete;
+
+            NFCCX_INIT_SEQUENCE(rfInterface, EmbeddedSEGetATRStringSequence);
+            status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+        }
+        break;
 
         default:
             status = STATUS_INVALID_DEVICE_REQUEST;
@@ -5990,6 +6325,34 @@ NfcCxRFInterfaceStateRfDataXchg(
         }
         break;
 
+    case LIBNFC_EMEBEDDED_SE_TRANSCEIVE:
+    {
+        NFCCX_CX_BEGIN_SEQUENCE_MAP(EmbeddedSEAPDUModeSequence)
+            RF_INTERFACE_EMBEDDEDSE_APDU_MODE_SEQUENCE
+            NFCCX_CX_END_SEQUENCE_MAP()
+
+            EmbeddedSEAPDUModeSequence[ARRAYSIZE(EmbeddedSEAPDUModeSequence) - 1].SequenceProcess =
+            NfcCxRFInterfaceEmbeddedSEAPDUModeSeqComplete;
+
+        NFCCX_INIT_SEQUENCE(rfInterface, EmbeddedSEAPDUModeSequence);
+        status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+    }
+    break;
+
+    case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
+    {
+        NFCCX_CX_BEGIN_SEQUENCE_MAP(EmbeddedSEGetATRStringSequence)
+            RF_INTERFACE_EMBEDDEDSE_APDU_GET_ATR_STRING_SEQUENCE
+            NFCCX_CX_END_SEQUENCE_MAP()
+
+            EmbeddedSEGetATRStringSequence[ARRAYSIZE(EmbeddedSEGetATRStringSequence) - 1].SequenceProcess =
+            NfcCxRFInterfaceEmbeddedSEGetATRStringSeqComplete;
+
+        NFCCX_INIT_SEQUENCE(rfInterface, EmbeddedSEGetATRStringSequence);
+        status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+    }
+    break;
+
     default:
         status = STATUS_INVALID_DEVICE_REQUEST;
         break;
@@ -6018,4 +6381,208 @@ NfcCxRFInterfaceConnChkDeviceType(
 {
     PNFCCX_RF_INTERFACE rfInterface = StateInterface->FdoContext->RFInterface;
     return rfInterface->pLibNfcContext->bIsTagPresent;
+}
+
+NTSTATUS
+NfcCxRFInterfaceEmbeddedSETransmit(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_reads_bytes_(InputBufferLength) PBYTE InputBuffer,
+    _In_ size_t InputBufferLength,
+    _Out_writes_bytes_to_(OutputBufferLength, *pOutputBufferUsed) PBYTE OutputBuffer,
+    _In_ size_t OutputBufferLength,
+    _Out_ size_t* pOutputBufferUsed,
+    _In_ USHORT Timeout
+    )
+/*++
+
+Routine Description:
+
+    This routine is called from the EmbeddedSE module to perform a transmit
+
+Arguments:
+
+    RFInterface - The RF Interface
+    RequestId - The request Id of the transmit operation
+    InputBuffer - Pointer to the buffer to be transmitted
+    InputBufferLength - Length of the input buffer
+    OutputBuffer - Pointer to the buffer to be filled by the transmit response
+    OutputBufferLength - Length of the output buffer
+    pOutputBufferUsed - Pointer to the length of the output buffer used
+    Timeout - Transceive timeout in milliseconds
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+    UNREFERENCED_PARAMETER(Timeout);
+
+    //
+    // Validating the buffer sizes to safeguard the DWORD cast.
+    // 
+    if (DWORD_MAX < InputBufferLength ||
+        DWORD_MAX < OutputBufferLength) {
+        NT_ASSERTMSG("Buffer size is validated at dispatch time, this should never be larger then DWORD_MAX", FALSE);
+        status = STATUS_INVALID_BUFFER_SIZE;
+        goto Done;
+    }
+
+    *pOutputBufferUsed = 0;
+
+    if ((InputBufferLength == 0) || (InputBuffer == NULL) || (Timeout > MAX_TRANSCEIVE_TIMEOUT)) {
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
+
+    RtlZeroMemory(&RFInterface->sSendBuffer, sizeof(RFInterface->sSendBuffer));
+    RtlZeroMemory(&RFInterface->sReceiveBuffer, sizeof(RFInterface->sReceiveBuffer));
+
+#if 0
+    RFInterface->sSendBuffer.buffer = InputBuffer;
+    RFInterface->sSendBuffer.length = (DWORD)InputBufferLength;
+    RFInterface->sReceiveBuffer.buffer = OutputBuffer;
+    RFInterface->sReceiveBuffer.length = (DWORD)OutputBufferLength;
+#endif
+
+    RFInterface->pSeTransceiveInfo.sSendData.buffer = InputBuffer;
+    RFInterface->pSeTransceiveInfo.sSendData.length = (DWORD)InputBufferLength;
+    RFInterface->pSeTransceiveInfo.sRecvData.buffer = OutputBuffer;
+    RFInterface->pSeTransceiveInfo.sRecvData.length = (DWORD)OutputBufferLength;
+
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_EMEBEDDED_SE_TRANSCEIVE, NULL, NULL);
+    *pOutputBufferUsed = (size_t)RFInterface->pSeTransceiveInfo.sRecvData.length;
+    _Analysis_assume_(OutputBufferLength >= *pOutputBufferUsed);
+
+
+    WdfWaitLockRelease(RFInterface->DeviceLock);
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxRFInterfaceEmbeddedSEGetATRString(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _Out_writes_bytes_to_(OutputBufferLength, *pOutputBufferUsed) PBYTE OutputBuffer,
+    _In_ size_t OutputBufferLength
+    )
+/*++
+
+Routine Description:
+
+    This routine is called from the EmbeddedSE module to perform a transmit
+
+Arguments:
+
+    RFInterface - The RF Interface
+    RequestId - The request Id of the transmit operation
+    InputBuffer - Pointer to the buffer to be transmitted
+    InputBufferLength - Length of the input buffer
+    OutputBuffer - Pointer to the buffer to be filled by the transmit response
+    OutputBufferLength - Length of the output buffer
+    pOutputBufferUsed - Pointer to the length of the output buffer used
+    Timeout - Transceive timeout in milliseconds
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    //
+    // Validating the buffer sizes to safeguard the DWORD cast.
+    // 
+    if (DWORD_MAX < OutputBufferLength) {
+        NT_ASSERTMSG("Buffer size is validated at dispatch time, this should never be larger then DWORD_MAX", FALSE);
+        status = STATUS_INVALID_BUFFER_SIZE;
+        goto Done;
+    }
+
+    if (OutputBuffer == NULL) {
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
+
+    RtlZeroMemory(&RFInterface->sSendBuffer, sizeof(RFInterface->sSendBuffer));
+    RtlZeroMemory(&RFInterface->sReceiveBuffer, sizeof(RFInterface->sReceiveBuffer));
+#if 0
+    RFInterface->sReceiveBuffer.buffer = OutputBuffer;
+    RFInterface->sReceiveBuffer.length = (DWORD)OutputBufferLength;
+#endif
+
+    RFInterface->pSeATRInfo.pBuff = OutputBuffer;
+    RFInterface->pSeATRInfo.dwLength = (DWORD)OutputBufferLength;
+
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_EMBEDDED_SE_GET_ATR_STRING, NULL, NULL);
+
+    WdfWaitLockRelease(RFInterface->DeviceLock);
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxEmbeddedSEInterfaceCreate(
+    _In_ PNFCCX_RF_INTERFACE RFInterface
+    )
+/*++
+
+Routine Description:
+
+    Creates the pcsc interface for embedded SE
+
+Arguments:
+
+    RFInterface - The pointer to the RF interface handle
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    phLibNfc_SE_List_t SEList[MAX_NUMBER_OF_SE] = { 0 };
+    uint8_t SECount = 0;
+    PNFCCX_SE_INTERFACE seInterface = NULL;
+    PNFCCX_SC_INTERFACE scInterface = NULL;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    scInterface = NfcCxFdoGetContext(RFInterface->FdoContext->Device)->SCInterface;
+    seInterface = NfcCxFdoGetContext(RFInterface->FdoContext->Device)->SEInterface;
+
+    status = NfcCxRFInterfaceGetSecureElementList(RFInterface, SEList, &SECount, TRUE);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_WARNING, "Failed NfcCxRFInterfaceGetSecureElementList, %!STATUS!", status);
+        goto Done;
+    }
+
+    for (uint8_t i = 0; i < SECount; i++) {
+        SECURE_ELEMENT_TYPE eType = NfcCxSEInterfaceGetSecureElementType(SEList[i].eSE_Type);
+        if (eType == Integrated) {
+            seInterface->EmbeddedSeId = NfcCxSEInterfaceGetSecureElementId(RFInterface, SEList[i].hSecureElement);
+            break;
+        }
+    }
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
+
+    return status;
 }

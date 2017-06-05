@@ -655,6 +655,14 @@ void phLibNfc_SENtfHandler(
                                         &tSeEvtInfo,status);
                     }
                 }
+                else if (PH_NCINFC_TRIG_RFPROTOCOL_ROUTING == \
+                    pSEInfo->pActionInfo->eTriggerType)
+                {
+                    tSeEvtInfo.UiccEvtInfo.param.buffer = \
+                        (uint8_t *)&pSEInfo->pActionInfo->phNciNfc_SupportData_t.eRfProtocol;
+                    tSeEvtInfo.UiccEvtInfo.param.length = \
+                        pSEInfo->pActionInfo->bSupDataLen;
+                }
                 else
                 {
                     PH_LOG_LIBNFC_INFO_STR("Unsupported event: %d", pSEInfo->pActionInfo->eTriggerType);

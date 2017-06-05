@@ -334,6 +334,8 @@ Return Value:
                                          &GUID_DEVINTERFACE_SMARTCARD_READER,
                                          &nfcScReaderReference,
                                          TRUE);
+
+        NfcCxEmbeddedSEInterfaceStart(fdoContext->SCInterface);
     }
 
 Done:
