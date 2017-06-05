@@ -122,7 +122,8 @@ phNciNfc_ValidateSuppDeActvType(pphNciNfc_RemoteDevInformation_t pRemdevInfo,
     }
     /* For ISO-DEP Interface in Poll Mode, Only Sleep Mode is Supported */
     else if( ( (phNciNfc_e_RfInterfacesISODEP_RF == pRemdevInfo->eRfIf) ||\
-               (phNciNfc_e_RfInterfacesTagCmd_RF == pRemdevInfo->eRfIf) ) && \
+               (phNciNfc_e_RfInterfacesNXPTagCmd_RF == pRemdevInfo->eRfIf) ||\
+               (phNciNfc_e_RfInterfacesSTMTagCmd_RF == pRemdevInfo->eRfIf)) && \
                (pRemdevInfo->eRFTechMode <= phNciNfc_NFCF_Poll) && \
                (phNciNfc_e_SleepMode == eDeActvType) )
     {

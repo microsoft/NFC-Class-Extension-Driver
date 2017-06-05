@@ -65,7 +65,8 @@ phNciNfc_ValidateRfProtocol(phNciNfc_RfProtocols_t eRfProtocol)
         case phNciNfc_e_RfProtocolsIsoDepProtocol:
         case phNciNfc_e_RfProtocolsNfcDepProtocol:
         case phNciNfc_e_RfProtocols15693Protocol:
-        case phNciNfc_e_RfProtocolsKovioProtocol:
+        case phNciNfc_e_RfProtocolsNXPKovioProtocol:
+        case phNciNfc_e_RfProtocolsSTMKovioProtocol:
             bStatus = 0;
             break;
         default:
@@ -147,7 +148,8 @@ phNciNfc_GetRfDevType(uint8_t bRespVal, uint8_t bRespLen,
         /* Technology and mode of local device (NFCC) */
         if(phNciNfc_NFCA_Kovio_Poll == pRemDevInf->eRFTechMode)
         {
-            if (phNciNfc_e_RfProtocolsKovioProtocol == pRemDevInf->eRFProtocol)
+            if (phNciNfc_e_RfProtocolsNXPKovioProtocol == pRemDevInf->eRFProtocol ||
+                phNciNfc_e_RfProtocolsSTMKovioProtocol == pRemDevInf->eRFProtocol)
             {
                 *pDevType = phNciNfc_eKovio_PICC;
             }
@@ -415,8 +417,10 @@ phNciNfc_ValidateIfActParams(uint8_t *pNtfBuff, uint16_t wSize)
                     PH_LOG_NCI_CRIT_STR("ISO DEP interface mapped to wrong protocol!");
                     wStatus = NFCSTATUS_INVALID_PARAMETER;
                 }
-                else if( (phNciNfc_e_RfInterfacesTagCmd_RF == eRfIf) &&\
-                         (phNciNfc_e_RfProtocolsMifCProtocol != eRFProtocol) )
+                else if( ((phNciNfc_e_RfInterfacesNXPTagCmd_RF == eRfIf) &&\
+                          (phNciNfc_e_RfProtocolsNXPMifCProtocol != eRFProtocol)) ||\
+                         ((phNciNfc_e_RfInterfacesSTMTagCmd_RF == eRfIf) && \
+                          (phNciNfc_e_RfProtocolsSTMMifCProtocol != eRFProtocol)))
                 {
                     PH_LOG_NCI_CRIT_STR("TagCmd interface mapped to wrong protocol!");
                     wStatus = NFCSTATUS_INVALID_PARAMETER;
@@ -427,7 +431,8 @@ phNciNfc_ValidateIfActParams(uint8_t *pNtfBuff, uint16_t wSize)
                     if((phNciNfc_e_RfProtocolsT1tProtocol == eRFProtocol) ||
                         (phNciNfc_e_RfProtocolsT2tProtocol == eRFProtocol) ||
                         (phNciNfc_e_RfProtocolsT3tProtocol == eRFProtocol) ||
-                        (phNciNfc_e_RfProtocolsKovioProtocol == eRFProtocol) ||
+                        (phNciNfc_e_RfProtocolsNXPKovioProtocol == eRFProtocol) ||
+                        (phNciNfc_e_RfProtocolsSTMKovioProtocol == eRFProtocol) ||
                         (phNciNfc_e_RfProtocolsIsoDepProtocol == eRFProtocol))
                     {
                         PH_LOG_NCI_INFO_STR("Valid Frame-RF interface to protocol mapping!");

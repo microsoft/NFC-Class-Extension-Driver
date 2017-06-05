@@ -1498,7 +1498,8 @@ NFCSTATUS phLibNfc_ChkRfListnerforNFCAPoll(void *pContext,\
         /*For Mifare Clssic Tag,protocol should be Mifare Classic Protocol
           Currently it is giving T2T protocol which is wrong*/
         if((pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsT2tProtocol) ||
-           (pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsMifCProtocol) )
+           (pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsNXPMifCProtocol) ||
+           (pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsSTMMifCProtocol))
         {
             /*Technology Mode - NFC A poll and Protocol - T2t or Mifare classic
               Remote Device type - phNfc_eMifare_PICC*/
@@ -1557,7 +1558,8 @@ NFCSTATUS phLibNfc_ChkRfListnerforNFCAPoll(void *pContext,\
             }
 
         }
-        else if (pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsKovioProtocol)
+        else if (pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsNXPKovioProtocol ||
+                 pNciDevInfo->pRemDevList[bIndex]->eRFProtocol == phNciNfc_e_RfProtocolsSTMKovioProtocol)
         {
             LibNfc_RemDevType = phNfc_eKovio_PICC;
             wStatus = phLibNfc_RfListnerRegisterd(pContext, \

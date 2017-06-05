@@ -40,6 +40,7 @@
 
 /*Register of IC manufacturers*/
 #define PH_LIBNFC_MANUFACTURER_UNKNOWN              (0x00)
+#define PH_LIBNFC_MANUFACTURER_STM                  (0x02)
 #define PH_LIBNFC_MANUFACTURER_NXP                  (0x04)
 #define PH_LIBNFC_MANUFACTURER_QC                   (0x57)
 #define PH_LIBNFC_MANUFACTURER_MARVELL              (0x88)
@@ -288,7 +289,7 @@ typedef struct phLibNfc_MifareCInfo
     uint8_t                 addr;       /**< Internal Address Field required for only Mifare
                                              Family Proprietary Cards*/
     uint8_t                 key;        /**< The Authentication key>*/
-    uint8_t                 MFCKey[8];  /**< The user key is stored here>*/
+    uint8_t                 MFCKey[12];  /**< The user key is stored here>*/
 }phLibNfc_MifareCInfo_t;
 
 typedef struct phLibNfc_SE_Info

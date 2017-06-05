@@ -1218,8 +1218,11 @@ NFCSTATUS phLibNfc_RemoteDev_Connect(phLibNfc_Handle                hRemoteDevic
                     case phNciNfc_e_RfProtocolsNfcDepProtocol:
                         eRfInterface = phNciNfc_e_RfInterfacesNFCDEP_RF;
                         break;
-                    case phNciNfc_e_RfProtocolsMifCProtocol:
-                        eRfInterface = phNciNfc_e_RfInterfacesTagCmd_RF;
+                    case phNciNfc_e_RfProtocolsNXPMifCProtocol:
+                        eRfInterface = phNciNfc_e_RfInterfacesNXPTagCmd_RF;
+                        break;
+                    case phNciNfc_e_RfProtocolsSTMMifCProtocol:
+                        eRfInterface = phNciNfc_e_RfInterfacesSTMTagCmd_RF;
                         break;
                     default:
                         eRfInterface = phNciNfc_e_RfInterfacesFrame_RF;
@@ -2409,7 +2412,8 @@ static NFCSTATUS phLibNfc_ParseDiscActivatedRemDevInfo(phLibNfc_sRemoteDevInform
             case phNciNfc_NFCA_Active_Poll:
             {
                 if((pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsT2tProtocol) ||
-                   (pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsMifCProtocol))
+                   (pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsNXPMifCProtocol) ||
+                   (pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsSTMMifCProtocol))
                 {
                     pLibNfcDeviceInfo->RemDevType = phNfc_eMifare_PICC;
 
@@ -2463,7 +2467,8 @@ static NFCSTATUS phLibNfc_ParseDiscActivatedRemDevInfo(phLibNfc_sRemoteDevInform
                         wStatus=NFCSTATUS_FAILED;
                     }
                 }
-                else if(pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsKovioProtocol)
+                else if(pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsNXPKovioProtocol ||
+                        pNciDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsSTMKovioProtocol)
                 {
                     pLibNfcDeviceInfo->RemDevType = phNfc_eKovio_PICC;
                     wStatus = phLibNfc_MapRemoteDevKovio(&pLibNfcDeviceInfo->RemoteDevInfo.Kovio_Info, pNciDevInfo);
@@ -3257,7 +3262,10 @@ void phLibNfc_TranscvCb(void*   pContext,
             {
                 /*Reset flag*/
                 /* Reactivate sequence for Mifare classic tag if command is failed */
-                pLibContext->tSelInf.eRfIf = phNciNfc_e_RfInterfacesTagCmd_RF;
+                if (pLibContext->tNfccFeatures.ManufacturerId == PH_LIBNFC_MANUFACTURER_NXP)
+                    pLibContext->tSelInf.eRfIf = phNciNfc_e_RfInterfacesNXPTagCmd_RF;
+                else if (pLibContext->tNfccFeatures.ManufacturerId == PH_LIBNFC_MANUFACTURER_STM)
+                    pLibContext->tSelInf.eRfIf = phNciNfc_e_RfInterfacesSTMTagCmd_RF;
 
                 /*If this flag is set,then change reactivation sequence*/
                 if(pLibContext->bReactivation_Flag == PH_LIBNFC_REACT_ONLYSELECT)
@@ -3640,35 +3648,61 @@ static NFCSTATUS phLibNfc_MifareMap(phLibNfc_sTransceiveInfo_t*    pTransceiveIn
 
                     if(NFCSTATUS_SUCCESS == status)
                     {
-                        bKey = bKey | PHLIBNFC_MFC_EMBEDDED_KEY;
+                        /* The command coming from the upper layer - NfcCxRF includes the UID and the key.
+                           Other NFC Controller are using a com*/
+                        if (PHLIBNFC_GETCONTEXT()->tNfccFeatures.ManufacturerId == PH_LIBNFC_MANUFACTURER_STM)
+                        {
+                            bSectorNumber = pTransceiveInfo->addr;
+                            phLibNfc_CalSectorAddress(&bSectorNumber);
+                            /*For creating extension command header pTransceiveInfo's MfCmd get used*/
+                            PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx++] = pTransceiveInfo->cmd.MfCmd;
+                            PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx++] = pTransceiveInfo->addr;
 
-                        bSectorNumber = pTransceiveInfo->addr;
-                        phLibNfc_CalSectorAddress(&bSectorNumber);
+                            /* Copy the Dynamic key passed */
+                            phOsalNfc_MemCopy(&PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx],
+                                &pTransceiveInfo->sSendData.buffer[0],
+                                PHLIBNFC_MFC_AUTHKEYLEN + PHLIBNFC_MFCUIDLEN_INAUTHCMD);
 
-                        if (phNfc_eMifareAuthentB == pTransceiveInfo->cmd.MfCmd) {
-                            bKey = bKey | PH_LIBNFC_ENABLE_KEY_B;
+                            (pMappedTranscvIf->tSendData.pBuff) = PHLIBNFC_GETCONTEXT()->aSendBuff;
+                            (pMappedTranscvIf->tSendData.wLen) = (uint16_t)(bBuffIdx + pTransceiveInfo->sSendData.length);
+
+                            pMappedTranscvIf->uCmd.T2TCmd = phNciNfc_eT2TRaw;
+                            pMappedTranscvIf->bAddr = pTransceiveInfo->addr;
+                            pMappedTranscvIf->tRecvData.pBuff = pTransceiveInfo->sRecvData.buffer;
+                            pMappedTranscvIf->tRecvData.wLen = (uint16_t)pTransceiveInfo->sRecvData.length;
                         }
+                        else
+                        {
+                            bKey = bKey | PHLIBNFC_MFC_EMBEDDED_KEY;
 
-                        /*For creating extension command header pTransceiveInfo's MfCmd get used*/
-                        PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx++] = pTransceiveInfo->cmd.MfCmd;
-                        PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx++] = bSectorNumber;
-                        PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx++] = bKey;
+                            bSectorNumber = pTransceiveInfo->addr;
+                            phLibNfc_CalSectorAddress(&bSectorNumber);
 
-                        /* Copy the Dynamic key passed */
-                        phOsalNfc_MemCopy(&PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx],
-                                          &pTransceiveInfo->sSendData.buffer[PHLIBNFC_MFCUIDLEN_INAUTHCMD],
-                                          PHLIBNFC_MFC_AUTHKEYLEN);
+                            if (phNfc_eMifareAuthentB == pTransceiveInfo->cmd.MfCmd) {
+                                bKey = bKey | PH_LIBNFC_ENABLE_KEY_B;
+                            }
 
-                        bBuffIdx = bBuffIdx + PHLIBNFC_MFC_AUTHKEYLEN;
+                            /*For creating extension command header pTransceiveInfo's MfCmd get used*/
+                            PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx++] = pTransceiveInfo->cmd.MfCmd;
+                            PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx++] = bSectorNumber;
+                            PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx++] = bKey;
 
-                        (pMappedTranscvIf->tSendData.pBuff) = PHLIBNFC_GETCONTEXT()->aSendBuff;
-                        (pMappedTranscvIf->tSendData.wLen) = (uint16_t)(bBuffIdx /*+ (pTransceiveInfo->sSendData.length)*/);
+                            /* Copy the Dynamic key passed */
+                            phOsalNfc_MemCopy(&PHLIBNFC_GETCONTEXT()->aSendBuff[bBuffIdx],
+                                &pTransceiveInfo->sSendData.buffer[PHLIBNFC_MFCUIDLEN_INAUTHCMD],
+                                PHLIBNFC_MFC_AUTHKEYLEN);
 
-                        pMappedTranscvIf->uCmd.T2TCmd = phNciNfc_eT2TAuth;
-                        pMappedTranscvIf->bAddr = bSectorNumber;
-                        pMappedTranscvIf->bNumBlock = pTransceiveInfo->NumBlock;
-                        pMappedTranscvIf->tRecvData.pBuff = pTransceiveInfo->sRecvData.buffer;
-                        pMappedTranscvIf->tRecvData.wLen = (uint16_t)pTransceiveInfo->sRecvData.length;
+                            bBuffIdx = bBuffIdx + PHLIBNFC_MFC_AUTHKEYLEN;
+
+                            (pMappedTranscvIf->tSendData.pBuff) = PHLIBNFC_GETCONTEXT()->aSendBuff;
+                            (pMappedTranscvIf->tSendData.wLen) = (uint16_t)(bBuffIdx /*+ (pTransceiveInfo->sSendData.length)*/);
+
+                            pMappedTranscvIf->uCmd.T2TCmd = phNciNfc_eT2TAuth;
+                            pMappedTranscvIf->bAddr = bSectorNumber;
+                            pMappedTranscvIf->bNumBlock = pTransceiveInfo->NumBlock;
+                            pMappedTranscvIf->tRecvData.pBuff = pTransceiveInfo->sRecvData.buffer;
+                            pMappedTranscvIf->tRecvData.wLen = (uint16_t)pTransceiveInfo->sRecvData.length;
+                        }
                     }
                 }
             }
@@ -4442,7 +4476,8 @@ NFCSTATUS phLibNfc_ChkMfCTag(pphNciNfc_RemoteDevInformation_t RemoteDevInfo)
 
     if((NULL != RemoteDevInfo) &&\
        (RemoteDevInfo->eRFTechMode == phNciNfc_NFCA_Poll) &&\
-       (RemoteDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsMifCProtocol))
+       ((RemoteDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsNXPMifCProtocol) ||\
+        (RemoteDevInfo->eRFProtocol == phNciNfc_e_RfProtocolsSTMMifCProtocol)))
     {
         bSak = RemoteDevInfo->tRemoteDevInfo.Iso14443A_Info.Sak;
 
