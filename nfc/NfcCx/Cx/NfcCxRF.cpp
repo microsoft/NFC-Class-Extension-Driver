@@ -21,7 +21,7 @@ Environment:
 #include "NfcCxRF.tmh"
 
 // {D06B4CC1-1DA2-45c2-BD7B-877C4573F83B}
-DEFINE_GUID(SESSION_ID, 
+DEFINE_GUID(SESSION_ID,
 0xd06b4cc1, 0x1da2, 0x45c2, 0xbd, 0x7b, 0x87, 0x7c, 0x45, 0x73, 0xf8, 0x3b);
 
 //
@@ -150,7 +150,7 @@ NfcCxRFInterfaceClearRemoteDevList(
         TRACE_LINE(LEVEL_ERROR, "RemoteDevList is NULL, nothing to clear");
         return;
     }
-    
+
     for (uint8_t bIndex = 0; bIndex < RFInterface->pLibNfcContext->uNoRemoteDevices; bIndex++)
     {
         if (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo == NULL)
@@ -187,7 +187,7 @@ NfcCxRFInterfaceSetRemoteDevList(
     RFInterface->pLibNfcContext->uNoRemoteDevices = uNofRemoteDev;
 
     RFInterface->pLibNfcContext->pRemDevList = (phLibNfc_RemoteDevList_t*)malloc(sizeof(phLibNfc_RemoteDevList_t) * uNofRemoteDev);
-    if (RFInterface->pLibNfcContext->pRemDevList != NULL) 
+    if (RFInterface->pLibNfcContext->pRemDevList != NULL)
     {
         for (uint8_t bIndex = 0; bIndex < uNofRemoteDev; bIndex++)
         {
@@ -195,14 +195,14 @@ NfcCxRFInterfaceSetRemoteDevList(
             RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo =
                 (phLibNfc_sRemoteDevInformation_t*)malloc(sizeof(phLibNfc_sRemoteDevInformation_t));
 
-            if (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo != NULL) 
+            if (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo != NULL)
             {
                 RtlCopyMemory(RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo,
                               psRemoteDevList[bIndex].psRemoteDevInfo,
                               sizeof(phLibNfc_sRemoteDevInformation_t));
 
                 if ((RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_A_PCD) ||
-                    (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_B_PCD)) 
+                    (RFInterface->pLibNfcContext->pRemDevList[bIndex].psRemoteDevInfo->RemDevType == phLibNfc_eISO14443_B_PCD))
                 {
                     RFInterface->pLibNfcContext->bIsHCEConnected = TRUE;
                 }
@@ -643,6 +643,7 @@ Return Value:
     }
 
     if (NULL != RFInterface->tpTagPrescenceWork) {
+        WaitForThreadpoolWorkCallbacks(RFInterface->tpTagPrescenceWork, TRUE);
         CloseThreadpoolWork(RFInterface->tpTagPrescenceWork);
         RFInterface->tpTagPrescenceWork = NULL;
     }
@@ -951,7 +952,7 @@ NfcCxRFInterfaceUpdateDiscoveryState(
 
 Routine Description:
 
-    This routine is called from the power module to 
+    This routine is called from the power module to
     update the RF discovery state of the device
 
 Arguments:
@@ -986,7 +987,7 @@ NfcCxRFInterfaceWriteTag(
 
 Routine Description:
 
-    This routine is called from the Nfp module to 
+    This routine is called from the Nfp module to
     perform a write to a tag once the tag connection
     has been established
 
@@ -1035,7 +1036,7 @@ NfcCxRFInterfaceWriteP2P(
 
 Routine Description:
 
-    This routine is called from the Nfp module to 
+    This routine is called from the Nfp module to
     perform a write operation to a P2P device once
     a connection has been established.
 
@@ -1116,14 +1117,14 @@ Return Value:
 
     //
     // Validating the buffer sizes to safeguard the DWORD cast.
-    // 
+    //
     if (DWORD_MAX < InputBufferLength ||
         DWORD_MAX < OutputBufferLength) {
         NT_ASSERTMSG("Buffer size is validated at dispatch time, this should never be larger then DWORD_MAX", FALSE);
         status = STATUS_INVALID_BUFFER_SIZE;
         goto Done;
     }
-    
+
     *pOutputBufferUsed = 0;
 
     if ((InputBufferLength == 0) || (InputBuffer == NULL) || (Timeout > MAX_TRANSCEIVE_TIMEOUT)) {
@@ -1212,7 +1213,7 @@ NfcCxRFInterfaceConvertToReadOnlyTag(
 
 Routine Description:
 
-    This routine is called from the Nfp module to 
+    This routine is called from the Nfp module to
     convert tag to readonly.
 
 Arguments:
@@ -1249,7 +1250,7 @@ NfcCxRFInterfaceTargetReactivate(
 
 Routine Description:
 
-    This routine is called from the SC module to 
+    This routine is called from the SC module to
     reactivate a tag.
 
 Arguments:
@@ -1412,7 +1413,7 @@ NfcCxRFInterfaceGetSecureElementList(
 
 Routine Description:
 
-    This routine is called from the SE module to 
+    This routine is called from the SE module to
     enumerate the list of secure elements attached to the controller.
 
 Arguments:
@@ -1501,7 +1502,7 @@ NfcCxRFInterfaceSetCardEmulationMode(
 
 Routine Description:
 
-    This routine is called from the SE module to 
+    This routine is called from the SE module to
     set card emulation mode of the SE.
 
 Arguments:
@@ -1539,7 +1540,7 @@ Return Value:
 
         //
         // SE Set Mode requires discovery process to be stopped
-        // We need to stop discovery in order to enable/disable ISO-DEP in LA_SEL_INFO 
+        // We need to stop discovery in order to enable/disable ISO-DEP in LA_SEL_INFO
         //
         if (eActivationMode != pSecureElement->eSE_ActivationMode) {
             NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_STOP, NULL, NULL);
@@ -1732,7 +1733,7 @@ Return Value:
 
 --*/
 {
-    return (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.AidBasedRouting == 1) && 
+    return (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.AidBasedRouting == 1) &&
            ((RFInterface->FdoContext->NfcCxClientGlobal->Config.DriverFlags & NFC_CX_DRIVER_DISABLE_HOST_CARD_EMULATION) == 0);
 }
 
@@ -1881,7 +1882,7 @@ NfcCxRFInterfaceCheckIfWriteTagPublicationsExist(
     return NfcCxNfpInterfaceCheckIfWriteTagPublicationsExist(NfcCxRFInterfaceGetNfpInterface(RFInterface));
 }
 
-VOID 
+VOID
 NfcCxRFInterfaceP2pConnectionEstablished(
     _In_ PNFCCX_RF_INTERFACE RFInterface
     )
@@ -1909,7 +1910,7 @@ NfcCxRFInterfaceHandleReceivedNdefMessage(
     _In_bytecount_(cbRawNdef) PBYTE pbRawNdef
     )
 {
-    CNFCProximityBuffer* proxBuffer = new CNFCProximityBuffer(); 
+    CNFCProximityBuffer* proxBuffer = new CNFCProximityBuffer();
 
     if (proxBuffer != NULL)
     {
@@ -1984,8 +1985,8 @@ NfcCxRFInterfaceHandleSecureElementEvent(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    TRACE_LINE(LEVEL_INFO, "SE event received hSecureElement=%p, EventType=%!phLibNfc_eSE_EvtType_t!", 
-                            hSecureElement, 
+    TRACE_LINE(LEVEL_INFO, "SE event received hSecureElement=%p, EventType=%!phLibNfc_eSE_EvtType_t!",
+                            hSecureElement,
                             EventType);
 
     if (Status != NFCSTATUS_SUCCESS) {
@@ -2132,7 +2133,7 @@ NfcCxRFInterfaceSESetDefaultRoutingTable(
 
     for (uint8_t i = 0; i < pLibNfcContext->SECount; i++) {
         if (pLibNfcContext->SEList[i].eSE_Type != phLibNfc_SE_Type_UICC) {
-            continue;  
+            continue;
         }
 
         if (pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.TechnBasedRouting == 0 &&
@@ -2174,7 +2175,7 @@ static VOID
 NfcCxRFInterfaceInitializeCB(
     _In_ VOID* pContext,
     _In_ uint8_t ConfigStatus,
-    _In_ NFCSTATUS NfcStatus 
+    _In_ NFCSTATUS NfcStatus
     )
 {
     NTSTATUS status = STATUS_SUCCESS;
@@ -2192,10 +2193,10 @@ NfcCxRFInterfaceInitializeCB(
 
         NfcStatus = phLibNfc_Mgt_GetstackCapabilities(&rfInterface->pLibNfcContext->sStackCapabilities, rfInterface->pLibNfcContext);
     }
-    
+
     status = NfcCxNtStatusFromNfcStatus(NfcStatus);
     NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }
 
@@ -2401,7 +2402,7 @@ NfcCxRFInterfaceRemoteDevDisconnect(
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
     nfcStatus = phLibNfc_RemoteDev_Disconnect(RFInterface->pLibNfcContext->pRemDevList[RFInterface->pLibNfcContext->SelectedProtocolIndex].hTargetDev,
-                                              RFInterface->pLibNfcContext->eReleaseType, 
+                                              RFInterface->pLibNfcContext->eReleaseType,
                                               NfcCxRFInterfaceRemoteDevDisconnectCB,
                                               &LibNfcContext);
 
@@ -2504,7 +2505,7 @@ NfcCxRFInterfaceRfDiscoveryStop(
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
     RtlZeroMemory(&RFInterface->DiscoveryConfig, sizeof(RFInterface->DiscoveryConfig));
-    
+
     RFInterface->DiscoveryConfig.PollDevInfo.PollCfgInfo.DisableCardEmulation = 0x1;
     RFInterface->DiscoveryConfig.NfcIP_Tgt_Disable = 0x1;
 
@@ -2618,7 +2619,7 @@ NfcCxRFInterfaceTagCheckNdef(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
-    nfcStatus = phLibNfc_Ndef_CheckNdef(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev, 
+    nfcStatus = phLibNfc_Ndef_CheckNdef(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev,
                                         formatSequence ? NfcCxRFInterfaceTagFormatCheckNdefCB : NfcCxRFInterfaceTagCheckNdefCB,
                                         &LibNfcContext);
 
@@ -2703,7 +2704,7 @@ NfcCxRFInterfaceTagReadNdefCB(
 
     if (NT_SUCCESS(status)) {
         NfcCxRFInterfaceHandleReceivedNdefMessage(rfInterface,
-                                                  ReceivedNdefFromTag, 
+                                                  ReceivedNdefFromTag,
                                                   (USHORT)rfInterface->sNdefMsg.length,
                                                   rfInterface->sNdefMsg.buffer);
     }
@@ -2735,7 +2736,7 @@ NfcCxRFInterfaceTagReadBarcode(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
-    if (RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phNfc_eKovio_PICC) 
+    if (RFInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo->RemDevType == phNfc_eKovio_PICC)
     {
         // Skip if already handled (same tag read too quickly)
         if ( (GetTickCount64() - RFInterface->bKovioDetected) > PRESENCE_CHECK_INTERVAL) {
@@ -2757,7 +2758,7 @@ NfcCxRFInterfaceTagReadBarcode(
             }
         }
     }
-    else 
+    else
     {
         nfcStatus = NFCSTATUS_INVALID_REMOTE_DEVICE;
         TRACE_LINE(LEVEL_ERROR, "Barcode type not supported for requested device.");
@@ -2875,7 +2876,7 @@ NfcCxRFInterfaceTagFormatNdefCB(
     PNFCCX_RF_INTERFACE rfInterface = ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->RFInterface;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, (VOID*)TRUE, NULL);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -2938,8 +2939,8 @@ NfcCxRFInterfaceTargetTransceiveCB(
             TRACE_LINE(LEVEL_ERROR, "Receive buffer too small for response");
         }
         else {
-            RtlCopyMemory(rfInterface->sTransceiveBuffer.sRecvData.buffer, 
-                          pResBuffer->buffer, 
+            RtlCopyMemory(rfInterface->sTransceiveBuffer.sRecvData.buffer,
+                          pResBuffer->buffer,
                           pResBuffer->length);
             rfInterface->sTransceiveBuffer.sRecvData.length = pResBuffer->length;
         }
@@ -3042,9 +3043,9 @@ NfcCxRFInterfaceTargetPresenceCheckCB(
     PNFCCX_RF_INTERFACE rfInterface = ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->RFInterface;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, (VOID*)TRUE, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }
 
@@ -3092,7 +3093,7 @@ NfcCxRFInterfaceSENtfRegister(
         pLibNfcContext->SECount = 1;
         pLibNfcContext->SEList[0].eLowPowerMode = phLibNfc_SE_LowPowerMode_Off;
         pLibNfcContext->SEList[0].eSE_Type = phLibNfc_SE_Type_DeviceHost;
-        pLibNfcContext->SEList[0].hSecureElement = NULL;     
+        pLibNfcContext->SEList[0].hSecureElement = NULL;
 
         if (RFInterface->eDeviceHostInitializationState == phLibNfc_SE_ActModeVirtual)
         {
@@ -3111,7 +3112,7 @@ NfcCxRFInterfaceSENtfRegister(
 
         RFInterface->eDeviceHostInitializationState = phLibNfc_SE_ActModeOff;
     }
-    
+
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
     return status;
 }
@@ -3130,7 +3131,7 @@ NfcCxRFInterfaceSEEnumerateCB(
     NfcCxRFInterfaceGetSEList(rfInterface,
                               rfInterface->pLibNfcContext->SEList,
                               &rfInterface->pLibNfcContext->SECount);
-    
+
     NfcCxRFInterfaceDumpSEList(rfInterface);
 
     NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, NULL, NULL);
@@ -3175,7 +3176,7 @@ NfcCxRFInterfaceSESetModeConfigCB(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    NfcCxRFInterfaceGetSEList(rfInterface, 
+    NfcCxRFInterfaceGetSEList(rfInterface,
                               rfInterface->pLibNfcContext->SEList,
                               &rfInterface->pLibNfcContext->SECount);
 
@@ -3286,7 +3287,7 @@ NfcCxRFInterfaceRemoteDevSend(
 
     if ((phLibNfc_eISO14443_A_PCD != pRemDevList->psRemoteDevInfo->RemDevType) &&
         (phLibNfc_eISO14443_B_PCD != pRemDevList->psRemoteDevInfo->RemDevType)) {
-        TRACE_LINE(LEVEL_ERROR, "Invalid remote device %!phNfc_eRFDevType_t!", 
+        TRACE_LINE(LEVEL_ERROR, "Invalid remote device %!phNfc_eRFDevType_t!",
                    pRemDevList->psRemoteDevInfo->RemDevType);
         nfcStatus = NFCSTATUS_NOT_ALLOWED;
         goto Done;
@@ -3296,7 +3297,7 @@ NfcCxRFInterfaceRemoteDevSend(
                                         &RFInterface->sSendBuffer,
                                         NfcCxRFInterfaceRemoteDevSendCB,
                                         &LibNfcContext);
-    
+
     if (NFCSTATUS_PENDING != nfcStatus) {
         TRACE_LINE(LEVEL_WARNING, "phLibNfc_RemoteDev_Send failed %!NFCSTATUS!, buffer length %d",
                    nfcStatus,
@@ -3408,7 +3409,7 @@ NfcCxRFInterfaceSetDefaultRoutingTable(
 
     if (!RFInterface->pLibNfcContext->bIsDefaultRtngConfig) {
         NfcCxRFInterfaceSESetDefaultRoutingTable(RFInterface);
-        
+
         if (RFInterface->pLibNfcContext->RtngTableCount != 0) {
             nfcStatus = phLibNfc_Mgt_ConfigRoutingTable(RFInterface->pLibNfcContext->RtngTableCount,
                                                         RFInterface->pLibNfcContext->RtngTable,
@@ -3492,7 +3493,7 @@ NfcCxRFInterfaceRemoteDevNtfCB(
     PNFCCX_RF_INTERFACE rfInterface = (PNFCCX_RF_INTERFACE)pContext;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     TRACE_LINE(LEVEL_INFO, "NfcStatus=%!NFCSTATUS! uNofRemoteDev=%d", NfcStatus, uNofRemoteDev);
 
     if ((NFCSTATUS_SUCCESS == NfcStatus) ||
@@ -3564,7 +3565,7 @@ NfcCxRFInterfaceTagPresenceThread(
 
     CallbackMayRunLong(pInstance);
 
-    WdfWaitLockAcquire(rfInterface->PresenceCheckLock, NULL); // Ensure single presence check thread 
+    WdfWaitLockAcquire(rfInterface->PresenceCheckLock, NULL); // Ensure single presence check thread
 
     while (rfInterface->pLibNfcContext->bIsTagPresent && NT_SUCCESS(status))
     {
@@ -3615,7 +3616,7 @@ NfcCxRFInterfacePreInitializeCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -3676,7 +3677,7 @@ NfcCxRFInterfacePostInitializeCB(
     if (Status != STATUS_PENDING) {
         NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
     }
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -3722,7 +3723,7 @@ NfcCxRFInterfacePreDeinitializeCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, (VOID*)((Flags & NFC_CX_SEQUENCE_PRE_SHUTDOWN_FLAG_SKIP_RESET) != 0), NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -3768,7 +3769,7 @@ NfcCxRFInterfacePostDeinitializeCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -3814,7 +3815,7 @@ NfcCxRFInterfacePreRfDiscoveryStartCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -3860,7 +3861,7 @@ NfcCxRFInterfacePostRfDiscoveryStartCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -3906,7 +3907,7 @@ NfcCxRFInterfacePreRfDiscoveryStopCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -3952,7 +3953,7 @@ NfcCxRFInterfacePostRfDiscoveryStopCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -4004,7 +4005,7 @@ NfcCxRFInterfacePreSEEnumerateCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -4050,7 +4051,7 @@ NfcCxRFInterfacePostSEEnumerateCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -4096,7 +4097,7 @@ NfcCxRFInterfacePreRecoveryCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -4142,7 +4143,7 @@ NfcCxRFInterfacePostRecoveryCB(
 
     NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
     NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
-    
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
 }
 
@@ -4436,7 +4437,7 @@ NfcCxRFInterfaceStateRecovery(
 
     rfInterface->eDeviceHostInitializationState = phLibNfc_SE_ActModeOff;
 
-    if (rfInterface->pLibNfcContext->EnableSEDiscovery) 
+    if (rfInterface->pLibNfcContext->EnableSEDiscovery)
     {
         // Recovery needs to reset us to the state expected by the clients.
         // If discovery was enabled and the SE was on, reset the device host to its previous state.
@@ -5125,7 +5126,7 @@ NfcCxRFInterfaceStateRfDiscovery2RfDiscovered(
     PNFCCX_RF_INTERFACE rfInterface = StateInterface->FdoContext->RFInterface;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     UNREFERENCED_PARAMETER(Event);
 
     NT_ASSERT(NFCCX_IS_INTERNAL_EVENT(Event));
