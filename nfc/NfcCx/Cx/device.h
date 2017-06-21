@@ -40,21 +40,15 @@ typedef struct _NFCCX_FDO_CONTEXT {
     //
     // Power State
     //
-    WDFWAITLOCK PowerPolicyWaitLock;
-
-    LONG NfpPowerPolicyReferences;
     BOOLEAN NfpRadioInterfaceCreated;
-    BOOLEAN NfpRadioState;
     BOOLEAN NfpPowerOffSystemOverride;  // TRUE == Nfp system state override is off
     BOOLEAN NfpPowerOffPolicyOverride;  // TRUE == Nfp radio state is off
 
-    LONG SEPowerPolicyReferences;
     BOOLEAN SERadioInterfaceCreated;
-    BOOLEAN SERadioState;
     BOOLEAN SEPowerOffSystemOverride;   // TRUE == SE system state override is off
     BOOLEAN SEPowerOffPolicyOverride;   // TRUE == SE radio state is off
 
-    BOOLEAN PowerDeviceStopIdle;        // Exclusive to 'power.cpp'. TRUE == 'WdfDeviceStopIdle' has been called.
+    PNFCCX_POWER_MANAGER Power;
 
     //
     // Registry-provided config

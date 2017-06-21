@@ -207,7 +207,7 @@ Return Value:
         fdoContext->SERadioInterfaceCreated = TRUE;
     }
 
-    if (fdoContext->SERadioState) {
+    if (fdoContext->Power->SERadioState) {
         //
         // Publish the SE interface
         //
@@ -485,7 +485,7 @@ Return Value:
     //
     // Is the SE radio enabled?
     //
-    if (FALSE == NfcCxPowerIsAllowedSE(fdoContext)) {
+    if (FALSE == NfcCxPowerIsAllowedSE(fdoContext->Power)) {
         TRACE_LINE(LEVEL_ERROR, "SE radio is off");
         status = STATUS_DEVICE_POWERED_OFF;
         goto Done;
@@ -798,7 +798,7 @@ Return Value:
         // Force turn off card emulation mode in case if it is still left on when the
         // SE manager handle is being released
         //
-        for (uint8_t i=0; (i < SECount) && (SEInterface->FdoContext->SEPowerPolicyReferences != 0); i++) {
+        for (uint8_t i=0; (i < SECount) && (SEInterface->FdoContext->Power->SEPowerPolicyReferences != 0); i++) {
 
             if (SEList[i].eSE_ActivationMode == phLibNfc_SE_ActModeOff) {
                 continue;
@@ -1870,7 +1870,7 @@ NfcCxSEInterfaceCheckIfDriverDiscoveryEnabled(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (!SEInterface->FdoContext->SERadioState) {
+    if (!SEInterface->FdoContext->Power->SERadioState) {
         goto Done;
     }
 
@@ -2443,7 +2443,7 @@ Return Value:
 
     if (dwFlags & NFCCX_SE_FLAG_SET_POWER_REFERENCE) {
         powerPol.CanPowerDown = (pMode->eMode == EmulationOff);
-        status = NfcCxPowerSetPolicy(NfcCxFileObjectGetFdoContext(FileContext),
+        status = NfcCxPowerSetPolicy(NfcCxFileObjectGetFdoContext(FileContext)->Power,
                                      FileContext,
                                      &powerPol);
         if (!NT_SUCCESS(status)) {

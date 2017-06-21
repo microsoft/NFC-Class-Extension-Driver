@@ -78,6 +78,15 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
+    //
+    // Initialize the Power Manager
+    //
+    status = NfcCxPowerCreate(FdoContext, &FdoContext->Power);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize the power manager, %!STATUS!", status);
+        goto Done;
+    }
+
     if (NFC_CX_DEVICE_MODE_NCI == FdoContext->NfcCxClientGlobal->Config.DeviceMode) {
         //
         // Create the Tml Interface
@@ -208,6 +217,12 @@ Return Value:
         NfcCxTmlInterfaceDestroy(fdoContext->TmlInterface);
         fdoContext->TmlInterface = NULL;
     }
+
+    if (NULL != fdoContext->Power)
+    {
+        NfcCxPowerDestroy(fdoContext->Power);
+        fdoContext->Power = NULL;
+    }
 }
 
 NTSTATUS
@@ -289,16 +304,6 @@ Return Value:
             goto Done;
         }
 
-        //
-        // Initialize Power Manager
-        //
-        status = NfcCxPowerFdoInitialize(FdoContext);
-        if (!NT_SUCCESS(status)) {
-            TRACE_LINE(LEVEL_ERROR, "Failed to initialize power manager, %!STATUS!", status);
-            interfaceFailure = "POWER";
-            goto Done;
-        }
-
     } else if (NFC_CX_DEVICE_MODE_DTA == FdoContext->NfcCxClientGlobal->Config.DeviceMode) {
         //
         // Start Tml
@@ -321,6 +326,16 @@ Return Value:
             nfcCxDeviceMode = NFC_CX_DEVICE_MODE_DTA;
             goto Done;
         }
+    }
+
+    //
+    // Start Power Manager
+    //
+    status = NfcCxPowerStart(FdoContext->Power);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to start power manager, %!STATUS!", status);
+        interfaceFailure = "POWER";
+        goto Done;
     }
 
 Done:
@@ -380,6 +395,14 @@ Return Value:
     //
     if (NULL != FdoContext->TmlInterface) {
         (VOID)NfcCxTmlInterfaceStop(FdoContext->TmlInterface);
+    }
+
+    //
+    // Stop Power Manager
+    //
+    if (NULL != FdoContext->Power)
+    {
+        NfcCxPowerStop(FdoContext->Power);
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -446,6 +469,12 @@ Return Value:
     if (NULL != FdoContext->TmlInterface) {
         NfcCxTmlInterfaceDestroy(FdoContext->TmlInterface);
         FdoContext->TmlInterface = NULL;
+    }
+
+    if (NULL != FdoContext->Power)
+    {
+        NfcCxPowerDestroy(FdoContext->Power);
+        FdoContext->Power = NULL;
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);

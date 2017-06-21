@@ -254,7 +254,7 @@ Return Value:
         fdoContext->NfpRadioInterfaceCreated = TRUE;
     }
 
-    if (fdoContext->NfpRadioState) {
+    if (fdoContext->Power->NfpRadioState) {
         //
         // Publish the NFP interface
         //
@@ -858,7 +858,7 @@ Remarks:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (!NfpInterface->FdoContext->NfpRadioState) {
+    if (!NfpInterface->FdoContext->Power->NfpRadioState) {
         goto Done;
     }
 
@@ -1889,7 +1889,7 @@ Return Value:
     //
     // Is the NFP radio enabled
     //
-    if (FALSE == NfcCxPowerIsAllowedNfp(NfcCxFileObjectGetFdoContext(FileContext))) {
+    if (FALSE == NfcCxPowerIsAllowedNfp(NfcCxFileObjectGetFdoContext(FileContext)->Power)) {
         TRACE_LINE(LEVEL_ERROR, "NFP radio is off");
         status = STATUS_DEVICE_POWERED_OFF;
         goto Done;

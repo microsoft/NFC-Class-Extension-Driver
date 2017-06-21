@@ -391,12 +391,9 @@ Return Value:
     fdoContext->NfpRadioInterfaceCreated = FALSE;
     fdoContext->NfpPowerOffSystemOverride = FALSE;
     fdoContext->NfpPowerOffPolicyOverride = FALSE;
-    fdoContext->NfpPowerPolicyReferences = 0;
     fdoContext->SERadioInterfaceCreated = FALSE;
     fdoContext->SEPowerOffSystemOverride = FALSE;
     fdoContext->SEPowerOffPolicyOverride = FALSE;
-    fdoContext->SEPowerPolicyReferences = 0;
-    fdoContext->PowerDeviceStopIdle = FALSE;
     fdoContext->NfcCxClientGlobal = nfcCxClientGlobal;
     fdoContext->LogNciDataMessages = FALSE;
     fdoContext->NumDriverRestarts = NFCCX_MAX_NUM_DRIVER_RESTARTS;
@@ -410,16 +407,6 @@ Return Value:
     status = NfcCxFdoReadCxDeviceVolatileRegistrySettings(Device, &fdoContext->NumDriverRestarts);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "NfcCxFdoReadCxDriverVolatileRegistrySettings failed, %!STATUS!", status);
-        goto Done;
-    }
-
-    WDF_OBJECT_ATTRIBUTES_INIT(&objectAttrib);
-    objectAttrib.ParentObject = Device;
-    
-    status = WdfWaitLockCreate(&objectAttrib,
-                                &fdoContext->PowerPolicyWaitLock);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to create the PowerPolicy WaitLock, %!STATUS!", status);
         goto Done;
     }
 
@@ -533,12 +520,6 @@ Return Value:
                                                   fdoContext->SEPowerOffPolicyOverride,
                                                   fdoContext->SEPowerOffSystemOverride);
 #endif
-
-        //
-        // Check the currently required power state
-        //
-        fdoContext->NfpRadioState = (!fdoContext->NfpPowerOffPolicyOverride && !fdoContext->NfpPowerOffSystemOverride);
-        fdoContext->SERadioState = (!fdoContext->SEPowerOffPolicyOverride && !fdoContext->SEPowerOffSystemOverride);
     }
 
     //

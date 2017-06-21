@@ -299,7 +299,7 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (fdoContext->NfpRadioState) {
+    if (fdoContext->Power->NfpRadioState) {
         //
         // Publish the NFC smart card reader interface
         //
@@ -587,7 +587,7 @@ Return Value:
     //
     // Is the NFP radio enabled. SmartCard sharing the same radio control with NFP
     //
-    if (FALSE == NfcCxPowerIsAllowedNfp(fdoContext)) {
+    if (FALSE == NfcCxPowerIsAllowedNfp(fdoContext->Power)) {
         TRACE_LINE(LEVEL_ERROR, "NFP radio is off");
         status = STATUS_DEVICE_POWERED_OFF;
         goto Done;
@@ -1055,7 +1055,7 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (!ScInterface->FdoContext->NfpRadioState) {
+    if (!ScInterface->FdoContext->Power->NfpRadioState) {
         goto Done;
     }
 
