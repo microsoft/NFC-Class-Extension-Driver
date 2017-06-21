@@ -80,6 +80,8 @@ typedef struct _NFCCX_SE_INTERFACE        NFCCX_SE_INTERFACE,       * PNFCCX_SE_
 typedef struct _NFCCX_DTA_INTERFACE       NFCCX_DTA_INTERFACE,      * PNFCCX_DTA_INTERFACE;
 typedef struct _NFCCX_POWER_MANAGER       NFCCX_POWER_MANAGER,      * PNFCCX_POWER_MANAGER;
 
+enum NFC_CX_POWER_RF_STATE : LONG;
+
 #define MAX_USHORT         ((USHORT)0xFFFF)
 #define MAX_ULONG          ((ULONG)0xFFFFFFFF)
 
@@ -179,6 +181,7 @@ typedef struct _NFCCX_DDI_MODULE {
 #include "NfcCxState.h"
 #include "NfcCxSequence.h"
 #include "NfcCxNFP.h"
+#include "NfcCxSCPresentAbsentDispatcher.h"
 #include "NfcCxSC.h"
 #include "NfcCxSE.h"
 #include "NfcCxTml.h"

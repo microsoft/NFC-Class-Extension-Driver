@@ -384,6 +384,14 @@ Return Value:
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     //
+    // Stop Power Manager
+    //
+    if (NULL != FdoContext->Power)
+    {
+        NfcCxPowerStop(FdoContext->Power);
+    }
+
+    //
     // Stop RF
     //
     if (NULL != FdoContext->RFInterface) {
@@ -395,14 +403,6 @@ Return Value:
     //
     if (NULL != FdoContext->TmlInterface) {
         (VOID)NfcCxTmlInterfaceStop(FdoContext->TmlInterface);
-    }
-
-    //
-    // Stop Power Manager
-    //
-    if (NULL != FdoContext->Power)
-    {
-        NfcCxPowerStop(FdoContext->Power);
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);

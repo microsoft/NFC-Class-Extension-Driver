@@ -175,29 +175,8 @@ Return Value:
         goto Done;
     }
 
-    WDF_IO_QUEUE_CONFIG_INIT(&queueConfig, WdfIoQueueDispatchManual);
-    queueConfig.PowerManaged = WdfFalse;
-
-    status = WdfIoQueueCreate(scInterface->FdoContext->Device,
-                              &queueConfig,
-                              &objectAttrib,
-                              &scInterface->PresentQueue);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to create the SmartCard Present IO Queue, %!STATUS!", status);
-        goto Done;
-    }
-
-    WDF_IO_QUEUE_CONFIG_INIT(&queueConfig, WdfIoQueueDispatchManual);
-    queueConfig.PowerManaged = WdfFalse;
-
-    status = WdfIoQueueCreate(scInterface->FdoContext->Device,
-                              &queueConfig,
-                              &objectAttrib,
-                              &scInterface->AbsentQueue);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to create the SmartCard Absent IO Queue, %!STATUS!", status);
-        goto Done;
-    }
+    NfcCxSCPresentAbsentDispatcherInitialize(&scInterface->PresentDispatcher, /*PowerManaged*/ TRUE);
+    NfcCxSCPresentAbsentDispatcherInitialize(&scInterface->AbsentDispatcher, /*PowerManaged*/ TRUE);
 
 Done:
 
@@ -886,6 +865,9 @@ Return Value:
         fResetCard = TRUE;
     }
 
+    // Release the card connected power reference.
+    NfcCxSCEnsureCardConnectedPowerReferenceIsReleased(ScInterface);
+
     ScInterface->CurrentClient = NULL;
     TRACE_LINE(LEVEL_INFO, "SmartCard client = %p removed", FileContext);
 
@@ -963,11 +945,18 @@ Return Value:
         status = NfcCxSCInterfaceLoadStorageClassFromAtrLocked(ScInterface);
     }
 
+    if (NT_SUCCESS(status))
+    {
+        // Ensure radio stays on while there is both a smartcard connected and client process connected.
+        status = NfcCxSCEnsureCardConnectedPowerReferenceIsHeld(ScInterface);
+    }
+
     WdfWaitLockRelease(ScInterface->SmartCardLock);
 
     if (NT_SUCCESS(status))
     {
-        status = NfcCxSCInterfaceDistributePresentAbsentEvent(ScInterface, ScInterface->PresentQueue);
+        // Complete IsPresent Request.
+        NfcCxSCPresentAbsentDispatcherCompleteRequest(ScInterface->FdoContext, &ScInterface->PresentDispatcher);
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -1022,52 +1011,16 @@ Return Value:
         ScInterface->StorageCardKey = NULL;
     }
 
+    // Release the card connected power reference.
+    NfcCxSCEnsureCardConnectedPowerReferenceIsReleased(ScInterface);
+
     WdfWaitLockRelease(ScInterface->SmartCardLock);
 
-    NfcCxSCInterfaceDistributePresentAbsentEvent(ScInterface, ScInterface->AbsentQueue);
+    // Complete IsAbsent Request.
+    NfcCxSCPresentAbsentDispatcherCompleteRequest(ScInterface->FdoContext, &ScInterface->AbsentDispatcher);
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-}
-
-BOOL
-NfcCxSCInterfaceCheckIfDriverDiscoveryEnabled(
-    _In_ PNFCCX_SC_INTERFACE ScInterface
-    )
-/*++
-
-Routine Description:
-
-    This routine determines if there is a smartcard discovery client available
-
-Arguments:
-
-    ScInterface - A pointer to the SCInterface
-    
-Return Value:
-
-    TRUE - A discovery client is active
-    FALSE - A discovery client isn't active
-    
---*/
-{
-    BOOL fEnabled = FALSE;
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    if (!ScInterface->FdoContext->Power->NfpRadioState) {
-        goto Done;
-    }
-
-    WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
-    fEnabled = (ScInterface->CurrentClient != NULL) ? TRUE : FALSE;
-    WdfWaitLockRelease(ScInterface->SmartCardLock);
-
-Done:
-
-    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
-
-    return fEnabled;
 }
 
 //
@@ -1576,7 +1529,8 @@ Return Value:
 
     WdfWaitLockRelease(scInterface->SmartCardLock);
     
-    status = NfcCxSCInterfaceVerifyAndAddIsAbsent(scInterface, Request);
+    // Pass request to Present/Absent dispatcher.
+    status = NfcCxSCPresentAbsentDispatcherSetRequest(scInterface->FdoContext, &scInterface->AbsentDispatcher, Request);
 
 Done:
     if (NT_SUCCESS(status)) {
@@ -1653,7 +1607,7 @@ Return Value:
 
     WdfWaitLockRelease(scInterface->SmartCardLock);
     
-    status = NfcCxSCInterfaceVerifyAndAddIsPresent(scInterface, Request);
+    status = NfcCxSCPresentAbsentDispatcherSetRequest(scInterface->FdoContext, &scInterface->PresentDispatcher, Request);
 
 Done:
     if (NT_SUCCESS(status)) {
@@ -2249,104 +2203,6 @@ Done:
 //
 
 NTSTATUS
-NfcCxSCInterfaceVerifyAndAddIsAbsent(
-    _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_ WDFREQUEST Request
-    )
-/*++
-
-Routine Description:
-
-    This routine verifies the IsAbsent request has not been previously called,
-    and it forwards the request into a manual IO queue.
-
-Arguments:
-
-    ScInterface - Pointer to the SmartCard Reader interface.
-    Request - Handle to a framework request object.
-    
-Return Value:
-
-  NTSTATUS.
-
---*/
-{
-    NTSTATUS status = STATUS_SUCCESS;
-    WDFREQUEST outRequest = NULL;
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    if (NT_SUCCESS(WdfIoQueueFindRequest(ScInterface->AbsentQueue,
-                                         NULL,
-                                         WdfRequestGetFileObject(Request),
-                                         NULL,
-                                         &outRequest))) {
-        WdfObjectDereference(outRequest);
-        status = STATUS_DEVICE_BUSY;
-        goto Done;
-    }
-
-    status = WdfRequestForwardToIoQueue(Request, ScInterface->AbsentQueue);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to forward request to IO Queue, %!STATUS!", status);
-        goto Done;
-    }
-
-Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    return status;
-}
-
-NTSTATUS
-NfcCxSCInterfaceVerifyAndAddIsPresent(
-    _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_ WDFREQUEST Request
-    )
-/*++
-
-Routine Description:
-
-    This routine verifies the IsPresent request has not been previously called,
-    and it forwards the request into a manual IO queue.
-
-Arguments:
-
-    ScInterface - Pointer to the SmartCard Reader interface.
-    Request - Handle to a framework request object.
-    
-Return Value:
-
-  NTSTATUS.
-
---*/
-{
-    NTSTATUS status = STATUS_SUCCESS;
-    WDFREQUEST outRequest = NULL;
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    if (NT_SUCCESS(WdfIoQueueFindRequest(ScInterface->PresentQueue,
-                                         NULL,
-                                         WdfRequestGetFileObject(Request),
-                                         NULL,
-                                         &outRequest))) {
-        WdfObjectDereference(outRequest);
-        status = STATUS_DEVICE_BUSY;
-        goto Done;
-    }
-
-    status = WdfRequestForwardToIoQueue(Request, ScInterface->PresentQueue);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to forward request to IO Queue, %!STATUS!", status);
-        goto Done;
-    }
-
-Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    return status;
-}
-
-NTSTATUS
 NfcCxSCInterfaceCopyResponseData(
     _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
     _In_ ULONG OutputBufferLength,
@@ -2417,45 +2273,6 @@ Return Value:
     *BufferUsed = requiredBufferSize;
 
 Done:
-
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    return status;
-}
-
-NTSTATUS
-NfcCxSCInterfaceDistributePresentAbsentEvent(
-    _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_ WDFQUEUE Queue
-    )
-/*++
-
-Routine Description:
-
-    This routine distribute the Present or Absent event
-
-Arguments:
-
-    ScInterface - A pointer to the SmartCard Reader interface
-    Queue - framework queue object
-    
-Return Value:
-
-    NTSTATUS
-
---*/
-{
-    NTSTATUS status = STATUS_SUCCESS;
-    WDFREQUEST request = NULL;
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    UNREFERENCED_PARAMETER(ScInterface);
-
-    while (NT_SUCCESS(WdfIoQueueRetrieveNextRequest(Queue, &request))) {
-        TRACE_LINE(LEVEL_INFO, "Completing Request with Status, %!STATUS!", STATUS_SUCCESS);
-        WdfRequestComplete(request, STATUS_SUCCESS);
-    }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 
@@ -3913,4 +3730,56 @@ NfcCxSCInterfaceGetIndexOfProtocolType(
 Done:
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
     return SelectedProtocolIndex;
+}
+_Requires_lock_held_(ScInterface->SmartCardLock)
+NTSTATUS
+NfcCxSCEnsureCardConnectedPowerReferenceIsHeld(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+    )
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    if (ScInterface->CurrentClient != nullptr &&
+        !ScInterface->ClientPowerReferenceHeld)
+    {
+        status = NfcCxPowerSetPolicy(ScInterface->FdoContext->Power, ScInterface->CurrentClient, /*CanPowerDown*/ FALSE);
+        if (!NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_ERROR, "Failed to acquire power policy reference. Status=%!STATUS!", status);
+            goto Done;
+        }
+
+        ScInterface->ClientPowerReferenceHeld = TRUE;
+    }
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+_Requires_lock_held_(ScInterface->SmartCardLock)
+VOID
+NfcCxSCEnsureCardConnectedPowerReferenceIsReleased(
+    _In_ PNFCCX_SC_INTERFACE ScInterface)
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    if (ScInterface->ClientPowerReferenceHeld)
+    {
+        NT_ASSERT(ScInterface->CurrentClient != nullptr);
+
+        // Release the client's power reference, allowing the NFC Controller to go back to sleep
+        // (assuming nothing else is keeping it awake).
+        NTSTATUS status = NfcCxPowerSetPolicy(ScInterface->FdoContext->Power, ScInterface->CurrentClient, /*CanPowerDown*/ TRUE);
+        if (!NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_ERROR, "Failed to release power policy reference. Status=%!STATUS!", status);
+        }
+
+        ScInterface->ClientPowerReferenceHeld = FALSE;
+    }
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }

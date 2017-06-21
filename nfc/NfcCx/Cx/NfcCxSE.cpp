@@ -1858,39 +1858,6 @@ Done:
     return status;
 }
 
-BOOLEAN
-NfcCxSEInterfaceCheckIfDriverDiscoveryEnabled(
-    _In_ PNFCCX_SE_INTERFACE SEInterface
-    )
-{
-    BOOLEAN fEnabled = FALSE;
-    PNFCCX_RF_INTERFACE rfInterface = SEInterface->FdoContext->RFInterface;
-    phLibNfc_SE_List_t SEList[MAX_NUMBER_OF_SE] = {0};
-    uint8_t SECount = 0;
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    if (!SEInterface->FdoContext->Power->SERadioState) {
-        goto Done;
-    }
-
-    if (!NT_SUCCESS(NfcCxRFInterfaceGetSecureElementList(rfInterface, SEList, &SECount))) {
-        TRACE_LINE(LEVEL_WARNING, "Failed NfcCxRFInterfaceGetSecureElementList");
-        goto Done;
-    }
-
-    for (uint8_t i=0; i < SECount; i++) {
-        if (SEList[i].eSE_ActivationMode != phLibNfc_SE_ActModeOff) {
-            fEnabled = TRUE;
-            break;
-        }
-    }
-    
-Done:
-    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
-    return fEnabled;
-}
-
 NTSTATUS
 NfcCxSEInterfaceCopyEventData(
     _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
@@ -2389,7 +2356,6 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_RF_INTERFACE rfInterface = NULL;
-    NCI_POWER_POLICY powerPol;
     phLibNfc_RtngConfig_t RtngConfig[MAX_ROUTING_TABLE_SIZE] = {0};
     uint8_t RtngConfigCount = MAX_ROUTING_TABLE_SIZE;
     phLibNfc_Handle hSecureElement;
@@ -2442,10 +2408,10 @@ Return Value:
     }
 
     if (dwFlags & NFCCX_SE_FLAG_SET_POWER_REFERENCE) {
-        powerPol.CanPowerDown = (pMode->eMode == EmulationOff);
+        BOOLEAN canPowerDown = (pMode->eMode == EmulationOff);
         status = NfcCxPowerSetPolicy(NfcCxFileObjectGetFdoContext(FileContext)->Power,
                                      FileContext,
-                                     &powerPol);
+                                     canPowerDown);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to set power policy reference, %!STATUS!", status);
             goto Done;

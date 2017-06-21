@@ -122,6 +122,7 @@
     <ClCompile Include="..\NfcCxNFP.cpp" />
     <ClCompile Include="..\NfcCxRF.cpp" />
     <ClCompile Include="..\NfcCxSC.cpp" />
+    <ClCompile Include="..\NfcCxSCPresentAbsentDispatcher.cpp" />
     <ClCompile Include="..\NfcCxSE.cpp" />
     <ClCompile Include="..\NfcCxSequence.cpp" />
     <ClCompile Include="..\NfcCxSNEP.cpp" />
@@ -141,6 +142,7 @@
     <ClInclude Include="..\NfcCxPch.h" />
     <ClInclude Include="..\NfcCxRF.h" />
     <ClInclude Include="..\NfcCxSC.h" />
+    <ClInclude Include="..\NfcCxSCPresentAbsentDispatcher.h" />
     <ClInclude Include="..\NfcCxSE.h" />
     <ClInclude Include="..\NfcCxSequence.h" />
     <ClInclude Include="..\NfcCxSNEP.h" />

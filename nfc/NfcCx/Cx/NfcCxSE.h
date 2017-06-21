@@ -142,11 +142,6 @@ NfcCxSEInterfaceHandleHCEPacket(
     _In_ USHORT DataLength
     );
 
-BOOLEAN
-NfcCxSEInterfaceCheckIfDriverDiscoveryEnabled(
-    _In_ PNFCCX_SE_INTERFACE SEInterface
-    );
-
 NTSTATUS
 NfcCxSEInterfaceValidateRequest(
     _In_ ULONG IoControlCode,

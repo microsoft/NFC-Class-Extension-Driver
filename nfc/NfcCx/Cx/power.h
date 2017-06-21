@@ -18,6 +18,14 @@ Environment:
 
 #pragma once
 
+enum NFC_CX_POWER_RF_STATE : LONG
+{
+    // Values are bit flags
+    NfcCxPowerRfState_Off = 0x0,
+    NfcCxPowerRfState_NfpEnabled = 0x1,
+    NfcCxPowerRfState_SeEnabled = 0x2,
+};
+
 typedef struct _NFCCX_POWER_MANAGER
 {
     PNFCCX_FDO_CONTEXT FdoContext;
@@ -32,11 +40,9 @@ typedef struct _NFCCX_POWER_MANAGER
 
     BOOLEAN DeviceStopIdle;             // TRUE == 'WdfDeviceStopIdle' has been called.
 
-} NFCCX_POWER_MANAGER, *PNFCCX_POWER_MANAGER;
+    WDFTIMER UpdateRFStateTimer;
 
-typedef struct _NCI_POWER_POLICY {
-    BOOLEAN CanPowerDown;
-} NCI_POWER_POLICY, *PNCI_POWER_POLICY;
+} NFCCX_POWER_MANAGER, *PNFCCX_POWER_MANAGER;
 
 NTSTATUS
 NfcCxPowerCreate(
@@ -63,7 +69,12 @@ NTSTATUS
 NfcCxPowerSetPolicy(
     _In_ PNFCCX_POWER_MANAGER PowerManager,
     _In_ PNFCCX_FILE_CONTEXT FileContext,
-    _In_ PNCI_POWER_POLICY PowerPolicy
+    _In_ BOOLEAN CanPowerDown
+    );
+
+NFC_CX_POWER_RF_STATE
+NfcCxPowerGetRfState(
+    _In_ PNFCCX_POWER_MANAGER PowerManager
     );
 
 NTSTATUS
@@ -104,8 +115,7 @@ NfcCxPowerReleaseFdoContextReferenceLocked(
 _Requires_lock_held_(PowerManager->WaitLock)
 NTSTATUS
 NfcCxPowerDeviceStopIdle(
-    _In_ PNFCCX_POWER_MANAGER PowerManager,
-    _In_ BOOLEAN WaitForD0
+    _In_ PNFCCX_POWER_MANAGER PowerManager
     );
 
 _Requires_lock_held_(PowerManager->WaitLock)
@@ -119,9 +129,15 @@ NfcCxPowerShouldDeviceStopIdle(
     _In_ PNFCCX_POWER_MANAGER PowerManager
     );
 
-NTSTATUS
+VOID
 NfcCxPowerUpdateRFPollingState(
-    _In_ PNFCCX_POWER_MANAGER PowerManager
+    _In_ PNFCCX_POWER_MANAGER PowerManager,
+    _In_ BOOLEAN PoweringUpRF
+    );
+
+VOID
+NfcCxPowerUpdateRFPollingStateWorker(
+    _In_ WDFTIMER Timer
     );
 
 BOOLEAN

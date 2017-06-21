@@ -136,11 +136,6 @@ NfcCxNfpInterfaceHandleTagConnectionLost(
     _In_ PNFP_INTERFACE NfpInterface
     );
 
-BOOLEAN
-NfcCxNfpInterfaceCheckIfDriverDiscoveryEnabled(
-    _In_ PNFP_INTERFACE NfpInterface
-    );
-
 VOID
 NfcCxNfpInterfaceHandleWriteableTagEvent(
     _In_ PNFP_INTERFACE NfpInterface,

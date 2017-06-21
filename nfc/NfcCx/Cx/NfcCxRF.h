@@ -169,6 +169,11 @@ typedef struct _NFCCX_RF_INTERFACE {
     //
     PTP_TIMER tpWatchdogTimer;
 
+    //
+    // Power
+    //
+    NFC_CX_POWER_RF_STATE RFPowerState;
+
 } NFCCX_RF_INTERFACE, *PNFCCX_RF_INTERFACE;
 
 typedef struct _NFCCX_RF_LIBNFC_REQUEST_CONTEXT {
@@ -246,7 +251,8 @@ NfcCxRFInterfaceUnregisterSequenceHandler(
 
 NTSTATUS
 NfcCxRFInterfaceUpdateDiscoveryState(
-    _In_ PNFCCX_RF_INTERFACE RFInterface
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NFC_CX_POWER_RF_STATE RFPowerState
     );
 
 NTSTATUS

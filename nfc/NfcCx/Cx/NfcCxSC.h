@@ -143,8 +143,8 @@ typedef struct _NFCCX_SC_INTERFACE {
     //
     // Present / Absent
     //
-    WDFQUEUE PresentQueue;
-    WDFQUEUE AbsentQueue;
+    NFCCX_SC_PRESENT_ABSENT_DISPATCHER PresentDispatcher;
+    NFCCX_SC_PRESENT_ABSENT_DISPATCHER AbsentDispatcher;
 
     //
     // SmartCard Connection state
@@ -160,6 +160,8 @@ typedef struct _NFCCX_SC_INTERFACE {
     PNFCCX_FILE_CONTEXT CurrentClient;
     _Guarded_by_(SmartCardLock)
     BOOLEAN SessionEstablished;
+
+    BOOLEAN ClientPowerReferenceHeld;
 
     //
     // Copy of the remote device info from the RF Interface
@@ -240,11 +242,6 @@ NfcCxSCInterfaceHandleSmartCardConnectionEstablished(
 
 VOID
 NfcCxSCInterfaceHandleSmartCardConnectionLost(
-    _In_ PNFCCX_SC_INTERFACE ScInterface
-    );
-
-BOOL
-NfcCxSCInterfaceCheckIfDriverDiscoveryEnabled(
     _In_ PNFCCX_SC_INTERFACE ScInterface
     );
 
@@ -337,30 +334,12 @@ NfcCxSCInterfaceDispatchAttributeIccTypeLocked(
 // Helper methods below don't have locking constraints
 //
 NTSTATUS
-NfcCxSCInterfaceVerifyAndAddIsAbsent(
-    _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_ WDFREQUEST Request
-    );
-
-NTSTATUS
-NfcCxSCInterfaceVerifyAndAddIsPresent(
-    _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_ WDFREQUEST Request
-    );
-
-NTSTATUS
 NfcCxSCInterfaceCopyResponseData(
     _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
     _In_ ULONG OutputBufferLength,
     _In_bytecount_(DataLength) PVOID Data,
     _In_ ULONG DataLength,
     _Out_ PULONG BufferUsed
-    );
-
-NTSTATUS
-NfcCxSCInterfaceDistributePresentAbsentEvent(
-    _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_ WDFQUEUE Queue
     );
 
 BOOL
@@ -449,6 +428,17 @@ NfcCxSCInterfaceGetIccTypePerAtrLocked(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
     _Out_ BYTE* pIccTypePerAtr
     );
+
+_Requires_lock_held_(ScInterface->SmartCardLock)
+NTSTATUS
+NfcCxSCEnsureCardConnectedPowerReferenceIsHeld(
+    _In_ PNFCCX_SC_INTERFACE ScInterface
+    );
+
+_Requires_lock_held_(ScInterface->SmartCardLock)
+VOID
+NfcCxSCEnsureCardConnectedPowerReferenceIsReleased(
+    _In_ PNFCCX_SC_INTERFACE ScInterface);
 
 //
 // Helper methods below requires no lock held

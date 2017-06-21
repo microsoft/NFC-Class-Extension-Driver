@@ -70,6 +70,9 @@
     <ClCompile Include="..\driver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\NfcCxSCPresentAbsentDispatcher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\device.h">
@@ -127,6 +130,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\driver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NfcCxSCPresentAbsentDispatcher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
