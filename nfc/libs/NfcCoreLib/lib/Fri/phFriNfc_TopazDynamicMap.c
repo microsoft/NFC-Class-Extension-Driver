@@ -114,6 +114,8 @@ so there are 4 segements in the card */
 #define TOPAZ_TOTAL_SEG_TO_READ                         (0x04U)
 /* SPEC version value shall be 0x10 as per the TYPE 1 specification */
 #define TOPAZ_SPEC_VERSION                              (0x10U)
+/* This mask is to get the major version from CC Byte 1 (Version) */
+#define TOPAZ_MAJOR_VERSION_BIT_MASK                    (0xF0U)
 
 /* Response length for READ SEGMENT command is 128 bytes */
 #define TOPAZ_SEGMENT_READ_LENGTH                       (0x80U)
@@ -2008,7 +2010,7 @@ phFriNfc_Tpz_H_CheckCCBytesForWrite (
     ps_tpz_info = &(psNdefMap->TopazContainer);
 
     if ((PH_FRINFC_TOPAZ_CC_BYTE0 != ps_tpz_info->CCByteBuf[0]) ||
-        (TOPAZ_SPEC_VERSION != ps_tpz_info->CCByteBuf[1]) ||
+        (TOPAZ_SPEC_VERSION != (ps_tpz_info->CCByteBuf[1] & TOPAZ_MAJOR_VERSION_BIT_MASK)) ||
         (PH_FRINFC_TOPAZ_DYNAMIC_CC_BYTE2_MMSIZE != ps_tpz_info->CCByteBuf[2]) ||
         (PH_FRINFC_TOPAZ_CC_READWRITE != ps_tpz_info->CCByteBuf[3]))
     {
