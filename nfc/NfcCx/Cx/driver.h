@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     Base driver declarations for the NFC Class Extension
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -85,7 +85,7 @@ NTSTATUS
 NfcCxBindClient(
     _In_ PVOID ClassBindInfo,
     _In_ ULONG FunctionTableCount,
-    _In_count_(FunctionTableCount) PFN_WDF_CLASS_EXPORT* FunctionTable
+    _Out_writes_(FunctionTableCount) PFN_WDF_CLASS_EXPORT* FunctionTable
     );
 
 VOID

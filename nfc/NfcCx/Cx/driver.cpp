@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     Base driver implementation for the NFC Class Extension
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -379,7 +379,7 @@ Return Value:
     //
     WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&fdoAttributes, NFCCX_FDO_CONTEXT);
     fdoAttributes.EvtCleanupCallback = NfcCxFdoContextCleanup;
-    
+
     status = WdfObjectAllocateContext(Device, &fdoAttributes, (PVOID*)&fdoContext);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to allocate the client context");
@@ -419,7 +419,7 @@ Return Value:
         TRACE_LINE(LEVEL_ERROR, "Failed to create the HasFailed WaitLock, %!STATUS!", status);
         goto Done;
     }
-    
+
     //
     // Register I/O callbacks to tell the framework that you are interested
     // in handling IRP_MJ_DEVICE_CONTROL requests.
@@ -647,7 +647,7 @@ Return Value:
 
     fdoContext = NfcCxFdoGetContext(Device);
 
-    TRACE_LINE(LEVEL_INFO, "Client signalled an event, %!STATUS!, %!NFC_CX_HOST_ACTION!", 
+    TRACE_LINE(LEVEL_INFO, "Client signalled an event, %!STATUS!, %!NFC_CX_HOST_ACTION!",
                 NciCxHardwareEventParams->HardwareStatus,
                 NciCxHardwareEventParams->HostAction);
 
@@ -706,7 +706,7 @@ Arguments:
 
     NfcCxGlobals - CX global pointer
     Device - WDF device to initialize
-    Memory - A pointer to a WDFMEMORY object that contains the 
+    Memory - A pointer to a WDFMEMORY object that contains the
              content of the read notification
 
 Return Value:
@@ -716,7 +716,7 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    
+
     PUCHAR buffer = NULL;
     size_t bufferSize = 0;
 
@@ -1022,7 +1022,7 @@ NTSTATUS
 NfcCxBindClient(
     _In_ PVOID ClassBindInfo,
     _In_ ULONG FunctionTableCount,
-    _In_count_(FunctionTableCount) PFN_WDF_CLASS_EXPORT* FunctionTable
+    _Out_writes_(FunctionTableCount) PFN_WDF_CLASS_EXPORT* FunctionTable
     )
 {
     NTSTATUS status = STATUS_SUCCESS;
@@ -1049,9 +1049,9 @@ NfcCxBindClient(
 
     *ppPublicGlobals = NULL;
 
-    if (FunctionTableCount != ARRAYSIZE(exports)) {
+    if (FunctionTableCount > ARRAYSIZE(exports)) {
         TRACE_LINE(LEVEL_ERROR,
-                   "Function table size from client does not equal size from CX. Client size: %u, CX size: %u",
+                   "Function table size from client is greater than size from CX. Client size: %u, CX size: %u",
                    FunctionTableCount,
                    ARRAYSIZE(exports));
         status = STATUS_INVALID_PARAMETER;
@@ -1061,7 +1061,7 @@ NfcCxBindClient(
     err = memcpy_s(FunctionTable,
                    FunctionTableCount * sizeof(PFN_WDF_CLASS_EXPORT),
                    exports,
-                   sizeof(exports));
+                   FunctionTableCount * sizeof(PFN_WDF_CLASS_EXPORT));
     if (err != 0) {
         TRACE_LINE(LEVEL_ERROR, "Failed to copy functions into function table. Error: %d", err);
         status = STATUS_INVALID_PARAMETER;
