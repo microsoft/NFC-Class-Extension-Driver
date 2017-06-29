@@ -2018,7 +2018,9 @@ Return Value:
     UNREFERENCED_PARAMETER(InputBufferLength);
     UNREFERENCED_PARAMETER(OutputBufferLength);
 
+    // Buffer sizes are checked via the IOCTL dispatch table (at the top of the file).
     _Analysis_assume_(NULL != InputBuffer);
+    _Analysis_assume_(OutputBufferLength >= sizeof(NFC_NDEF_INFO));
 
     dtaInterface = NfcCxFileObjectGetFdoContext(FileContext)->DTAInterface;
 

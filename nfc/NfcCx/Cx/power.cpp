@@ -614,12 +614,11 @@ NfcCxPowerDeviceStopIdle(
 
 Routine Description:
 
-   Stops the idle timer for the device and brings the device back into the D0 power state (if neccessary).
+   Stops the idle timer for the device and signals the device to asynchronously enter the D0 power state.
 
 Arguments:
 
     PowerManager - Pointer to the Power Manager
-    WaitForD0 - Whether or not to wait for the driver to enter the D0 power state before returning.
 
 Return Value:
     NTSTATUS
@@ -641,7 +640,12 @@ Return Value:
 
     status = WdfDeviceStopIdle(PowerManager->FdoContext->Device, /*WaitForD0*/ FALSE);
 
-    if (!NT_SUCCESS(status))
+    if (status == STATUS_PENDING)
+    {
+        // STATUS_PENDING means the device is booting up asynchronously (which is what we told it to do).
+        status = STATUS_SUCCESS;
+    }
+    else if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "'WdfDeviceStopIdle' call failed, %!STATUS!", status);
         goto Done;
