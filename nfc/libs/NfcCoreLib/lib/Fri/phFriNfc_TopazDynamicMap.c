@@ -2010,7 +2010,7 @@ phFriNfc_Tpz_H_CheckCCBytesForWrite (
     ps_tpz_info = &(psNdefMap->TopazContainer);
 
     if ((PH_FRINFC_TOPAZ_CC_BYTE0 != ps_tpz_info->CCByteBuf[0]) ||
-        (TOPAZ_SPEC_VERSION != (ps_tpz_info->CCByteBuf[1] & TOPAZ_MAJOR_VERSION_BIT_MASK)) ||
+        ((TOPAZ_SPEC_VERSION & TOPAZ_MAJOR_VERSION_BIT_MASK) != (ps_tpz_info->CCByteBuf[1] & TOPAZ_MAJOR_VERSION_BIT_MASK)) ||
         (PH_FRINFC_TOPAZ_DYNAMIC_CC_BYTE2_MMSIZE != ps_tpz_info->CCByteBuf[2]) ||
         (PH_FRINFC_TOPAZ_CC_READWRITE != ps_tpz_info->CCByteBuf[3]))
     {
