@@ -2327,17 +2327,14 @@ NfcCxRFInterfaceRemoteDevConnectCB(
 
     if (NT_SUCCESS(status)) {
 
-        if ((NFCSTATUS_MULTIPLE_PROTOCOLS == rfInterface->pLibNfcContext->DiscoveryStatus) ||
-            (NFCSTATUS_MULTIPLE_TAGS == rfInterface->pLibNfcContext->DiscoveryStatus)) {
-            //
-            // In case of multiple protocols, the information is refreshed after interface activation
-            // therefore, we need to update our device list which is cached from device discovery
-            //
-            rfInterface->pLibNfcContext->pRemDevList->hTargetDev = hRemoteDev;
-            RtlCopyMemory(rfInterface->pLibNfcContext->pRemDevList->psRemoteDevInfo,
-                          psRemoteDevInfo,
-                          sizeof(phLibNfc_sRemoteDevInformation_t));
-        }
+        phLibNfc_RemoteDevList_t& selectedDevListItem = rfInterface->pLibNfcContext->pRemDevList[rfInterface->pLibNfcContext->SelectedProtocolIndex];
+
+        // We may receive additional information about the remote device during the connection sequence.
+        // So make sure our copy of the device information is up to date.
+        selectedDevListItem.hTargetDev = hRemoteDev;
+        RtlCopyMemory(selectedDevListItem.psRemoteDevInfo,
+                        psRemoteDevInfo,
+                        sizeof(phLibNfc_sRemoteDevInformation_t));
 
         if (NfcCxRFInterfaceGetGenericRemoteDevType(psRemoteDevInfo->RemDevType) == phNfc_ePICC_DevType) {
             rfInterface->pLibNfcContext->bIsTagPresent = TRUE;
@@ -3522,14 +3519,16 @@ NfcCxRFInterfaceRemoteDevNtfCB(
     {
         phLibNfc_RemoteDevList_t *psRemoteDev = psRemoteDevList;
 
+        // Prioritize Peer-to-Peer over anything else (particularly Card Emulation).
         for (uint8_t i = 1; i < uNofRemoteDev; i++) {
             if (psRemoteDevList[i].psRemoteDevInfo->RemDevType == phNfc_eNfcIP1_Target) {
+                // Ignore any remote devices in the list that are before the P2P device.
                 psRemoteDev = &psRemoteDevList[i];
+                uNofRemoteDev -= i;
                 break;
             }
         }
 
-        rfInterface->pLibNfcContext->DiscoveryStatus = NfcStatus;
         TRACE_LINE(LEVEL_INFO, "RemDevType=%!phNfc_eRFDevType_t!", psRemoteDev->psRemoteDevInfo->RemDevType);
 
         TraceLoggingWrite(

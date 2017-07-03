@@ -62,7 +62,6 @@ typedef struct _NFCCX_LIBNFC_CONTEXT {
     uint8_t                       ConfigStatus;
     HANDLE                        hNotifyCompleteEvent;
     phLibNfc_RemoteDevList_t*     pRemDevList;
-    NFCSTATUS                     DiscoveryStatus;
     BOOLEAN                       bIsTagPresent;
     BOOLEAN                       bIsTagConnected;
     BOOLEAN                       bIsTagNdefFormatted;
