@@ -75,5 +75,4 @@ extern
 phLibNfc_SE_Type_t phLibNfc_SE_GetType(void* pContext,
                                        pphNciNfc_NfceeInfo_t pNfceeInfo);
 
-NFCSTATUS phLibNfc_DelayForSeNtfProc(void* pContext,NFCSTATUS status,void* pInfo);
 NFCSTATUS phLibNfc_DelayForSeNtf(void* pContext, NFCSTATUS status, void* pInfo);
