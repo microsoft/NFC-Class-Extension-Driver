@@ -1148,13 +1148,14 @@ NFCSTATUS phLibNfc_HciChildDevInitComplete(void* pContext, NFCSTATUS status, voi
             else
             {
                 PH_LOG_LIBNFC_INFO_STR("NFCEE initialization failed");
+                pLibCtx->tSeInfo.bSeState[bIndex] = phLibNfc_SeStateInvalid;
 
                 /* Following NCI 2.0 Figure 25: NFCEE State Transitions,
                    on NFCEE_TRANSMISSION_ERROR, the NFCEE is to be considered unresponsive.
                    We can remove it from the list. */
                 if (status == PH_NCINFC_STATUS_NFCEE_TRANSMISSION_ERROR)
                 {
-                    pLibCtx->tSeInfo.bSeState[bIndex] = phLibNfc_SeStateInvalid;
+
                     pLibCtx->tSeInfo.tSeList[bIndex].hSecureElement = NULL;
                     pLibCtx->tSeInfo.bSeCount--;
                 }
