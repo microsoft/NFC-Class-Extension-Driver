@@ -42,6 +42,7 @@ static NFCSTATUS phLibNfc_ValidateInputRtngInfo(uint8_t bNumRtngConfigs, phLibNf
 /* NFCEE set mode sequence */
 phLibNfc_Sequence_t gphLibNfc_SetSeModeSeq[] = {
     {&phLibNfc_SetModeSeq, &phLibNfc_SetModeSeqEnd},
+    {&phLibNfc_DelayForSeNtf, NULL},
     {NULL, &phLibNfc_SetSeModeSeqComplete}
 };
 

@@ -639,6 +639,8 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
                        mode set and power mode changes is not required */
                     if(NULL != pSetModeSeq)
                     {
+                        /* Further information may comes from the NFCC */
+                        pLibContext->dwHciInitDelay = 100;
                         PHLIBNFC_INIT_SEQUENCE(pLibContext,pSetModeSeq);
                         /* Start discover sequence */
                         wStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,NULL);
