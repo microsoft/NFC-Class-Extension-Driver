@@ -748,7 +748,7 @@ phNciNfc_ResetNtfCb(void*     pContext,
 
                 resetTrigger = pTransInfo->pbuffer[0];
                 if (NFCSTATUS_SUCCESS == wStatus
-                    && resetTrigger != PH_NCINFC_RESETTRIGGER_NFCC_POWER_ON)
+                    && resetTrigger == PH_NCINFC_RESETTRIGGER_CMD_RESET_RECEIVED)
                 {
                     wStatus = phNciNfc_GenericSequence(pNciCtx, pInfo, status);
                 }
