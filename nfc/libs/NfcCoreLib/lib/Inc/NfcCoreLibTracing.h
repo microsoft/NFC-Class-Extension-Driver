@@ -377,6 +377,22 @@ WPP_HEX WppLogHex(
 // end_wpp
 
 //*********************************************************
+// MACRO: PH_LOG_HCI_WARN_STR
+//
+// begin_wpp config
+// USEPREFIX (PH_LOG_HCI_WARN_STR, "%!STDPREFIX!%!FUNC!:%s", " ");
+// FUNC PH_LOG_HCI_WARN_STR{FLAG=TF_HCI,LEVEL=LEVEL_WARNING}(MSG, ...);
+// end_wpp
+
+//*********************************************************
+// MACRO: PH_LOG_HCI_INFO_STR
+//
+// begin_wpp config
+// USEPREFIX (PH_LOG_HCI_INFO_STR, "%!STDPREFIX!%!FUNC!:%s", " ");
+// FUNC PH_LOG_HCI_INFO_STR{FLAG=TF_HCI,LEVEL=LEVEL_INFO}(MSG, ...);
+// end_wpp
+
+//*********************************************************
 // MACRO: PH_LOG_HCI_INFO_X32MSG
 //
 // begin_wpp config

@@ -40,14 +40,37 @@ static NFCSTATUS phHciNfc_CreateSEGetAtrTimer(phHciNfc_HciContext_t  *pHciContex
 
 static uint32_t phHciNfc_CalcWtxTimeout(uint8_t bWtxBwi);
 
+//ETSI 12 changes
+static NFCSTATUS phLibNfc_HciSetHostType(void* pContext, NFCSTATUS status, void* pInfo);
+static NFCSTATUS phLibNfc_HciSetHostTypeProc(void* pContext, NFCSTATUS status, void* pInfo);
+
+extern NFCSTATUS phLibNfc_HciGetHostTypeList(void* pContext, NFCSTATUS status, void* pInfo);
+extern NFCSTATUS phLibNfc_HciGetHostTypeListProc(void* pContext, NFCSTATUS status, void* pInfo);
+static bool_t phHciNfc_HostTypeListContainsESe(uint8_t *p_data, uint16_t data_len);
+
+extern NFCSTATUS phLibNfc_HciCreateApduPipe(void* pContext, NFCSTATUS status, void* pInfo);
+extern NFCSTATUS phLibNfc_HciCreateApduPipeProc(void* pContext, NFCSTATUS status, void* pInfo);
+
+extern NFCSTATUS phLibNfc_HciOpenAPDUPipe(void* pContext, NFCSTATUS status, void* pInfo);
+extern NFCSTATUS phLibNfc_HciOpenAPDUPipeProc(void* pContext, NFCSTATUS status, void* pInfo);
+
+extern NFCSTATUS phLibNfc_SetModeSeqEnd(void* pContext, NFCSTATUS status, void*     pInfo);
+
+extern NFCSTATUS phLibNfc_eSEClearALLPipeComplete(void* pContext, NFCSTATUS status, void* pInfo);
+
+static void phLibNfc_NfceeNtfDelayCb(uint32_t dwTimerId, void *pContext);
+void phHciNfc_Process_eSE_ClearALLPipes(void);
+
 phLibNfc_Sequence_t gphLibNfc_HciInitSequenceNci1x[] = {
     {&phLibNfc_OpenLogConn, &phLibNfc_OpenLogConnProcess},
-    {&phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc},
-    {&phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc},
-    {&phLibNfc_HciOpenAdmPipe, &phLibNfc_HciOpenAdmPipeProc},
-    {&phLibNfc_HciGetSessionIdentity, &phLibNfc_HciGetSessionIdentityProc},
-    {&phLibNfc_HciGetHostList, &phLibNfc_HciGetHostListProc},
-    {&phLibNfc_HciSetWhiteList, &phLibNfc_HciSetWhiteListProc},
+    { &phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc },
+    { &phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc },
+    { &phLibNfc_HciOpenAdmPipe, &phLibNfc_HciOpenAdmPipeProc },
+    { &phLibNfc_HciSetHostType, &phLibNfc_HciSetHostTypeProc },
+    { &phLibNfc_HciGetSessionIdentity, &phLibNfc_HciGetSessionIdentityProc },
+    { &phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc },
+    { &phLibNfc_HciGetHostList, &phLibNfc_HciGetHostListProc },
+    { &phLibNfc_HciSetWhiteList, &phLibNfc_HciSetWhiteListProc },
     {NULL, &phLibNfc_HciInitComplete}
 };
 
@@ -59,9 +82,15 @@ phLibNfc_Sequence_t gphLibNfc_HciInitSequenceNci2x[] = {
 };
 
 phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequenceNci1x[] = {
-    {&phLibNfc_HciSetWhiteList, &phLibNfc_HciSetWhiteListProc},
-    {&phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc},
-    {NULL, &phLibNfc_HciChildDevInitComplete}
+    { &phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc },
+    { &phLibNfc_HciGetHostList, &phLibNfc_HciGetHostListProc },
+    { &phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc },
+    { &phLibNfc_HciGetHostTypeList,&phLibNfc_HciGetHostTypeListProc },
+    { &phLibNfc_HciCreateApduPipe,&phLibNfc_HciCreateApduPipeProc },
+    { &phLibNfc_HciOpenAPDUPipe,&phLibNfc_HciOpenAPDUPipeProc },
+    { &phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc },
+    { &phLibNfc_HciSetSessionIdentity, &phLibNfc_HciSetSessionIdentityProc },
+    { NULL, &phLibNfc_HciChildDevInitComplete }
 };
 
 phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequenceNci2x[] = {
@@ -74,6 +103,12 @@ phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequenceNci2x[] = {
 static phLibNfc_Sequence_t gphLibNfc_HciTransceiveSequence[] = {
     {&phLibNfc_HciDataSend, &phLibNfc_HciDataSendProc},
     {NULL, &phLibNfc_HciDataSendComplete}
+};
+
+phLibNfc_Sequence_t gphLibNfc_eSEHandleClearAllPipesSequence[] =
+{
+    { &phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc },
+    { NULL, &phLibNfc_eSEClearALLPipeComplete }
 };
 
 void phLibNfc_HciDeInit()
@@ -247,6 +282,7 @@ static NFCSTATUS phLibNfc_HciOpenAdmPipe(void* pContext,NFCSTATUS status,void* p
 {
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
     pphLibNfc_Context_t pLibCtx;
+    pphHciNfc_HciContext_t pHciCtxt;
     UNUSED(pInfo);
     UNUSED(status);
     PH_LOG_LIBNFC_FUNC_ENTRY();
@@ -255,6 +291,8 @@ static NFCSTATUS phLibNfc_HciOpenAdmPipe(void* pContext,NFCSTATUS status,void* p
         pLibCtx = (pphLibNfc_Context_t)pContext;
         if(NULL != pLibCtx->pHciContext)
         {
+            pHciCtxt = pLibCtx->pHciContext;
+            pHciCtxt->bClearALL_eSE_pipes = FALSE;
             /* Open a pipe to ADM (Admin) gate */
             wStatus = phHciNfc_OpenPipe(pLibCtx->pHciContext,(uint8_t)PHHCINFC_PIPE_ADMIN_PIPEID,
                                         &phLibNfc_InternalSequence,
@@ -588,7 +626,7 @@ static NFCSTATUS phLibNfc_HciDataSend(void* pContext,NFCSTATUS status,void* pInf
             pHciContext = (phHciNfc_HciContext_t *) pLibCtx->pHciContext;
             wStatus = phHciNfc_GetPipeId(pLibCtx->pHciContext,phHciNfc_e_ApduGate, &bPipeId);
             PH_LOG_HCI_INFO_X32MSG("PIPE ID",bPipeId);
-            if((wStatus ==NFCSTATUS_SUCCESS) && (bPipeId !=0xFF))
+            if((wStatus ==NFCSTATUS_SUCCESS) && (bPipeId != PHHCINFC_PIPE_INVALID_PIPEID))
             {
                 wStatus = phHciNfc_Transceive(pLibCtx->pHciContext,
                                         bPipeId,
@@ -628,7 +666,7 @@ static NFCSTATUS phLibNfc_HciDataSend(void* pContext,NFCSTATUS status,void* pInf
             else
             {
                 PH_LOG_HCI_INFO_EXPECT(wStatus == NFCSTATUS_SUCCESS);
-                PH_LOG_HCI_INFO_EXPECT(bPipeId != 0xFF);
+                PH_LOG_HCI_INFO_EXPECT(bPipeId != PHHCINFC_PIPE_INVALID_PIPEID);
                 PH_LOG_LIBNFC_CRIT_STR("Failure with phHciNfc_GetPipeId!");
             }
         }
@@ -676,7 +714,8 @@ static void phHciNfc_eSETransceiveTimeOutCb(uint32_t dwTimerId, void *pContext)
         pHciContext->tHciSeTxRxTimerInfo.dwTimeOut = PHHCINFC_DEFAULT_HCI_TX_RX_TIME_OUT;
         pHciContext->tHciSeTxRxTimerInfo.dwRspTimerId= PH_OSALNFC_TIMER_ID_INVALID;
         /* Set the Default Timeout for eSE Transceive */
-        (void)phLibNfc_InternalSequence(pLibCtx,NFCSTATUS_RESPONSE_TIMEOUT,NULL);
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        (void)phLibNfc_HciDataSendProc(pLibCtx, NFCSTATUS_RESPONSE_TIMEOUT, NULL);
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
 }
@@ -949,6 +988,9 @@ phHciNfc_ProcessEventsOnApduPipe(void *pContext, NFCSTATUS wStatus, void *pInfo)
             }
         }
         break;
+        case PHHCINFC_EVENT_ATR_RECV:
+            (void)phLibNfc_eSE_GetAtrProc(pContext, wStatus, pInfo);
+            break;
         default:
             break;
         }
@@ -995,7 +1037,7 @@ phLibNfc_HciGetSessionIdentityProc(void* pContext,NFCSTATUS status,void* pInfo)
                 pReadSessionIdentity = (phHciNfc_ReceiveParams_t *) pInfo;
 
                 /* Check if Session ID is already updated by Pipe Create Notifications */
-                if(pHciCtx->aGetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX] != 0xFF)
+                if(pHciCtx->aGetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX] != PHHCINFC_PIPE_INVALID_PIPEID)
                 {
                     /*Check if APDU pipe is already created*/
                     if(pHciCtx->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId != 0)
@@ -1115,9 +1157,9 @@ phLibNfc_HciSetSessionIdentity(void* pContext,NFCSTATUS status,void* pInfo)
         if(NULL != pLibCtx->pHciContext)
         {
             pHciContext  = (phHciNfc_HciContext_t *) pLibCtx->pHciContext;
-            if(pHciContext->bCreatePipe == 0x01)
+            if (pHciContext->bCreatePipe)
             {
-                pHciContext->bCreatePipe = 0x00;
+                pHciContext->bCreatePipe = FALSE;
                 wStatus = phHciNfc_AnySetParameter(pLibCtx->pHciContext,
                             bIndex,
                             PHHCINFC_PIPE_ADMIN_PIPEID,
@@ -1238,6 +1280,7 @@ phLibNfc_HciGetHostListProc(void* pContext,NFCSTATUS status,void* pInfo)
                    (pReadHostList->pData[bIndex] != phHciNfc_e_TerminalHostID))
                 {
                     pHciCtx->aHostList[bCount] = pReadHostList->pData[bIndex];
+                    PH_LOG_LIBNFC_INFO_STR("HCI Host ID: %X", pHciCtx->aHostList[bCount]);
                     bCount++;
                 }
             }
@@ -1270,7 +1313,7 @@ static NFCSTATUS phLibNfc_NfceeModeSet(void *pContext,NFCSTATUS wStatus,void *pI
     if((NULL != pLibContext) && (PHLIBNFC_GETCONTEXT() == pLibContext))
     {
         pNfceeHandle = (pphNciNfc_NfceeDeviceHandle_t)pLibContext->sSeContext.pActiveSeInfo->hSecureElement;
-        if( pNfceeHandle->tDevInfo.eNfceeStatus == PH_NCINFC_EXT_NFCEEMODE_ENABLE)
+        if (pNfceeHandle->tDevInfo.eNfceeStatus == PH_NCINFC_EXT_NFCEEMODE_ENABLE && pNfceeHandle->tDevInfo.bNfceeID == phHciNfc_e_TerminalHostID)
         {
             wIntStatus = NFCSTATUS_SUCCESS;
         }
@@ -1600,6 +1643,8 @@ phLibNfc_eSE_GetAtr(
             }
             else
             {
+                if (pHciContext->eSE_Compliancy == phHciNfc_e_HciVersion9)
+                {
                 wStatus = phHciNfc_AnyGetParameter(
                     pLibCtx->pHciContext,
                     pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId,
@@ -1607,6 +1652,21 @@ phLibNfc_eSE_GetAtr(
                     pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId,
                     &phLibNfc_eSE_GetAtrProc,
                     pLibCtx->pHciContext);
+                }
+                else if (pHciContext->eSE_Compliancy == phHciNfc_e_HciVersion12)
+                {
+                    wStatus = phHciNfc_eSE_EvtAbort(
+                        pLibCtx->pHciContext,
+                        pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId,
+                        &phLibNfc_eSE_GetAtrProc,
+                        pLibCtx->pHciContext);
+                }
+                else
+                {
+                    wStatus = NFCSTATUS_INVALID_PARAMETER;
+                    PH_LOG_LIBNFC_CRIT_STR("No proper compliancy.");
+                }
+
                 if (NFCSTATUS_PENDING != wStatus)
                 {
                     PH_LOG_LIBNFC_CRIT_STR("Get ATR Failed!");
@@ -1682,4 +1742,465 @@ static NFCSTATUS phHciNfc_CreateSEGetAtrTimer(phHciNfc_HciContext_t  *pHciContex
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;
+}
+
+/////////////////////////////////////////////////
+static NFCSTATUS phLibNfc_HciSetHostType(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    pphLibNfc_Context_t pLibCtx;
+    const uint8_t aTerminalHostType[2] = { 0x01, 0x00 }; // ETSI/HCI v12.1, Section 7.1.1.1
+    UNUSED(pInfo);
+    UNUSED(status);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (NULL != pContext)
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+
+        if (NULL != pLibCtx->pHciContext)
+        {
+            wStatus = phHciNfc_AnySetParameter(pLibCtx->pHciContext,
+                PHHCINFC_PIPE_HOST_TYPE_INDEX,
+                PHHCINFC_PIPE_ADMIN_PIPEID,
+                ARRAYSIZE(aTerminalHostType),
+                aTerminalHostType,
+                &phLibNfc_InternalSequence,
+                pContext);
+            if (wStatus != NFCSTATUS_PENDING)
+            {
+                PH_LOG_LIBNFC_CRIT_STR("Failed to Send Cmd to NCI");
+            }
+        }
+        else
+        {
+            PH_LOG_LIBNFC_CRIT_STR("Invalid HCI context.");
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid LibNfc context.");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phLibNfc_HciSetHostTypeProc(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    pphLibNfc_Context_t pLibCtx;
+    UNUSED(pInfo);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (NULL != pContext)
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        if (NULL != pLibCtx->pHciContext)
+        {
+            wStatus = status;
+        }
+        else
+        {
+            PH_LOG_LIBNFC_CRIT_STR("Invalid Hci context received!");
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid LibNfc context received!");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+static bool_t phHciNfc_HostTypeListContainsESe(uint8_t *p_data, uint16_t data_len)
+{
+    const uint8_t hostTypeSize = 2;
+    const uint8_t eSEHostType[2] = { 0x03, 0x00 }; // ETSI/HCI v12.1, Section 7.1.1.1
+
+    uint16_t numOfHosts = data_len / hostTypeSize;
+
+    bool_t result = FALSE;
+    for (uint16_t i = 0; i != numOfHosts; ++i)
+    {
+        uint8_t* pHostType = p_data + i * hostTypeSize;
+        PH_LOG_LIBNFC_INFO_STR("HCI Host Type: { %02X, %02X }", pHostType[0], pHostType[1]);
+
+        if (pHostType[0] == eSEHostType[0] && pHostType[1] == eSEHostType[1])
+        {
+            result = TRUE;
+            // No "break;" so that logging can continue.
+        }
+    }
+
+    return result;
+}
+
+NFCSTATUS phLibNfc_HciGetHostTypeList(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    pphLibNfc_Context_t pLibCtx;
+    UNUSED(pInfo);
+    UNUSED(status);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (NULL != pContext)
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        if (NULL != pLibCtx->pHciContext)
+        {
+            /*Get the Host Type list on HCI network*/
+            wStatus = phHciNfc_AnyGetParameter(
+                pLibCtx->pHciContext,
+                PHHCINFC_ADM_GATEID,
+                PHHCINFC_PIPE_HOST_TYPE_LIST_INDEX,
+                PHHCINFC_PIPE_ADMIN_PIPEID,
+                &phLibNfc_InternalSequence,
+                pContext
+            );
+            if (NFCSTATUS_PENDING != wStatus)
+            {
+                PH_LOG_LIBNFC_CRIT_X32MSG("Failed to Get Host Type List, error", wStatus);
+                wStatus = NFCSTATUS_FAILED;
+            }
+            else
+            {
+                PH_LOG_LIBNFC_INFO_STR("Command sent to lower layer");
+            }
+        }
+        else
+        {
+            PH_LOG_LIBNFC_CRIT_STR("Invalid HCI context passed.");
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid LibNfc context passed.");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+NFCSTATUS phLibNfc_HciGetHostTypeListProc(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    pphLibNfc_Context_t pLibCtx;
+    phHciNfc_HciContext_t *pHciCtx;
+    phHciNfc_ReceiveParams_t *pReadHostTypeList = NULL;
+
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (NULL != pContext)
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        pHciCtx = pLibCtx->pHciContext;
+
+        if (NULL != pLibCtx->pHciContext && NULL != pInfo)
+        {
+            if (NFCSTATUS_SUCCESS == status)
+            {
+                /*Read Host list Success*/
+                wStatus = status;
+                pReadHostTypeList = (phHciNfc_ReceiveParams_t *)pInfo;
+
+                // Note: The HOST_TYPE_LIST registry value was introduced in ETSI/HCI v12.
+                // So if the Host Type List is empty then it is safe to assume the SE is not v12.
+                if (phHciNfc_HostTypeListContainsESe(pReadHostTypeList->pData, pReadHostTypeList->wLen))
+                {
+                    pHciCtx->eSE_Compliancy = phHciNfc_e_HciVersion12;
+                    PH_LOG_LIBNFC_CRIT_STR("eSE is ETSI 12 Compliant.");
+                }
+                else
+                {
+                    pHciCtx->eSE_Compliancy = phHciNfc_e_HciVersion9;
+                    PH_LOG_LIBNFC_CRIT_STR("eSE isn't ETSI 12. Falling back to ETSI 9.");
+                }
+                PH_LOG_LIBNFC_INFO_STR("Read Host TypeList successfully");
+            }
+            else
+            {
+                PH_LOG_LIBNFC_CRIT_STR("Failed to read HostType List");
+                wStatus = NFCSTATUS_FAILED;
+            }
+        }
+        else
+        {
+            PH_LOG_LIBNFC_CRIT_STR("Invalid HCI context received");
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid LibNfc context received");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+NFCSTATUS phLibNfc_HciCreateApduPipe(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    pphLibNfc_Context_t pLibCtx;
+    phHciNfc_HciContext_t *pHciContext;
+    UNUSED(pInfo);
+    UNUSED(status);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (NULL != pContext)
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        if (NULL != pLibCtx->pHciContext)
+        {
+            pHciContext = (phHciNfc_HciContext_t*)pLibCtx->pHciContext;
+            PH_LOG_LIBNFC_INFO_X32MSG("Pipe data", pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId);
+            /* Check if  APDU Pipe is already Present */
+            if ((pHciContext->bCreatePipe ||
+                (pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId == PHHCINFC_NO_PIPE_DATA) ||
+                (pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId == 0x00)) &&
+                (pHciContext->eSE_Compliancy == phHciNfc_e_HciVersion12))
+            {
+                pHciContext->bClearpipes = 0x00;
+                wStatus = phHciNfc_CreateApduPipe(pLibCtx->pHciContext, (uint8_t)PHHCINFC_PIPE_ADMIN_PIPEID,
+                    &phLibNfc_InternalSequence,
+                    pContext);
+                if (NFCSTATUS_PENDING != wStatus)
+                {
+                    PH_LOG_LIBNFC_CRIT_X32MSG("Failed to create pipe for ADM, error", wStatus);
+                    wStatus = NFCSTATUS_FAILED;
+                }
+                else
+                {
+                    PH_LOG_LIBNFC_INFO_STR("APDU Create command sent to NCI");
+                }
+            }
+            else
+            {
+                /*APDU Pipe is already created*/
+                PH_LOG_LIBNFC_CRIT_STR("Pipe is already present at APDU Gate.");
+                wStatus = NFCSTATUS_SUCCESS;
+            }
+        }
+        else
+        {
+            PH_LOG_LIBNFC_CRIT_STR("Invalid Hci context passed.");
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid LibNfc context passed.");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+NFCSTATUS phLibNfc_HciCreateApduPipeProc(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    pphLibNfc_Context_t pLibCtx;
+    pphHciNfc_HciContext_t    pHciContext;
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    UNUSED(pInfo);
+    if (NULL != pContext)
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        if (NULL != pLibCtx->pHciContext)
+        {
+            PH_LOG_LIBNFC_INFO_STR("Create pipe Response");
+            pHciContext = (pphHciNfc_HciContext_t)pLibCtx->pHciContext;
+            if (NFCSTATUS_SUCCESS == status)
+            {
+                wStatus = status;
+                pHciContext->bCreatePipe = FALSE;
+
+                /* Register a receive handling Funciton to APDU Pipe */
+                PH_LOG_LIBNFC_INFO_STR("Register for APDI pipe events.");
+                phHciNfc_HciRegData_t tHciRegData;
+                tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+                tHciRegData.bPipeId = pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId;
+                (void)phHciNfc_RegisterCmdRspEvt(pHciContext,
+                    &tHciRegData,
+                    &phHciNfc_ProcessEventsOnApduPipe,
+                    pHciContext);
+            }
+            else
+            {
+                PH_LOG_LIBNFC_CRIT_STR("Failed to create APDU pipe");
+                pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = PHHCINFC_PIPE_INVALID_PIPEID;
+                wStatus = NFCSTATUS_FAILED;
+            }
+        }
+        else
+        {
+            PH_LOG_LIBNFC_CRIT_STR("Invalid Hci context received");
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid LibNfc context received");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+NFCSTATUS phLibNfc_HciOpenAPDUPipe(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    pphLibNfc_Context_t pLibCtx;
+    pphHciNfc_HciContext_t    pHciContext;
+    UNUSED(pInfo);
+    UNUSED(status);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (NULL != pContext)
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        if (NULL != pLibCtx->pHciContext)
+        {
+            pHciContext = (pphHciNfc_HciContext_t)pLibCtx->pHciContext;
+            PH_LOG_LIBNFC_INFO_STR("phLibNfc_HciOpenAPDUPipe:Entered!!!");
+            if (pHciContext->eSE_Compliancy == phHciNfc_e_HciVersion12)
+            {
+                /* Open a pipe to APDU (Admin) gate */
+                wStatus = phHciNfc_OpenPipe(pLibCtx->pHciContext,
+                    (uint8_t)pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId,
+                    &phLibNfc_InternalSequence,
+                    pContext);
+                if (NFCSTATUS_PENDING != wStatus)
+                {
+                    PH_LOG_LIBNFC_CRIT_X32MSG("Failed to open APDU pipe, error.", wStatus);
+                    wStatus = NFCSTATUS_FAILED;
+                }
+                else
+                {
+                    PH_LOG_LIBNFC_INFO_STR("APDU Open pipe command sent to NCI");
+                }
+            }
+            else
+            {
+                /*APDU Pipe is already created*/
+                wStatus = NFCSTATUS_SUCCESS;
+            }
+        }
+        else
+        {
+            PH_LOG_LIBNFC_CRIT_STR("Invalid Hci context passed.");
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid LibNfc context passed.");
+    }
+
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+NFCSTATUS phLibNfc_HciOpenAPDUPipeProc(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    pphLibNfc_Context_t pLibCtx;
+    pphHciNfc_HciContext_t    pHciContext;
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if (NULL != pContext)
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        if (NULL != pLibCtx->pHciContext)
+        {
+            pHciContext = (pphHciNfc_HciContext_t)pLibCtx->pHciContext;
+            if (NFCSTATUS_SUCCESS == status)
+            {
+                wStatus = status;
+                if (pInfo != NULL)
+                {
+                    PH_LOG_LIBNFC_INFO_U32MSG("Number of APDU pipes opened", *(uint8_t *)pInfo);
+                }
+                PH_LOG_LIBNFC_INFO_STR("APDU Pipe Opened Sucessfully");
+            }
+            else
+            {
+                pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = PHHCINFC_PIPE_INVALID_PIPEID;
+                PH_LOG_LIBNFC_CRIT_STR("Failed to open APDU pipe.");
+                wStatus = NFCSTATUS_SUCCESS;
+            }
+        }
+        else
+        {
+            PH_LOG_LIBNFC_CRIT_STR("Invalid Hci context received.");
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid LibNfc context.");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+static void phLibNfc_NfceeNtfDelayCb(uint32_t dwTimerId, void *pContext)
+{
+    pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t)pContext;
+    /* Internal event is made failed in order to remain in same state */
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if ((NULL != pLibContext) && (PHLIBNFC_GETCONTEXT() == pLibContext))
+    {
+        /* Stop timer and delete the same */
+        (void)phOsalNfc_Timer_Stop(dwTimerId);
+        (void)phOsalNfc_Timer_Delete(dwTimerId);
+
+        (void)phLibNfc_SeqHandler(pLibContext, wStatus, NULL);
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return;
+}
+
+NFCSTATUS phLibNfc_SetModeSeqEnd(void *pContext, NFCSTATUS wStatus, void *pInfo)
+{
+    NFCSTATUS wIntStatus = NFCSTATUS_FAILED;
+    pphLibNfc_LibContext_t pLibContext = pContext;
+    UNUSED(pInfo);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if ((NULL != pLibContext) && (PHLIBNFC_GETCONTEXT() == pLibContext))
+    {
+        wIntStatus = wStatus;
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wIntStatus;
+}
+
+NFCSTATUS phLibNfc_eSEClearALLPipeComplete(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = status;
+    pphLibNfc_LibContext_t pLibCtx;
+    pphHciNfc_HciContext_t pHciContext;
+    UNUSED(pContext);
+    UNUSED(pInfo);
+
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+
+    if ((pContext != NULL) && (NFCSTATUS_SUCCESS == wStatus))
+    {
+        pLibCtx = (pphLibNfc_Context_t)pContext;
+        pHciContext = pLibCtx->pHciContext;
+        pHciContext->bCreatePipe = TRUE;
+        pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = PHHCINFC_NO_PIPE_DATA;
+
+        /* RE Initializing HCI Initialization sequence */
+        phLibNfc_HciLaunchDevInitSequence(pLibCtx);
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Clear All Pipes failed.");
+        return NFCSTATUS_FAILED;
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+void phHciNfc_Process_eSE_ClearALLPipes(void)
+{
+    pphLibNfc_Context_t pLibCtx = PHLIBNFC_GETCONTEXT();
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+
+    PHLIBNFC_INIT_SEQUENCE(pLibCtx, gphLibNfc_eSEHandleClearAllPipesSequence);
+    wStatus = phLibNfc_SeqHandler(pLibCtx, NFCSTATUS_SUCCESS, NULL);
+    if (NFCSTATUS_PENDING != wStatus)
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Clear All Pipes failed to start, %d", wStatus);
+        wStatus = NFCSTATUS_FAILED;
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
 }

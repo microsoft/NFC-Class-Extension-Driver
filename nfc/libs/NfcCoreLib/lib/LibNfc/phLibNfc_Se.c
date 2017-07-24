@@ -505,6 +505,8 @@ static void phLibNfc_UpdateSeInfo(void* pContext, pphNciNfc_NfceeInfo_t pNfceeIn
                             phOsalNfc_SetMemory(pHciContext,0,sizeof(phHciNfc_HciContext_t));
                             pHciContext->pNciContext = pCtx->sHwReference.pNciHandle;
                             pHciContext->pSeHandle = pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_HciNwk].hSecureElement;
+                            pHciContext->bLogDataMessages = !!pCtx->Config.bLogNciDataMessages;
+
                             pCtx->pHciContext = pHciContext;
 
                             /* Initializing HCI Initialization sequence */

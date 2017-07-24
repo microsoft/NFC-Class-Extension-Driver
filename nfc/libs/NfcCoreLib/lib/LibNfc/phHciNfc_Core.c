@@ -234,6 +234,37 @@ phHciNfc_CoreRecvCB(void                           *pContext,
 
 }
 
+static void
+phHciNfc_PrintHciCommand(_In_ phHciNfc_HciContext_t* pHciContext, const phHciNfc_SendParams_t* params)
+{
+    if (WPP_FLAG_LEVEL_ENABLED(TF_HCI, LEVEL_INFO))
+    {
+        PH_LOG_HCI_INFO_STR("HCI Command Details:");
+        PH_LOG_HCI_INFO_STR("====================");
+
+        PH_LOG_HCI_INFO_STR("Pipe Id: %u", params->bPipeId);
+        PH_LOG_HCI_INFO_STR("INS: %u", params->bIns);
+        PH_LOG_HCI_INFO_STR("Message type: %u", params->bMsgType);
+        PH_LOG_HCI_INFO_STR("Data length: %u", params->dwLen);
+
+        if (pHciContext->bLogDataMessages)
+        {
+            #define PRINT_HCI_COMMAND_MAX_COUNT 25
+            uint32_t len = min(params->dwLen, PRINT_HCI_COMMAND_MAX_COUNT);
+
+            CHAR data[PRINT_HCI_COMMAND_MAX_COUNT*3 + 1] = { 0 };
+            for (uint32_t i = 0; i != len; ++i)
+            {
+                sprintf(data + i * 3, "%02X ", (int)params->pData[i]);
+            }
+
+            PH_LOG_HCI_INFO_STR("Data: %s", data);
+        }
+
+        PH_LOG_HCI_INFO_STR("====================");
+    }
+}
+
 NFCSTATUS
 phHciNfc_CoreSend(void                            *pHciContextHandle,
                   phHciNfc_SendParams_t           *pSendMsgParams,
@@ -261,6 +292,8 @@ phHciNfc_CoreSend(void                            *pHciContextHandle,
             wStatus = NFCSTATUS_FAILED;
         }else
         {
+            phHciNfc_PrintHciCommand(pHciContext, pSendMsgParams);
+
             /* Store Send Call back, Uppler Layer Context and received msg params in Hci context */
             phOsalNfc_MemCopy(&(pHciContext->pHciCoreContext.tHciCtxSendMsgParams),pSendMsgParams,sizeof(phHciNfc_SendParams_t));
 

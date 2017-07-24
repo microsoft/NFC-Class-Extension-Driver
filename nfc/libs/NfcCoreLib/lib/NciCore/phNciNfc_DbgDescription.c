@@ -995,6 +995,11 @@ void phNciNfc_PrintPacketDescription(
     uint16_t wLen,
     uint8_t bLogDataMessages)
 {
+    if (!WPP_FLAG_LEVEL_ENABLED(TF_NCI, LEVEL_INFO))
+    {
+        return;
+    }
+
     PH_LOG_NCI_FUNC_ENTRY();
 
     PH_LOG_NCI_INFO_STR("NCI Packet Details:");

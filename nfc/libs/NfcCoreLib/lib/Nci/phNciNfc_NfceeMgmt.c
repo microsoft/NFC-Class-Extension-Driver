@@ -807,6 +807,7 @@ NFCSTATUS phNciNfc_StoreNfceeProtocols(pphNciNfc_NfceeDevDiscInfo_t pDevInfo,
             {
                 pDevInfo->aSuppProtocols[bCount] = \
                         pBuff[bIndex++];
+                PH_LOG_NCI_INFO_STR("NFCEE %02X supported protocol: %02X", pDevInfo->bNfceeID, pDevInfo->aSuppProtocols[bCount]);
             }
         }
         *pIndex = bIndex;

@@ -124,6 +124,8 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                             pLibContext->pHciContext = pHciContext;
                             phOsalNfc_SetMemory(pHciContext, 0, sizeof(phHciNfc_HciContext_t));
                             pHciContext->pNciContext = pNciContext;
+                            pHciContext->bLogDataMessages = !!pLibContext->Config.bLogNciDataMessages;
+
                             pLibContext->tSeInfo.bSeState[phLibNfc_SE_Index_HciNwk] = phLibNfc_SeStateInitializing;
                             pLibContext->sSeContext.pActiveSeInfo = (pphLibNfc_SE_List_t)(&pLibContext->tSeInfo.tSeList[phLibNfc_SE_Index_HciNwk]);
                             wStatus = phNciNfc_UpdateConnDestInfo(UNASSIGNED_DESTID, phNciNfc_e_NFCEE, NULL);

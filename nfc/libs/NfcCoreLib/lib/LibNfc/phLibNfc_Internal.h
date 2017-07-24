@@ -65,6 +65,10 @@ enum PHHCINFC_APDU_APPLICATION_GATE_EVENTS
 };
 
 #define PHHCINFC_NO_PIPE_DATA                       0xFF
+/* HCI EVT_ABORT and EVT_ATR as per ETSI12*/
+#define PHHCINFC_EVENT_ABORT                        0x11
+
+#define PHHCINFC_EVENT_ATR_RECV                     0x12
 
 #define PHLIBNFC_TRANSACTION_AID                    0x81
 #define PHLIBNFC_TRANSACTION_PARAM                  0x82
@@ -460,3 +464,6 @@ extern void phLibNfc_DeferredEventHandler(_In_ void* pContext);
 extern void phLibNfc_UpdateEvent(NFCSTATUS wStatus,phLibNfc_Event_t *pTrigEvent);
 extern NFCSTATUS phLibNfc_GetConnectedHandle(phLibNfc_Handle *pHandle);
 extern void phLibNfc_ClearLibContext(pphLibNfc_LibContext_t pLibContext);
+
+extern void phHciNfc_Process_eSE_ClearALLPipes(void);
+extern NFCSTATUS phLibNfc_DummyDisc(void *pContext, pphOsalNfc_TimerCallbck_t pTimerCb, uint32_t dwTimeOut);

@@ -127,9 +127,9 @@ typedef enum phHciNfc_HostID
 } phHciNfc_HostID_t;
 
 typedef enum phHciNfc_GateID{
-    phHciNfc_e_LoopBackGate                       = 0x04U,
+    phHciNfc_e_LoopBackGate                       = 0x04U,    
+    phHciNfc_e_ApduGate                           = 0x30U,
     phHciNfc_e_ConnectivityGate                   = 0x41U,
-    phHciNfc_e_ApduGate                           = 0xF0U
 } phHciNfc_GateID_t;
 
 typedef enum phHciNfc_PipeID
@@ -226,7 +226,15 @@ typedef struct phHciNfc_HciContext
     uint8_t                          bNoOfHosts;
     uint8_t                          bClearpipes;
     uint8_t                          bCreatePipe;
-    phHciNfc_TimerInfo_t             tHciSeGetAtrTimerInfo; /**< Timer data for Get Atr */
+    /**< Timer data for Get Atr */
+    phHciNfc_TimerInfo_t             tHciSeGetAtrTimerInfo; 
+    /* Store the compliancy of eSE*/
+    uint8_t                          eSE_Compliancy;
+    /*< Flag to indicate clear all pipe has come*/
+    uint8_t                          bClearALL_eSE_pipes;
+    /* <Flag to indicate clear all pipe has come for which host*/
+    uint8_t                          bClearALL_HostId;
+    bool_t                           bLogDataMessages;
 } phHciNfc_HciContext_t,*pphHciNfc_HciContext_t;
 
 extern phHciNfc_HciContext_t volatile *gppHciContext;
