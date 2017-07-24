@@ -208,6 +208,17 @@ typedef struct phLibNfc_Ndef_Info
 } phLibNfc_Ndef_Info_t;
 
 /**
+ * \ingroup grp_lib_nfc
+ * Structure for secure element Get ATR API
+ */
+typedef struct phNfc_SeAtr_Info
+{
+    uint8_t* pBuff; /**<To Store ATR Received from eSE*/
+    uint32_t dwLength; /**<Actual Lenght of the ATR received:*/
+} phNfc_SeAtr_Info_t, *pphNfc_SeAtr_Info_t; /**< Get ATR info */
+
+
+/**
  *\ingroup grp_lib_nfc
  * \brief NDEF States
    As per NFC forum specification, the card can be in one of the below mentioned states
@@ -343,6 +354,26 @@ typedef void (*pphLibNfc_TransceiveCallback_t)(
                 phLibNfc_Handle     hRemoteDev,
                 phNfc_sData_t*      pResBuffer,
                 NFCSTATUS           Status
+    );
+
+/**
+ * \ingroup grp_lib_nfc
+ * \brief SE Wait Time Extension callback.
+ * 
+ * This callback is used to notifiy that the eSE has asked for a timeout extension, during a transceive call.
+ *
+ * \param[in] pContext           LibNfc client context passed in the SE notification register request
+ * \param[in] hSecureElement     Handle to Secures Element
+ * \param[in] pSeEvtInfo         The event arguments
+ * \param[in] Status             Status of the response callback
+ *              - #NFCSTATUS_SUCCESS - SE event is received
+ *              - #NFCSTATUS_FAILED - Failed
+ */
+typedef void(*pphLibNfc_SE_WtxCallback_t)(
+    void*                           pContext,
+    phLibNfc_Handle                 hSecureElement,
+    phLibNfc_sSeWtxEventInfo_t*     pSeEvtInfo,
+    NFCSTATUS                       Status
     );
 
 /**
@@ -2136,3 +2167,49 @@ extern NFCSTATUS phLibNfc_Llcp_SendTo( phLibNfc_Handle               hRemoteDevi
 extern NFCSTATUS phLibNfc_Llcp_CancelPendingSend( phLibNfc_Handle hRemoteDevice,
                                                   phLibNfc_Handle hSocket
                                                   );
+
+/**
+*\ingroup grp_lib_nfc
+* \brief Response callback for eSE Get ATR request
+*
+* This callback is used to provide received data to the LibNfc client in #phNfc_sData_t format.
+* This callback is called when LibNfc client has performed a eSE Get ATR operation on a tag
+*
+* \param[in] pContext       LibNfc client context passed in the corresponding request
+* \param[in] pResAtrInfo    Response buffer of type #pphNfc_SeAtr_Info_t
+* \param[in] status         Status of the response callback
+*                - #NFCSTATUS_SUCCESS - operation  successful
+*                - #NFCSTATUS_FAILED  - operation failed because target is lost
+*                - #NFCSTATUS_SHUTDOWN -operation failed because Shutdown in progress
+*                - #NFCSTATUS_ABORTED - aborted due to disconnect request in between
+*                - #NFCSTATUS_INSUFFICIENT_RESOURCES - operation failed because Insufficient resources
+*/
+typedef void(*pphLibNfc_GetAtrCallback_t)(
+    void* pContext,
+    pphNfc_SeAtr_Info_t pResAtrInfo,
+    NFCSTATUS Status
+    );
+
+/**
+* \ingroup grp_lib_nfc
+* \brief This function shall  retreive the ATR (Answer to Request) from Secure element.
+*
+* \param[in]  hSE_Handle        Handle to secure element
+* \param[in]  pAtrInfo          pointer to #phNfc_SeAtr_Info_t structure
+* \param[in]  pGetAtr_RspCb     The callback to be called when the
+*                               operation is completed.
+* \param[in]  pContext          Upper layer context to be returned in
+*                               the callback.
+*
+* \retval #NFCSTATUS_INVALID_PARAMETER    One or more of the supplied parameters
+*                                         could not be properly interpreted.
+* \retval #NFCSTATUS_PENDING              Reception operation is in progress,
+*                                         pGetAtr_RspCb will be called upon completion.
+* \retval #NFCSTATUS_NOT_INITIALISED      Indicates stack is not yet initialized.
+* \retval #NFCSTATUS_SHUTDOWN             Shutdown in progress.
+* \retval #NFCSTATUS_FAILED               Operation failed.
+*/
+extern NFCSTATUS phLibNfc_eSE_GetAtr(phLibNfc_Handle                 hSE_Handle,
+                                     phNfc_SeAtr_Info_t*             pAtrInfo,
+                                     pphLibNfc_GetAtrCallback_t      pGetAtr_RspCb,
+                                     void*                           pContext);

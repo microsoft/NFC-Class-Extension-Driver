@@ -1063,6 +1063,17 @@ typedef struct phNfc_sUiccInfo
 
 }phNfc_sUiccInfo_t;
 
+/**
+ * \ingroup grp_lib_nfc
+ * 
+ * During long running HCI commands, the SE is able to send a heart-beat to extend
+ * the host's command timeout.
+ */
+typedef struct phLibNfc_sSeWtxEventInfo
+{
+    uint32_t dwTime; /**< Time in milliseconds*/
+}phLibNfc_sSeWtxEventInfo_t;
+
 /** \ingroup grp_hal_common
 *
 *  The <em> \ref phNfc_sEmuSupport structure </em> holds the type

@@ -207,8 +207,7 @@ phHciNfc_Transceive(void    *pHciContext,
     NFCSTATUS    wStatus = NFCSTATUS_SUCCESS;
     phHciNfc_SendParams_t tSendParams;
     pphHciNfc_HciContext_t pHciCtxt = (pphHciNfc_HciContext_t)pHciContext;
-    UNUSED(pRspCb);
-    UNUSED(pContext);
+
     PH_LOG_HCI_FUNC_ENTRY();
 
     if(NULL != pHciCtxt)
@@ -228,8 +227,8 @@ phHciNfc_Transceive(void    *pHciContext,
         wStatus = phHciNfc_CoreSend (pHciCtxt,&tSendParams,&phHciNfc_CmdSendCb, pHciCtxt);
         if(NFCSTATUS_PENDING == wStatus)
         {
-            pHciCtxt->Cb_Info.pClientInitCb = NULL;
-            pHciCtxt->Cb_Info.pClientCntx = NULL;
+            pHciCtxt->Cb_Info.pClientInitCb = pRspCb;
+            pHciCtxt->Cb_Info.pClientCntx = pContext;
             pHciCtxt->SendCb_Info.pClientInitCb = NULL;
             pHciCtxt->SendCb_Info.pClientCntx = NULL;
         }
@@ -901,7 +900,7 @@ phHciNfc_ProcessPipeCreateNotifyCmd(phHciNfc_ReceiveParams_t *pReceivedParams,
                 /* Update the received Pipe ID in its alloted slot of Session ID*/
                 aSetHciSessionId[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX] = tPipeCreatedNtfParams.bPipeID;
 
-                /*Update the Pipe List used later for Transeive for checking*/
+                /*Update the Pipe List used later for Transceive for checking*/
                 pHciContext ->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = tPipeCreatedNtfParams.bPipeID;
                 pHciContext ->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId = tPipeCreatedNtfParams.bDestGID;
             }
@@ -915,7 +914,7 @@ phHciNfc_ProcessPipeCreateNotifyCmd(phHciNfc_ReceiveParams_t *pReceivedParams,
                 /* Update the received Pipe ID in its alloted slot of Session ID*/
                 aSetHciSessionId[PHHCI_ESE_CONNECTIVITY_PIPE_STORAGE_INDEX] = tPipeCreatedNtfParams.bPipeID;
 
-                /*Update the Pipe List used later for Transeive for checking*/
+                /*Update the Pipe List used later for Transceive for checking*/
                 pHciContext ->aSEPipeList[PHHCI_ESE_CONN_PIPE_LIST_INDEX].bPipeId = tPipeCreatedNtfParams.bPipeID;
                 pHciContext ->aSEPipeList[PHHCI_ESE_CONN_PIPE_LIST_INDEX].bGateId = tPipeCreatedNtfParams.bDestGID;
             }

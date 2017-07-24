@@ -99,6 +99,7 @@ Environment:
 #include <memory.h>
 #include <ntassert.h>
 #include <intsafe.h>
+#include <math.h>
 
 #include "NfcCoreLibTracing.h"
 
