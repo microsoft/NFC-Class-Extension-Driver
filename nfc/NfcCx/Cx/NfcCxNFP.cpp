@@ -297,7 +297,7 @@ Done:
     return status;
 }
 
-NTSTATUS
+VOID
 NfcCxNfpInterfaceStop(
     _In_ PNFP_INTERFACE NfpInterface
     )
@@ -317,8 +317,6 @@ Return Value:
 
 --*/
 {
-    NTSTATUS status = STATUS_SUCCESS;
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     if (NfpInterface->InterfaceCreated) {
@@ -329,9 +327,7 @@ Return Value:
                                          FALSE);
     }
 
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    return status;
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
 BOOLEAN

@@ -101,7 +101,7 @@ NfcCxNfpInterfaceStart(
     _In_ PNFP_INTERFACE NfpInterface
     );
 
-NTSTATUS
+VOID
 NfcCxNfpInterfaceStop(
     _In_ PNFP_INTERFACE NfpInterface
     );

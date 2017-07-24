@@ -267,7 +267,7 @@ Done:
     return status;
 }
 
-NTSTATUS
+VOID
 NfcCxSCInterfaceStop(
     _In_ PNFCCX_SC_INTERFACE ScInterface
     )
@@ -287,7 +287,6 @@ Return Value:
 
 --*/
 {
-    NTSTATUS status = STATUS_SUCCESS;
     DECLARE_CONST_UNICODE_STRING(nfcScReaderReference, SMARTCARD_READER_NAMESPACE);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -299,9 +298,7 @@ Return Value:
                                          FALSE);
     }
 
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    return status;
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
 BOOLEAN 

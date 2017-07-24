@@ -726,7 +726,7 @@ Return Value:
 
     buffer = (PUCHAR)WdfMemoryGetBuffer(Memory, &bufferSize);
 
-    if (MAX_USHORT < bufferSize) {
+    if (USHORT_MAX < bufferSize) {
         TRACE_LINE(LEVEL_ERROR, "Invalid read notification sent, ignoring!!!");
         NT_ASSERTMSG("ReadNotification too large", FALSE);
         goto Done;

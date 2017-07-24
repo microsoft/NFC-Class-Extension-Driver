@@ -101,8 +101,8 @@ Return Value:
         goto Done;
     }
 
-    NfcCxSCPresentAbsentDispatcherInitialize(&eseInterface->PresentDispatcher, /*PowerManaged*/ TRUE);
-    NfcCxSCPresentAbsentDispatcherInitialize(&eseInterface->AbsentDispatcher, /*PowerManaged*/ TRUE);
+    NfcCxSCPresentAbsentDispatcherInitialize(&eseInterface->PresentDispatcher, /*PowerManaged*/ FALSE);
+    NfcCxSCPresentAbsentDispatcherInitialize(&eseInterface->AbsentDispatcher, /*PowerManaged*/ FALSE);
 
 Done:
 
@@ -264,7 +264,7 @@ Done:
     return status;
 }
 
-NTSTATUS
+VOID
 NfcCxESEInterfaceStop(
     _In_ PNFCCX_ESE_INTERFACE ESEInterface
     )
@@ -284,7 +284,6 @@ Return Value:
 
 --*/
 {
-    NTSTATUS status = STATUS_SUCCESS;
     DECLARE_CONST_UNICODE_STRING(nfcESeReaderReference, EMBEDDED_SE_NAMESPACE);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -296,9 +295,7 @@ Return Value:
                                          FALSE);
     }
 
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    return status;
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
 BOOLEAN 
@@ -628,6 +625,7 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
+    bool stopIdleCalled = false;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -644,8 +642,16 @@ Return Value:
 
     WdfWaitLockRelease(ESEInterface->SmartCardLock);
 
-    TRACE_LINE(LEVEL_INFO, "eSE SmartCard client = %p added", FileContext);
+    // Ensure RF has been initialized, by waiting for the device to enter D0, so that we can successfully enable the SE.
+    status = WdfDeviceStopIdle(ESEInterface->FdoContext->Device, /*WaitForD0*/ TRUE);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
+        goto Done;
+    }
+    stopIdleCalled = true;
 
+    // Enable the SE.
     status = NfcCxSEInterfaceSetCardWiredMode(
         ESEInterface->FdoContext->SEInterface,
         ESEInterface->SecureElementId,
@@ -660,6 +666,10 @@ Return Value:
     NfcCxESEInterfaceHandleSmartCardConnectionEstablished(ESEInterface, ESEInterface->FdoContext->RFInterface);
 
 Done:
+    if (stopIdleCalled)
+    {
+        WdfDeviceResumeIdle(ESEInterface->FdoContext->Device);
+    }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;

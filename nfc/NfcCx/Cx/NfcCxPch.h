@@ -83,9 +83,6 @@ typedef struct _NFCCX_POWER_MANAGER       NFCCX_POWER_MANAGER,      * PNFCCX_POW
 
 enum NFC_CX_POWER_RF_STATE : LONG;
 
-#define MAX_USHORT         ((USHORT)0xFFFF)
-#define MAX_ULONG          ((ULONG)0xFFFFFFFF)
-
 DEFINE_GUID(GUID_NULL, 0,0,0,0,0,0,0,0,0,0,0);
 
 //

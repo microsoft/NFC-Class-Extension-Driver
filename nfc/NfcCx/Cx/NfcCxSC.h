@@ -180,7 +180,7 @@ NfcCxSCInterfaceStart(
     _In_ PNFCCX_SC_INTERFACE SCInterface
     );
 
-NTSTATUS
+VOID
 NfcCxSCInterfaceStop(
     _In_ PNFCCX_SC_INTERFACE SCInterface
     );

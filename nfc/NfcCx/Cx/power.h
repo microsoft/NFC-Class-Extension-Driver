@@ -24,6 +24,7 @@ enum NFC_CX_POWER_RF_STATE : LONG
     NfcCxPowerRfState_Off = 0x0,
     NfcCxPowerRfState_NfpEnabled = 0x1,
     NfcCxPowerRfState_SeEnabled = 0x2,
+    NfcCxPowerRfState_ESeEnabled = 0x4,
 };
 
 typedef struct _NFCCX_POWER_MANAGER
@@ -36,6 +37,7 @@ typedef struct _NFCCX_POWER_MANAGER
     BOOLEAN NfpRadioState;
 
     LONG SEPowerPolicyReferences;
+    LONG ESEPowerPolicyReferences;
     BOOLEAN SERadioState;
 
     BOOLEAN DeviceStopIdle;             // TRUE == 'WdfDeviceStopIdle' has been called.
@@ -121,11 +123,6 @@ NfcCxPowerDeviceStopIdle(
 _Requires_lock_held_(PowerManager->WaitLock)
 void
 NfcCxPowerDeviceResumeIdle(
-    _In_ PNFCCX_POWER_MANAGER PowerManager
-    );
-
-BOOLEAN
-NfcCxPowerShouldDeviceStopIdle(
     _In_ PNFCCX_POWER_MANAGER PowerManager
     );
 

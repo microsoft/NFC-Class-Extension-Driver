@@ -167,8 +167,8 @@ Return Value:
     {
         // Check to see if we have any active interface handles.
         // If we do, it probably means the system has just awoken from sleep.
-        BOOLEAN shouldDeviceStopIdle = NfcCxPowerShouldDeviceStopIdle(PowerManager);
-        if (shouldDeviceStopIdle)
+        NFC_CX_POWER_RF_STATE rfState = NfcCxPowerGetRfState(PowerManager);
+        if ((rfState & NfcCxPowerRfState_NfpEnabled) || (rfState & NfcCxPowerRfState_SeEnabled))
         {
             // Ensure RF radio is turned on.
             NfcCxPowerUpdateRFPollingState(PowerManager, /*PoweringUpRF*/ TRUE);
@@ -250,6 +250,8 @@ Return Value:
             TRACE_LINE(LEVEL_ERROR, "Releasing a reference that was not acquired!");
             status = STATUS_INVALID_DEVICE_REQUEST;
             WdfWaitLockRelease(PowerManager->WaitLock);
+
+            NT_ASSERT(false);
             goto Done;
         }
 
@@ -265,7 +267,7 @@ Return Value:
             acquireFdoContextRef = TRUE;
         }
 
-        if (MAX_ULONG == powerPolicyReferences) {
+        if (ULONG_MAX == powerPolicyReferences) {
 
             //
             // About to overflow the Policy references
@@ -281,6 +283,8 @@ Return Value:
             NfcCxDeviceSetFailed(PowerManager->FdoContext->Device);
 
             WdfWaitLockRelease(PowerManager->WaitLock);
+
+            NT_ASSERT(false);
             goto Done;
         }
 
@@ -355,31 +359,54 @@ Return Value:
         result = (NFC_CX_POWER_RF_STATE)(result | NfcCxPowerRfState_SeEnabled);
     }
 
+    if (PowerManager->SERadioState && (PowerManager->ESEPowerPolicyReferences != 0))
+    {
+        result = (NFC_CX_POWER_RF_STATE)(result | NfcCxPowerRfState_ESeEnabled);
+    }
+
     return result;
 }
 
-BOOLEAN
-NfcCxPowerShouldDeviceStopIdle(
-    _In_ PNFCCX_POWER_MANAGER PowerManager
+static NTSTATUS
+GetPowerStateForRole(
+    _In_ PNFCCX_POWER_MANAGER PowerManager,
+    _In_ FILE_OBJECT_ROLE Role,
+    _Outptr_ LONG** powerPolicyReferences,
+    _Outptr_ BOOLEAN** radioState
     )
-/*++
-
-Routine Description:
-
-   Determines whether or not driver idle timer should be stopped. That is, whether or not the
-   device should be powered on.
-
-Arguments:
-
-    PowerManager - Pointer to the Power Manager
-
-Return Value:
-
-    BOOLEAN
-
---*/
 {
-    return NfcCxPowerRfState_Off != NfcCxPowerGetRfState(PowerManager);
+    NTSTATUS status = STATUS_SUCCESS;
+
+    switch (Role)
+    {
+    case ROLE_SUBSCRIPTION:
+    case ROLE_PUBLICATION:
+    case ROLE_SMARTCARD:
+        *powerPolicyReferences = &PowerManager->NfpPowerPolicyReferences;
+        *radioState = &PowerManager->NfpRadioState;
+        break;
+
+    case ROLE_SECUREELEMENTMANAGER:
+        *powerPolicyReferences = &PowerManager->SEPowerPolicyReferences;
+        *radioState = &PowerManager->SERadioState;
+        break;
+
+    case ROLE_EMBEDDED_SE:
+        *powerPolicyReferences = &PowerManager->ESEPowerPolicyReferences;
+        *radioState = &PowerManager->SERadioState;
+        break;
+
+    case ROLE_CONFIGURATION:
+    case ROLE_SECUREELEMENTEVENT:
+    default:
+        NT_ASSERT(false);
+        status = STATUS_INTERNAL_ERROR;
+        TRACE_LINE(LEVEL_ERROR, "Role not supported for power management: %!FILE_OBJECT_ROLE!, %!STATUS!", Role, status);
+        goto Done;
+    }
+
+Done:
+    return status;
 }
 
 _Requires_lock_held_(PowerManager->WaitLock)
@@ -424,52 +451,40 @@ Return Value:
         goto Done;
     }
 
-    if (!NfcCxFileObjectIsSEManager(FileContext)) {
-        if (MAX_ULONG == PowerManager->NfpPowerPolicyReferences) {
-
-            //
-            // About to overflow the Policy references
-            //
-            TRACE_LINE(LEVEL_ERROR, "NFP power policy references overflow");
-
-            TraceLoggingWrite(
-                g_hNfcCxProvider,
-                "NfcCxPowerAcquireFdoContextNfpReferencesOverflow",
-                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
-
-            status = STATUS_UNSUCCESSFUL;
-            goto Done;
-        }
-
-        IsInterfacePoweringUp = (0 == PowerManager->NfpPowerPolicyReferences) && PowerManager->NfpRadioState;
-        PowerManager->NfpPowerPolicyReferences++;
-        *pReferenceTaken = TRUE;
-
-    } else {
-        if (MAX_ULONG == PowerManager->SEPowerPolicyReferences) {
-
-            //
-            // About to overflow the Policy references
-            //
-            TRACE_LINE(LEVEL_ERROR, "SE power policy references overflow");
-
-            TraceLoggingWrite(
-                g_hNfcCxProvider,
-                "NfcCxPowerAcquireFdoContextSeReferencesOverflow",
-                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
-
-            status = STATUS_UNSUCCESSFUL;
-            goto Done;
-        }
-
-        IsInterfacePoweringUp = (0 == PowerManager->SEPowerPolicyReferences) && PowerManager->SERadioState;
-        PowerManager->SEPowerPolicyReferences++;
-        *pReferenceTaken = TRUE;
+    LONG* powerPolicyReferences;
+    BOOLEAN* radioState;
+    status = GetPowerStateForRole(PowerManager, FileContext->Role, &powerPolicyReferences, &radioState);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
+        goto Done;
     }
 
-    BOOLEAN shouldDeviceStopIdle = NfcCxPowerShouldDeviceStopIdle(PowerManager);
+    if (LONG_MAX == *powerPolicyReferences)
+    {
+        //
+        // About to overflow the Policy references
+        //
+        TRACE_LINE(LEVEL_ERROR, "Power policy references overflow");
 
-    if (shouldDeviceStopIdle)
+        TraceLoggingWrite(
+            g_hNfcCxProvider,
+            "NfcCxPowerAcquireFdoContextReferencesOverflow",
+            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
+        status = STATUS_UNSUCCESSFUL;
+
+        NT_ASSERT(false);
+        goto Done;
+    }
+
+    IsInterfacePoweringUp = (0 == *powerPolicyReferences) && *radioState;
+    (*powerPolicyReferences)++;
+    *pReferenceTaken = TRUE;
+
+    NFC_CX_POWER_RF_STATE rfState = NfcCxPowerGetRfState(PowerManager);
+
+    if (rfState != NfcCxPowerRfState_Off)
     {
         // Ensure device is powered up.
         status = NfcCxPowerDeviceStopIdle(PowerManager);
@@ -537,47 +552,35 @@ Return Value:
         goto Done;
     }
 
-    if (!NfcCxFileObjectIsSEManager(FileContext)) {
-
-        if (0 == PowerManager->NfpPowerPolicyReferences) {
-
-            //
-            // About to underflow the Policy references
-            //
-            TRACE_LINE(LEVEL_ERROR, "NFP power policy references underflow. Releasing a reference that was not acquired!");
-
-            TraceLoggingWrite(
-                g_hNfcCxProvider,
-                "NfcCxPowerReleaseFdoContextNfpReferencesUnderflow",
-                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
-
-            status = STATUS_UNSUCCESSFUL;
-            goto Done;
-        }
-
-        PowerManager->NfpPowerPolicyReferences--;
-        IsInterfacePoweringDown = (0 == PowerManager->NfpPowerPolicyReferences) && PowerManager->NfpRadioState;
-    } else {
-
-        if (0 == PowerManager->SEPowerPolicyReferences) {
-
-            //
-            // About to underflow the Policy references
-            //
-            TRACE_LINE(LEVEL_ERROR, "SE power policy references underflow. Releasing a reference that was not acquired!");
-
-            TraceLoggingWrite(
-                g_hNfcCxProvider,
-                "NfcCxPowerReleaseFdoContextSeReferencesUnderflow",
-                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
-
-            status = STATUS_UNSUCCESSFUL;
-            goto Done;
-        }
-
-        PowerManager->SEPowerPolicyReferences--;
-        IsInterfacePoweringDown = (0 == PowerManager->SEPowerPolicyReferences) && PowerManager->SERadioState;
+    LONG* powerPolicyReferences;
+    BOOLEAN* radioState;
+    status = GetPowerStateForRole(PowerManager, FileContext->Role, &powerPolicyReferences, &radioState);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
+        goto Done;
     }
+
+    if (0 == *powerPolicyReferences)
+    {
+        //
+        // About to underflow the Policy references
+        //
+        TRACE_LINE(LEVEL_ERROR, "Power policy references underflow. Releasing a reference that was not acquired!");
+
+        TraceLoggingWrite(
+            g_hNfcCxProvider,
+            "NfcCxPowerReleaseFdoContextReferencesUnderflow",
+            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
+        status = STATUS_UNSUCCESSFUL;
+
+        NT_ASSERT(false);
+        goto Done;
+    }
+
+    (*powerPolicyReferences)--;
+    IsInterfacePoweringDown = (0 == *powerPolicyReferences) && *radioState;
 
     // NFP(/SC) and SE can be enabled and disabled separately. So if either of them just got lost their last power reference,
     // we need to update the RF config. (See, 'NfcCxRFInterfaceGetDiscoveryConfig'.)
@@ -586,9 +589,9 @@ Return Value:
         NfcCxPowerUpdateRFPollingState(PowerManager, /*PoweringUpRF*/ FALSE);
     }
 
-    BOOLEAN shouldDeviceStopIdle = NfcCxPowerShouldDeviceStopIdle(PowerManager);
+    NFC_CX_POWER_RF_STATE rfState = NfcCxPowerGetRfState(PowerManager);
 
-    if (!shouldDeviceStopIdle)
+    if (rfState == NfcCxPowerRfState_Off)
     {
         // Allow device to power down.
         NfcCxPowerDeviceResumeIdle(PowerManager);
@@ -935,30 +938,51 @@ Return Value:
     // Update the radio state here so that when we update the polling loop
     // configuration of the controller so that the correct states are used
     //
+    NFC_CX_POWER_RF_STATE previousRfState = NfcCxPowerGetRfState(PowerManager);
+
     currentRadioState = PowerManager->NfpRadioState;
     PowerManager->NfpRadioState = desiredRadioState;
 
-    BOOLEAN shouldDeviceStopIdle = NfcCxPowerShouldDeviceStopIdle(PowerManager);
+    NFC_CX_POWER_RF_STATE rfState = NfcCxPowerGetRfState(PowerManager);
 
     TRACE_LINE(LEVEL_INFO, "Current state %d, Desired State %d", 
                                                     currentRadioState,
                                                     RadioState->MediaRadioOn);
     if (desiredRadioState) {
-        if (shouldDeviceStopIdle)
+        if (rfState != NfcCxPowerRfState_Off)
         {
             // Ensure device is powered up.
             status = NfcCxPowerDeviceStopIdle(PowerManager);
-            if (NT_SUCCESS(status)) {
-                // Ensure RF config is updated.
-                NfcCxPowerUpdateRFPollingState(PowerManager, /*PoweringUpRF*/ TRUE);
+            if (NT_SUCCESS(status))
+            {
+                TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
+                goto Done;
             }
+        }
+
+        // Check if NFP has just been enabled.
+        if (!(previousRfState & NfcCxPowerRfState_NfpEnabled) && (rfState & NfcCxPowerRfState_NfpEnabled))
+        {
+            // Ensure RF config is updated.
+            NfcCxPowerUpdateRFPollingState(PowerManager, /*PoweringUpRF*/ TRUE);
         }
 
         //
         // Start the appropriate modules
         //
-        NfcCxSCInterfaceStart(fdoContext->SCInterface);
-        NfcCxNfpInterfaceStart(fdoContext->NfpInterface);
+        status = NfcCxSCInterfaceStart(fdoContext->SCInterface);
+        if (NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
+            goto Done;
+        }
+
+        status = NfcCxNfpInterfaceStart(fdoContext->NfpInterface);
+        if (NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
+            goto Done;
+        }
 
     } else {
         //
@@ -967,11 +991,15 @@ Return Value:
         NfcCxSCInterfaceStop(fdoContext->SCInterface);
         NfcCxNfpInterfaceStop(fdoContext->NfpInterface);
 
-        if (!shouldDeviceStopIdle)
+        // Check if NFP has just been disabled.
+        if ((previousRfState & NfcCxPowerRfState_NfpEnabled) && !(rfState & NfcCxPowerRfState_NfpEnabled))
         {
             // Ensure RF config is updated.
             NfcCxPowerUpdateRFPollingState(PowerManager, /*PoweringUpRF*/ FALSE);
+        }
 
+        if (rfState == NfcCxPowerRfState_Off)
+        {
             // Allow the device to power down.
             NfcCxPowerDeviceResumeIdle(PowerManager);
         }

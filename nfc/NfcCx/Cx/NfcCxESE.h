@@ -79,7 +79,7 @@ NfcCxESEInterfaceStart(
     _In_ PNFCCX_ESE_INTERFACE ESEInterface
     );
 
-NTSTATUS
+VOID
 NfcCxESEInterfaceStop(
     _In_ PNFCCX_ESE_INTERFACE ESEInterface
     );
