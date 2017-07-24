@@ -40,6 +40,9 @@
     <ClCompile Include="..\phOsalNfc_Timer.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\inc\phOsalNfc.h" />
+    <ClInclude Include="..\..\..\inc\phOsalNfc_Timer.h" />
+    <ClInclude Include="..\..\..\inc\phTmlNfc.h" />
     <ClInclude Include="..\phOsalNfc_Internal.h" />
     <ClInclude Include="..\phOsalNfc_Pch.h" />
   </ItemGroup>

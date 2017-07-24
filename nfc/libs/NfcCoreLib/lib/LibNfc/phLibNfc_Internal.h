@@ -272,7 +272,6 @@ typedef struct phLibNfc_SeCtxt
     phNciNfc_NfceeModes_t           eNfceeMode;
     pphNciNfc_RtngConfig_t          pRoutingCfgBuffer;
     phLibNfc_eSE_ActivationMode     eActivationMode;    /* User rquested SE activation mode */
-    phLibNfc_SE_LowPowerMode_t      eLowPowerMode;      /* User rquested SE low power mode */
     uint32_t                        nNfceeDiscNtf;      /* Number of NFCEE discovery NTF to process */
 }phLibNfc_SeCtxt_t, *pphLibNfc_SeCtxt_t;
 

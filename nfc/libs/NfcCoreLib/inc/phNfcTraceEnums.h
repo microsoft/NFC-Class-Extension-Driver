@@ -30,7 +30,6 @@ Environment:
 // begin_wpp config
 // CUSTOM_TYPE(phLibNfc_SE_Type_t, ItemEnum(phLibNfc_SE_Type) );
 // CUSTOM_TYPE(phLibNfc_eSE_ActivationMode, ItemEnum(phLibNfc_eSE_ActivationMode) );
-// CUSTOM_TYPE(phLibNfc_SE_LowPowerMode_t, ItemEnum(phLibNfc_SE_LowPowerMode) );
 // CUSTOM_TYPE(phLibNfc_eSE_EvtType_t, ItemEnum(phLibNfc_eSE_EvtType) );
 // end_wpp
 

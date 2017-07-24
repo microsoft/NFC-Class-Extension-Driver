@@ -60,6 +60,18 @@
     <ClCompile Include="..\phLibNfc_Type1Tag.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\inc\phLibNfc.h" />
+    <ClInclude Include="..\..\..\inc\phLibNfc_ioctl.h" />
+    <ClInclude Include="..\..\..\inc\phLibNfc_Snep.h" />
+    <ClInclude Include="..\..\..\inc\phNfcCompId.h" />
+    <ClInclude Include="..\..\..\inc\phNfcConfig.h" />
+    <ClInclude Include="..\..\..\inc\phNfcHalTypes2.h" />
+    <ClInclude Include="..\..\..\inc\phNfcInterface.h" />
+    <ClInclude Include="..\..\..\inc\phNfcLlcpTypes.h" />
+    <ClInclude Include="..\..\..\inc\phNfcStatus.h" />
+    <ClInclude Include="..\..\..\inc\phNfcTraceEnums.h" />
+    <ClInclude Include="..\..\..\inc\phNfcTypes.h" />
+    <ClInclude Include="..\..\..\inc\phNfcTypes_Mapping.h" />
     <ClInclude Include="..\phHciNfc_Core.h" />
     <ClInclude Include="..\phHciNfc_CoreRxMemMgr.h" />
     <ClInclude Include="..\phHciNfc_Interface.h" />

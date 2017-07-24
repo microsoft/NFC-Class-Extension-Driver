@@ -599,8 +599,7 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
                 pSeHandle = (phLibNfc_Handle)Param1;
                 wStatus = NFCSTATUS_SUCCESS;
 
-                 if( (phLibNfc_SE_ActModeApdu == ActMode)||\
-                     (phLibNfc_SE_ActModeVirtual == ActMode) )
+                if (phLibNfc_SE_ActModeOn == ActMode)
                 {
                     eNfceeMode = PH_NCINFC_EXT_NFCEEMODE_ENABLE; /*Enable SE*/
                 }
@@ -648,8 +647,6 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
                         pLibContext->sSeContext.pActiveSeInfo->hSecureElement = pSeHandle;
                         pLibContext->sSeContext.pActiveSeInfo->eSE_ActivationMode =
                             pLibContext->sSeContext.eActivationMode;
-                        pLibContext->sSeContext.pActiveSeInfo->eLowPowerMode =
-                            pLibContext->sSeContext.eLowPowerMode;
                         /* No change in power mode, and NFCEE mode, return SUCCESS */
                         wStatus = NFCSTATUS_SUCCESS;
                     }

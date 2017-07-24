@@ -18,6 +18,8 @@ Environment:
 
 #pragma once
 
+#include "NfcCxRF.h"
+
 // {97D3609E-A9A3-48ca-9EA6-79A48713E2A0}
 EXTERN_C __declspec(selectany) const GUID UICC_SECUREELEMENT_ID =
 { 0x97d3609e, 0xa9a3, 0x48ca, { 0x9e, 0xa6, 0x79, 0xa4, 0x87, 0x13, 0xe2, 0xa0 } };
@@ -44,6 +46,13 @@ NFCCX_SE_DISPATCH_HANDLER(
     );
 
 typedef NFCCX_SE_DISPATCH_HANDLER *PFN_NFCCX_SE_DISPATCH_HANDLER;
+
+typedef struct _NFCCX_POWER_SETTING
+{
+    GUID SecureElementId;
+    SECURE_ELEMENT_CARD_EMULATION_MODE EmulationMode;
+    BOOLEAN WiredMode;
+} NFCCX_POWER_SETTING;
 
 typedef struct _NFCCX_SE_INTERFACE {
 
@@ -75,6 +84,13 @@ typedef struct _NFCCX_SE_INTERFACE {
     WDFWAITLOCK SEEventsLock;
     _Guarded_by_(SEEventsLock)
     LIST_ENTRY SEEventsList;
+
+    //
+    // Secure Element Emulation Mode
+    //
+    WDFWAITLOCK SEPowerSettingsLock;
+    NFCCX_POWER_SETTING SEPowerSettings[MAX_NUMBER_OF_SE];
+    DWORD SEPowerSettingsCount;
 
 } NFCCX_SE_INTERFACE, *PNFCCX_SE_INTERFACE;
 
@@ -210,19 +226,10 @@ NfcCxSEInterfaceGetSecureElementId(
 BOOLEAN
 NfcCxSEInterfaceGetSecureElementHandle(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ GUID& guidSecureElementId,
+    _In_ const GUID& guidSecureElementId,
     _Outptr_result_maybenull_ phLibNfc_Handle *phSecureElement
     );
 
-BOOLEAN
-NfcCxSEInterfaceCompareRoutingTable(
-    _In_ BYTE RtngConfigCount,
-    _In_reads_(RtngConfigCount) phLibNfc_RtngConfig_t *pRtngConfig,
-    _In_ BYTE RtngTableCount,
-    _In_reads_(RtngTableCount) phLibNfc_RtngConfig_t *pRtngTable
-    );
-
-#define NFCCX_SE_FLAG_SET_POWER_REFERENCE 0x1
 #define NFCCX_SE_FLAG_SET_ROUTING_TABLE 0x2
 
 NTSTATUS
@@ -280,8 +287,23 @@ NfcCxSEInterfaceConvertRoutingTable(
 NTSTATUS
 NfcCxSEInterfaceGetSEInfo(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ GUID& SecureElementId,
+    _In_ const GUID& SecureElementId,
     _Out_ phLibNfc_SE_List_t* pSEInfo
+    );
+
+_Requires_lock_held_(SEInterface->SEPowerSettingsLock)
+NFCCX_POWER_SETTING*
+NfcCxSEInterfaceGetSettingsListItem(
+    _In_ PNFCCX_SE_INTERFACE SEInterface,
+    _In_ const GUID& secureElementId
+    );
+
+_Requires_lock_held_(SEInterface->SEPowerSettingsLock)
+NTSTATUS
+NfcCxSEInterfaceGetOrAddSettingsListItem(
+    _In_ PNFCCX_SE_INTERFACE SEInterface,
+    _In_ const GUID& SecureElementId,
+    _Outptr_ NFCCX_POWER_SETTING** listItem
     );
 
 BOOLEAN FORCEINLINE
@@ -315,25 +337,9 @@ NfcCxSEInterfaceGetActivationMode(
     switch (eMode) {
     case EmulationOnPowerDependent:
     case EmulationOnPowerIndependent:
-        return phLibNfc_SE_ActModeVirtual;
+        return phLibNfc_SE_ActModeOn;
     default:
         return phLibNfc_SE_ActModeOff;
-    }
-}
-
-SECURE_ELEMENT_CARD_EMULATION_MODE FORCEINLINE
-NfcCxSEInterfaceGetEmulationMode(
-    _In_ const phLibNfc_SE_List_t& SEInfo
-    )
-{
-    if (SEInfo.eSE_ActivationMode == phLibNfc_SE_ActModeOff) {
-        return EmulationOff;
-    }
-    else if (SEInfo.eLowPowerMode == phLibNfc_SE_LowPowerMode_Off) {
-        return  EmulationOnPowerDependent;
-    }
-    else {
-        return EmulationOnPowerIndependent;
     }
 }
 
@@ -358,27 +364,6 @@ NfcCxSEInterfaceGetPowerState(
     default:
         pPowerState->bSwitchedOn = 0x0;
         pPowerState->bSwitchedOff = pPowerState->bBatteryOff = 0x0;
-        return FALSE;
-    }
-}
-
-BOOLEAN FORCEINLINE
-NfcCxSEInterfaceVerifyCEState(
-    _In_ SECURE_ELEMENT_CARD_EMULATION_MODE eMode,
-    _In_ const phLibNfc_SE_List_t& SEInfo
-    )
-{
-    switch (eMode) {
-    case EmulationOff:
-        return ((SEInfo.eSE_ActivationMode != phLibNfc_SE_ActModeOff) ||
-                (SEInfo.eLowPowerMode != phLibNfc_SE_LowPowerMode_Off));
-    case EmulationOnPowerIndependent:
-        return ((SEInfo.eSE_ActivationMode != phLibNfc_SE_ActModeVirtual) ||
-                (SEInfo.eLowPowerMode != phLibNfc_SE_LowPowerMode_On));
-    case EmulationOnPowerDependent:
-        return ((SEInfo.eSE_ActivationMode != phLibNfc_SE_ActModeVirtual) ||
-                (SEInfo.eLowPowerMode != phLibNfc_SE_LowPowerMode_Off));
-    default:
         return FALSE;
     }
 }
@@ -413,7 +398,7 @@ NfcCxSEInterfaceIsPowerStateEqual(
 
 GUID FORCEINLINE
 NfcCxSEInterfaceGetSecureElementId(
-    _In_ phLibNfc_SE_List_t *pSEInfo
+    _In_ const phLibNfc_SE_List_t *pSEInfo
     )
 {
     GUID secureElementId = GUID_NULL;

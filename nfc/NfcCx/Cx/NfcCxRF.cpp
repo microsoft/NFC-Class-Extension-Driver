@@ -98,7 +98,6 @@ NfcCxRFInterfaceDumpSEList(
         TRACE_LINE(LEVEL_INFO, "    hSecureElement = %p", RFInterface->pLibNfcContext->SEList[i].hSecureElement);
         TRACE_LINE(LEVEL_INFO, "    Type = %!phLibNfc_SE_Type_t!", RFInterface->pLibNfcContext->SEList[i].eSE_Type);
         TRACE_LINE(LEVEL_INFO, "    ActivationMode = %!phLibNfc_eSE_ActivationMode!",  RFInterface->pLibNfcContext->SEList[i].eSE_ActivationMode);
-        TRACE_LINE(LEVEL_INFO, "    LowPowerMode = %!phLibNfc_SE_LowPowerMode_t!", RFInterface->pLibNfcContext->SEList[i].eLowPowerMode);
     }
 }
 
@@ -1511,11 +1510,10 @@ Done:
 }
 
 NTSTATUS
-NfcCxRFInterfaceSetCardEmulationMode(
+NfcCxRFInterfaceSetCardActivationMode(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ phLibNfc_Handle hSecureElement,
-    _In_ phLibNfc_eSE_ActivationMode eActivationMode,
-    _In_ phLibNfc_SE_LowPowerMode_t eLowPowerMode
+    _In_ phLibNfc_eSE_ActivationMode eActivationMode
     )
 /*++
 
@@ -1534,49 +1532,69 @@ Return Value:
 
     STATUS_SUCCESS - If card emulation mode is correctly set
     STATUS_INVALID_PARAMETER - If handle to secure element is invalid
-    STATUS_INVALID_DEVICE_STATE - If secure element is already in the same state
 
 --*/
 {
-    NTSTATUS status = STATUS_INVALID_PARAMETER;
+    NTSTATUS status = STATUS_SUCCESS;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
 
-    for (uint8_t i=0; i<RFInterface->pLibNfcContext->SECount; i++) {
-        BOOLEAN fDiscoveryConfig = FALSE;
-        phLibNfc_SE_List_t *pSecureElement = &RFInterface->pLibNfcContext->SEList[i];
+    phLibNfc_SE_List_t* pSecureElement = nullptr;
 
-        if (pSecureElement->hSecureElement != hSecureElement)
-            continue;
+    for (uint8_t i = 0; i < RFInterface->pLibNfcContext->SECount; i++)
+    {
+        phLibNfc_SE_List_t* se = &RFInterface->pLibNfcContext->SEList[i];
 
-        if ((eActivationMode == pSecureElement->eSE_ActivationMode) &&
-            (eLowPowerMode == pSecureElement->eLowPowerMode)) {
-            status = STATUS_INVALID_DEVICE_STATE;
+        if (se->hSecureElement == hSecureElement)
+        {
+            pSecureElement = se;
             break;
         }
-
-        //
-        // SE Set Mode requires discovery process to be stopped
-        // We need to stop discovery in order to enable/disable ISO-DEP in LA_SEL_INFO
-        //
-        if (eActivationMode != pSecureElement->eSE_ActivationMode) {
-            NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_STOP, NULL, NULL);
-            fDiscoveryConfig = TRUE;
-        }
-
-        status = NfcCxRFInterfaceExecute(RFInterface,
-                                         LIBNFC_SE_SET_MODE,
-                                         (UINT_PTR)pSecureElement,
-                                         (UINT_PTR)((UINT_PTR)eActivationMode | (UINT_PTR)eLowPowerMode << 4 * sizeof(UINT_PTR)));
-
-        if (fDiscoveryConfig) {
-            NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
-        }
-        break;
     }
 
+    if (pSecureElement == nullptr)
+    {
+        status = STATUS_INVALID_PARAMETER;
+        TRACE_LINE(LEVEL_ERROR, "Invalid SE handle, %!STATUS!", status);
+        goto Done;
+    }
+
+    // Check if the activation mode is already correct.
+    if (eActivationMode == pSecureElement->eSE_ActivationMode)
+    {
+        // Nothing to do.
+        goto Done;
+    }
+
+    // SE Set Mode requires discovery process to be stopped
+    // We need to stop discovery in order to enable/disable ISO-DEP in LA_SEL_INFO 
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_STOP, NULL, NULL);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to stop discovery, %!STATUS!", status);
+        goto Done;
+    }
+
+    status = NfcCxRFInterfaceExecute(RFInterface,
+                                     LIBNFC_SE_SET_MODE,
+                                     (UINT_PTR)pSecureElement,
+                                     (UINT_PTR)eActivationMode);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to set SE activation mode, %!STATUS!", status);
+        goto Done;
+    }
+
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to restart discovery, %!STATUS!", status);
+        goto Done;
+    }
+
+Done:
     WdfWaitLockRelease(RFInterface->DeviceLock);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -2027,7 +2045,7 @@ NfcCxRFInterfaceHandleSecureElementEvent(
     for (uint8_t i = 0; (i < rfInterface->pLibNfcContext->SECount); i++) {
         if (((SEEventType == ExternalReaderArrival) || (SEEventType == ExternalReaderDeparture) ||
             (rfInterface->pLibNfcContext->SEList[i].hSecureElement == hSecureElement)) &&
-            (rfInterface->pLibNfcContext->SEList[i].eSE_ActivationMode == phLibNfc_SE_ActModeVirtual)) {
+            (rfInterface->pLibNfcContext->SEList[i].eSE_ActivationMode == phLibNfc_SE_ActModeOn)) {
             NfcCxSEInterfaceHandleEvent(NfcCxRFInterfaceGetSEInterface(rfInterface),
                                         SEEventType,
                                         &rfInterface->pLibNfcContext->SEList[i],
@@ -2061,7 +2079,7 @@ NfcCxRFInterfaceRemoteDevReceiveCB(
     }
 
     if ((phLibNfc_SE_Type_DeviceHost != rfInterface->pLibNfcContext->SEList[0].eSE_Type) ||
-        (phLibNfc_SE_ActModeVirtual != rfInterface->pLibNfcContext->SEList[0].eSE_ActivationMode)) {
+        (phLibNfc_SE_ActModeOn != rfInterface->pLibNfcContext->SEList[0].eSE_ActivationMode)) {
         TRACE_LINE(LEVEL_WARNING, "Received unexpected APDU, SE type"
             " %!phLibNfc_SE_Type_t!, SE Activation mode %!phLibNfc_eSE_ActivationMode!",
             rfInterface->pLibNfcContext->SEList[0].eSE_Type,
@@ -2106,7 +2124,7 @@ NfcCxRFInterfaceHandleSEDeviceHostEvent(
         goto Done;
     }
 
-    if (phLibNfc_SE_ActModeVirtual != rfInterface->pLibNfcContext->SEList->eSE_ActivationMode) {
+    if (phLibNfc_SE_ActModeOn != rfInterface->pLibNfcContext->SEList->eSE_ActivationMode) {
         TRACE_LINE(LEVEL_INFO, "Device host SE is disabled");
         goto Done;
     }
@@ -3108,11 +3126,10 @@ NfcCxRFInterfaceSENtfRegister(
 
     if (NfcCxRFInterfaceIsHCESupported(RFInterface)) {
         pLibNfcContext->SECount = 1;
-        pLibNfcContext->SEList[0].eLowPowerMode = phLibNfc_SE_LowPowerMode_Off;
         pLibNfcContext->SEList[0].eSE_Type = phLibNfc_SE_Type_DeviceHost;
         pLibNfcContext->SEList[0].hSecureElement = NULL;
 
-        if (RFInterface->eDeviceHostInitializationState == phLibNfc_SE_ActModeVirtual)
+        if (RFInterface->eDeviceHostInitializationState == phLibNfc_SE_ActModeOn)
         {
             NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
 
@@ -3218,14 +3235,15 @@ NfcCxRFInterfaceSESetModeConfig(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
+    phLibNfc_eSE_ActivationMode activationMode = (phLibNfc_eSE_ActivationMode)(ULONG_PTR)Param2;
+
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
     if (NULL == pSecureElement->hSecureElement) {
-        pSecureElement->eSE_ActivationMode = (phLibNfc_eSE_ActivationMode)(((UINT_PTR)Param2) & ((UINT_PTR)1 << 4 * sizeof(UINT_PTR)) - 1);
-        pSecureElement->eLowPowerMode = (phLibNfc_SE_LowPowerMode_t)(((UINT_PTR)Param2) >> (4 * sizeof(UINT_PTR)));
+        pSecureElement->eSE_ActivationMode = activationMode;
 
-        if (pSecureElement->eSE_ActivationMode == phLibNfc_SE_ActModeVirtual) {
+        if (pSecureElement->eSE_ActivationMode == phLibNfc_SE_ActModeOn) {
             phLibNfc_CardEmulation_NtfRegister(NfcCxRFInterfaceHandleSEDeviceHostEvent, RFInterface);
         }
         else {
@@ -3237,8 +3255,7 @@ NfcCxRFInterfaceSESetModeConfig(
     }
 
     nfcStatus = phLibNfc_SE_SetMode((phLibNfc_Handle)pSecureElement->hSecureElement,
-                                    (phLibNfc_eSE_ActivationMode)(((UINT_PTR)Param2) & ((UINT_PTR)1 << 4 * sizeof(UINT_PTR)) - 1),
-                                    (phLibNfc_SE_LowPowerMode_t)(((UINT_PTR)Param2) >> (4 * sizeof(UINT_PTR))),
+                                    activationMode,
                                     NfcCxRFInterfaceSESetModeConfigCB,
                                     &LibNfcContext);
 
@@ -3379,7 +3396,6 @@ NfcCxRFInterfaceDisableSecureElements(
 
         nfcStatus = phLibNfc_SE_SetMode(RFInterface->pLibNfcContext->SEList[i].hSecureElement,
                                         phLibNfc_SE_ActModeOff,
-                                        phLibNfc_SE_LowPowerMode_Off,
                                         NfcCxRFInterfaceDisableSecureElementsCB,
                                         &LibNfcContext);
         break;
@@ -4462,7 +4478,7 @@ NfcCxRFInterfaceStateRecovery(
         // If discovery was enabled and the SE was on, reset the device host to its previous state.
         if (rfInterface->pLibNfcContext->SECount > 0
             && rfInterface->pLibNfcContext->SEList[0].eSE_Type == phLibNfc_SE_Type_DeviceHost
-            && rfInterface->pLibNfcContext->SEList[0].eSE_ActivationMode == phLibNfc_SE_ActModeVirtual)
+            && rfInterface->pLibNfcContext->SEList[0].eSE_ActivationMode == phLibNfc_SE_ActModeOn)
         {
             rfInterface->eDeviceHostInitializationState = rfInterface->pLibNfcContext->SEList[0].eSE_ActivationMode;
         }

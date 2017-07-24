@@ -3116,8 +3116,7 @@ NfcCxDTAInterfaceSetCardEmualtionMode(
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     status = phLibNfc_SE_SetMode(SeEmulationMode->hSecureElement,
-                                 (SeEmulationMode->eMode == EmulationOff) ? phLibNfc_SE_ActModeOff : phLibNfc_SE_ActModeVirtual,
-                                 (SeEmulationMode->eMode == EmulationOnPowerIndependent) ? phLibNfc_SE_LowPowerMode_On : phLibNfc_SE_LowPowerMode_Off,
+                                 (SeEmulationMode->eMode == EmulationOff) ? phLibNfc_SE_ActModeOff : phLibNfc_SE_ActModeOn,
                                  NfcCxDTAInterfaceSetCardEmualtionModeCB,
                                  DTAInterface);
 

@@ -204,7 +204,6 @@ NFCSTATUS phLibNfc_SE_GetSecureElementList( _Out_writes_to_(PHLIBNFC_MAXNO_OF_SE
                 pSE_List[0].eSE_Type = (pHciCtx->aHostList[0] == phHciNfc_e_UICCHostID) ? phLibNfc_SE_Type_UICC : phLibNfc_SE_Type_eSE;
                 pSE_List[0].eSE_ActivationMode = pLibContext->tSeInfo.tSeList[bIndex].eSE_ActivationMode;
                 pSE_List[0].hSecureElement = pLibContext->tSeInfo.tSeList[bIndex].hSecureElement;
-                pSE_List[0].eLowPowerMode = pLibContext->tSeInfo.tSeList[bIndex].eLowPowerMode;
             }
         }
         else
@@ -217,7 +216,6 @@ NFCSTATUS phLibNfc_SE_GetSecureElementList( _Out_writes_to_(PHLIBNFC_MAXNO_OF_SE
                     pSE_List[bCount-1].eSE_Type = pLibContext->tSeInfo.tSeList[bIndex].eSE_Type;
                     pSE_List[bCount-1].eSE_ActivationMode = pLibContext->tSeInfo.tSeList[bIndex].eSE_ActivationMode;
                     pSE_List[bCount-1].hSecureElement = pLibContext->tSeInfo.tSeList[bIndex].hSecureElement;
-                    pSE_List[bCount-1].eLowPowerMode = pLibContext->tSeInfo.tSeList[bIndex].eLowPowerMode;
                 }
             }
         }
@@ -230,7 +228,6 @@ NFCSTATUS phLibNfc_SE_GetSecureElementList( _Out_writes_to_(PHLIBNFC_MAXNO_OF_SE
 
 NFCSTATUS phLibNfc_SE_SetMode ( phLibNfc_Handle              hSE_Handle,
                                 phLibNfc_eSE_ActivationMode  eActivation_mode,
-                                phLibNfc_SE_LowPowerMode_t   eLowPowerMode,
                                 pphLibNfc_SE_SetModeRspCb_t  pSE_SetMode_Rsp_cb,
                                 void *                       pContext
     )
@@ -258,7 +255,6 @@ NFCSTATUS phLibNfc_SE_SetMode ( phLibNfc_Handle              hSE_Handle,
         Info.Evt = phLibNfc_DummyEventSetMode;
         Info.Params = (void *)&eActivation_mode;
         pCtx->sSeContext.eActivationMode = eActivation_mode;
-        pCtx->sSeContext.eLowPowerMode = eLowPowerMode;
         wStatus = phLibNfc_StateHandler(pCtx,
                                         TrigEvent,
                                         (void *)hSE_Handle, /*Secure Element Handle*/
@@ -530,7 +526,7 @@ static void phLibNfc_UpdateSeInfo(void* pContext, pphNciNfc_NfceeInfo_t pNfceeIn
                         pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_UICC].hSecureElement = pNfceeInfo->pNfceeHandle;
                         pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_UICC].eSE_Type = phLibNfc_SE_Type_UICC;
                         pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_UICC].eSE_ActivationMode =
-                            (PH_NCINFC_EXT_NFCEEMODE_ENABLE == pNfceeInfo->pNfceeHandle->tDevInfo.eNfceeStatus) ? phLibNfc_SE_ActModeVirtual : phLibNfc_SE_ActModeOff;
+                            (PH_NCINFC_EXT_NFCEEMODE_ENABLE == pNfceeInfo->pNfceeHandle->tDevInfo.eNfceeStatus) ? phLibNfc_SE_ActModeOn : phLibNfc_SE_ActModeOff;
 
                         wStatus = phLibNfc_SE_GetIndex(pCtx, phLibNfc_SeStateInitializing, &bIndex);
                         if(wStatus == NFCSTATUS_FAILED)
@@ -554,7 +550,7 @@ static void phLibNfc_UpdateSeInfo(void* pContext, pphNciNfc_NfceeInfo_t pNfceeIn
                         pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_eSE].hSecureElement = pNfceeInfo->pNfceeHandle;
                         pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_eSE].eSE_Type = phLibNfc_SE_Type_eSE;
                         pCtx->tSeInfo.tSeList[phLibNfc_SE_Index_eSE].eSE_ActivationMode =
-                            (PH_NCINFC_EXT_NFCEEMODE_ENABLE == pNfceeInfo->pNfceeHandle->tDevInfo.eNfceeStatus) ? phLibNfc_SE_ActModeVirtual : phLibNfc_SE_ActModeOff;
+                            (PH_NCINFC_EXT_NFCEEMODE_ENABLE == pNfceeInfo->pNfceeHandle->tDevInfo.eNfceeStatus) ? phLibNfc_SE_ActModeOn : phLibNfc_SE_ActModeOff;
 
                         wStatus = phLibNfc_SE_GetIndex(pCtx, phLibNfc_SeStateInitializing, &bIndex);
                         if(wStatus == NFCSTATUS_FAILED)
@@ -1256,13 +1252,11 @@ static NFCSTATUS phLibNfc_SetModeSeqEnd(void *pContext, NFCSTATUS wStatus, void 
                     if(PH_NCINFC_EXT_NFCEEMODE_DISABLE == pLibContext->sSeContext.eNfceeMode)
                     {
                         pLibContext->tSeInfo.tSeList[bIndex].eSE_ActivationMode = phLibNfc_SE_ActModeOff;
-                        pLibContext->tSeInfo.tSeList[bIndex].eLowPowerMode = phLibNfc_SE_LowPowerMode_Off;
                         break;
                     }
                     else if (PH_NCINFC_EXT_NFCEEMODE_ENABLE == pLibContext->sSeContext.eNfceeMode)
                     {
-                        pLibContext->tSeInfo.tSeList[bIndex].eSE_ActivationMode = phLibNfc_SE_ActModeVirtual;
-                        pLibContext->tSeInfo.tSeList[bIndex].eLowPowerMode = pLibContext->sSeContext.eLowPowerMode;
+                        pLibContext->tSeInfo.tSeList[bIndex].eSE_ActivationMode = phLibNfc_SE_ActModeOn;
                         break;
                     }
                 }
@@ -1302,9 +1296,7 @@ static NFCSTATUS phLibNfc_SetSeModeSeqComplete (void* pContext,NFCSTATUS Status,
         {
             /* If SE mode change is success */
             pCtx->sSeContext.pActiveSeInfo->eSE_ActivationMode =
-            pCtx->sSeContext.eActivationMode;
-            pCtx->sSeContext.pActiveSeInfo->eLowPowerMode =
-            pCtx->sSeContext.eLowPowerMode;
+                pCtx->sSeContext.eActivationMode;
         }
 
         (void)phLibNfc_StateHandler(pCtx, TrigEvent, pInfo, NULL, NULL);

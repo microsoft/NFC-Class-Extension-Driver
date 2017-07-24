@@ -313,11 +313,10 @@ NfcCxRFInterfaceGetSecureElementList(
     );
 
 NTSTATUS
-NfcCxRFInterfaceSetCardEmulationMode(
+NfcCxRFInterfaceSetCardActivationMode(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ phLibNfc_Handle hSecureElement,
-    _In_ phLibNfc_eSE_ActivationMode eActivationMode,
-    _In_ phLibNfc_SE_LowPowerMode_t eLowPowerMode
+    _In_ phLibNfc_eSE_ActivationMode eActivationMode
     );
 
 NTSTATUS

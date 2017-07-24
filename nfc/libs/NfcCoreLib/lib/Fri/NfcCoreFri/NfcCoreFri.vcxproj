@@ -64,6 +64,8 @@
     <ClCompile Include="..\phFriNfc_TopazMap.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\inc\phFriNfc_NdefRecord.h" />
+    <ClInclude Include="..\..\..\inc\phFriNfc_SnepProtocol.h" />
     <ClInclude Include="..\phFriNfc.h" />
     <ClInclude Include="..\phFriNfc_DesfireFormat.h" />
     <ClInclude Include="..\phFriNfc_DesfireMap.h" />

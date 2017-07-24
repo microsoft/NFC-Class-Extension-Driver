@@ -49,14 +49,8 @@ typedef enum phLibNfc_SE_Type
  * \ingroup grp_lib_nfc
  * \brief Different Secure Element modes of operation
  *
- * \b Virtual Mode: Secure Element acts as a card in this mode. Secure Element can communicate
- *                  with external reader being in this mode.
- *
- * \b Apdu Mode:    Host can communicate with Secure Element internally when secure element is
- *                  in wired mode. No RF field is generated when secure element is in wired mode.
- *                  NFC IC acts as reader and discovers secure element as a card in this mode.
- *                  External reader cannot detect secure element in this mode. Only SmartMX supports
- *                  this mode of operation.
+ * \b On Mode:      Secure Element is turned on and can communicate with both the host and (if the
+ *                  the routing table allows) the external reader.
  *
  * \b Off Mode:     Off mode is used when no communication with the Secure Element is needed.
  *                  Secure element does not communicate to either the host or an external reader
@@ -64,18 +58,9 @@ typedef enum phLibNfc_SE_Type
  */
 typedef enum
 {
-    phLibNfc_SE_ActModeVirtual = 0x00, /**< SE Virtual Mode - supported by UICC and eSE */
-    phLibNfc_SE_ActModeOff     = 0x01,  /**< SE deactivation of UICC and eSE */
-    phLibNfc_SE_ActModeApdu    = 0x02,  /**< SE Apdu Mode - This mode allows to do Apdu exchange with eSE */
+    phLibNfc_SE_ActModeOn      = 0x00,
+    phLibNfc_SE_ActModeOff     = 0x01,
 }phLibNfc_eSE_ActivationMode;
-
-/** \ingroup grp_lib_nfc
-    SE low power mode types */
-typedef enum phLibNfc_SE_LowPowerMode
-{
-    phLibNfc_SE_LowPowerMode_Off = 0x00, /**< Indicates no SE is selected in low power mode */
-    phLibNfc_SE_LowPowerMode_On  = 0x01  /**< Indicates requested SE is selected in low power mode */
-} phLibNfc_SE_LowPowerMode_t;
 
 /** \ingroup grp_lib_nfc
     SE event information */
@@ -175,7 +160,6 @@ typedef struct phLibNfc_SE_List
     phLibNfc_Handle             hSecureElement;     /**< handle to Secure Element */
     phLibNfc_SE_Type_t          eSE_Type;           /**< type of Secure Element(SE)*/
     phLibNfc_eSE_ActivationMode eSE_ActivationMode; /**< state of the secure element */
-    phLibNfc_SE_LowPowerMode_t  eLowPowerMode;      /**< low power mode of the secure element */
 } phLibNfc_SE_List_t, *pphLibNfc_SE_List_t;
 
 /**
@@ -680,17 +664,9 @@ NFCSTATUS phLibNfc_SE_GetSecureElementList(_Out_writes_to_(PHLIBNFC_MAXNO_OF_SE,
  *
  * This function configures SE to different mode.
  *
- * -# If mode is set to #phLibNfc_SE_ActModeVirtual then external reader can communicate with
- *    this SE. \note This mode is applicable to both UICC and SmartMX.
+ * -# If mode is #phLibNfc_SE_ActModeOn then external reader and LibNfc client can
+ *    communicate with this SE.
  *
- * -# If mode is set to #phLibNfc_SE_ActModeWired then LibNfc client can communicate with this
- *    SE. In this mode NFC HW can act as reader and communicate with SE as a card. External reader
- *    cannot communicate with any of the SEs in this mode. RF field is not generated during this mode.
- *         \note
- *               -# Wired Mode is applicable to only SmartMX not to UICC
- *               -# When SmartMX SE configured in Wired Mode, LibNfc client shall restart discovery
- *                  process.
- *               -# To exit wired mode ,LibNfc client has to disconnect with release type as "NFC_SMARTMX_RELEASE".
  * -# If mode is #phLibNfc_SE_ActModeOff This means SE is in off mode.
  *      \note This mode is applicable both UICC and SmartMX
  *
@@ -710,7 +686,6 @@ NFCSTATUS phLibNfc_SE_GetSecureElementList(_Out_writes_to_(PHLIBNFC_MAXNO_OF_SE,
  */
 NFCSTATUS phLibNfc_SE_SetMode ( phLibNfc_Handle              hSE_Handle,
                                 phLibNfc_eSE_ActivationMode  eActivation_mode,
-                                phLibNfc_SE_LowPowerMode_t   eLowPowerMode,
                                 pphLibNfc_SE_SetModeRspCb_t  pSE_SetMode_Rsp_cb,
                                 void *                       pContext
     );

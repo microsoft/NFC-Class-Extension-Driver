@@ -130,9 +130,9 @@ NFCSTATUS phLibNfc_eSE_Transceive (phLibNfc_Handle hSE_Handle,
                 if(pLibCtx->sSeContext.pActiveSeInfo != NULL)
                 {
                     pSeList = pLibCtx->sSeContext.pActiveSeInfo;
-                    /*SE type must be eSE and Activation mode must be set to APDUMode */
+                    /*SE type must be eSE and Activation mode must be set to On */
                     if( (pSeList->eSE_Type == phLibNfc_SE_Type_eSE) &&
-                        (pSeList->eSE_ActivationMode == phLibNfc_SE_ActModeApdu))
+                        (pSeList->eSE_ActivationMode == phLibNfc_SE_ActModeOn))
                     {
                         pLibCtx->pSeTransInfo = pSeTransceiveInfo;
                         PHLIBNFC_INIT_SEQUENCE(pLibCtx,gphLibNfc_HciTransceiveSequence);
@@ -1143,7 +1143,7 @@ NFCSTATUS phLibNfc_HciChildDevInitComplete(void* pContext, NFCSTATUS status, voi
             {
                 PH_LOG_LIBNFC_INFO_STR("NFCEE initialization success");
                 pLibCtx->tSeInfo.bSeState[bIndex] = phLibNfc_SeStateInitialized;
-                pLibCtx->tSeInfo.tSeList[bIndex].eSE_ActivationMode = phLibNfc_SE_ActModeVirtual;
+                pLibCtx->tSeInfo.tSeList[bIndex].eSE_ActivationMode = phLibNfc_SE_ActModeOn;
             }
             else
             {
