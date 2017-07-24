@@ -48,6 +48,14 @@ NfcCxWideStringToNarrowString(
     _Out_writes_z_(*cchNarrowStr) PSTR* NarrowStr
     );
 
+NTSTATUS
+NfcCxCopyToBuffer(
+    _In_reads_bytes_(cbInput) const void* pbInput,
+    _In_ size_t cbInput,
+    _Out_writes_bytes_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
+    _Inout_ size_t* pcbOutputBuffer
+    );
+
 class CNFCPayload
 {
 public:

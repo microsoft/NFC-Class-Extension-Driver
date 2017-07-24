@@ -91,6 +91,11 @@ typedef struct _NFCCX_FDO_CONTEXT {
     PNFCCX_SC_INTERFACE SCInterface;
 
     //
+    // eSE (SmartCard) DDI
+    //
+    PNFCCX_ESE_INTERFACE ESEInterface;
+
+    //
     // DTA interface
     //
     PNFCCX_DTA_INTERFACE DTAInterface;

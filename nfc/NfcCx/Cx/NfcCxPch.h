@@ -76,6 +76,7 @@ typedef struct _NFCCX_RF_INTERFACE        NFCCX_RF_INTERFACE,       * PNFCCX_RF_
 typedef struct _NFCCX_LLCP_INTERFACE      NFCCX_LLCP_INTERFACE,     * PNFCCX_LLCP_INTERFACE;
 typedef struct _NFCCX_SNEP_INTERFACE      NFCCX_SNEP_INTERFACE,     * PNFCCX_SNEP_INTERFACE;
 typedef struct _NFCCX_SC_INTERFACE        NFCCX_SC_INTERFACE,       * PNFCCX_SC_INTERFACE;
+typedef struct _NFCCX_ESE_INTERFACE       NFCCX_ESE_INTERFACE,      * PNFCCX_ESE_INTERFACE;
 typedef struct _NFCCX_SE_INTERFACE        NFCCX_SE_INTERFACE,       * PNFCCX_SE_INTERFACE;
 typedef struct _NFCCX_DTA_INTERFACE       NFCCX_DTA_INTERFACE,      * PNFCCX_DTA_INTERFACE;
 typedef struct _NFCCX_POWER_MANAGER       NFCCX_POWER_MANAGER,      * PNFCCX_POWER_MANAGER;
@@ -136,6 +137,9 @@ DEFINE_GUID(GUID_NULL, 0,0,0,0,0,0,0,0,0,0,0);
 #define SEMANAGER_NAMESPACE                 L"SEManage"
 #define SEMANAGER_NAMESPACE_LENGTH          (ARRAYSIZE(SEMANAGER_NAMESPACE) - 1)
 
+#define EMBEDDED_SE_NAMESPACE               L"ESE"
+#define EMBEDDED_SE_NAMESPACE_LENGTH        (ARRAYSIZE(EMBEDDED_SE_NAMESPACE) - 1)
+
 //
 // DDI Module Abstraction
 //
@@ -184,6 +188,7 @@ typedef struct _NFCCX_DDI_MODULE {
 #include "NfcCxNFP.h"
 #include "NfcCxSCPresentAbsentDispatcher.h"
 #include "NfcCxSC.h"
+#include "NfcCxESE.h"
 #include "NfcCxSE.h"
 #include "NfcCxTml.h"
 #include "NciParsersLib.h" // for ETW events

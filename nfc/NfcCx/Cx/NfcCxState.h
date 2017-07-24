@@ -41,6 +41,7 @@ typedef enum _NFCCX_CX_EVENT : ULONG {
     NfcCxEventDeactivateSleep,
     NfcCxEventConfig,
     NfcCxEventDataXchg,
+    NfcCxEventSE,
     NfcCxEventUserMax,
     NfcCxEventReqCompleted,
     NfcCxEventTimeout,

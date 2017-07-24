@@ -44,6 +44,14 @@ NfcCxRFInterfaceTagPresenceThread(
     _In_ PTP_WORK pWork
     );
 
+NTSTATUS
+NfcCxRFInterfaceStateSEEvent(
+    _In_ PNFCCX_RF_INTERFACE RfInterface,
+    _In_ UINT32 eLibNfcMessage,
+    _In_opt_ VOID* Param2,
+    _In_opt_ VOID* Param3
+    );
+
 FORCEINLINE PNFP_INTERFACE
 NfcCxRFInterfaceGetNfpInterface(
     _In_ PNFCCX_RF_INTERFACE  RFInterface
@@ -285,9 +293,12 @@ NfcCxRFInterfaceGetEventType(
     case LIBNFC_SNEP_CLIENT_PUT:
         return NfcCxEventDataXchg;
     case LIBNFC_SE_ENUMERATE:
-    case LIBNFC_SE_SET_MODE:
     case LIBNFC_SE_SET_ROUTING_TABLE:
         return NfcCxEventConfig;
+    case LIBNFC_SE_SET_MODE:
+    case LIBNFC_EMEBEDDED_SE_TRANSCEIVE:
+    case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
+        return NfcCxEventSE;
     default:
         return NfcCxEventInvalid;
     }
@@ -1509,6 +1520,42 @@ Done:
     return status;
 }
 
+static NTSTATUS
+NfcCxRFInterfaceGetSecureElementFromHandle(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ phLibNfc_Handle hSecureElement,
+    _Outptr_ phLibNfc_SE_List_t** ppSecureElement)
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    phLibNfc_SE_List_t* pSecureElement = nullptr;
+
+    for (uint8_t i = 0; i < RFInterface->pLibNfcContext->SECount; i++)
+    {
+        phLibNfc_SE_List_t* se = &RFInterface->pLibNfcContext->SEList[i];
+
+        if (se->hSecureElement == hSecureElement)
+        {
+            pSecureElement = se;
+            break;
+        }
+    }
+
+    if (pSecureElement == nullptr)
+    {
+        status = STATUS_INVALID_PARAMETER;
+        TRACE_LINE(LEVEL_ERROR, "Invalid SE handle, %!STATUS!", status);
+        goto Done;
+    }
+
+    *ppSecureElement = pSecureElement;
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
 NTSTATUS
 NfcCxRFInterfaceSetCardActivationMode(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
@@ -1542,22 +1589,10 @@ Return Value:
     WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
 
     phLibNfc_SE_List_t* pSecureElement = nullptr;
-
-    for (uint8_t i = 0; i < RFInterface->pLibNfcContext->SECount; i++)
+    status = NfcCxRFInterfaceGetSecureElementFromHandle(RFInterface, hSecureElement, &pSecureElement);
+    if (!NT_SUCCESS(status))
     {
-        phLibNfc_SE_List_t* se = &RFInterface->pLibNfcContext->SEList[i];
-
-        if (se->hSecureElement == hSecureElement)
-        {
-            pSecureElement = se;
-            break;
-        }
-    }
-
-    if (pSecureElement == nullptr)
-    {
-        status = STATUS_INVALID_PARAMETER;
-        TRACE_LINE(LEVEL_ERROR, "Invalid SE handle, %!STATUS!", status);
+        TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
         goto Done;
     }
 
@@ -1569,7 +1604,8 @@ Return Value:
     }
 
     // SE Set Mode requires discovery process to be stopped
-    // We need to stop discovery in order to enable/disable ISO-DEP in LA_SEL_INFO 
+    // We need to stop discovery in order to enable/disable ISO-DEP in LA_SEL_INFO
+    // TODO: IS THIS ACCURATE? (MSFT:12707495)
     status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_STOP, NULL, NULL);
     if (!NT_SUCCESS(status))
     {
@@ -1587,6 +1623,98 @@ Return Value:
         goto Done;
     }
 
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to restart discovery, %!STATUS!", status);
+        goto Done;
+    }
+
+Done:
+    WdfWaitLockRelease(RFInterface->DeviceLock);
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxRFInterfaceResetCard(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ phLibNfc_Handle hSecureElement
+    )
+/*++
+
+Routine Description:
+
+    Resets an SE.
+
+Arguments:
+
+    RFInterface - The RF Interface
+    hSecureElement - The handle to the secure element
+
+Return Value:
+
+    STATUS_SUCCESS - If card emulation mode is correctly set
+    STATUS_INVALID_PARAMETER - If handle to secure element is invalid
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
+
+    phLibNfc_SE_List_t* pSecureElement = nullptr;
+    status = NfcCxRFInterfaceGetSecureElementFromHandle(RFInterface, hSecureElement, &pSecureElement);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
+        goto Done;
+    }
+
+    phLibNfc_eSE_ActivationMode currentActivationMode = pSecureElement->eSE_ActivationMode;
+
+    // SE Set Mode requires discovery process to be stopped
+    // We need to stop discovery in order to enable/disable ISO-DEP in LA_SEL_INFO
+    // TODO: IS THIS ACCURATE? (MSFT:12707495)
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_STOP, NULL, NULL);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to stop discovery, %!STATUS!", status);
+        goto Done;
+    }
+
+    //
+    // Turn off SE
+    //
+    status = NfcCxRFInterfaceExecute(RFInterface,
+                                     LIBNFC_SE_SET_MODE,
+                                     (UINT_PTR)pSecureElement,
+                                     (UINT_PTR)phLibNfc_SE_ActModeOff);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to turn off SE, %!STATUS!", status);
+        goto Done;
+    }
+
+    //
+    // Restore SE's activation mode
+    //
+    status = NfcCxRFInterfaceExecute(RFInterface,
+                                     LIBNFC_SE_SET_MODE,
+                                     (UINT_PTR)pSecureElement,
+                                     (UINT_PTR)currentActivationMode);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to restore SE activation mode, %!STATUS!", status);
+        goto Done;
+    }
+
+    //
+    // Re-enable RF discovery
+    //
     status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
     if (!NT_SUCCESS(status))
     {
@@ -1802,6 +1930,139 @@ Return Value:
 --*/
 {
     return phOsalNfc_PostMsg(Message, Param1, Param2, Param3, Param4);
+}
+
+NTSTATUS
+NfcCxRFInterfaceESETransmit(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_reads_bytes_(InputBufferLength) PBYTE InputBuffer,
+    _In_ size_t InputBufferLength,
+    _Out_writes_bytes_to_(OutputBufferLength, *pOutputBufferUsed) PBYTE OutputBuffer,
+    _In_ size_t OutputBufferLength,
+    _Out_ size_t* pOutputBufferUsed,
+    _In_ USHORT Timeout
+    )
+/*++
+
+Routine Description:
+
+    This routine is called from the EmbeddedSE module to perform a transmit
+
+Arguments:
+
+    RFInterface - The RF Interface
+    RequestId - The request Id of the transmit operation
+    InputBuffer - Pointer to the buffer to be transmitted
+    InputBufferLength - Length of the input buffer
+    OutputBuffer - Pointer to the buffer to be filled by the transmit response
+    OutputBufferLength - Length of the output buffer
+    pOutputBufferUsed - Pointer to the length of the output buffer used
+    Timeout - Transceive timeout in milliseconds
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+    UNREFERENCED_PARAMETER(Timeout);
+
+    //
+    // Validating the buffer sizes to safeguard the DWORD cast.
+    // 
+    if (DWORD_MAX < InputBufferLength ||
+        DWORD_MAX < OutputBufferLength) {
+        NT_ASSERTMSG("Buffer size is validated at dispatch time, this should never be larger than DWORD_MAX", FALSE);
+        status = STATUS_INVALID_BUFFER_SIZE;
+        goto Done;
+    }
+
+    *pOutputBufferUsed = 0;
+
+    if ((InputBufferLength == 0) || (InputBuffer == NULL) || (Timeout > MAX_TRANSCEIVE_TIMEOUT)) {
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
+
+    RFInterface->SeTransceiveInfo.sSendData.buffer = InputBuffer;
+    RFInterface->SeTransceiveInfo.sSendData.length = (DWORD)InputBufferLength;
+    RFInterface->SeTransceiveInfo.sRecvData.buffer = OutputBuffer;
+    RFInterface->SeTransceiveInfo.sRecvData.length = (DWORD)OutputBufferLength;
+
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_EMEBEDDED_SE_TRANSCEIVE, NULL, NULL);
+    *pOutputBufferUsed = (size_t)RFInterface->SeTransceiveInfo.sRecvData.length;
+    _Analysis_assume_(OutputBufferLength >= *pOutputBufferUsed);
+
+    WdfWaitLockRelease(RFInterface->DeviceLock);
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxRFInterfaceESEGetATRString(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _Out_writes_bytes_to_(OutputBufferLength, *pOutputBufferUsed) PBYTE OutputBuffer,
+    _In_ size_t OutputBufferLength,
+    _Out_ size_t* pOutputBufferUsed
+    )
+/*++
+
+Routine Description:
+
+    This routine is called from the EmbeddedSE module to get the SE's ATR (answer to reset).
+
+Arguments:
+
+    RFInterface - The RF Interface
+    OutputBuffer - Pointer to the buffer to be filled by the transmit response
+    OutputBufferLength - Length of the output buffer
+    pOutputBufferUsed - Pointer to the length of the output buffer used
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    //
+    // Validating the buffer sizes to safeguard the DWORD cast.
+    // 
+    if (DWORD_MAX < OutputBufferLength) {
+        NT_ASSERTMSG("Buffer size is validated at dispatch time, this should never be larger than DWORD_MAX", FALSE);
+        status = STATUS_INVALID_BUFFER_SIZE;
+        goto Done;
+    }
+
+    if (OutputBuffer == NULL) {
+        status = STATUS_INVALID_PARAMETER;
+        goto Done;
+    }
+
+    WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
+
+    RFInterface->SeATRInfo.pBuff = OutputBuffer;
+    RFInterface->SeATRInfo.dwLength = (DWORD)OutputBufferLength;
+
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_EMBEDDED_SE_GET_ATR_STRING, NULL, NULL);
+
+    *pOutputBufferUsed = RFInterface->SeATRInfo.dwLength;
+
+    WdfWaitLockRelease(RFInterface->DeviceLock);
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
 }
 
 VOID
@@ -2968,17 +3229,22 @@ NfcCxRFInterfaceTargetTransceiveCB(
 
     UNREFERENCED_PARAMETER(hRemoteDev);
 
+    // Note: The handling of 'buffer too small' error case changes depending on which card is communicated with.
+    // For some cards, the error code NFCSTATUS_MORE_INFORMATION is returned. Other cards return NFCSTATUS_SUCCESS
+    // and set 'pResBuffer->length' to the required buffer size. :-(
     if (NfcStatus == NFCSTATUS_SUCCESS) {
         if (pResBuffer->length > rfInterface->sTransceiveBuffer.sRecvData.length) {
             NfcStatus = NFCSTATUS_BUFFER_TOO_SMALL;
             TRACE_LINE(LEVEL_ERROR, "Receive buffer too small for response");
         }
-        else {
-            RtlCopyMemory(rfInterface->sTransceiveBuffer.sRecvData.buffer,
-                          pResBuffer->buffer,
+        // Note: In most cases, we will receive the data in the buffer we provided.
+        else if (rfInterface->sTransceiveBuffer.sRecvData.buffer != pResBuffer->buffer) {
+            RtlCopyMemory(rfInterface->sTransceiveBuffer.sRecvData.buffer, 
+                          pResBuffer->buffer, 
                           pResBuffer->length);
-            rfInterface->sTransceiveBuffer.sRecvData.length = pResBuffer->length;
         }
+
+        rfInterface->sTransceiveBuffer.sRecvData.length = pResBuffer->length;
     }
 
     NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, NfcCxNtStatusFromNfcStatus(NfcStatus), NULL, NULL);
@@ -3108,6 +3374,185 @@ NfcCxRFInterfaceTargetPresenceCheck(
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
     return Status;
+}
+
+static VOID
+NfcCxRFInterfaceESETransceiveSeqCB(
+    _In_ VOID* pContext,
+    _In_ phLibNfc_Handle hRemoteDev,
+    _In_ phNfc_sData_t* pResBuffer,
+    _In_ NFCSTATUS NfcStatus
+    )
+/*++
+
+Routine Description:
+
+    Invoked when the eSE APDU operation has completed.
+
+*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    PNFCCX_RF_LIBNFC_REQUEST_CONTEXT requestContext = (PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext;
+    PNFCCX_RF_INTERFACE rfInterface = requestContext->RFInterface;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    UNREFERENCED_PARAMETER(hRemoteDev);
+    UNREFERENCED_PARAMETER(pResBuffer);
+
+    status = NfcCxNtStatusFromNfcStatus(NfcStatus);
+
+    // Note: Unlike phLibNfc_RemoteDev_Transceive/NfcCxRFInterfaceTargetTransceiveCB, we will always receive NFCSTATUS_MORE_INFORMATION for
+    // 'buffer too small' errors. In addition, 'pResBuffer->buffer' and 'rfInterface->SeTransceiveInfo.sRecvData.buffer' will always point
+    // to the same memory. (So no need to copy the memory.)
+    NT_ASSERT(pResBuffer->buffer == rfInterface->SeTransceiveInfo.sRecvData.buffer);
+    if (NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_INFO, "eSE transceive succeeded. Length=%u", rfInterface->SeTransceiveInfo.sRecvData.length);
+    }
+    else {
+        TRACE_LINE(LEVEL_ERROR, "eSE transceive failed. Status=%!STATUS!", status);
+    }
+
+    NfcCxInternalSequence(rfInterface, requestContext->Sequence, status, NULL, NULL);
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+}
+
+NTSTATUS
+NfcCxRFInterfaceESETransceiveSeq(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS /*Status*/,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+    )
+/*++
+
+Routine Description:
+
+    Starts an eSE APDU operation. Function is triggered on the LibNfc thread in response to the
+    LIBNFC_EMEBEDDED_SE_TRANSCEIVE message.
+
+*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
+    static NFCCX_RF_LIBNFC_REQUEST_CONTEXT LibNfcContext;
+    phLibNfc_Handle hSE_handle = NULL;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    for (uint8_t i = 0; i < RFInterface->pLibNfcContext->SECount; i++) {
+        if (RFInterface->pLibNfcContext->SEList[i].eSE_Type == phLibNfc_SE_Type_eSE) {
+            hSE_handle = RFInterface->pLibNfcContext->SEList[i].hSecureElement;
+            break;
+        }
+    }
+
+    if (hSE_handle == nullptr)
+    {
+        TRACE_LINE(LEVEL_ERROR, "No eSE found.");
+        status = STATUS_INVALID_DEVICE_STATE;
+        goto Done;
+    }
+
+    LibNfcContext.RFInterface = RFInterface;
+    LibNfcContext.Sequence = RFInterface->pSeqHandler;
+
+    RFInterface->SeTransceiveInfo.timeout = DEFAULT_HCI_TX_RX_TIME_OUT;
+
+    nfcStatus = phLibNfc_eSE_Transceive(hSE_handle,
+                                        &RFInterface->SeTransceiveInfo,
+                                        NfcCxRFInterfaceESETransceiveSeqCB,
+                                        &LibNfcContext);
+    status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+static VOID
+NfcCxRFInterfaceESEGetATRStringSeqCB(
+    _In_ void* pContext,
+    _In_ pphNfc_SeAtr_Info_t pResAtrInfo,
+    _In_ NFCSTATUS NfcStatus
+    )
+/*++
+
+Routine Description:
+
+    Invoked when the eSE Get ATR operation has completed.
+
+*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    PNFCCX_RF_LIBNFC_REQUEST_CONTEXT requestContext = (PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext;
+    PNFCCX_RF_INTERFACE rfInterface = requestContext->RFInterface;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    UNREFERENCED_PARAMETER(pResAtrInfo);
+
+    status = NfcCxNtStatusFromNfcStatus(NfcStatus);
+
+    if (NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_INFO, "Get eSE ATR was successful. Length = %u.", rfInterface->SeATRInfo.dwLength);
+    }
+    else {
+        TRACE_LINE(LEVEL_ERROR, "Failed to get eSE ATR. Status = %!STATUS!.", status);
+    }
+
+    NfcCxInternalSequence(rfInterface, requestContext->Sequence, status, NULL, NULL);
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+}
+
+NTSTATUS
+NfcCxRFInterfaceESEGetATRStringSeq(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS /*Status*/,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+    )
+/*++
+
+Routine Description:
+
+    Starts an eSE Get ATR operation. Function is triggered on the LibNfc thread in response to the
+    LIBNFC_EMBEDDED_SE_GET_ATR_STRING message.
+
+*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
+    static NFCCX_RF_LIBNFC_REQUEST_CONTEXT LibNfcContext;
+    phLibNfc_Handle hSE_handle = NULL;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    LibNfcContext.RFInterface = RFInterface;
+    LibNfcContext.Sequence = RFInterface->pSeqHandler;
+
+    for (uint8_t i = 0; i < RFInterface->pLibNfcContext->SECount; i++) {
+        if (RFInterface->pLibNfcContext->SEList[i].eSE_Type == phLibNfc_SE_Type_eSE) {
+            hSE_handle = RFInterface->pLibNfcContext->SEList[i].hSecureElement;
+            break;
+        }
+    }
+
+    if (hSE_handle == nullptr)
+    {
+        TRACE_LINE(LEVEL_ERROR, "No eSE found.");
+        status = STATUS_INVALID_DEVICE_STATE;
+        goto Done;
+    }
+
+    nfcStatus = phLibNfc_eSE_GetAtr(hSE_handle, &RFInterface->SeATRInfo, NfcCxRFInterfaceESEGetATRStringSeqCB, &LibNfcContext);
+    status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
 }
 
 NTSTATUS
@@ -4244,6 +4689,8 @@ NfcCxRFInterfaceLibNfcMessageHandler(
     case LIBNFC_SE_ENUMERATE:
     case LIBNFC_SE_SET_MODE:
     case LIBNFC_SE_SET_ROUTING_TABLE:
+    case LIBNFC_EMEBEDDED_SE_TRANSCEIVE:
+    case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
     case LIBNFC_SNEP_CLIENT_PUT:
         {
             rfInterface->pLibNfcContext->Status = NfcCxStateInterfaceStateHandler(NfcCxRFInterfaceGetStateInterface(rfInterface),
@@ -5441,6 +5888,56 @@ NfcCxRFInterfaceSEEnumerateSeqComplete(
     return Status;
 }
 
+static NTSTATUS
+NfcCxRFInterfaceESETransceiveSeqComplete(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS Status,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+    )
+{
+    PNFCCX_STATE_INTERFACE stateInterface = NfcCxRFInterfaceGetStateInterface(RFInterface);
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    RFInterface->pLibNfcContext->Status = Status;
+
+    if (NT_SUCCESS(Status)) {
+        NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventReqCompleted, NULL, NULL, NULL);
+    }
+    else {
+        NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventFailed, NULL, NULL, NULL);
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    return Status;
+}
+
+static NTSTATUS
+NfcCxRFInterfaceESEGetATRStringSeqComplete(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS Status,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+    )
+{
+    PNFCCX_STATE_INTERFACE stateInterface = NfcCxRFInterfaceGetStateInterface(RFInterface);
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    RFInterface->pLibNfcContext->Status = Status;
+
+    if (NT_SUCCESS(Status)) {
+        NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventReqCompleted, NULL, NULL, NULL);
+    }
+    else {
+        NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventFailed, NULL, NULL, NULL);
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    return Status;
+}
+
 NTSTATUS
 NfcCxRFInterfaceStateRfIdle(
     _In_ PNFCCX_STATE_INTERFACE StateInterface,
@@ -5464,20 +5961,6 @@ NfcCxRFInterfaceStateRfIdle(
     {
         switch (eLibNfcMessage)
         {
-        case LIBNFC_SE_SET_MODE:
-            {
-                NFCCX_CX_BEGIN_SEQUENCE_MAP(SESetModeSequence)
-                    RF_INTERFACE_SE_SET_MODE_SEQUENCE
-                NFCCX_CX_END_SEQUENCE_MAP()
-
-                SESetModeSequence[ARRAYSIZE(SESetModeSequence)-1].SequenceProcess =
-                    NfcCxRFInterfaceSESetModeSeqComplete;
-
-                NFCCX_INIT_SEQUENCE(rfInterface, SESetModeSequence);
-                status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
-            }
-            break;
-
         case LIBNFC_SE_SET_ROUTING_TABLE:
             {
                 NFCCX_CX_BEGIN_SEQUENCE_MAP(SESetRoutingTableSequence)
@@ -5511,6 +5994,10 @@ NfcCxRFInterfaceStateRfIdle(
             status = STATUS_INVALID_DEVICE_REQUEST;
             break;
         }
+    }
+    else if (Event == NfcCxEventSE)
+    {
+        status = NfcCxRFInterfaceStateSEEvent(rfInterface, eLibNfcMessage, Param2, Param3);
     }
     else {
         NT_ASSERT(Event == NfcCxEventConfigDiscovery || Event == NfcCxEventStopDiscovery);
@@ -5590,28 +6077,8 @@ NfcCxRFInterfaceStateRfDiscovery(
 #pragma warning(suppress:4311 4302)
         UINT32 eLibNfcMessage = (UINT32)Param1;
 
-        NT_ASSERT(Event == NfcCxEventConfig);
-
-        switch (eLibNfcMessage)
-        {
-        case LIBNFC_SE_SET_MODE:
-            {
-                NFCCX_CX_BEGIN_SEQUENCE_MAP(SESetModeSequence)
-                    RF_INTERFACE_SE_SET_MODE_SEQUENCE
-                NFCCX_CX_END_SEQUENCE_MAP()
-
-                SESetModeSequence[ARRAYSIZE(SESetModeSequence)-1].SequenceProcess =
-                    NfcCxRFInterfaceSESetModeSeqComplete;
-
-                NFCCX_INIT_SEQUENCE(rfInterface, SESetModeSequence);
-                status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
-            }
-            break;
-
-        default:
-            status = STATUS_INVALID_DEVICE_REQUEST;
-            break;
-        }
+        NT_ASSERT(Event == NfcCxEventSE);
+        status = NfcCxRFInterfaceStateSEEvent(rfInterface, eLibNfcMessage, Param2, Param3);
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -5639,28 +6106,8 @@ NfcCxRFInterfaceStateRfDiscovered(
 
     UNREFERENCED_PARAMETER(Event);
 
-    NT_ASSERT(Event == NfcCxEventConfig);
-
-    switch (eLibNfcMessage)
-    {
-    case LIBNFC_SE_SET_MODE:
-        {
-            NFCCX_CX_BEGIN_SEQUENCE_MAP(SESetModeSequence)
-                RF_INTERFACE_SE_SET_MODE_SEQUENCE
-            NFCCX_CX_END_SEQUENCE_MAP()
-
-            SESetModeSequence[ARRAYSIZE(SESetModeSequence)-1].SequenceProcess =
-                NfcCxRFInterfaceSESetModeSeqComplete;
-
-            NFCCX_INIT_SEQUENCE(rfInterface, SESetModeSequence);
-            status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
-        }
-        break;
-
-    default:
-        status = STATUS_INVALID_DEVICE_REQUEST;
-        break;
-    }
+    NT_ASSERT(Event == NfcCxEventSE);
+    status = NfcCxRFInterfaceStateSEEvent(rfInterface, eLibNfcMessage, Param2, Param3);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
@@ -5901,105 +6348,145 @@ NfcCxRFInterfaceStateRfDataXchg(
 
     UNREFERENCED_PARAMETER(Event);
 
-    NT_ASSERT(Event == NfcCxEventDataXchg || Event == NfcCxEventConfig);
+    NT_ASSERT(Event == NfcCxEventDataXchg || Event == NfcCxEventConfig || Event == NfcCxEventSE);
+
+    if (Event == NfcCxEventSE)
+    {
+        status = NfcCxRFInterfaceStateSEEvent(rfInterface, eLibNfcMessage, Param2, Param3);
+    }
+    else
+    {
+        switch (eLibNfcMessage)
+        {
+        case LIBNFC_TAG_WRITE:
+            {
+                if (rfInterface->pLibNfcContext->bIsTagPresent) {
+                    NFCCX_CX_BEGIN_SEQUENCE_MAP(TagWriteNdefSequence)
+                        RF_INTERFACE_TAG_WRITE_NDEF_SEQUENCE
+                    NFCCX_CX_END_SEQUENCE_MAP()
+
+                    TagWriteNdefSequence[ARRAYSIZE(TagWriteNdefSequence)-1].SequenceProcess =
+                        NfcCxRFInterfaceTagWriteNdefSeqComplete;
+
+                    NFCCX_INIT_SEQUENCE(rfInterface, TagWriteNdefSequence);
+                    status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+                }
+                else {
+                    status = STATUS_INVALID_DEVICE_STATE;
+                }
+            }
+            break;
+
+        case LIBNFC_TAG_CONVERT_READONLY:
+            {
+                if (rfInterface->pLibNfcContext->bIsTagPresent) {
+                    NFCCX_CX_BEGIN_SEQUENCE_MAP(TagConvertReadOnlySequence)
+                        RF_INTERFACE_TAG_CONVERT_READONLY_SEQUENCE
+                    NFCCX_CX_END_SEQUENCE_MAP()
+
+                    TagConvertReadOnlySequence[ARRAYSIZE(TagConvertReadOnlySequence)-1].SequenceProcess =
+                        NfcCxRFInterfaceTagConvertReadOnlySeqComplete;
+
+                    NFCCX_INIT_SEQUENCE(rfInterface, TagConvertReadOnlySequence);
+                    status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+                }
+                else {
+                    status = STATUS_INVALID_DEVICE_STATE;
+                }
+            }
+            break;
+
+        case LIBNFC_TARGET_TRANSCEIVE:
+            {
+                if (rfInterface->pLibNfcContext->bIsTagPresent) {
+                    NFCCX_CX_BEGIN_SEQUENCE_MAP(TargetTransceiveSequence)
+                        RF_INTERFACE_TARGET_TRANSCEIVE_SEQUENCE
+                    NFCCX_CX_END_SEQUENCE_MAP()
+
+                    TargetTransceiveSequence[ARRAYSIZE(TargetTransceiveSequence)-1].SequenceProcess =
+                        NfcCxRFInterfaceTargetTransceiveSeqComplete;
+
+                    NFCCX_INIT_SEQUENCE(rfInterface, TargetTransceiveSequence);
+                    status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+                }
+                else {
+                    status = STATUS_INVALID_DEVICE_STATE;
+                }
+            }
+            break;
+
+        case LIBNFC_TARGET_PRESENCE_CHECK:
+            {
+                if (rfInterface->pLibNfcContext->bIsTagPresent) {
+                    NFCCX_CX_BEGIN_SEQUENCE_MAP(TargetPresenceCheckSequence)
+                        RF_INTERFACE_TARGET_PRESENCE_CHECK_SEQUENCE
+                    NFCCX_CX_END_SEQUENCE_MAP()
+
+                    TargetPresenceCheckSequence[ARRAYSIZE(TargetPresenceCheckSequence)-1].SequenceProcess =
+                        NfcCxRFInterfaceTargetPresenceCheckSeqComplete;
+
+                    NFCCX_INIT_SEQUENCE(rfInterface, TargetPresenceCheckSequence);
+                    status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+                }
+                else {
+                    status = STATUS_INVALID_DEVICE_STATE;
+                }
+            }
+            break;
+
+        case LIBNFC_SNEP_CLIENT_PUT:
+            {
+                if (NfcCxRFInterfaceGetLLCPInterface(rfInterface)->eLinkStatus == phFriNfc_LlcpMac_eLinkActivated) {
+                    NFCCX_CX_BEGIN_SEQUENCE_MAP(SNEPClientPutSequence)
+                        SNEP_INTERFACE_CLIENT_PUT_SEQUENCE
+                    NFCCX_CX_END_SEQUENCE_MAP()
+
+                    SNEPClientPutSequence[ARRAYSIZE(SNEPClientPutSequence)-1].SequenceProcess =
+                        NfcCxRFInterfaceSNEPClientPutSeqComplete;
+
+                    NFCCX_INIT_SEQUENCE(rfInterface, SNEPClientPutSequence);
+                    status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+                }
+                else {
+                    status = STATUS_INVALID_DEVICE_STATE;
+                }
+            }
+            break;
+
+        case LIBNFC_TARGET_SEND:
+            {
+                static NFCCX_CX_SEQUENCE HCESendSequence[] = {
+                    { NfcCxRFInterfaceRemoteDevSend, NULL },
+                    { NULL, NfcCxRFInterfaceRemoteDevSendSeqComplete }
+                };
+
+                NFCCX_INIT_SEQUENCE(rfInterface, HCESendSequence);
+                status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+            }
+            break;
+
+        default:
+            status = STATUS_INVALID_DEVICE_REQUEST;
+            break;
+        }
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxRFInterfaceStateSEEvent(
+    _In_ PNFCCX_RF_INTERFACE RfInterface,
+    _In_ UINT32 eLibNfcMessage,
+    _In_opt_ VOID* Param2,
+    _In_opt_ VOID* Param3
+    )
+{
+    NTSTATUS status = STATUS_SUCCESS;
 
     switch (eLibNfcMessage)
     {
-    case LIBNFC_TAG_WRITE:
-        {
-            if (rfInterface->pLibNfcContext->bIsTagPresent) {
-                NFCCX_CX_BEGIN_SEQUENCE_MAP(TagWriteNdefSequence)
-                    RF_INTERFACE_TAG_WRITE_NDEF_SEQUENCE
-                NFCCX_CX_END_SEQUENCE_MAP()
-
-                TagWriteNdefSequence[ARRAYSIZE(TagWriteNdefSequence)-1].SequenceProcess =
-                    NfcCxRFInterfaceTagWriteNdefSeqComplete;
-
-                NFCCX_INIT_SEQUENCE(rfInterface, TagWriteNdefSequence);
-                status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
-            }
-            else {
-                status = STATUS_INVALID_DEVICE_STATE;
-            }
-        }
-        break;
-
-    case LIBNFC_TAG_CONVERT_READONLY:
-        {
-            if (rfInterface->pLibNfcContext->bIsTagPresent) {
-                NFCCX_CX_BEGIN_SEQUENCE_MAP(TagConvertReadOnlySequence)
-                    RF_INTERFACE_TAG_CONVERT_READONLY_SEQUENCE
-                NFCCX_CX_END_SEQUENCE_MAP()
-
-                TagConvertReadOnlySequence[ARRAYSIZE(TagConvertReadOnlySequence)-1].SequenceProcess =
-                    NfcCxRFInterfaceTagConvertReadOnlySeqComplete;
-
-                NFCCX_INIT_SEQUENCE(rfInterface, TagConvertReadOnlySequence);
-                status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
-            }
-            else {
-                status = STATUS_INVALID_DEVICE_STATE;
-            }
-        }
-        break;
-
-    case LIBNFC_TARGET_TRANSCEIVE:
-        {
-            if (rfInterface->pLibNfcContext->bIsTagPresent) {
-                NFCCX_CX_BEGIN_SEQUENCE_MAP(TargetTransceiveSequence)
-                    RF_INTERFACE_TARGET_TRANSCEIVE_SEQUENCE
-                NFCCX_CX_END_SEQUENCE_MAP()
-
-                TargetTransceiveSequence[ARRAYSIZE(TargetTransceiveSequence)-1].SequenceProcess =
-                    NfcCxRFInterfaceTargetTransceiveSeqComplete;
-
-                NFCCX_INIT_SEQUENCE(rfInterface, TargetTransceiveSequence);
-                status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
-            }
-            else {
-                status = STATUS_INVALID_DEVICE_STATE;
-            }
-        }
-        break;
-
-    case LIBNFC_TARGET_PRESENCE_CHECK:
-        {
-            if (rfInterface->pLibNfcContext->bIsTagPresent) {
-                NFCCX_CX_BEGIN_SEQUENCE_MAP(TargetPresenceCheckSequence)
-                    RF_INTERFACE_TARGET_PRESENCE_CHECK_SEQUENCE
-                NFCCX_CX_END_SEQUENCE_MAP()
-
-                TargetPresenceCheckSequence[ARRAYSIZE(TargetPresenceCheckSequence)-1].SequenceProcess =
-                    NfcCxRFInterfaceTargetPresenceCheckSeqComplete;
-
-                NFCCX_INIT_SEQUENCE(rfInterface, TargetPresenceCheckSequence);
-                status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
-            }
-            else {
-                status = STATUS_INVALID_DEVICE_STATE;
-            }
-        }
-        break;
-
-    case LIBNFC_SNEP_CLIENT_PUT:
-        {
-            if (NfcCxRFInterfaceGetLLCPInterface(rfInterface)->eLinkStatus == phFriNfc_LlcpMac_eLinkActivated) {
-                NFCCX_CX_BEGIN_SEQUENCE_MAP(SNEPClientPutSequence)
-                    SNEP_INTERFACE_CLIENT_PUT_SEQUENCE
-                NFCCX_CX_END_SEQUENCE_MAP()
-
-                SNEPClientPutSequence[ARRAYSIZE(SNEPClientPutSequence)-1].SequenceProcess =
-                    NfcCxRFInterfaceSNEPClientPutSeqComplete;
-
-                NFCCX_INIT_SEQUENCE(rfInterface, SNEPClientPutSequence);
-                status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
-            }
-            else {
-                status = STATUS_INVALID_DEVICE_STATE;
-            }
-        }
-        break;
-
     case LIBNFC_SE_SET_MODE:
         {
             NFCCX_CX_BEGIN_SEQUENCE_MAP(SESetModeSequence)
@@ -6009,20 +6496,36 @@ NfcCxRFInterfaceStateRfDataXchg(
             SESetModeSequence[ARRAYSIZE(SESetModeSequence)-1].SequenceProcess =
                 NfcCxRFInterfaceSESetModeSeqComplete;
 
-            NFCCX_INIT_SEQUENCE(rfInterface, SESetModeSequence);
-            status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+            NFCCX_INIT_SEQUENCE(RfInterface, SESetModeSequence);
+            status = NfcCxSequenceHandler(RfInterface, RfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
         }
         break;
 
-    case LIBNFC_TARGET_SEND:
+    case LIBNFC_EMEBEDDED_SE_TRANSCEIVE:
         {
-            static NFCCX_CX_SEQUENCE HCESendSequence[] = {
-                { NfcCxRFInterfaceRemoteDevSend, NULL },
-                { NULL, NfcCxRFInterfaceRemoteDevSendSeqComplete }
-            };
+            NFCCX_CX_BEGIN_SEQUENCE_MAP(EmbeddedSEAPDUModeSequence)
+                RF_INTERFACE_EMBEDDEDSE_TRANSCEIVE_SEQUENCE
+            NFCCX_CX_END_SEQUENCE_MAP()
 
-            NFCCX_INIT_SEQUENCE(rfInterface, HCESendSequence);
-            status = NfcCxSequenceHandler(rfInterface, rfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+            EmbeddedSEAPDUModeSequence[ARRAYSIZE(EmbeddedSEAPDUModeSequence) - 1].SequenceProcess =
+                NfcCxRFInterfaceESETransceiveSeqComplete;
+
+            NFCCX_INIT_SEQUENCE(RfInterface, EmbeddedSEAPDUModeSequence);
+            status = NfcCxSequenceHandler(RfInterface, RfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
+        }
+        break;
+
+    case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
+        {
+            NFCCX_CX_BEGIN_SEQUENCE_MAP(EmbeddedSEGetATRStringSequence)
+                RF_INTERFACE_EMBEDDEDSE_GET_ATR_STRING_SEQUENCE
+            NFCCX_CX_END_SEQUENCE_MAP()
+
+            EmbeddedSEGetATRStringSequence[ARRAYSIZE(EmbeddedSEGetATRStringSequence) - 1].SequenceProcess =
+                NfcCxRFInterfaceESEGetATRStringSeqComplete;
+
+            NFCCX_INIT_SEQUENCE(RfInterface, EmbeddedSEGetATRStringSequence);
+            status = NfcCxSequenceHandler(RfInterface, RfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
         }
         break;
 

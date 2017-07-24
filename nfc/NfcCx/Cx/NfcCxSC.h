@@ -18,6 +18,8 @@ Environment:
 
 #pragma once
 
+#include "NfcCxSCCommon.h"
+
 // To be removed once these Attribute IDs are defined in winsmcrd.h
 #define SCARD_ATTR_VENDOR_SPECIFIC_BRAND_INFO 0x0180
 #define SCARD_ATTR_VENDOR_SPECIFIC_DEVICECAP_INFO 0x0181
@@ -99,30 +101,6 @@ Environment:
 #define PCSC_SWITCH_PROTOCOL_STD_TYPE               0X00
 #define PCSC_SWITCH_PROTOCOL_APDU_SIZE              0x09
 #define PCSC_SWITCH_PROTOCOL_INDEX_NOT_FOUND        0xFF
-
-typedef
-NTSTATUS
-NFCCX_SC_DISPATCH_HANDLER(
-    _In_ WDFDEVICE Device,
-    _In_ WDFREQUEST Request,
-    _In_opt_bytecount_(InputBufferLength) PVOID InputBuffer,
-    _In_ size_t InputBufferLength,
-    _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
-    _In_ size_t OutputBufferLength
-    );
-
-typedef NFCCX_SC_DISPATCH_HANDLER *PFN_NFCCX_SC_DISPATCH_HANDLER;
-
-typedef NTSTATUS
-NFCCX_SC_ATTRIBUTE_DISPATCH_HANDLER(
-    _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
-    _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
-    _Inout_ size_t* pcbOutputBuffer
-    );
-
-typedef NFCCX_SC_ATTRIBUTE_DISPATCH_HANDLER *PFN_NFCCX_SC_ATTRIBUTE_DISPATCH_HANDLER;
 
 typedef struct _NFCCX_SC_INTERFACE {
     //
@@ -274,38 +252,20 @@ NFCCX_SC_DISPATCH_HANDLER NfcCxSCInterfaceDispatchSetProtocol;
 NFCCX_SC_DISPATCH_HANDLER NfcCxSCInterfaceDispatchIsAbsent;
 NFCCX_SC_DISPATCH_HANDLER NfcCxSCInterfaceDispatchIsPresent;
 NFCCX_SC_DISPATCH_HANDLER NfcCxSCInterfaceDispatchTransmit;
-NFCCX_SC_DISPATCH_HANDLER NfcCxSCInterfaceDispatchNotSupported;
-NFCCX_SC_DISPATCH_HANDLER NfcCxSCInterfaceDispatchGetLastError;
 
 //
 // Dispatched attribute methods below
 //
-_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
-NfcCxSCInterfaceDispatchAttributeLocked(
+NfcCxSCInterfaceDispatchAttributePresent(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
     _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
     );
 
-_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
-NfcCxSCInterfaceDispatchAttributePresentLocked(
+NfcCxSCInterfaceDispatchAttributeCurrentProtocolType(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
-    _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
-    _Inout_ size_t* pcbOutputBuffer
-    );
-
-_Requires_lock_held_(ScInterface->SmartCardLock)
-NTSTATUS
-NfcCxSCInterfaceDispatchAttributeCurrentProtocolTypeLocked(
-    _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
     _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
     );
@@ -314,18 +274,13 @@ _Requires_lock_not_held_(ScInterface->SmartCardLock)
 NTSTATUS
 NfcCxSCInterfaceDispatchAttributeAtr(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
     _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
     );
 
-_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
-NfcCxSCInterfaceDispatchAttributeIccTypeLocked(
+NfcCxSCInterfaceDispatchAttributeIccType(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
     _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
     );
@@ -333,15 +288,6 @@ NfcCxSCInterfaceDispatchAttributeIccTypeLocked(
 //
 // Helper methods below don't have locking constraints
 //
-NTSTATUS
-NfcCxSCInterfaceCopyResponseData(
-    _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
-    _In_ ULONG OutputBufferLength,
-    _In_bytecount_(DataLength) PVOID Data,
-    _In_ ULONG DataLength,
-    _Out_ PULONG BufferUsed
-    );
-
 BOOL
 NfcCxSCInterfaceValidateLoadKeyCommand(
     _In_bytecount_(InputBufferLength) PBYTE InputBuffer,

@@ -321,6 +321,15 @@ Return Value:
             goto Done;
         }
     }
+    else if (ROLE_EMBEDDED_SE == fileContext->Role) {
+        status = NfcCxESEInterfaceAddClient(fdoContext->ESEInterface,
+                                            fileContext);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to add a eSE smartcard client %!STATUS!", status);
+            goto Done;
+        }
+    }
+
 
     TRACE_LINE(LEVEL_INFO, "Client Added");
     TRACE_LINE(LEVEL_INFO, "    Client Role = %!FILE_OBJECT_ROLE!",                     fileContext->Role);
@@ -387,6 +396,11 @@ Done:
                 case ROLE_SECUREELEMENTMANAGER:
                 {
                     NfcCxSEInterfaceRemoveClient(NfcCxFileObjectGetSEInterface(fileContext), fileContext);
+                    break;
+                }
+                case ROLE_EMBEDDED_SE:
+                {
+                    NfcCxESEInterfaceRemoveClient(fdoContext->ESEInterface, fileContext);
                     break;
                 }
             }
@@ -504,6 +518,12 @@ Return Value:
         NfcCxSEInterfaceRemoveClient(NfcCxFileObjectGetSEInterface(fileContext),
                                      fileContext);
     }
+    else if (ROLE_EMBEDDED_SE == fileContext->Role) {
+
+        NfcCxESEInterfaceRemoveClient(fdoContext->ESEInterface,
+                                      fileContext);
+    }
+
 
     WdfWaitLockAcquire(fileContext->StateLock, NULL);
 
@@ -685,7 +705,6 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     DWORD cchFileName = 0;
-    WCHAR szFileName[MAX_FILE_NAME_LENGTH];
     LPWSTR pszFileName;
     LPWSTR pszProtocol = NULL;
     LPWSTR pszProtocolEnd = NULL;
@@ -702,21 +721,16 @@ Return Value:
         FileContext->Role = ROLE_CONFIGURATION;
         goto Done;
     }
-    RtlZeroMemory(szFileName, sizeof(szFileName));
 
     cchFileName = (FileName->Length / sizeof(WCHAR));
-    if (MAX_FILE_NAME_LENGTH <= cchFileName ||
-        min(PUBS_NAMESPACE_LENGTH, SUBS_NAMESPACE_LENGTH) > cchFileName){
+    if (MAX_FILE_NAME_LENGTH <= cchFileName)
+    {
         TRACE_LINE(LEVEL_ERROR, "Invalid file name length, %!STATUS!", status);
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
 
-    RtlCopyMemory(szFileName,
-                  FileName->Buffer,
-                  FileName->Length);
-
-    pszFileName = szFileName;
+    pszFileName = FileName->Buffer;
 
     //
     // Skip the first \
@@ -771,6 +785,14 @@ Return Value:
                                                 SEMANAGER_NAMESPACE_LENGTH,
                                                 TRUE)) {
         FileContext->Role = ROLE_SECUREELEMENTMANAGER;
+        goto Done;
+
+    } else if (CSTR_EQUAL == CompareStringOrdinal(pszFileName,
+                                                  min(EMBEDDED_SE_NAMESPACE_LENGTH, cchFileName),
+                                                  EMBEDDED_SE_NAMESPACE,
+                                                  EMBEDDED_SE_NAMESPACE_LENGTH,
+                                                  TRUE)) {
+        FileContext->Role = ROLE_EMBEDDED_SE;
         goto Done;
 
     } else {

@@ -20,11 +20,6 @@ Environment:
 
 #include "NfcCxSC.tmh"
 
-// TODO: Temporarily define this here until we get ScDeviceEnum.h published
-// {D6B5B883-18BD-4B4D-B2EC-9E38AFFEDA82}, 2, DEVPROP_TYPE_BYTE
-DEFINE_DEVPROPKEY(DEVPKEY_Device_ReaderKind,
-    0xD6B5B883, 0x18BD, 0x4B4D, 0xB2, 0xEC, 0x9E, 0x38, 0xAF, 0xFE, 0xDA, 0x82, 0x02);
-
 typedef struct _NFCCX_SC_DISPATCH_ENTRY {
     ULONG IoControlCode;
     BOOLEAN fPowerManaged;
@@ -34,32 +29,8 @@ typedef struct _NFCCX_SC_DISPATCH_ENTRY {
     PFN_NFCCX_SC_DISPATCH_HANDLER DispatchHandler;
 } NFCCX_SC_DISPATCH_ENTRY, *PNFCCX_SC_DISPATCH_ENTRY;
 
-typedef struct _ATTRIBUTE_DISPATCH_ENTRY {
-    DWORD dwAttributeId;
-    PBYTE pbResultBuffer;
-    size_t cbResultBuffer;
-    BOOL fRequireLock;
-    PFN_NFCCX_SC_ATTRIBUTE_DISPATCH_HANDLER pfnDispatchHandler;
-} ATTRIBUTE_DISPATCH_ENTRY, *PATTRIBUTE_DISPATCH_ENTRY;
-
-static const CHAR SCReaderVendorName[] = "Microsoft";
 static const CHAR SCReaderVendorIfd[] = "IFD";
-static const DWORD SCReaderVendorIfdVersion = ((IFD_MAJOR_VER & 0x3) << 6) | ((IFD_MINOR_VER & 0x3) << 4) | (IFD_BUILD_NUM & 0xF);
 static const DWORD SCReaderChannelId = SCARD_READER_TYPE_NFC << 16;
-static const DWORD SCReaderProtocolTypes = SCARD_PROTOCOL_T1;
-static const DWORD SCReaderDeviceUnit = 0;
-static const DWORD SCReaderDefaultClk = 13560;
-static const DWORD SCReaderMaxClk = 13560;
-static const DWORD SCReaderDefaultDataRate = 1;
-static const DWORD SCReaderMaxDataRate = 1;
-static const DWORD SCReaderMaxIfsd = 254;
-static const DWORD SCReaderCharacteristics = SCARD_READER_CONTACTLESS;
-static const DWORD SCReaderCurrentProtocolType = SCARD_PROTOCOL_T1;
-static const DWORD SCReaderCurrentClk = 13560;
-static const DWORD SCReaderCurrentD = 1;
-static const DWORD SCReaderCurrentIfsc = 32;
-static const DWORD SCReaderCurrentIfsd = 254;
-static const DWORD SCReaderCurrentBwt = 4;
 
 NFCCX_SC_DISPATCH_ENTRY 
 g_ScDispatch [] = {
@@ -72,36 +43,11 @@ g_ScDispatch [] = {
     { IOCTL_SMARTCARD_IS_PRESENT,           FALSE,  FALSE,  0,                                 0,                                NfcCxSCInterfaceDispatchIsPresent },
     // IOCTL_SMARTCARD_TRANSMIT is expecting input to have at least one byte and IO_REQUEST and output to be SW1 + SW2 + IO_REQUEST
     { IOCTL_SMARTCARD_TRANSMIT,             TRUE,   TRUE,   sizeof(SCARD_IO_REQUEST)+1,        sizeof(SCARD_IO_REQUEST)+2,       NfcCxSCInterfaceDispatchTransmit },
-    { IOCTL_SMARTCARD_EJECT,                FALSE,  FALSE,  0,                                 0,                                NfcCxSCInterfaceDispatchNotSupported },
-    { IOCTL_SMARTCARD_GET_LAST_ERROR,       FALSE,  FALSE,  0,                                 sizeof(DWORD),                    NfcCxSCInterfaceDispatchGetLastError },
-    { IOCTL_SMARTCARD_SWALLOW,              FALSE,  FALSE,  0,                                 0,                                NfcCxSCInterfaceDispatchNotSupported },
-    { IOCTL_SMARTCARD_CONFISCATE,           FALSE,  FALSE,  0,                                 0,                                NfcCxSCInterfaceDispatchNotSupported },
-    { IOCTL_SMARTCARD_GET_PERF_CNTR,        FALSE,  FALSE,  0,                                 0,                                NfcCxSCInterfaceDispatchNotSupported },
-};
-
-ATTRIBUTE_DISPATCH_ENTRY
-g_ScAttributeDispatch [] = {
-    { SCARD_ATTR_VENDOR_NAME,               (PBYTE)SCReaderVendorName,           sizeof(SCReaderVendorName),             TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_VENDOR_IFD_TYPE,           (PBYTE)SCReaderVendorIfd,            sizeof(SCReaderVendorIfd),              TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_VENDOR_IFD_VERSION,        (PBYTE)&SCReaderVendorIfdVersion,    sizeof(SCReaderVendorIfdVersion),       TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_CHANNEL_ID,                (PBYTE)&SCReaderChannelId,           sizeof(SCReaderChannelId),              TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_PROTOCOL_TYPES,            (PBYTE)&SCReaderProtocolTypes,       sizeof(SCReaderProtocolTypes),          TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_DEVICE_UNIT,               (PBYTE)&SCReaderDeviceUnit,          sizeof(SCReaderDeviceUnit),             TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_DEFAULT_CLK,               (PBYTE)&SCReaderDefaultClk,          sizeof(SCReaderDefaultClk),             TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_MAX_CLK,                   (PBYTE)&SCReaderMaxClk,              sizeof(SCReaderMaxClk),                 TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_DEFAULT_DATA_RATE,         (PBYTE)&SCReaderDefaultDataRate,     sizeof(SCReaderDefaultDataRate),        TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_MAX_DATA_RATE,             (PBYTE)&SCReaderMaxDataRate,         sizeof(SCReaderMaxDataRate),            TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_MAX_IFSD,                  (PBYTE)&SCReaderMaxIfsd,             sizeof(SCReaderMaxIfsd),                TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_CHARACTERISTICS,           (PBYTE)&SCReaderCharacteristics,     sizeof(SCReaderCharacteristics),        TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_CURRENT_CLK,               (PBYTE)&SCReaderCurrentClk,          sizeof(SCReaderCurrentClk),             TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_CURRENT_D,                 (PBYTE)&SCReaderCurrentD,            sizeof(SCReaderCurrentD),               TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_CURRENT_IFSC,              (PBYTE)&SCReaderCurrentIfsc,         sizeof(SCReaderCurrentIfsc),            TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_CURRENT_IFSD,              (PBYTE)&SCReaderCurrentIfsd,         sizeof(SCReaderCurrentIfsd),            TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_CURRENT_BWT,               (PBYTE)&SCReaderCurrentBwt,          sizeof(SCReaderCurrentBwt),             TRUE,  &NfcCxSCInterfaceDispatchAttributeLocked },
-    { SCARD_ATTR_CURRENT_PROTOCOL_TYPE,     (PBYTE)&SCReaderCurrentProtocolType, sizeof(SCReaderCurrentProtocolType),    TRUE,  &NfcCxSCInterfaceDispatchAttributeCurrentProtocolTypeLocked },
-    { SCARD_ATTR_ICC_PRESENCE,              NULL,                                0,                                      TRUE,  &NfcCxSCInterfaceDispatchAttributePresentLocked },
-    { SCARD_ATTR_ATR_STRING,                NULL,                                0,                                      FALSE, &NfcCxSCInterfaceDispatchAttributeAtr },
-    { SCARD_ATTR_ICC_TYPE_PER_ATR,          NULL,                                0,                                      TRUE,  &NfcCxSCInterfaceDispatchAttributeIccTypeLocked },
+    { IOCTL_SMARTCARD_EJECT,                FALSE,  FALSE,  0,                                 0,                                NfcCxSCCommonDispatchNotSupported },
+    { IOCTL_SMARTCARD_GET_LAST_ERROR,       FALSE,  FALSE,  0,                                 sizeof(DWORD),                    NfcCxSCCommonDispatchGetLastError },
+    { IOCTL_SMARTCARD_SWALLOW,              FALSE,  FALSE,  0,                                 0,                                NfcCxSCCommonDispatchNotSupported },
+    { IOCTL_SMARTCARD_CONFISCATE,           FALSE,  FALSE,  0,                                 0,                                NfcCxSCCommonDispatchNotSupported },
+    { IOCTL_SMARTCARD_GET_PERF_CNTR,        FALSE,  FALSE,  0,                                 0,                                NfcCxSCCommonDispatchNotSupported },
 };
 
 NTSTATUS
@@ -895,7 +841,7 @@ NfcCxSCInterfaceHandleSmartCardConnectionEstablished(
 
 Routine Description:
 
-    This routine distribute The SmartCardConnectionEstablished event
+    This routine distributes the SmartCardConnectionEstablished event
 
 Arguments:
 
@@ -1075,10 +1021,10 @@ Return Value:
     fdoContext  = NfcCxFdoGetContext(Device);
     scInterface = fdoContext->SCInterface;
 
-
-    if (attributeId == SCARD_ATTR_VENDOR_SPECIFIC_BRAND_INFO || 
-        attributeId == SCARD_ATTR_VENDOR_SPECIFIC_DEVICECAP_INFO)
+    switch (attributeId)
     {
+    case SCARD_ATTR_VENDOR_SPECIFIC_BRAND_INFO:
+    case SCARD_ATTR_VENDOR_SPECIFIC_DEVICECAP_INFO:
         if (NULL != fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl)
         {
             fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl(
@@ -1096,31 +1042,35 @@ Return Value:
             TRACE_LINE(LEVEL_ERROR, "EvtNfcCxDeviceIoControl is NULL, failed to send IOCTL_SMARTCARD_GET_ATTRIBUTE");
             goto Done;
         }
-    }
-    for (USHORT TableEntry = 0; TableEntry < ARRAYSIZE(g_ScAttributeDispatch); TableEntry++)
-    {
-        if (g_ScAttributeDispatch[TableEntry].dwAttributeId == attributeId)
-        {
+        break;
 
-            if (g_ScAttributeDispatch[TableEntry].fRequireLock)
-            {
-                WdfWaitLockAcquire(scInterface->SmartCardLock, NULL);
-            }
+    case SCARD_ATTR_VENDOR_IFD_TYPE:
+        status = NfcCxCopyToBuffer(SCReaderVendorIfd, sizeof(SCReaderVendorIfd), (BYTE*)OutputBuffer, &cbOutputBuffer);
+        break;
 
-            status = (*g_ScAttributeDispatch[TableEntry].pfnDispatchHandler)(
-                            scInterface,
-                            g_ScAttributeDispatch[TableEntry].pbResultBuffer,
-                            g_ScAttributeDispatch[TableEntry].cbResultBuffer,
-                            (PBYTE)OutputBuffer,
-                            &cbOutputBuffer);
+    case SCARD_ATTR_CHANNEL_ID:
+        status = NfcCxCopyToBuffer(&SCReaderChannelId, sizeof(SCReaderChannelId), (BYTE*)OutputBuffer, &cbOutputBuffer);
+        break;
 
-            if (g_ScAttributeDispatch[TableEntry].fRequireLock)
-            {
-                WdfWaitLockRelease(scInterface->SmartCardLock);
-            }
+    case SCARD_ATTR_CURRENT_PROTOCOL_TYPE:
+        status = NfcCxSCInterfaceDispatchAttributeCurrentProtocolType(scInterface, (PBYTE)OutputBuffer, &cbOutputBuffer);
+        break;
 
-            break;
-        }
+    case SCARD_ATTR_ICC_PRESENCE:
+        status = NfcCxSCInterfaceDispatchAttributePresent(scInterface, (PBYTE)OutputBuffer, &cbOutputBuffer);
+        break;
+
+    case SCARD_ATTR_ATR_STRING:
+        status = NfcCxSCInterfaceDispatchAttributeAtr(scInterface, (PBYTE)OutputBuffer, &cbOutputBuffer);
+        break;
+
+    case SCARD_ATTR_ICC_TYPE_PER_ATR:
+        status = NfcCxSCInterfaceDispatchAttributeIccType(scInterface, (PBYTE)OutputBuffer, &cbOutputBuffer);
+        break;
+
+    default:
+        status = NfcCxSCCommonGetAttribute(attributeId, (PBYTE)OutputBuffer, &cbOutputBuffer);
+        break;
     }
 
     if (NT_SUCCESS(status))
@@ -1716,7 +1666,7 @@ Return Value:
 
         WdfWaitLockRelease(scInterface->SmartCardLock);
 
-        status = NfcCxSCInterfaceCopyResponseData(OutputBuffer,
+        status = NfcCxSCCommonCopyTrasmitResponseData(OutputBuffer,
                                                   cbOutputBuffer,
                                                   Sw1Sw2,
                                                   sizeof(Sw1Sw2),
@@ -1761,7 +1711,7 @@ Return Value:
             status = STATUS_SUCCESS; 
         }
 
-        NTSTATUS copyRspStatus = NfcCxSCInterfaceCopyResponseData(OutputBuffer,
+        NTSTATUS copyRspStatus = NfcCxSCCommonCopyTrasmitResponseData(OutputBuffer,
                                                                   cbOutputBuffer,
                                                                   Sw1Sw2,
                                                                   sizeof(Sw1Sw2),
@@ -1786,7 +1736,7 @@ Return Value:
             goto Done;
         }
 
-        status = NfcCxSCInterfaceCopyResponseData(OutputBuffer, cbOutputBuffer, NULL, 0, &cbResponseBuffer);
+        status = NfcCxSCCommonCopyTrasmitResponseData(OutputBuffer, cbOutputBuffer, NULL, 0, &cbResponseBuffer);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to construct response buffer, %!STATUS!", status);
             goto Done;
@@ -1813,163 +1763,13 @@ Done:
     return status;
 }
 
-NTSTATUS
-NfcCxSCInterfaceDispatchNotSupported(
-    _In_ WDFDEVICE Device,
-    _In_ WDFREQUEST Request,
-    _In_opt_bytecount_(InputBufferLength) PVOID InputBuffer,
-    _In_ size_t InputBufferLength,
-    _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
-    _In_ size_t OutputBufferLength
-    )
-/*++
-
-Routine Description:
-
-    This routine returns not supported status code
-
-Arguments:
-
-    Device - Handle to a framework device object.
-    Request - Handle to a framework request object.
-    InputBuffer - The input buffer
-    InputBufferLength - Length of the input buffer.
-    OutputBufferLength - Length of the output buffer associated with the request.
-    OuptutBuffer - The output buffer
-
-Return Value:
-
-  NTSTATUS.
-
---*/
-{
-    UNREFERENCED_PARAMETER(Device);
-    UNREFERENCED_PARAMETER(Request);
-    UNREFERENCED_PARAMETER(InputBuffer);
-    UNREFERENCED_PARAMETER(InputBufferLength);
-    UNREFERENCED_PARAMETER(OutputBuffer);
-    UNREFERENCED_PARAMETER(OutputBufferLength);
-
-    return STATUS_NOT_SUPPORTED;
-}
-
-NTSTATUS
-NfcCxSCInterfaceDispatchGetLastError(
-    _In_ WDFDEVICE Device,
-    _In_ WDFREQUEST Request,
-    _In_opt_bytecount_(InputBufferLength) PVOID InputBuffer,
-    _In_ size_t InputBufferLength,
-    _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
-    _In_ size_t OutputBufferLength
-    )
-/*++
-
-Routine Description:
-
-    This routine returns success status code
-
-Arguments:
-
-    Device - Handle to a framework device object.
-    Request - Handle to a framework request object.
-    InputBuffer - The input buffer
-    InputBufferLength - Length of the input buffer.
-    OutputBufferLength - Length of the output buffer associated with the request.
-    OuptutBuffer - The output buffer
-
-Return Value:
-
-  NTSTATUS.
-
---*/
-{
-    UNREFERENCED_PARAMETER(Device);
-    UNREFERENCED_PARAMETER(InputBuffer);
-    UNREFERENCED_PARAMETER(InputBufferLength);
-    UNREFERENCED_PARAMETER(OutputBufferLength);
-
-    _Analysis_assume_(NULL != OutputBuffer);
-    _Analysis_assume_(sizeof(DWORD) <= OutputBufferLength);
-
-    *((DWORD*)OutputBuffer) = STATUS_SUCCESS;
-    WdfRequestCompleteWithInformation(Request, STATUS_SUCCESS, sizeof(DWORD));
-
-    return STATUS_PENDING;
-}
-
 //
 // Dispatched attribute methods below
 //
 
-FORCEINLINE NTSTATUS
-NfcCxSCInterfaceCopyToBuffer(
-    _In_reads_bytes_(cbAttributeValue) const VOID *pbAttributeValue,
-    _In_ size_t cbAttributeValue,
-    _Out_writes_bytes_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
-    _Inout_ size_t* pcbOutputBuffer
-    )
-{
-    NTSTATUS status = STATUS_SUCCESS;
-
-    if (*pcbOutputBuffer < cbAttributeValue) {
-        status = STATUS_BUFFER_TOO_SMALL;
-        goto Done;
-    }
-
-    RtlCopyMemory(pbOutputBuffer, pbAttributeValue, cbAttributeValue);
-    *pcbOutputBuffer = cbAttributeValue;
-
-Done:
-    return status;
-}
-
-_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
-NfcCxSCInterfaceDispatchAttributeLocked(
+NfcCxSCInterfaceDispatchAttributePresent(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
-    _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
-    _Inout_ size_t* pcbOutputBuffer
-    )
-/*++
-
-Routine Description:
-
-    This routine dispatches to copy the attribute dword
-
-Arguments:
-
-    ScInterface - Pointer to the SmartCard Reader interface.
-    pbResultBuffer - The buffer points to the result value.
-    cbResultBuffer - Length of the result buffer.
-    pbOutputBuffer - The output buffer.
-    pcbOutputBuffer - Pointer to the length of the output buffer.
-
-Return Value:
-
-  NTSTATUS.
-
---*/
-{
-    NTSTATUS status = STATUS_SUCCESS;
-
-    UNREFERENCED_PARAMETER(ScInterface);
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    status = NfcCxSCInterfaceCopyToBuffer(pbResultBuffer, cbResultBuffer, pbOutputBuffer, pcbOutputBuffer);
-
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    return status;
-}
-
-_Requires_lock_held_(ScInterface->SmartCardLock)
-NTSTATUS
-NfcCxSCInterfaceDispatchAttributePresentLocked(
-    _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
     _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
     )
@@ -1994,25 +1794,22 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    BYTE IccPresence = (ScInterface->SmartCardConnected ? 0x1 : 0x0);
 
-    UNREFERENCED_PARAMETER(pbResultBuffer);
-    UNREFERENCED_PARAMETER(cbResultBuffer);
+    WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
+    BYTE IccPresence = (ScInterface->SmartCardConnected ? 0x1 : 0x0);
+    WdfWaitLockRelease(ScInterface->SmartCardLock);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    status = NfcCxSCInterfaceCopyToBuffer(&IccPresence, sizeof(IccPresence), pbOutputBuffer, pcbOutputBuffer);
+    status = NfcCxCopyToBuffer(&IccPresence, sizeof(IccPresence), pbOutputBuffer, pcbOutputBuffer);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
-_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
-NfcCxSCInterfaceDispatchAttributeCurrentProtocolTypeLocked(
+NfcCxSCInterfaceDispatchAttributeCurrentProtocolType(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
     _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
     )
@@ -2025,8 +1822,6 @@ Routine Description:
 Arguments:
 
     ScInterface - Pointer to the SmartCard Reader interface.
-    pbResultBuffer - The buffer points to the result value.
-    cbResultBuffer - Length of the result buffer.
     pbOutputBuffer - The output buffer.
     pcbOutputBuffer - Pointer to the length of the output buffer.
 
@@ -2040,13 +1835,17 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (!ScInterface->SmartCardConnected) {
+    WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
+    BOOLEAN isSmartCardConnected = ScInterface->SmartCardConnected;
+    WdfWaitLockRelease(ScInterface->SmartCardLock);
+
+    if (!isSmartCardConnected) {
         TRACE_LINE(LEVEL_ERROR, "SmartCard not connected");
         status = STATUS_INVALID_DEVICE_STATE;
         goto Done;
     }
     
-    status = NfcCxSCInterfaceCopyToBuffer(pbResultBuffer, cbResultBuffer, pbOutputBuffer, pcbOutputBuffer);
+    status = NfcCxCopyToBuffer(&SCReaderCurrentProtocolType, sizeof(SCReaderCurrentProtocolType), pbOutputBuffer, pcbOutputBuffer);
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -2057,8 +1856,6 @@ _Requires_lock_not_held_(ScInterface->SmartCardLock)
 NTSTATUS
 NfcCxSCInterfaceDispatchAttributeAtr(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
     _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
     )
@@ -2071,8 +1868,6 @@ Routine Description:
 Arguments:
 
     ScInterface - Pointer to the SmartCard Reader interface.
-    pbResultBuffer - The buffer points to the result value.
-    cbResultBuffer - Length of the result buffer.
     pbOutputBuffer - The output buffer.
     pcbOutputBuffer - Pointer to the length of the output buffer.
 
@@ -2088,9 +1883,6 @@ Return Value:
     BOOLEAN isStorageCard = FALSE;
     DWORD cbOutputBufferUsed = 0;
 
-    UNREFERENCED_PARAMETER(pbResultBuffer);
-    UNREFERENCED_PARAMETER(cbResultBuffer);
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     // Buffer size is validated at dispatch time
@@ -2099,7 +1891,6 @@ Return Value:
     WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
 
     if (!ScInterface->SmartCardConnected) {
-        WdfWaitLockRelease(ScInterface->SmartCardLock);
         TRACE_LINE(LEVEL_ERROR, "SmartCard not connected");
         status = STATUS_INVALID_DEVICE_STATE;
         goto Done;
@@ -2118,7 +1909,6 @@ Return Value:
                 *pcbOutputBuffer = cbOutputBufferUsed;
             }
 
-            WdfWaitLockRelease(ScInterface->SmartCardLock);
             goto Done;
         }
     }
@@ -2128,7 +1918,6 @@ Return Value:
                                           (DWORD)*pcbOutputBuffer,
                                           &cbOutputBufferUsed);
     if (!NT_SUCCESS(status)) {
-        WdfWaitLockRelease(ScInterface->SmartCardLock);
         TRACE_LINE(LEVEL_ERROR, "Failed to get the ATR string, %!STATUS!", status);
         goto Done;
     }
@@ -2137,21 +1926,18 @@ Return Value:
         ScInterface->StorageCard->CacheAtr(pbOutputBuffer, cbOutputBufferUsed);
     }
 
-    WdfWaitLockRelease(ScInterface->SmartCardLock);
-
     *pcbOutputBuffer = cbOutputBufferUsed;
 
 Done:
+    WdfWaitLockRelease(ScInterface->SmartCardLock);
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
-_Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
-NfcCxSCInterfaceDispatchAttributeIccTypeLocked(
+NfcCxSCInterfaceDispatchAttributeIccType(
     _In_ PNFCCX_SC_INTERFACE ScInterface,
-    _In_opt_bytecount_(cbResultBuffer) PBYTE pbResultBuffer,
-    _In_ size_t cbResultBuffer,
     _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
     )
@@ -2164,8 +1950,6 @@ Routine Description:
 Arguments:
 
     ScInterface - Pointer to the SmartCard Reader interface.
-    pbResultBuffer - The buffer points to the result value.
-    cbResultBuffer - Length of the result buffer.
     pbOutputBuffer - The output buffer.
     pcbOutputBuffer - Pointer to the length of the output buffer.
 
@@ -2178,10 +1962,8 @@ Return Value:
     NTSTATUS status = STATUS_SUCCESS;
     BYTE IccType = 0;
 
-    UNREFERENCED_PARAMETER(pbResultBuffer);
-    UNREFERENCED_PARAMETER(cbResultBuffer);
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+    WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
 
     if (!ScInterface->SmartCardConnected) {
         status = STATUS_INVALID_DEVICE_STATE;
@@ -2190,10 +1972,11 @@ Return Value:
 
     status = NfcCxSCInterfaceGetIccTypePerAtrLocked(ScInterface, &IccType);
     if (NT_SUCCESS(status)) {
-        status = NfcCxSCInterfaceCopyToBuffer(&IccType, sizeof(IccType), pbOutputBuffer, pcbOutputBuffer);
+        status = NfcCxCopyToBuffer(&IccType, sizeof(IccType), pbOutputBuffer, pcbOutputBuffer);
     }
 
 Done:
+    WdfWaitLockRelease(ScInterface->SmartCardLock);
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
@@ -2201,83 +1984,6 @@ Done:
 //
 // Other internal methods below
 //
-
-NTSTATUS
-NfcCxSCInterfaceCopyResponseData(
-    _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
-    _In_ ULONG OutputBufferLength,
-    _In_bytecount_(DataLength) PVOID Data,
-    _In_ ULONG DataLength,
-    _Out_ PULONG BufferUsed
-    )
-/*++
-
-Routine Description:
-
-   Copies the response data into the transmit output buffer.
-
-Arguments:
-
-    OutputBuffer - The Output buffer
-    OutputBufferLength - The output buffer length
-    Data - The response data buffer
-    DataLength - The response data buffer length
-    BufferUsed - A pointer to a ULONG to receive how many bytes of the output buffer was used.
-
-Return Value:
-
-    NTSTATUS
-
---*/
-{
-    NTSTATUS status = STATUS_SUCCESS;
-    ULONG requiredBufferSize = 0;
-    SCARD_IO_REQUEST outputRequest = {0};
-
-    *BufferUsed = 0;
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    //
-    // The output buffer has already been validated
-    //
-    _Analysis_assume_(sizeof(SCARD_IO_REQUEST)+2 <= OutputBufferLength);
-
-    //
-    // The returning buffer should contains the SCARD_IO_REQUEST structure
-    // followed by the response payload
-    //
-    outputRequest.dwProtocol = SCReaderCurrentProtocolType;
-    outputRequest.cbPciLength = sizeof(SCARD_IO_REQUEST);
-
-    if (OutputBufferLength < sizeof(SCARD_IO_REQUEST)) {
-        status = STATUS_BUFFER_TOO_SMALL;
-        goto Done;
-    }
-
-    CopyMemory(OutputBuffer, &outputRequest, sizeof(SCARD_IO_REQUEST));
-    *BufferUsed = sizeof(SCARD_IO_REQUEST);
-
-    status = RtlULongAdd(DataLength, sizeof(SCARD_IO_REQUEST), &requiredBufferSize);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to calculate the required buffer size, %!STATUS!", status);
-        goto Done;
-    }
-
-    if (OutputBufferLength < requiredBufferSize) {
-        status = STATUS_BUFFER_TOO_SMALL;
-        goto Done;
-    }
-
-    CopyMemory(((PUCHAR)OutputBuffer) + sizeof(SCARD_IO_REQUEST), Data, DataLength);
-    *BufferUsed = requiredBufferSize;
-
-Done:
-
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    return status;
-}
 
 _Requires_lock_not_held_(ScInterface->SmartCardLock)
 NTSTATUS

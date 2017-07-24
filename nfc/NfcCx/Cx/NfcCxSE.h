@@ -248,6 +248,19 @@ NfcCxSEInterfaceSetCardEmulationMode(
     );
 
 NTSTATUS
+NfcCxSEInterfaceSetCardWiredMode(
+    _In_ PNFCCX_SE_INTERFACE SEInterface,
+    _In_ const GUID& SecureElementId,
+    _In_ BOOLEAN WiredMode
+    );
+
+NTSTATUS
+NfcCxSEInterfaceResetCard(
+    _In_ PNFCCX_SE_INTERFACE SEInterface,
+    _In_ const GUID& SecureElementId
+    );
+
+NTSTATUS
 NfcCxSEInterfaceGetRoutingTable(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _Out_writes_to_(uiRoutingTableSize, uiRoutingTableSize) PSECURE_ELEMENT_ROUTING_TABLE pRoutingTable,

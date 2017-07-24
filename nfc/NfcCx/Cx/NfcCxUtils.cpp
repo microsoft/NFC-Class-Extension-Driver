@@ -208,6 +208,39 @@ Done:
     return status;
 }
 
+NTSTATUS
+NfcCxCopyToBuffer(
+    _In_reads_bytes_(cbInput) const void* pbInput,
+    _In_ size_t cbInput,
+    _Out_writes_bytes_to_(*pcbOutputBuffer, *pcbOutputBuffer) PBYTE pbOutputBuffer,
+    _Inout_ size_t* pcbOutputBuffer
+    )
+/*++
+
+Routine Description:
+
+   Copies one byte array into another, after ensuring there is enough space.
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    if (*pcbOutputBuffer < cbInput) {
+        status = STATUS_BUFFER_TOO_SMALL;
+        goto Done;
+    }
+
+    RtlCopyMemory(pbOutputBuffer, pbInput, cbInput);
+    *pcbOutputBuffer = cbInput;
+
+Done:
+    return status;
+}
+
 _No_competing_thread_
 NTSTATUS
 CNFCPendedRequest::Initialize(

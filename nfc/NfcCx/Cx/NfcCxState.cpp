@@ -17,6 +17,25 @@ Abstract:
 #include "NFcCxState.tmh"
 
 //
+// State/event handling (in pseudo-code):
+//
+//      INPUT: CurrentState, EventType
+//
+//      IF NFCCX_IS_USER_EVENT(Event)
+//          NewState = g_NfcCxUsrEvent2StateMap[CurrentState][EventType]
+//      ELSE
+//          NewState = g_NfcCxIntEvent2StateMap[CurrentState][EventType]
+//      ENDIF
+//
+//      IF NFCCX_IS_CONNECTOR_STATE(NewState)
+//          NewState = <too-complicated>
+//      ENDIF
+//
+//      TransitionFunction = g_NfcCxStateHandlers[CurrentState][NewState]
+//      TransitionFunction()
+//
+
+//
 // State Connector
 //
 static const PFN_NFCCX_STATE_CONNECTOR g_NfcCxStateConnectorMap[] = {
@@ -43,15 +62,15 @@ static const NFCCX_CX_STATE g_NfcCxState2StateMap[NfcCxStateMax][(NfcCxStateConn
 // User Event to State Map
 //
 static const NFCCX_CX_STATE g_NfcCxUsrEvent2StateMap[NfcCxStateMax][NfcCxEventUserMax] = {
-                            /*EventInit*/           /*EventDeinit*/             /*EventConfigDiscovery*/    /*EventStopDiscovery*/  /*EventActivate*/               /*EventDeactivateSleep*/        /*EventConfig*/         /*EventDataXchg*/
-    /*StateIdle*/           { NfcCxStateInit,       NfcCxStateNone,             NfcCxStateNone,             NfcCxStateNone,         NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateNone,         NfcCxStateNone          },
-    /*StateInit*/           { NfcCxStateNone,       NfcCxStateNone,             NfcCxStateNone,             NfcCxStateNone,         NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateNone,         NfcCxStateNone          },
-    /*StateRfIdle*/         { NfcCxStateNone,       NfcCxStateShutdown,         NfcCxStateConnChkDiscMode,  NfcCxStateRfIdle,       NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateRfIdle,       NfcCxStateNone          },
-    /*StateRfDiscovery*/    { NfcCxStateNone,       NfcCxStateShutdown,         NfcCxStateConnChkDiscMode,  NfcCxStateRfIdle,       NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateRfDiscovery,  NfcCxStateNone          },
-    /*StateRfDiscovered*/   { NfcCxStateNone,       NfcCxStateShutdown,         NfcCxStateConnChkDiscMode,  NfcCxStateRfIdle,       NfcCxStateConnChkDeviceType,    NfcCxStateNone,                 NfcCxStateRfDiscovered, NfcCxStateNone          },
-    /*StateRfDataXchg*/     { NfcCxStateNone,       NfcCxStateShutdown,         NfcCxStateConnChkDiscMode,  NfcCxStateRfIdle,       NfcCxStateNone,                 NfcCxStateConnChkDeviceType,    NfcCxStateRfDataXchg,   NfcCxStateRfDataXchg    },
-    /*StateRecovery*/       { NfcCxStateNone,       NfcCxStateShutdown,         NfcCxStateNone,             NfcCxStateNone,         NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateNone,         NfcCxStateNone          },
-    /*StateShutdown*/       { NfcCxStateNone,       NfcCxStateNone,             NfcCxStateNone,             NfcCxStateNone,         NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateNone,         NfcCxStateNone          },
+                            /*EventInit*/           /*EventDeinit*/             /*EventConfigDiscovery*/    /*EventStopDiscovery*/  /*EventActivate*/               /*EventDeactivateSleep*/        /*EventConfig*/         /*EventDataXchg*/       /*EventSE*/
+    /*StateIdle*/           { NfcCxStateInit,       NfcCxStateNone,             NfcCxStateNone,             NfcCxStateNone,         NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateNone,         NfcCxStateNone,         NfcCxStateNone,             },
+    /*StateInit*/           { NfcCxStateNone,       NfcCxStateNone,             NfcCxStateNone,             NfcCxStateNone,         NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateNone,         NfcCxStateNone,         NfcCxStateNone,             },
+    /*StateRfIdle*/         { NfcCxStateNone,       NfcCxStateShutdown,         NfcCxStateConnChkDiscMode,  NfcCxStateRfIdle,       NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateRfIdle,       NfcCxStateNone,         NfcCxStateRfIdle,           },
+    /*StateRfDiscovery*/    { NfcCxStateNone,       NfcCxStateShutdown,         NfcCxStateConnChkDiscMode,  NfcCxStateRfIdle,       NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateNone,         NfcCxStateNone,         NfcCxStateRfDiscovery,      },
+    /*StateRfDiscovered*/   { NfcCxStateNone,       NfcCxStateShutdown,         NfcCxStateConnChkDiscMode,  NfcCxStateRfIdle,       NfcCxStateConnChkDeviceType,    NfcCxStateNone,                 NfcCxStateNone,         NfcCxStateNone,         NfcCxStateRfDiscovered,     },
+    /*StateRfDataXchg*/     { NfcCxStateNone,       NfcCxStateShutdown,         NfcCxStateConnChkDiscMode,  NfcCxStateRfIdle,       NfcCxStateNone,                 NfcCxStateConnChkDeviceType,    NfcCxStateNone,         NfcCxStateRfDataXchg,   NfcCxStateRfDataXchg,       },
+    /*StateRecovery*/       { NfcCxStateNone,       NfcCxStateShutdown,         NfcCxStateNone,             NfcCxStateNone,         NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateNone,         NfcCxStateNone,         NfcCxStateNone,             },
+    /*StateShutdown*/       { NfcCxStateNone,       NfcCxStateNone,             NfcCxStateNone,             NfcCxStateNone,         NfcCxStateNone,                 NfcCxStateNone,                 NfcCxStateNone,         NfcCxStateNone,         NfcCxStateNone,             },
 };
 
 //

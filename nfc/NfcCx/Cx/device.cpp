@@ -53,6 +53,14 @@ NFCCX_DDI_MODULE g_NfcCxDdiModules [] =
     },
 };
 
+static const NFCCX_DDI_MODULE EmbeddedSEModule =
+{
+    L"EmbeddedSE",
+    FALSE, //IsNullFileObjectOk
+    TRUE, //IsAppContainerAllowed
+    NfcCxESEInterfaceIsIoctlSupported,
+    NfcCxESEInterfaceIoDispatch,
+};
 
 NTSTATUS
 NfcCxFdoCreate(
@@ -129,6 +137,16 @@ Return Value:
         }
 
         //
+        // Create the eSE Interface
+        //
+        status = NfcCxESEInterfaceCreate(FdoContext,
+                                         &FdoContext->ESEInterface);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to create the eSE Interface, %!STATUS!", status);
+            goto Done;
+        }
+
+        //
         // Create the RF Interface
         //
         status = NfcCxRFInterfaceCreate(FdoContext,
@@ -191,6 +209,11 @@ Return Value:
     if (NULL != fdoContext->RFInterface) {
         NfcCxRFInterfaceDestroy(fdoContext->RFInterface);
         fdoContext->RFInterface = NULL;
+    }
+
+    if (NULL != fdoContext->ESEInterface) {
+        NfcCxESEInterfaceDestroy(fdoContext->ESEInterface);
+        fdoContext->ESEInterface = NULL;
     }
 
     if (NULL != fdoContext->SCInterface) {
@@ -301,6 +324,16 @@ Return Value:
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to start the SE Interface, %!STATUS!", status);
             interfaceFailure = "SE";
+            goto Done;
+        }
+
+        //
+        // Start eSE
+        //
+        status = NfcCxESEInterfaceStart(FdoContext->ESEInterface);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to start the eSE Interface, %!STATUS!", status);
+            interfaceFailure = "ESE";
             goto Done;
         }
 
@@ -439,6 +472,11 @@ Return Value:
 
     if (NULL != FdoContext->DefaultQueue) {
         WdfIoQueueStopAndPurgeSynchronously(FdoContext->DefaultQueue);
+    }
+
+    if (NULL != FdoContext->ESEInterface) {
+        NfcCxESEInterfaceDestroy(FdoContext->ESEInterface);
+        FdoContext->ESEInterface = NULL;
     }
 
     if (NULL != FdoContext->SCInterface) {
@@ -1043,6 +1081,47 @@ Done:
     return status;
 }
 
+static NTSTATUS
+NfcCxDeviceDispatchIoctl(
+    _In_ NFCCX_FILE_CONTEXT* FileContext,
+    _In_ WDFREQUEST Request,
+    _In_ size_t OutputBufferLength,
+    _In_ size_t InputBufferLength,
+    _In_ ULONG IoControlCode,
+    const NFCCX_DDI_MODULE& Module
+    )
+{
+    NTSTATUS status = STATUS_SUCCESS;
+
+    if (NULL == FileContext &&
+        !Module.IsNullFileObjectOk) {
+        TRACE_LINE(LEVEL_ERROR, "%S module request received without a file context", Module.Name);
+        status = STATUS_INVALID_DEVICE_STATE;
+        goto Done;
+    }
+
+    if (NULL != FileContext &&
+        FileContext->IsAppContainerProcess &&
+        !Module.IsAppContainerAllowed) {
+        TRACE_LINE(LEVEL_ERROR, "%S module request received received from the AppContainer process", Module.Name);
+        status = STATUS_INVALID_DEVICE_STATE;
+        goto Done;
+    }
+
+    status = Module.IoDispatch(FileContext,
+                               Request,
+                               OutputBufferLength,
+                               InputBufferLength,
+                               IoControlCode);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to forward the request to the %S module, %!STATUS!", Module.Name, status);
+        goto Done;
+    }
+
+Done:
+    return status;
+}
+
 VOID
 NfcCxEvtDefaultIoControl(
     _In_ WDFQUEUE      Queue,
@@ -1076,7 +1155,6 @@ Return Value:
     NTSTATUS status = STATUS_SUCCESS;
     NFCCX_FILE_CONTEXT* fileContext = NULL;
     NFCCX_FDO_CONTEXT* fdoContext = NULL;
-    UCHAR i = 0;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -1091,56 +1169,41 @@ Return Value:
     fdoContext = NfcCxFdoGetContext(WdfIoQueueGetDevice(Queue));
     fileContext = NfcCxFileGetContext(WdfRequestGetFileObject(Request));
 
-    for (i = 0; i < ARRAYSIZE(g_NfcCxDdiModules); i++) {
-
-        if (g_NfcCxDdiModules[i].IsIoctlSupported(fdoContext, IoControlCode)) {
-
-            if (NULL == fileContext &&
-                !g_NfcCxDdiModules[i].IsNullFileObjectOk) {
-                TRACE_LINE(LEVEL_ERROR, "%S module request received without a file context", g_NfcCxDdiModules[i].Name);
-                status = STATUS_INVALID_DEVICE_STATE;
+    if (fileContext->Role == ROLE_EMBEDDED_SE)
+    {
+        if (EmbeddedSEModule.IsIoctlSupported(fdoContext, IoControlCode))
+        {
+            status = NfcCxDeviceDispatchIoctl(fileContext, Request, OutputBufferLength, InputBufferLength, IoControlCode, EmbeddedSEModule);
+            goto Done;
+        }
+    }
+    else
+    {
+        for (const NFCCX_DDI_MODULE& module : g_NfcCxDdiModules)
+        {
+            if (module.IsIoctlSupported(fdoContext, IoControlCode))
+            {
+                status = NfcCxDeviceDispatchIoctl(fileContext, Request, OutputBufferLength, InputBufferLength, IoControlCode, module);
                 goto Done;
             }
-
-            if (NULL != fileContext &&
-                fileContext->IsAppContainerProcess &&
-                !g_NfcCxDdiModules[i].IsAppContainerAllowed) {
-                TRACE_LINE(LEVEL_ERROR, "%S module request received received from the AppContainer process", g_NfcCxDdiModules[i].Name);
-                status = STATUS_INVALID_DEVICE_STATE;
-                goto Done;
-            }
-
-            status = g_NfcCxDdiModules[i].IoDispatch(fileContext,
-                                                    Request,
-                                                    OutputBufferLength,
-                                                    InputBufferLength,
-                                                    IoControlCode);
-            if (!NT_SUCCESS(status)) {
-                TRACE_LINE(LEVEL_ERROR, "Failed to forward the request to the %S module, %!STATUS!", g_NfcCxDdiModules[i].Name, status);
-                goto Done;
-            }
-
-            break;
         }
     }
 
-    if (i == ARRAYSIZE(g_NfcCxDdiModules)) {
-        if (NULL != fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl) {
-            fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl(fdoContext->Device,
-                                                                          Request,
-                                                                          OutputBufferLength,
-                                                                          InputBufferLength,
-                                                                          IoControlCode);
-            status = STATUS_PENDING;
-        }
-        else {
-            //
-            // This class extension is the bottom of the stack so complete the unknown request
-            //
-            TRACE_LINE(LEVEL_WARNING, "Unknown IOCTL: 0x%08lX", IoControlCode);
-            status = STATUS_INVALID_DEVICE_STATE;
-            goto Done;
-        }
+    if (NULL != fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl) {
+        fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl(fdoContext->Device,
+                                                                        Request,
+                                                                        OutputBufferLength,
+                                                                        InputBufferLength,
+                                                                        IoControlCode);
+        status = STATUS_PENDING;
+    }
+    else {
+        //
+        // This class extension is the bottom of the stack so complete the unknown request
+        //
+        TRACE_LINE(LEVEL_WARNING, "Unknown IOCTL: 0x%08lX", IoControlCode);
+        status = STATUS_INVALID_DEVICE_STATE;
+        goto Done;
     }
 
 Done:
