@@ -846,6 +846,24 @@ Return Value:
         FdoContext->SEPowerOffSystemOverride = (tempValue != 0);
     }
 
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_DISABLE_POWER_MANAGER_STOP_IDLE);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_DISABLE_POWER_MANAGER_STOP_IDLE, status);
+        goto Done;
+    }
+
+    status = WdfRegistryQueryULong(
+                            hKey,
+                            &valueName,
+                            &tempValue);
+    if (!NT_SUCCESS(status)) {
+        // Value not present, allow continuation
+        status = STATUS_SUCCESS;
+    } else {
+        TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_DISABLE_POWER_MANAGER_STOP_IDLE, tempValue);
+        FdoContext->DisablePowerManagerStopIdle = (tempValue != 0);
+    }
+
     status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SESSION_IDENTIFIER);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SESSION_IDENTIFIER, status);

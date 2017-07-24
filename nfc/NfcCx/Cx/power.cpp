@@ -616,6 +616,11 @@ Routine Description:
 
    Stops the idle timer for the device and signals the device to asynchronously enter the D0 power state.
 
+   NOTE: Some client drivers enter a low power mode (instead of uninitializaing the NFC Controller) in their
+   Dx idle state. For these devices, we don't want to force them into the D0 state just because there is an
+   active client handle. Hence those drivers are given the option to opt-out of the Power Manager's
+   WdfDeviceStopIdle call.
+
 Arguments:
 
     PowerManager - Pointer to the Power Manager
@@ -628,6 +633,14 @@ Return Value:
     NTSTATUS status = STATUS_SUCCESS;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    // Allow the client driver to opt-out of the Power Manager's WdfDeviceStopIdle/WdfDeviceResumeIdle calls.
+    if (PowerManager->FdoContext->DisablePowerManagerStopIdle)
+    {
+        // Nothing to do.
+        TRACE_LINE(LEVEL_VERBOSE, "'DisablePowerManagerStopIdle' is set. Skipping stop idle.");
+        goto Done;
+    }
 
     if (PowerManager->DeviceStopIdle)
     {
@@ -680,12 +693,19 @@ Return Value:
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
+    // Allow the client driver to opt-out of the Power Manager's WdfDeviceStopIdle/WdfDeviceResumeIdle calls.
+    if (PowerManager->FdoContext->DisablePowerManagerStopIdle)
+    {
+        // Nothing to do.
+        TRACE_LINE(LEVEL_VERBOSE, "'DisablePowerManagerStopIdle' is set. Skipping resume idle.");
+        goto Done;
+    }
+
     if (!PowerManager->DeviceStopIdle)
     {
         // Nothing to do.
         TRACE_LINE(LEVEL_VERBOSE, "Device idle timer already resumed.");
-        TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
-        return;
+        goto Done;
     }
 
     TRACE_LINE(LEVEL_INFO, "Powering down");
@@ -693,6 +713,7 @@ Return Value:
     WdfDeviceResumeIdle(PowerManager->FdoContext->Device);
     PowerManager->DeviceStopIdle = FALSE;
 
+Done:
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
