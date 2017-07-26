@@ -1152,10 +1152,10 @@ NFCSTATUS phLibNfc_HciChildDevInitComplete(void* pContext, NFCSTATUS status, voi
 
                 /* Following NCI 2.0 Figure 25: NFCEE State Transitions,
                    on NFCEE_TRANSMISSION_ERROR, the NFCEE is to be considered unresponsive.
-                   We can remove it from the list. */
+                   We can remove it from the list. In NCI 1.x an activation failure may not
+                   ends with a NFCEE_TRANSMISSION_ERROR status code. */
                 if (status == PH_NCINFC_STATUS_NFCEE_TRANSMISSION_ERROR)
                 {
-
                     pLibCtx->tSeInfo.tSeList[bIndex].hSecureElement = NULL;
                     pLibCtx->tSeInfo.bSeCount--;
                 }
