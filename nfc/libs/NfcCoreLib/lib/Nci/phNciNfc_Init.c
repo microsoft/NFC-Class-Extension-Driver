@@ -28,6 +28,7 @@ static NFCSTATUS phNciNfc_RegAllNtfs(void* pContext);
 /*Global Varibales for Init Sequence Handler*/
 phNciNfc_SequenceP_t gphNciNfc_InitSequence[] = {
     {&phNciNfc_InitReset, &phNciNfc_ProcessResetRsp},
+    /* In NCI1.x phNciNfc_DelayForResetNtf is not needed as we don't expect to receive any CoreResetNtf */
     {&phNciNfc_DelayForResetNtf, NULL},
     {&phNciNfc_Init, &phNciNfc_ProcessInitRsp},
     {NULL, &phNciNfc_CompleteInitSequence}
