@@ -145,8 +145,7 @@ Return Value:
     }
 
     if ((ROLE_SECUREELEMENTEVENT == fileContext->Role ||
-         ROLE_SECUREELEMENTMANAGER == fileContext->Role ||
-         ROLE_EMBEDDED_SE == fileContext->Role)) {
+         ROLE_SECUREELEMENTMANAGER == fileContext->Role)) {
         //
         // The above roles require the SE to be supported and SE radio to be on.
         //
@@ -347,7 +346,7 @@ Return Value:
 #endif
 
     //
-    // If this is a pub/sub, smartcard or vendor test, add a power reference
+    // If this is a pub/sub, eSE or vendor test, add a power reference
     //
     if (NfcCxFileObjectIsPubSub(fileContext) ||
         fileContext->Role ==  ROLE_EMBEDDED_SE ||

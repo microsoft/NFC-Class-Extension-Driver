@@ -117,26 +117,63 @@ typedef NFCSTATUS (*pphHciNfc_PipeReceiveCb_t) (
                                                   void *pReceiveParams
                                                 );
 
+// ETSI HCI v12.1, Section 4.2, Table 1
 typedef enum phHciNfc_HostID
 {
-    phHciNfc_e_HostControllerID                   = 0x00U,
-    phHciNfc_e_TerminalHostID                     = 0x01U,
-    phHciNfc_e_UICCHostID                         = 0x02U,
-    phHciNfc_e_SEHostID                           = 0xC0U
-
+    phHciNfc_e_HostControllerID                 = 0x00U,
+    phHciNfc_e_TerminalHostID                   = 0x01U,
+    phHciNfc_e_UICCHostID                       = 0x02U,
+    phHciNfc_e_ESeHostID                         = 0xC0U
 } phHciNfc_HostID_t;
 
-typedef enum phHciNfc_GateID{
-    phHciNfc_e_LoopBackGate                       = 0x04U,    
-    phHciNfc_e_ApduGate                           = 0x30U,
-    phHciNfc_e_ConnectivityGate                   = 0x41U,
+// ETSI HCI v12.1, Section 4.3, Table 2
+typedef enum phHciNfc_GateID
+{
+    phHciNfc_e_AdminGateId                      = 0x01U, // Proprietary
+    phHciNfc_e_LoopBackGateId                   = 0x04U,
+    phHciNfc_e_IdentityMgmtGateId               = 0x05U,
+    // ETSI HCI v12.1, Section 12.2, Table 54
+    phHciNfc_e_ApduGateId                       = 0x30U,
+    // ETSI HCI v12.1, Section 11.2, Table 48
+    phHciNfc_e_ConnectivityGateId               = 0x41U,
 } phHciNfc_GateID_t;
 
+// ETSI HCI v12.1, Section 4.4, Table 3
 typedef enum phHciNfc_PipeID
 {
     phHciNfc_e_HciLinkmgmtPipeId                = 0x00u,
-    phHciNfc_e_HciAdminPipeId                   = 0x01u
+    phHciNfc_e_HciAdminPipeId                   = 0x01u,
+    // Inferred from the default value of SESSION_IDENTITY. (ETSI HCI v12.1, Section 7.1.1.1, Table 20.)
+    phHciNfc_e_InvalidPipeId                    = 0xFFU,
 } phHciNfc_PipeID_t;
+
+// ETSI HCI v12.1, Section 7.1.1.1, Table 20
+typedef enum phHciNfc_AdminRegistryId
+{
+    phHciNfc_e_SessionIdentityRegistryId        = 0x01U,
+    phHciNfc_e_MaxPipeRegistryId                = 0x02U,
+    phHciNfc_e_WhitelistRegistryId              = 0x03U,
+    phHciNfc_e_HostListRegistryId               = 0x04U,
+    phHciNfc_e_HostIdRegistryId                 = 0x05U,
+    phHciNfc_e_HostTypeRegistryId               = 0x06U,
+    phHciNfc_e_HostTypeListRegistryId           = 0x07U,
+
+    phHciNfc_e_AdminRegistryId_Min              = phHciNfc_e_SessionIdentityRegistryId,
+    phHciNfc_e_AdminRegistryId_Max              = phHciNfc_e_HostTypeListRegistryId,
+} phHciNfc_AdminRegistryId_t;
+
+// ETSI HCI v12.1, Section 7.1.3, Table 23
+typedef enum phHciNfc_IdentityMgmtRegistryId
+{
+    phHciNfc_e_IdentityMgmtRegistryId_Min     = 0x01U,
+    phHciNfc_e_IdentityMgmtRegistryId_Max     = 0x06U,
+} phHciNfc_IdentityMgmtRegistryId_t;
+
+typedef enum phHciNfc_HciVersion
+{
+    phHciNfc_e_HciVersion9                      = 0x09U,
+    phHciNfc_e_HciVersion12                     = 0x12U,
+} phHciNfc_HciVersion_t;
 
 typedef struct phHciNfc_GateInfo
 {

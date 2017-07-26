@@ -6543,7 +6543,9 @@ NfcCxRFInterfaceConnChkDiscMode(
     _In_ PNFCCX_STATE_INTERFACE StateInterface
     )
 {
-    return NfcCxPowerRfState_Off != StateInterface->FdoContext->RFInterface->RFPowerState;
+    // Return 'true' if we should enable RF discovery.
+    return NfcCxPowerRfState_NfpEnabled & StateInterface->FdoContext->RFInterface->RFPowerState ||
+        NfcCxPowerRfState_SeEnabled & StateInterface->FdoContext->RFInterface->RFPowerState;
 }
 
 BOOLEAN

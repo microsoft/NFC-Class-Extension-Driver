@@ -1504,7 +1504,7 @@ phLibNfc_SE_Type_t phLibNfc_SE_GetType(void* pContext, pphNciNfc_NfceeInfo_t pNf
             {
             case phHciNfc_e_UICCHostID:
                 return phLibNfc_SE_Type_UICC;
-            case phHciNfc_e_SEHostID:
+            case phHciNfc_e_ESeHostID:
                 return phLibNfc_SE_Type_eSE;
             }
         }

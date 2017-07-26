@@ -8,17 +8,7 @@
 
 #include "phHciNfc_Interface.h"
 
-#define PHHCINFC_PIPE_ADMIN_PIPEID          0x01U
-#define PHHCINFC_PIPE_INVALID_PIPEID        0xFFU
-
-#define PHHCINFC_IDENTITY_MGMT_GATEID       0x05U
-#define PHHCINFC_ADM_GATEID                 0x01U
 #define PHHCINFC_LINK_MGMT_GATEID           0x04U
-
-#define PHHCINFC_PIPE_TERMINAL_HOST_ID      0x01U
-
-#define PHHCINFC_PIPE_ADM_CREATEPIPE        0x10U
-#define PHHCINFC_PIPE_ADM_DELETEPIPE        0x11U
 
 #define PHHCINFC_PIPE_GENERICCMD_BYTE_OFFSET    0x01U
 
@@ -28,25 +18,7 @@
 #define PHHCINFC_ANY_GET_PARAMETER_LEN      0x01U
 #define PHHCINFC_CREATE_PIPE_REQ_LEN        0x05U
 
-#define PHHCINFC_PIPE_SESSION_INDEX         0x01U
-#define PHHCINFC_PIPE_MAX_PIPE_INDEX        0x02U
-#define PHHCINFC_PIPE_WHITELIST_INDEX       0x03U
-#define PHHCINFC_PIPE_HOST_LIST_INDEX       0x04U
-#define PHHCINFC_PIPE_HOST_TYPE_INDEX       0x06U
-#define PHHCINFC_PIPE_HOST_TYPE_LIST_INDEX  0x07U
-
-#define PHHCINFC_ANY_SET_PARAMETER          0x01U
-#define PHHCINFC_ANY_GET_PARAMETER          0x02U
-#define PHHCINFC_ANY_OPEN_PIPE              0x03U
-#define PHHCINFC_ANY_CLOSE_PIPE             0x04U
-
 #define PHHCINFC_MAX_PIPES                  0x03
-
-enum phHciNfc_eHciVersion
-{
-    phHciNfc_e_HciVersion9 = 0x09U,
-    phHciNfc_e_HciVersion12 = 0x12U,
-};
 
 /*
     Note on Session ID Management:
