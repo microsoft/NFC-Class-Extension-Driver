@@ -23,8 +23,6 @@ static NFCSTATUS phNciNfc_SendReset(void *pContext);
 static NFCSTATUS phNciNfc_CompleteReleaseSequence(void *pContext, NFCSTATUS wStatus);
 static NFCSTATUS phNciNfc_CompleteNfccResetSequence(void *pContext, NFCSTATUS wStatus);
 
-NFCSTATUS phNciNfc_ResetNtfCb(void* pContext, void* pInfo, NFCSTATUS status);
-
 static NFCSTATUS phNciNfc_RegAllNtfs(void* pContext);
 
 /*Global Varibales for Init Sequence Handler*/
