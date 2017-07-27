@@ -1603,16 +1603,6 @@ Return Value:
         goto Done;
     }
 
-    // SE Set Mode requires discovery process to be stopped
-    // We need to stop discovery in order to enable/disable ISO-DEP in LA_SEL_INFO
-    // TODO: IS THIS ACCURATE? (MSFT:12707495)
-    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_STOP, NULL, NULL);
-    if (!NT_SUCCESS(status))
-    {
-        TRACE_LINE(LEVEL_ERROR, "Failed to stop discovery, %!STATUS!", status);
-        goto Done;
-    }
-
     status = NfcCxRFInterfaceExecute(RFInterface,
                                      LIBNFC_SE_SET_MODE,
                                      (UINT_PTR)pSecureElement,
@@ -1620,13 +1610,6 @@ Return Value:
     if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "Failed to set SE activation mode, %!STATUS!", status);
-        goto Done;
-    }
-
-    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
-    if (!NT_SUCCESS(status))
-    {
-        TRACE_LINE(LEVEL_ERROR, "Failed to restart discovery, %!STATUS!", status);
         goto Done;
     }
 
@@ -1676,16 +1659,6 @@ Return Value:
 
     phLibNfc_eSE_ActivationMode currentActivationMode = pSecureElement->eSE_ActivationMode;
 
-    // SE Set Mode requires discovery process to be stopped
-    // We need to stop discovery in order to enable/disable ISO-DEP in LA_SEL_INFO
-    // TODO: IS THIS ACCURATE? (MSFT:12707495)
-    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_STOP, NULL, NULL);
-    if (!NT_SUCCESS(status))
-    {
-        TRACE_LINE(LEVEL_ERROR, "Failed to stop discovery, %!STATUS!", status);
-        goto Done;
-    }
-
     //
     // Turn off SE
     //
@@ -1709,16 +1682,6 @@ Return Value:
     if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "Failed to restore SE activation mode, %!STATUS!", status);
-        goto Done;
-    }
-
-    //
-    // Re-enable RF discovery
-    //
-    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DISCOVER_CONFIG, NULL, NULL);
-    if (!NT_SUCCESS(status))
-    {
-        TRACE_LINE(LEVEL_ERROR, "Failed to restart discovery, %!STATUS!", status);
         goto Done;
     }
 
