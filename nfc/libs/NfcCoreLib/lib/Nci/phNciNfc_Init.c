@@ -35,12 +35,16 @@ phNciNfc_SequenceP_t gphNciNfc_InitSequence[] = {
 /*Global Varibales for Release Sequence Handler*/
 phNciNfc_SequenceP_t gphNciNfc_ReleaseSequence[] = {
     {&phNciNfc_SendReset, &phNciNfc_ProcessResetRsp},
+    /* FYI: In NCI1.x phNciNfc_DelayForResetNtf is skipped as we don't expect to receive any CoreResetNtf */
+    { &phNciNfc_DelayForResetNtf, NULL },
     {NULL, &phNciNfc_CompleteReleaseSequence}
 };
 
 /*Global Varibales for Nfcc reset sequence*/
 phNciNfc_SequenceP_t gphNciNfc_NfccResetSequence[] = {
     {&phNciNfc_SendReset, &phNciNfc_ProcessResetRsp},
+    /* FYI: In NCI1.x phNciNfc_DelayForResetNtf is skipped as we don't expect to receive any CoreResetNtf */
+    { &phNciNfc_DelayForResetNtf, NULL },
     {NULL, &phNciNfc_CompleteNfccResetSequence}
 };
 
