@@ -5,21 +5,21 @@ VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCx", "NfcCx.vcxproj", "{D2BF8551-E818-4FA7-A055-B23B00702057}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcProximity", "..\..\..\libs\Proximity\lib\NfcProximity\NfcProximity.vcxproj", "{1145D0B9-D15A-42F6-857C-AEC387AE5E53}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcProximity", "..\..\libs\Proximity\lib\NfcProximity\NfcProximity.vcxproj", "{1145D0B9-D15A-42F6-857C-AEC387AE5E53}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcSmartCard", "..\..\..\libs\SmartCard\lib\NfcSmartCard\NfcSmartCard.vcxproj", "{AE1D271C-0A74-4A42-A968-821BA02F33F4}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcSmartCard", "..\..\libs\SmartCard\lib\NfcSmartCard\NfcSmartCard.vcxproj", "{AE1D271C-0A74-4A42-A968-821BA02F33F4}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCoreOsal", "..\..\..\libs\NfcCoreLib\lib\Osal\NfcCoreOsal\NfcCoreOsal.vcxproj", "{93FECDAF-C257-4E72-994A-DBB74E3FC29B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCoreOsal", "..\..\libs\NfcCoreLib\lib\Osal\NfcCoreOsal\NfcCoreOsal.vcxproj", "{93FECDAF-C257-4E72-994A-DBB74E3FC29B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCoreNciCore", "..\..\..\libs\NfcCoreLib\lib\NciCore\NfcCoreNciCore\NfcCoreNciCore.vcxproj", "{2A883886-5C38-48D8-8A4F-1E5CF7992F77}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCoreNciCore", "..\..\libs\NfcCoreLib\lib\NciCore\NfcCoreNciCore\NfcCoreNciCore.vcxproj", "{2A883886-5C38-48D8-8A4F-1E5CF7992F77}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCoreLibNfc", "..\..\..\libs\NfcCoreLib\lib\LibNfc\NfcCoreLibNfc\NfcCoreLibNfc.vcxproj", "{97D05FA1-31F2-43CF-B1A7-5F31DB656A57}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCoreLibNfc", "..\..\libs\NfcCoreLib\lib\LibNfc\NfcCoreLibNfc\NfcCoreLibNfc.vcxproj", "{97D05FA1-31F2-43CF-B1A7-5F31DB656A57}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCoreNci", "..\..\..\libs\NfcCoreLib\lib\Nci\NfcCoreNci\NfcCoreNci.vcxproj", "{1A2DDE3F-2554-434B-8C4F-06014CB251F4}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCoreNci", "..\..\libs\NfcCoreLib\lib\Nci\NfcCoreNci\NfcCoreNci.vcxproj", "{1A2DDE3F-2554-434B-8C4F-06014CB251F4}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCoreFri", "..\..\..\libs\NfcCoreLib\lib\Fri\NfcCoreFri\NfcCoreFri.vcxproj", "{F274D7E1-04EB-4972-BB56-401E2BE0519C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NfcCoreFri", "..\..\libs\NfcCoreLib\lib\Fri\NfcCoreFri\NfcCoreFri.vcxproj", "{F274D7E1-04EB-4972-BB56-401E2BE0519C}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NciParsers", "..\..\..\libs\NciParsers\NciParsers\NciParsers.vcxproj", "{3417B2C3-7F4B-462F-9ECD-C41B8BCCC234}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NciParsers", "..\..\libs\NciParsers\NciParsers\NciParsers.vcxproj", "{3417B2C3-7F4B-462F-9ECD-C41B8BCCC234}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

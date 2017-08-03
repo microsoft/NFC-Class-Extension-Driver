@@ -101,8 +101,8 @@
       <WppEnabled>true</WppEnabled>
       <WppModuleName>NfcCx</WppModuleName>
       <WppScanConfigurationData>..\NfcCxTracing.h</WppScanConfigurationData>
-      <WppAdditionalOptions>-scan:"..\..\..\libs\NfcCoreLib\inc\phNfcTraceEnums.h" %(WppAdditionalOptions)</WppAdditionalOptions>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(DDK_INC_PATH);..\..\WdfCxProxy\inc;..\..\..\inc;..\..\..\inc\Wdf;..\..\..\libs\NfcCoreLib\inc;..\..\..\libs\SmartCard\inc;..\..\..\libs\Proximity\inc</AdditionalIncludeDirectories>
+      <WppAdditionalOptions>-scan:"..\..\libs\NfcCoreLib\inc\phNfcTraceEnums.h" %(WppAdditionalOptions)</WppAdditionalOptions>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(DDK_INC_PATH);..\..\inc;..\..\inc\Wdf;..\..\libs\NfcCoreLib\inc;..\..\libs\SmartCard\inc;..\..\libs\Proximity\inc</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(SolutionDir)libs\$(Platform)</AdditionalLibraryDirectories>
@@ -159,28 +159,28 @@
     <ClInclude Include="..\StorageCardManager.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\libs\NciParsers\NciParsers\NciParsers.vcxproj">
+    <ProjectReference Include="..\..\libs\NciParsers\NciParsers\NciParsers.vcxproj">
       <Project>{3417b2c3-7f4b-462f-9ecd-c41b8bccc234}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\libs\NfcCoreLib\lib\Fri\NfcCoreFri\NfcCoreFri.vcxproj">
+    <ProjectReference Include="..\..\libs\NfcCoreLib\lib\Fri\NfcCoreFri\NfcCoreFri.vcxproj">
       <Project>{f274d7e1-04eb-4972-bb56-401e2be0519c}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\libs\NfcCoreLib\lib\LibNfc\NfcCoreLibNfc\NfcCoreLibNfc.vcxproj">
+    <ProjectReference Include="..\..\libs\NfcCoreLib\lib\LibNfc\NfcCoreLibNfc\NfcCoreLibNfc.vcxproj">
       <Project>{97d05fa1-31f2-43cf-b1a7-5f31db656a57}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\libs\NfcCoreLib\lib\NciCore\NfcCoreNciCore\NfcCoreNciCore.vcxproj">
+    <ProjectReference Include="..\..\libs\NfcCoreLib\lib\NciCore\NfcCoreNciCore\NfcCoreNciCore.vcxproj">
       <Project>{2a883886-5c38-48d8-8a4f-1e5cf7992f77}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\libs\NfcCoreLib\lib\Nci\NfcCoreNci\NfcCoreNci.vcxproj">
+    <ProjectReference Include="..\..\libs\NfcCoreLib\lib\Nci\NfcCoreNci\NfcCoreNci.vcxproj">
       <Project>{1a2dde3f-2554-434b-8c4f-06014cb251f4}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\libs\NfcCoreLib\lib\Osal\NfcCoreOsal\NfcCoreOsal.vcxproj">
+    <ProjectReference Include="..\..\libs\NfcCoreLib\lib\Osal\NfcCoreOsal\NfcCoreOsal.vcxproj">
       <Project>{93fecdaf-c257-4e72-994a-dbb74e3fc29b}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\libs\Proximity\lib\NfcProximity\NfcProximity.vcxproj">
+    <ProjectReference Include="..\..\libs\Proximity\lib\NfcProximity\NfcProximity.vcxproj">
       <Project>{1145d0b9-d15a-42f6-857c-aec387ae5e53}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\libs\SmartCard\lib\NfcSmartCard\NfcSmartCard.vcxproj">
+    <ProjectReference Include="..\..\libs\SmartCard\lib\NfcSmartCard\NfcSmartCard.vcxproj">
       <Project>{ae1d271c-0a74-4a42-a968-821ba02f33f4}</Project>
     </ProjectReference>
   </ItemGroup>
