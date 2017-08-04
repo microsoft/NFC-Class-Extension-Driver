@@ -207,7 +207,16 @@ Return Value:
         fdoContext->SERadioInterfaceCreated = TRUE;
     }
 
-    if (fdoContext->Power->SERadioState) {
+    // Note: If both NFCEE emulation and HCE have been disabled by the client driver, then there will be
+    // nothing for the SE interface to do. So don't bother enabling it.
+    ULONG driverFlags = SEInterface->FdoContext->NfcCxClientGlobal->Config.DriverFlags;
+    BOOLEAN seFullyDisabled = (driverFlags & NFC_CX_DRIVER_DISABLE_HOST_CARD_EMULATION) &&
+        (driverFlags & NFC_CX_DRIVER_DISABLE_NFCEE_DISCOVERY);
+
+    BOOLEAN enableInterface = fdoContext->Power->SERadioState && !seFullyDisabled;
+
+    if (enableInterface)
+    {
         //
         // Publish the SE interface
         //
@@ -220,19 +229,16 @@ Return Value:
                 goto Done;
             }
 
-            WdfDeviceSetDeviceInterfaceState(fdoContext->Device,
-                                             (LPGUID) &GUID_DEVINTERFACE_NFCSE,
-                                             NULL,
-                                             TRUE);
-
             SEInterface->InterfaceCreated = TRUE;
-
-        } else {
-            WdfDeviceSetDeviceInterfaceState(fdoContext->Device,
-                                             (LPGUID) &GUID_DEVINTERFACE_NFCSE,
-                                             NULL,
-                                             TRUE);
         }
+    }
+
+    if (SEInterface->InterfaceCreated)
+    {
+        WdfDeviceSetDeviceInterfaceState(fdoContext->Device,
+                                         (LPGUID) &GUID_DEVINTERFACE_NFCSE,
+                                         NULL,
+                                         enableInterface);
     }
 
 Done:
