@@ -1168,9 +1168,8 @@ phHciNfc_ReceiveOpenPipeNotifyCmd(void *pContext,NFCSTATUS wStatus, void *pInfo)
                                                 &tHciRegData,
                                                 &phHciNfc_ProcessEventsOnPipe,
                                                 pHciContext);
-                        /* According to ETSI12 spec, when CLEAR_PIPE notification arrives at DH, we need to recreate the pipe
-                           ToDo : PipeId comparision magic no(0x16) to be updated with ADM_NOTIFY_PIPE_CREATED*/
-                        if ((pReceivedParams->bPipeId == 0x16) && (pHciContext->bClearALL_HostId == phHciNfc_e_ESeHostID)) 
+                        /* According to ETSI12 spec, when CLEAR_PIPE notification arrives at DH, we need to recreate the pipe*/
+                        if ((pReceivedParams->bPipeId == PHHCINFC_HCI_CONNECTIVITY_GATE_PIPE_ID) && (pHciContext->bClearALL_HostId == phHciNfc_e_ESeHostID)) 
                         {
                             pHciContext->bClearALL_eSE_pipes = TRUE;
                             pHciContext->bClearALL_HostId = 0x0;

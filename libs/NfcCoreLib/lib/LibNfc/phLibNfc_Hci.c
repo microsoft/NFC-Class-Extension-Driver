@@ -38,8 +38,6 @@ static NFCSTATUS phHciNfc_CreateSETransceiveTimer(phHciNfc_HciContext_t  *pHciCo
 static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInfo);
 static NFCSTATUS phHciNfc_CreateSEGetAtrTimer(phHciNfc_HciContext_t  *pHciContext);
 
-static uint32_t phHciNfc_CalcWtxTimeout(uint8_t bWtxBwi);
-
 //ETSI 12 changes
 static NFCSTATUS phLibNfc_HciSetHostType(void* pContext, NFCSTATUS status, void* pInfo);
 static NFCSTATUS phLibNfc_HciSetHostTypeProc(void* pContext, NFCSTATUS status, void* pInfo);
@@ -936,12 +934,7 @@ phHciNfc_ProcessEventsOnApduPipe(void *pContext, NFCSTATUS wStatus, void *pInfo)
             PH_LOG_LIBNFC_INFO_STR("EVENT_WTX_REQ received");
             if (pLibContext->CBInfo.pSeClientEvtWtxCb != NULL)
             {
-                // We support an extension that allows the SE to specify the new timeout length (1 byte).
-                if (pReceivedParams->wLen != 0)
-                {
-                    /* Assuming Only One Byte of Data will be sent by the eSE, calculate the WTX timeout */
-                    tWtxInfo.dwTime = phHciNfc_CalcWtxTimeout(pReceivedParams->pData[0]);
-                }
+                tWtxInfo.dwTime = PHHCINFC_DEFAULT_HCI_TX_RX_TIME_OUT;
 
                 /* Invoke the upper call back */
                 for (bCount = 0; bCount< PHHCINFC_TOTAL_NFCEES; bCount++)
@@ -997,21 +990,6 @@ phHciNfc_ProcessEventsOnApduPipe(void *pContext, NFCSTATUS wStatus, void *pInfo)
         }
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
-}
-
-static uint32_t phHciNfc_CalcWtxTimeout(uint8_t bWtxParam)
-{
-    PH_LOG_LIBNFC_FUNC_ENTRY();
-
-    float wtxTimeout = powf(2, bWtxParam / 16.0f) / 10.0f * PH_LIBNFC_WTX_MILLISECOND_MULT;
-
-    uint32_t dwWtxTimeout = (uint32_t)wtxTimeout;
-    dwWtxTimeout = min(PH_LIBNFC_WTX_MAX_TIMEOUT_MILLISECONDS, dwWtxTimeout);
-
-    PH_LOG_LIBNFC_INFO_X32MSG("WTX Timeout (miliseconds)", dwWtxTimeout);
-
-    PH_LOG_LIBNFC_FUNC_EXIT();
-    return dwWtxTimeout;
 }
 
 static NFCSTATUS

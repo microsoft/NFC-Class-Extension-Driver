@@ -109,9 +109,6 @@ enum PHHCINFC_APDU_APPLICATION_GATE_EVENTS
 #define PHLIBNFC_MIFARESTD_BLOCK_BYTES      16   /* Bytes per block after block 32 for Mifare 4K*/
 #define PHLIBNFC_MFC_EMBEDDED_KEY           0x10 /* Mifare classic use Embedded Key */
 
-#define PH_LIBNFC_WTX_MAX_TIMEOUT_MILLISECONDS      60000
-#define PH_LIBNFC_WTX_MILLISECOND_MULT              1000
-
 extern phLibNfc_Sequence_t gphLibNfc_ReDiscSeqWithDeact[];
 extern phLibNfc_Sequence_t gphLibNfc_DiscSeqWithDeactSleep[];
 extern phLibNfc_Sequence_t gphLibNfc_MFCSendAuthCmdForPresChk[];
