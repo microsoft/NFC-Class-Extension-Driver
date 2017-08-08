@@ -953,7 +953,7 @@ Return Value:
         {
             // Ensure device is powered up.
             status = NfcCxPowerDeviceStopIdle(PowerManager);
-            if (NT_SUCCESS(status))
+            if (!NT_SUCCESS(status))
             {
                 TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
                 goto Done;
@@ -971,14 +971,14 @@ Return Value:
         // Start the appropriate modules
         //
         status = NfcCxSCInterfaceStart(fdoContext->SCInterface);
-        if (NT_SUCCESS(status))
+        if (!NT_SUCCESS(status))
         {
             TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
             goto Done;
         }
 
         status = NfcCxNfpInterfaceStart(fdoContext->NfpInterface);
-        if (NT_SUCCESS(status))
+        if (!NT_SUCCESS(status))
         {
             TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
             goto Done;
