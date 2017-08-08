@@ -1173,7 +1173,7 @@ void phNciNfc_CmpParamsSetConfigOpt(phNciNfc_RfDiscConfigParams_t *pSetConfigPar
     if(phOsalNfc_MemCompare((void*)pSetConfigParams, (void*)pGetConfigParams,
                             sizeof(phNciNfc_RfDiscConfigParams_t)) == 0)
     {
-        PH_LOG_NCI_CRIT_STR("All requested parameters are already set. Not sending set config command");
+        PH_LOG_NCI_INFO_STR("All requested parameters are already set. Not sending set config command");
         phOsalNfc_SetMemory(&(pSetConfigParams->tConfigInfo), 0x00, sizeof(phNciNfc_RfConfigInfo_t));
     }
     else

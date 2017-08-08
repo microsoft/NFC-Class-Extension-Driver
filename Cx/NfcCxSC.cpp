@@ -2467,7 +2467,7 @@ BOOL NfcCxSCInterfaceValidateSwitchProtocolCommand(
 
     if (InputBufferLength != PCSC_SWITCH_PROTOCOL_APDU_SIZE)
     {
-        TRACE_LINE(LEVEL_ERROR, "Invalid APDU buffer size = %x", InputBufferLength);
+        TRACE_LINE(LEVEL_INFO, "Command APDU is NOT a Switch Protocol Command. Wrong size = %x", InputBufferLength);
         goto Done;
     }
 
@@ -2482,7 +2482,7 @@ BOOL NfcCxSCInterfaceValidateSwitchProtocolCommand(
     }
     else
     {
-        TRACE_LINE(LEVEL_ERROR, "Command APDU is NOT a Switch Protocol Command");
+        TRACE_LINE(LEVEL_INFO, "Command APDU is NOT a Switch Protocol Command");
     }
 
 Done:

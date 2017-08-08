@@ -347,7 +347,7 @@ static NFCSTATUS phNciNfc_CompleteDeactivate(void *pContext, NFCSTATUS wStatus)
                                                     (void *) pNciContext);
                     if(NFCSTATUS_SUCCESS == wStatus)
                     {
-                        PH_LOG_NCI_CRIT_STR("Deactivate ntf timer started");
+                        PH_LOG_NCI_INFO_STR("Deactivate ntf timer started");
                     }
                     else
                     {

@@ -154,7 +154,7 @@ NfcCxRFInterfaceClearRemoteDevList(
 {
     if (RFInterface->pLibNfcContext->pRemDevList == NULL)
     {
-        TRACE_LINE(LEVEL_ERROR, "RemoteDevList is NULL, nothing to clear");
+        TRACE_LINE(LEVEL_INFO, "RemoteDevList is NULL, nothing to clear");
         return;
     }
 

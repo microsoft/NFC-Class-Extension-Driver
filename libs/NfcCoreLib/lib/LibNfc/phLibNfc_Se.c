@@ -373,7 +373,7 @@ static void phLibNfc_UpdateNfceeDiscTechnType(void* pLibContext,
     {
         for(bCount = 0; bCount < pNfceeDiscReq->bCount; bCount++)
         {
-            PH_LOG_LIBNFC_CRIT_STR("Type:%!phNciNfc_RfNfceeDiscReqType_t! TechMode:%!phNciNfc_RfTechMode_t!",
+            PH_LOG_LIBNFC_INFO_STR("Type:%!phNciNfc_RfNfceeDiscReqType_t! TechMode:%!phNciNfc_RfTechMode_t!",
                                    pNfceeDiscReq->pParams[bCount].bType, pNfceeDiscReq->pParams[bCount].eTechMode);
 
             switch(pNfceeDiscReq->pParams[bCount].eTechMode)
@@ -1146,7 +1146,7 @@ NFCSTATUS phLibNfc_DelayForSeNtf(void* pContext, NFCSTATUS status, void* pInfo)
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if( (NULL != pCtx) && (NFCSTATUS_SUCCESS == wStatus) )
     {
-        PH_LOG_LIBNFC_CRIT_U32MSG("Delay to receive UICC ntf", pCtx->dwHciInitDelay);
+        PH_LOG_LIBNFC_INFO_U32MSG("Delay to receive UICC ntf", pCtx->dwHciInitDelay);
 
         pCtx->dwHciTimerId = phOsalNfc_Timer_Create();
         if (PH_OSALNFC_TIMER_ID_INVALID != pCtx->dwHciTimerId)

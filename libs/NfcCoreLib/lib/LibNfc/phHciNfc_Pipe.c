@@ -1290,7 +1290,7 @@ static void phHciNfc_CreateApduPipeCb(void *pContext, NFCSTATUS wStatus, void *p
         pHciContext = (pphHciNfc_HciContext_t)pContext;
         if (NULL != pHciContext->pSendParams)
         {
-            PH_LOG_HCI_CRIT_STR("Releasing send params memory");
+            PH_LOG_HCI_INFO_STR("Releasing send params memory");
             if (NULL != pHciContext->pSendParams->pData)
             {
                 phOsalNfc_FreeMemory(pHciContext->pSendParams->pData);
@@ -1307,16 +1307,15 @@ static void phHciNfc_CreateApduPipeCb(void *pContext, NFCSTATUS wStatus, void *p
             if (phHciNfc_e_RspAnyOk == (phHciNfc_RspType_t)(pReceivedParams->bIns))
             {
                 /* Retreive the Pipe Info from ANY_OK */
-                PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb received Success!!!");
                 if (sizeof(tPipeCreatedNtfParams) == pReceivedParams->wLen)
                 {
-                    PH_LOG_HCI_CRIT_STR("phHciNfc_CreateApduPipeCb Length matched!!!");
                     phOsalNfc_MemCopy(&tPipeCreatedNtfParams, &pReceivedParams->pData[0], sizeof(phHciNfc_AdmNotfPipeCrCmdParams_t));
                     if (tPipeCreatedNtfParams.bSourceGID == phHciNfc_e_ApduGateId &&
                         tPipeCreatedNtfParams.bSourceHID == phHciNfc_e_TerminalHostID &&
                         tPipeCreatedNtfParams.bDestGID == phHciNfc_e_ApduGateId &&
                         tPipeCreatedNtfParams.bDestHID == phHciNfc_e_ESeHostID)
                     {
+                        PH_LOG_HCI_INFO_STR("Success!");
                         wStatus = phHciNfc_ProcessPipeCreateNotifyCmd(pReceivedParams, pHciContext);
                         pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId = tPipeCreatedNtfParams.bDestGID;
                         pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = tPipeCreatedNtfParams.bPipeID;
@@ -1482,7 +1481,7 @@ phHciNfc_eSE_EvtAbort(
             wStatus = phHciNfc_CoreSend(pHciCtxt, pSendParams, &phHciNfc_CmdSendCb, pHciCtxt);
             if (NFCSTATUS_PENDING == wStatus)
             {
-                PH_LOG_HCI_CRIT_STR("phHciNfc_eSE_EvtAbort::Pending!!!");
+                PH_LOG_HCI_INFO_STR("Pending");
                 /* Store the call back and the context of upper layer that can be called later*/
                 pHciCtxt->Cb_Info.pClientInitCb = NULL;
                 pHciCtxt->Cb_Info.pClientCntx = NULL;
@@ -1494,19 +1493,19 @@ phHciNfc_eSE_EvtAbort(
             {
                 phOsalNfc_FreeMemory(pHciCtxt->pSendParams);
                 pHciCtxt->pSendParams = NULL;
-                PH_LOG_HCI_CRIT_STR("phHciNfc_eSE_EvtAbort:Failed Status from lower layer");
+                PH_LOG_HCI_CRIT_STR("Failed Status from lower layer");
             }
         }
         else
         {
-            PH_LOG_HCI_CRIT_STR("phHciNfc_eSE_EvtAbort:Memory Allocation failed");
+            PH_LOG_HCI_CRIT_STR("Memory Allocation failed");
         }
 
     }
     else
     {
         wStatus = NFCSTATUS_FAILED;
-        PH_LOG_HCI_CRIT_STR("phHciNfc_eSE_EvtAbort:Invalid HCI Context");
+        PH_LOG_HCI_CRIT_STR("Invalid HCI Context");
     }
     PH_LOG_HCI_FUNC_EXIT();
     return wStatus;

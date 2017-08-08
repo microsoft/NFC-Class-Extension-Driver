@@ -60,7 +60,7 @@ NFCSTATUS phHciNfc_CoreInit(void *pContext)
 
         if(wStatus == NFCSTATUS_SUCCESS)
         {
-            PH_LOG_LIBNFC_CRIT_STR("Receive Data Registeration Sucessfull with NCI");
+            PH_LOG_LIBNFC_INFO_STR("Receive Data Registeration Sucessfull with NCI");
             /* Register for Events when are received over ADM pipe */
             tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeCmd;
             tHciRegData.bPipeId = (uint8_t) phHciNfc_e_HciAdminPipeId;
@@ -339,7 +339,7 @@ phHciNfc_CoreSend(void                            *pHciContextHandle,
                     pHciContext->pHciCoreContext.phHciNfcCoreUpperLayerSendCb = phHciNfcUpperLayerSendCb;
                     pHciContext->pHciCoreContext.pUpperLayerContext           = pContext;
 
-                    PH_LOG_LIBNFC_CRIT_STR(" HCP Packet Sent to NCI ");
+                    PH_LOG_LIBNFC_INFO_STR(" HCP Packet Sent to NCI ");
                 }
                 else
                 {

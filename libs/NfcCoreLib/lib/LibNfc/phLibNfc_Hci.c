@@ -692,7 +692,7 @@ static NFCSTATUS phHciNfc_CreateSETransceiveTimer(phHciNfc_HciContext_t  *pHciCo
          wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
      }else
      {
-         PH_LOG_LIBNFC_CRIT_STR("HCI SE TxRx Timer Created Successfully");
+         PH_LOG_LIBNFC_INFO_STR("HCI SE TxRx Timer Created Successfully");
          wStatus = NFCSTATUS_SUCCESS;
      }
      return wStatus;
@@ -1882,14 +1882,13 @@ NFCSTATUS phLibNfc_HciGetHostTypeListProc(void* pContext, NFCSTATUS status, void
                 if (phHciNfc_HostTypeListContainsESe(pReadHostTypeList->pData, pReadHostTypeList->wLen))
                 {
                     pHciCtx->eSE_Compliancy = phHciNfc_e_HciVersion12;
-                    PH_LOG_LIBNFC_CRIT_STR("eSE is ETSI 12 Compliant.");
+                    PH_LOG_LIBNFC_INFO_STR("eSE is ETSI 12 Compliant.");
                 }
                 else
                 {
                     pHciCtx->eSE_Compliancy = phHciNfc_e_HciVersion9;
-                    PH_LOG_LIBNFC_CRIT_STR("eSE isn't ETSI 12. Falling back to ETSI 9.");
+                    PH_LOG_LIBNFC_INFO_STR("eSE isn't ETSI 12. Falling back to ETSI 9.");
                 }
-                PH_LOG_LIBNFC_INFO_STR("Read Host TypeList successfully");
             }
             else
             {

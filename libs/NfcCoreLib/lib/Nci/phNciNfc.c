@@ -1519,7 +1519,7 @@ NFCSTATUS phNciNfc_RegisterHciSeEvent(void* pNciCtx,
             if(NFCSTATUS_SUCCESS == wStatus)
             {
                 /* Register local static function with the NCI core receive manager */
-                PH_LOG_NCI_CRIT_STR("Registering SE event with NCI Core");
+                PH_LOG_NCI_INFO_STR("Registering SE event with NCI Core");
                 tHeaderInfo.bEnabled = PHNCINFC_DISABLE_AUTO_DEREG;
                 tHeaderInfo.bConn_ID = bConnId;
                 tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeData;
@@ -2373,7 +2373,6 @@ static NFCSTATUS phNciNfc_CompleteIsoDepPresChkSequence(void *pContext, NFCSTATU
                                    (void *)pNciCtx);
             if(NFCSTATUS_SUCCESS == wStatus)
             {
-                PH_LOG_NCI_INFO_STR("IsoDep Check presence extension notification registered");
                 if(PH_OSALNFC_TIMER_ID_INVALID != pNciCtx->dwNtfTimerId)
                 {
                     wStatus = phOsalNfc_Timer_Start(pNciCtx->dwNtfTimerId,
@@ -2382,7 +2381,7 @@ static NFCSTATUS phNciNfc_CompleteIsoDepPresChkSequence(void *pContext, NFCSTATU
                                                     (void *) pNciCtx);
                     if(NFCSTATUS_SUCCESS == wStatus)
                     {
-                        PH_LOG_NCI_CRIT_STR("IsoDep Chk Pres ntf timer started");
+                        PH_LOG_NCI_INFO_STR("IsoDep Chk Pres ntf timer started");
                     }
                     else
                     {
@@ -2402,11 +2401,11 @@ static NFCSTATUS phNciNfc_CompleteIsoDepPresChkSequence(void *pContext, NFCSTATU
             }
             else if(NFCSTATUS_FAILED == wStatus)
             {
-                PH_LOG_NCI_INFO_STR("IsoDep Check presence extension notification registration failed!");
+                PH_LOG_NCI_CRIT_STR("IsoDep Check presence extension notification registration failed!");
             }
             else
             {
-                PH_LOG_NCI_INFO_STR("Invalid parameter sent");
+                PH_LOG_NCI_CRIT_STR("Invalid parameter sent");
                 wStatus = NFCSTATUS_FAILED;
             }
         }

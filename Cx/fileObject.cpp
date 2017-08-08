@@ -108,7 +108,7 @@ Return Value:
             // that the calling process is not an app container process.
             //
             fileContext->IsAppContainerProcess = FALSE;
-            TRACE_LINE(LEVEL_WARNING, "Failed to impersonate initiator process %!STATUS!", status);
+            TRACE_LINE(LEVEL_INFO, "Failed to impersonate initiator process %!STATUS!", status);
             status = STATUS_SUCCESS;
         }
     }
@@ -718,7 +718,7 @@ Return Value:
 
     if (NULL == FileName ||
         0 == FileName->Length) {
-        TRACE_LINE(LEVEL_ERROR, "No file name provided, this is a configuration client");
+        TRACE_LINE(LEVEL_INFO, "No file name provided, this is a configuration client");
         FileContext->Role = ROLE_CONFIGURATION;
         goto Done;
     }
