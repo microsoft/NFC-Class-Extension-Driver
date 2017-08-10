@@ -273,6 +273,14 @@ static NFCSTATUS phNciNfc_CompleteNfceeDiscoverSequence(void *pContext, NFCSTATU
                     wStatus = phNciNfc_CoreIfUnRegRspNtf(&(pNciContext->NciCoreContext),
                                                 &(tNtfInfo),&phNciNfc_NfceeDiscNtfHandler
                                                 );
+                    tNtfInfo.Opcode_ID.OidType.NfceeMgtNtfOid = phNciNfc_e_NfceeMgtModeSetNtfOid;
+                    wStatus = phNciNfc_CoreIfUnRegRspNtf(&(pNciContext->NciCoreContext),
+                                                &(tNtfInfo),&phNciNfc_NfceeModeSetNtfHandler
+                                                );
+                    tNtfInfo.Opcode_ID.OidType.NfceeMgtNtfOid = phNciNfc_e_NfceeMgtStatusNtfOid;
+                    wStatus = phNciNfc_CoreIfUnRegRspNtf(&(pNciContext->NciCoreContext),
+                                                &(tNtfInfo),&phNciNfc_NfceeStatusNtfHandler
+                                                );
                 }
             }
             phNciNfc_Notify(pNciContext, wStatus,(void *)dwNfceeCount);
