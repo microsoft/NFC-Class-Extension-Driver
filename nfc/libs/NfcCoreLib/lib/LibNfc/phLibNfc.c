@@ -3282,15 +3282,11 @@ void phLibNfc_TranscvCb(void*   pContext,
                         PH_LOG_LIBNFC_WARN_STR("Invalid response: %!NFCSTATUS!", wStatus);
                     }
                 }
-                else if (NFCSTATUS_RESPONSE_TIMEOUT == status )
+                else if (NFCSTATUS_RESPONSE_TIMEOUT == status ||
+                    NFCSTATUS_RF_ERROR == status)
                 {
-                    PH_LOG_LIBNFC_WARN_STR("Target Lost!!");
-                    wStatus = NFCSTATUS_FAILED;
-                }
-                else if (NFCSTATUS_RF_ERROR == status )
-                {
-                    PH_LOG_LIBNFC_WARN_STR("Target Lost!!");
-                    wStatus = NFCSTATUS_FAILED;
+                    PH_LOG_LIBNFC_WARN_STR("Target Lost!");
+                    wStatus = NFCSTATUS_RF_ERROR;
                 }
                 else if (NFCSTATUS_INSUFFICIENT_RESOURCES == status )
                 {

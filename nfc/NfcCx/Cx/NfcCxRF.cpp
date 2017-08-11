@@ -5223,8 +5223,7 @@ NfcCxRFInterfaceTagReadNdefSeqComplete(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (Status != NfcCxNtStatusFromNfcStatus(NFCSTATUS_RELEASED) &&
-        Status != NfcCxNtStatusFromNfcStatus(NFCSTATUS_TARGET_LOST)) {
+    if (Status != STATUS_LINK_FAILED) {
         NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventReqCompleted, NULL, NULL, NULL);
         SubmitThreadpoolWork(RFInterface->tpTagPrescenceWork);
     }
@@ -5780,6 +5779,10 @@ NfcCxRFInterfaceTargetTransceiveSeqComplete(
 
     if (NT_SUCCESS(Status)) {
         NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventReqCompleted, NULL, NULL, NULL);
+    }
+    else if (Status == STATUS_LINK_FAILED) {
+        // Something is wrong with the RF connection. So let's restart discovery.
+        NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventDeactivated, NULL, NULL, NULL);
     }
     else {
         NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventFailed, NULL, NULL, NULL);
