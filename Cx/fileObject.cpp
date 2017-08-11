@@ -359,9 +359,9 @@ Return Value:
     }
 
 Done:
-    if (!NT_SUCCESS(status)) 
+    if (!NT_SUCCESS(status))
     {
-        if (NULL != fileContext) 
+        if (NULL != fileContext)
         {
             if (NULL != fileContext->pszTypes) {
                 free(fileContext->pszTypes);
@@ -385,7 +385,7 @@ Done:
                         delete fileContext->RoleParameters.Pub.PublicationBuffer;
                         fileContext->RoleParameters.Pub.PublicationBuffer = NULL;
                     }
-                    
+
                     break;
                 }
                 case ROLE_SMARTCARD:
@@ -487,42 +487,49 @@ Return Value:
                                fileContext->Tnf);
 #endif
 
-    //
-    // If it is a subscription, remove the the client
-    // from the proper list
-    //
-    if (ROLE_SUBSCRIPTION == fileContext->Role) {
-
-        if (NULL != NfcCxFileObjectGetNfpInterface(fileContext)) {
-            NfcCxNfpInterfaceRemoveSubscriptionClient(NfcCxFileObjectGetNfpInterface(fileContext),
-                                                   fileContext);
+    switch (fileContext->Role) {
+    case ROLE_SUBSCRIPTION:
+        if (NULL != fileContext->FdoContext->NfpInterface)
+        {
+            NfcCxNfpInterfaceRemoveSubscriptionClient(fileContext->FdoContext->NfpInterface,
+                                                      fileContext);
         }
+        break;
+    case ROLE_PUBLICATION:
+        if (NULL != fileContext->FdoContext->NfpInterface)
+        {
+            NfcCxNfpInterfaceRemovePublicationClient(fileContext->FdoContext->NfpInterface,
+                                                     fileContext);
 
-    } else if (ROLE_PUBLICATION == fileContext->Role) {
-
-        if (NULL != NfcCxFileObjectGetNfpInterface(fileContext)) {
-            NfcCxNfpInterfaceRemovePublicationClient(NfcCxFileObjectGetNfpInterface(fileContext),
-                                                    fileContext);
-
-            NfcCxNfpInterfaceRemoveSendClient(NfcCxFileObjectGetNfpInterface(fileContext),
+            NfcCxNfpInterfaceRemoveSendClient(fileContext->FdoContext->NfpInterface,
                                               fileContext);
         }
-
-    } else if (ROLE_SMARTCARD == fileContext->Role) {
-
-        NfcCxSCInterfaceRemoveClient(NfcCxFileObjectGetScInterface(fileContext),
-                                     fileContext);
-
-    } else if (ROLE_SECUREELEMENTEVENT == fileContext->Role ||
-               ROLE_SECUREELEMENTMANAGER == fileContext->Role) {
-
-        NfcCxSEInterfaceRemoveClient(NfcCxFileObjectGetSEInterface(fileContext),
-                                     fileContext);
-    }
-    else if (ROLE_EMBEDDED_SE == fileContext->Role) {
-
-        NfcCxESEInterfaceRemoveClient(fdoContext->ESEInterface,
-                                      fileContext);
+        break;
+    case ROLE_SMARTCARD:
+        if (NULL != fileContext->FdoContext->SCInterface)
+        {
+            NfcCxSCInterfaceRemoveClient(fileContext->FdoContext->SCInterface,
+                                         fileContext);
+        }
+        break;
+    case ROLE_SECUREELEMENTEVENT:
+    case ROLE_SECUREELEMENTMANAGER:
+        if (NULL != fileContext->FdoContext->SEInterface)
+        {
+            NfcCxSEInterfaceRemoveClient(fileContext->FdoContext->SEInterface,
+                                         fileContext);
+        }
+        break;
+    case ROLE_EMBEDDED_SE:
+        if (NULL != fdoContext->ESEInterface)
+        {
+            NfcCxESEInterfaceRemoveClient(fdoContext->ESEInterface,
+                                          fileContext);
+        }
+        break;
+    default:
+        // Nothing to do.
+        break;
     }
 
 
