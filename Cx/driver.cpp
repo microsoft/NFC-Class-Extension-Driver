@@ -495,12 +495,6 @@ Return Value:
         goto Done;
     }
 
-    status = NfcCxFdoCreate(fdoContext);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to create the Fdo context failed %!STATUS!", status);
-        goto Done;
-    }
-
     if (NFC_CX_DEVICE_MODE_NCI == fdoContext->NfcCxClientGlobal->Config.DeviceMode) {
         //
         // Read the FDO's persisted settings from the registry
@@ -520,6 +514,12 @@ Return Value:
                                                   fdoContext->SEPowerOffPolicyOverride,
                                                   fdoContext->SEPowerOffSystemOverride);
 #endif
+    }
+
+    status = NfcCxFdoCreate(fdoContext);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to create the Fdo context failed %!STATUS!", status);
+        goto Done;
     }
 
     //
