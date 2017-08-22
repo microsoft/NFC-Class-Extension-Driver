@@ -210,7 +210,8 @@ NFCSTATUS phLibNfc_SE_GetSecureElementList( _Out_writes_to_(PHLIBNFC_MAXNO_OF_SE
         {
             for(bIndex = 1; bIndex < PHHCINFC_TOTAL_NFCEES; bIndex++)
             {
-                if(pLibContext->tSeInfo.tSeList[bIndex].hSecureElement != NULL)
+                if(pLibContext->tSeInfo.tSeList[bIndex].hSecureElement != NULL &&
+                   pLibContext->tSeInfo.bSeState[bIndex] != phLibNfc_SeStateInvalid)
                 {
                     bCount++;
                     pSE_List[bCount-1].eSE_Type = pLibContext->tSeInfo.tSeList[bIndex].eSE_Type;
