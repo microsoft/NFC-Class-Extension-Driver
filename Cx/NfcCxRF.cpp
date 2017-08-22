@@ -6156,6 +6156,10 @@ NfcCxRFInterfaceTagWriteNdefSeqComplete(
     if (NT_SUCCESS(Status)) {
         NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventReqCompleted, NULL, NULL, NULL);
     }
+    else if (Status == STATUS_LINK_FAILED) {
+        // Something is wrong with the RF connection. So let's restart discovery.
+        NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventDeactivated, NULL, NULL, NULL);
+    }
     else {
         NfcCxStateInterfaceStateHandler(stateInterface, NfcCxEventFailed, NULL, NULL, NULL);
     }
