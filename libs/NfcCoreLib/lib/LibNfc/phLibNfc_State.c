@@ -160,7 +160,7 @@ NFCSTATUS phLibNfc_AddDeferredEvent(pphLibNfc_Context_t pCtx,phLibNfc_Event_t Tr
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
     PH_LOG_LIBNFC_CRIT_EXPECT(NULL != pCtx);
-    if (NULL != pCtx) 
+    if (NULL != pCtx)
     {
         pDeferredEvent = pCtx->StateContext.pDeferredEvent;
         while ( pDeferredEvent != NULL )
@@ -329,8 +329,8 @@ NFCSTATUS phLibNfc_StateHandler(void *pContext,
         }
     }
     else {
-        if (pCtx != NULL && 
-            pCtx->StateContext.pDeferredEvent != NULL && 
+        if (pCtx != NULL &&
+            pCtx->StateContext.pDeferredEvent != NULL &&
             pCtx->StateContext.Flag == phLibNfc_StateTransitionComplete) {
             NFCSTATUS deferRetVal = 0;
 
@@ -607,7 +607,7 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
                 {
                     eNfceeMode = PH_NCINFC_EXT_NFCEEMODE_DISABLE; /*Disable SE*/
                 }
- 
+
                 if(NULL != (void *)pSeHandle)
                 {
                     for (bIndex = 0; bIndex < PHHCINFC_TOTAL_NFCEES; bIndex++)
@@ -634,10 +634,12 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
 
                     pLibContext->sSeContext.eNfceeMode = eNfceeMode;
 
-                    /* If there is no sequence existing to execute, return SUCCESS asuming that
-                       mode set and power mode changes is not required */
+                    /* If there is no existing sequence to execute, return SUCCESS assuming that
+                       mode set and power mode changes are not required */
                     if(NULL != pSetModeSeq)
                     {
+                        /* Further information may come from the NFCC */
+                        pLibContext->dwHciInitDelay = PHHCINFC_NFCEE_DISCOVERY_DEFAULT_NTF_DELAY;
                         PHLIBNFC_INIT_SEQUENCE(pLibContext,pSetModeSeq);
                         /* Start discover sequence */
                         wStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,NULL);

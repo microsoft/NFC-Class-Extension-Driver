@@ -29,6 +29,8 @@
 #define PHHCINFC_FIRST_TIME_HCI_NWK_FORMATION_TIME_OUT      2000U /* 2 Secs*/
 #define PHHCINFC_HCI_NWK_FORMATION_TIME_OUT                 500U /* 0.5 Secs*/
 #define PHHCINFC_DEFAULT_HCI_GET_ATR_TIMEOUT                2000U /* 2 Secs*/
+#define PHHCINFC_NFCEE_DISCOVERY_INITIAL_NTF_DELAY          800U /* 0.8 Secs*/
+#define PHHCINFC_NFCEE_DISCOVERY_DEFAULT_NTF_DELAY          100U /* 0.1 Secs*/
 
 #define PHHCINFC_HCI_NWK_INIT_RETRY_COUNT           1
 
@@ -264,7 +266,7 @@ typedef struct phHciNfc_HciContext
     uint8_t                          bClearpipes;
     uint8_t                          bCreatePipe;
     /**< Timer data for Get Atr */
-    phHciNfc_TimerInfo_t             tHciSeGetAtrTimerInfo; 
+    phHciNfc_TimerInfo_t             tHciSeGetAtrTimerInfo;
     /* Store the compliancy of eSE*/
     uint8_t                          eSE_Compliancy;
     /*< Flag to indicate clear all pipe has come*/

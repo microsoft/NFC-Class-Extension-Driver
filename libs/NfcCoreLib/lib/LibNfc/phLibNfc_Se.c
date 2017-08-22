@@ -42,6 +42,7 @@ static NFCSTATUS phLibNfc_ValidateInputRtngInfo(uint8_t bNumRtngConfigs, phLibNf
 /* NFCEE set mode sequence */
 phLibNfc_Sequence_t gphLibNfc_SetSeModeSeq[] = {
     {&phLibNfc_SetModeSeq, &phLibNfc_SetModeSeqEnd},
+    {&phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc},
     {NULL, &phLibNfc_SetSeModeSeqComplete}
 };
 
@@ -1412,7 +1413,9 @@ NFCSTATUS phLibNfc_LaunchNfceeDiscCompleteSequence(void *pContext, NFCSTATUS wSt
         }
         else
         {
-            pLibContext->dwHciInitDelay = bInitialNfceeDisc ? 800 : 100;
+            pLibContext->dwHciInitDelay = bInitialNfceeDisc
+                                          ? PHHCINFC_NFCEE_DISCOVERY_INITIAL_NTF_DELAY
+                                          : PHHCINFC_NFCEE_DISCOVERY_DEFAULT_NTF_DELAY;
             bInitialNfceeDisc = FALSE;
             PH_LOG_LIBNFC_INFO_STR("HCI network initialization complete!");
         }

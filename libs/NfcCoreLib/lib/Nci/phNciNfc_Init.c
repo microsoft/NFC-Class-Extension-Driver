@@ -4,7 +4,7 @@
 *              Original code Copyright (c), NXP Semiconductors
 */
 
-#include "phNciNfc_Pch.h" 
+#include "phNciNfc_Pch.h"
 
 #include "phNciNfc_Init.tmh"
 
@@ -20,8 +20,12 @@ static NFCSTATUS phNciNfc_DelayForResetNtfInit(void* pContext);
 static NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext);
 
 static NFCSTATUS phNciNfc_InitReset(void *pContext);
-static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS wStatus);
 static NFCSTATUS phNciNfc_SendReset(void *pContext);
+
+// CORE_RESET_NTF is part of the Reset sequences, but only in NCI2x, so the next element in
+// the sequence *must* be phNciNfc_DelayForResetNtf. NCI1x implementation of phNciNfc_ProcessResetRsp
+// skips the next step in the sequence assuming that it's phNciNfc_DelayForResetNtf.
+static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS wStatus);
 
 static NFCSTATUS phNciNfc_CompleteReleaseSequence(void *pContext, NFCSTATUS wStatus);
 static NFCSTATUS phNciNfc_CompleteNfccResetSequence(void *pContext, NFCSTATUS wStatus);
@@ -34,7 +38,7 @@ static NFCSTATUS phNciNfc_RegAllNtfs(void* pContext);
 phNciNfc_SequenceP_t gphNciNfc_InitSequence[] = {
     {&phNciNfc_DelayForResetNtfInit, &phNciNfc_DelayForResetNtfProc},
     {&phNciNfc_InitReset, &phNciNfc_ProcessResetRsp},
-    {&phNciNfc_DelayForResetNtf, &phNciNfc_DelayForResetNtfProc},
+    {&phNciNfc_DelayForResetNtf, &phNciNfc_DelayForResetNtfProc}, // Skipped in NCI1x
     {&phNciNfc_Init, &phNciNfc_ProcessInitRsp},
     {NULL, &phNciNfc_CompleteInitSequence}
 };
@@ -42,12 +46,14 @@ phNciNfc_SequenceP_t gphNciNfc_InitSequence[] = {
 /*Global Varibales for Release Sequence Handler*/
 phNciNfc_SequenceP_t gphNciNfc_ReleaseSequence[] = {
     {&phNciNfc_SendReset, &phNciNfc_ProcessResetRsp},
+    {&phNciNfc_DelayForResetNtf, &phNciNfc_DelayForResetNtfProc}, // Skipped in NCI1x
     {NULL, &phNciNfc_CompleteReleaseSequence}
 };
 
 /*Global Varibales for Nfcc reset sequence*/
 phNciNfc_SequenceP_t gphNciNfc_NfccResetSequence[] = {
     {&phNciNfc_SendReset, &phNciNfc_ProcessResetRsp},
+    {&phNciNfc_DelayForResetNtf, &phNciNfc_DelayForResetNtfProc}, // Skipped in NCI1x
     {NULL, &phNciNfc_CompleteNfccResetSequence}
 };
 
@@ -500,7 +506,7 @@ NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext)
             PH_LOG_NCI_INFO_STR("Creating notifications timer..");
             pNciContext->dwNtfTimerId = phOsalNfc_Timer_Create();
         }
-        
+
         if (PH_OSALNFC_TIMER_ID_INVALID != pNciContext->dwNtfTimerId)
         {
             wStatus = phOsalNfc_Timer_Start(pNciContext->dwNtfTimerId,
@@ -593,6 +599,9 @@ static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS Status)
                         }
 
                         wStatus = NFCSTATUS_SUCCESS;
+
+                        // Next sequence item is NCI2x specific, so we skip it here.
+                        phNciNfc_SkipSequenceSeq(pNciContext, pNciContext->pSeqHandler, 1);
                     }
                     else
                     {
