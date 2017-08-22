@@ -224,11 +224,12 @@ void phLibNfc_Ndef_Read_Cb(void* Context,NFCSTATUS status)
                         gpphLibNfc_Context->ndef_cntx.psNdefMap->StdMifareContainer.currentBlock;
                 }
 
-                if(NFCSTATUS_FAILED == status )
+                if (NFCSTATUS_FAILED == status ||
+                    NFCSTATUS_RF_ERROR == status)
                 {
                     /*During Ndef read operation tag was not present in RF
                     field of reader*/
-                    RetStatus = NFCSTATUS_FAILED;
+                    RetStatus = status;
                     gpphLibNfc_Context->ndef_cntx.is_ndef = 0;
                     gpphLibNfc_Context->ndef_cntx.psNdefMap->bPrevReadMode = (uint8_t)PH_FRINFC_NDEFMAP_SEEK_INVALID;
                     if (((phNfc_eMifare_PICC == ps_rem_dev_info->RemDevType) ||
@@ -259,7 +260,8 @@ void phLibNfc_Ndef_Read_Cb(void* Context,NFCSTATUS status)
             }
             gpphLibNfc_Context->status.GenCb_pending_status = FALSE;
         }
-        
+
+        // Check if the 'phNciNfc_Connect' call above is pending.
         if(NFCSTATUS_PENDING != RetStatus)
         {
             pClientCb = gpphLibNfc_Context->CBInfo.pClientRdNdefCb;
@@ -464,9 +466,9 @@ void phLibNfc_Ndef_Write_Cb(void* pContext,NFCSTATUS status)
                     gpphLibNfc_Context->psBufferedAuth->addr = (uint8_t)
                         gpphLibNfc_Context->ndef_cntx.psNdefMap->TLVStruct.NdefTLVBlock;
                 }
-                if(status == NFCSTATUS_FAILED )
+                if (status == NFCSTATUS_FAILED  ||
+                    status == NFCSTATUS_RF_ERROR)
                 {
-                    status = NFCSTATUS_FAILED;
                     /*During Ndef write operation tag was not present in RF
                     field of reader*/
                    if (((phNfc_eMifare_PICC == ps_rem_dev_info->RemDevType) ||
@@ -503,13 +505,16 @@ void phLibNfc_Ndef_Write_Cb(void* pContext,NFCSTATUS status)
             }
             gpphLibNfc_Context->status.GenCb_pending_status = FALSE;
         }
-        pClientCb = gpphLibNfc_Context->CBInfo.pClientWrNdefCb;
-        pUpperLayerContext = gpphLibNfc_Context->CBInfo.pClientWrNdefCntx;
 
-        gpphLibNfc_Context->CBInfo.pClientWrNdefCb = NULL;
-        gpphLibNfc_Context->CBInfo.pClientWrNdefCntx = NULL;
-        if(NFCSTATUS_PENDING !=status)
+        // Check if the 'phNciNfc_Connect' call above is pending.
+        if (NFCSTATUS_PENDING != status)
         {
+            pClientCb = gpphLibNfc_Context->CBInfo.pClientWrNdefCb;
+            pUpperLayerContext = gpphLibNfc_Context->CBInfo.pClientWrNdefCntx;
+
+            gpphLibNfc_Context->CBInfo.pClientWrNdefCb = NULL;
+            gpphLibNfc_Context->CBInfo.pClientWrNdefCntx = NULL;
+
             if (NULL != pClientCb)
             {
                 pClientCb(pUpperLayerContext, status);
