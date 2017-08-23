@@ -42,6 +42,7 @@ static NFCSTATUS phLibNfc_ValidateInputRtngInfo(uint8_t bNumRtngConfigs, phLibNf
 /* NFCEE set mode sequence */
 phLibNfc_Sequence_t gphLibNfc_SetSeModeSeq[] = {
     {&phLibNfc_SetModeSeq, &phLibNfc_SetModeSeqEnd},
+    {&phLibNfc_DelayForSeNtf, NULL},
     {NULL, &phLibNfc_SetSeModeSeqComplete}
 };
 
@@ -53,7 +54,7 @@ phLibNfc_Sequence_t gphLibNfc_NfceeStartDiscSeq[] = {
 
 /* NFCEE discovery complete sequence */
 phLibNfc_Sequence_t gphLibNfc_NfceeDiscCompleteSeq[] = {
-    {&phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc},
+    {&phLibNfc_DelayForSeNtf, NULL},
     {&phLibNfc_HciSetSessionIdentity, &phLibNfc_HciSetSessionIdentityProc},
     {NULL, &phLibNfc_NfceeDiscSeqComplete}
 };
@@ -1163,16 +1164,6 @@ NFCSTATUS phLibNfc_DelayForSeNtf(void* pContext, NFCSTATUS status, void* pInfo)
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;
-}
-
-NFCSTATUS phLibNfc_DelayForSeNtfProc(void* pContext,NFCSTATUS status,void* pInfo)
-{
-    UNUSED(pInfo);
-    UNUSED(status);
-    UNUSED(pContext);
-    PH_LOG_LIBNFC_FUNC_ENTRY();
-    PH_LOG_LIBNFC_FUNC_EXIT();
-    return NFCSTATUS_SUCCESS;
 }
 
 static NFCSTATUS phLibNfc_NfceeDiscSeqComplete(void* pContext, NFCSTATUS status, void* pInfo)

@@ -39,7 +39,7 @@ static NFCSTATUS phHciNfc_CreateSETranseiveTimer(phHciNfc_HciContext_t  *pHciCon
 phLibNfc_Sequence_t gphLibNfc_HciInitSequenceNci1x[] = {
     {&phLibNfc_OpenLogConn, &phLibNfc_OpenLogConnProcess},
     {&phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc},
-    {&phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc},
+    {&phLibNfc_DelayForSeNtf, NULL},
     {&phLibNfc_HciOpenAdmPipe, &phLibNfc_HciOpenAdmPipeProc},
     {&phLibNfc_HciGetSessionIdentity, &phLibNfc_HciGetSessionIdentityProc},
     {&phLibNfc_HciGetHostList, &phLibNfc_HciGetHostListProc},
@@ -63,7 +63,7 @@ phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequenceNci1x[] = {
 phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequenceNci2x[] = {
     { &phLibNfc_HciSetWhiteList, &phLibNfc_HciSetWhiteListProc },
     { &phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc },
-    { &phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc },
+    { &phLibNfc_DelayForSeNtf, NULL },
     { NULL, &phLibNfc_HciChildDevInitComplete }
 };
 
@@ -1149,6 +1149,16 @@ NFCSTATUS phLibNfc_HciChildDevInitComplete(void* pContext, NFCSTATUS status, voi
             {
                 PH_LOG_LIBNFC_INFO_STR("NFCEE initialization failed");
                 pLibCtx->tSeInfo.bSeState[bIndex] = phLibNfc_SeStateInvalid;
+
+                /* Following NCI 2.0 Figure 25: NFCEE State Transitions,
+                   on NFCEE_TRANSMISSION_ERROR, the NFCEE is to be considered unresponsive.
+                   We can remove it from the list. In NCI 1.x an activation failure may not
+                   ends with a NFCEE_TRANSMISSION_ERROR status code. */
+                if (status == PH_NCINFC_STATUS_NFCEE_TRANSMISSION_ERROR)
+                {
+                    pLibCtx->tSeInfo.tSeList[bIndex].hSecureElement = NULL;
+                    pLibCtx->tSeInfo.bSeCount--;
+                }
             }
         }
 
