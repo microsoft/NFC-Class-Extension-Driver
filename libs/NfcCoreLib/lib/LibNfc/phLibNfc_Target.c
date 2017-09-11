@@ -96,7 +96,7 @@ phLibNfc_RemoteDev_Receive( phLibNfc_Handle            hRemoteDevice,
                             void*                       pContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_FAILED;
-    pphLibNfc_LibContext_t pLibContext = gpphLibNfc_Context;
+    pphLibNfc_LibContext_t pLibContext = phLibNfc_GetContext();
     phLibNfc_Event_t TrigEvent = phLibNfc_EventRecv;
     pphNciNfc_RemoteDevInformation_t pNciRemDevHandle = NULL;
     phLibNfc_sRemoteDevInformation_t *pLibRemDevHandle = (phLibNfc_sRemoteDevInformation_t *)hRemoteDevice;
@@ -108,7 +108,7 @@ phLibNfc_RemoteDev_Receive( phLibNfc_Handle            hRemoteDevice,
         wStatus=NFCSTATUS_NOT_INITIALISED;
     }
     /* Check for valid state,If De initialize is called then return NFCSTATUS_SHUTDOWN */
-    else if(gpphLibNfc_Context->StateContext.TrgtState == phLibNfc_StateReset)
+    else if(pLibContext->StateContext.TrgtState == phLibNfc_StateReset)
     {
         wStatus = NFCSTATUS_SHUTDOWN;
     }
@@ -157,7 +157,7 @@ phLibNfc_RemoteDev_Send(phLibNfc_Handle             hRemoteDevice,
                         void*                       pContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_FAILED;
-    pphLibNfc_LibContext_t pLibContext = gpphLibNfc_Context;
+    pphLibNfc_LibContext_t pLibContext = phLibNfc_GetContext();
     phLibNfc_Event_t TrigEvent = phLibNfc_EventSend;
     pphNciNfc_RemoteDevInformation_t pNciRemDevHandle = NULL;
     phLibNfc_sRemoteDevInformation_t *pLibRemDevHandle = (phLibNfc_sRemoteDevInformation_t *)hRemoteDevice;
@@ -169,7 +169,7 @@ phLibNfc_RemoteDev_Send(phLibNfc_Handle             hRemoteDevice,
         wStatus=NFCSTATUS_NOT_INITIALISED;
     }
     /* Check for valid state,If De initialize is called then return NFCSTATUS_SHUTDOWN */
-    else if(gpphLibNfc_Context->StateContext.TrgtState == phLibNfc_StateReset)
+    else if(pLibContext->StateContext.TrgtState == phLibNfc_StateReset)
     {
         wStatus = NFCSTATUS_SHUTDOWN;
     }
@@ -229,7 +229,7 @@ static void phLibNfc_P2pRemoteDev_SendCb(void* pContext,NFCSTATUS status,void* p
     void *UpperLayerCtx = NULL;
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
-    if((NULL != pLibContext) && (gpphLibNfc_Context == pLibContext))
+    if((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext))
     {
         pUpperLayerCb = pLibContext->CBInfo.pClientNfcIpTxCb;
         UpperLayerCtx = pLibContext->CBInfo.pClientNfcIpTxCntx;
@@ -255,7 +255,7 @@ static void phLibNfc_P2pRemoteDev_ReceiveCb(void* pContext,NFCSTATUS status,void
     void *pUpperLayerCtx = NULL;
     UNUSED(pContext);
     PH_LOG_LIBNFC_FUNC_ENTRY();
-    if((NULL != pLibContext) && (gpphLibNfc_Context == pLibContext)&& (NULL != pTransInfo))
+    if((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext)&& (NULL != pTransInfo))
     {
         pUpperLayerCb = pLibContext->CBInfo.pClientNfcIpRxCb;
         pUpperLayerCtx = pLibContext->CBInfo.pClientNfcIpRxCntx;

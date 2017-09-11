@@ -243,6 +243,8 @@ NFCSTATUS phFriNfc_OvrHal_Reconnect(phFriNfc_OvrHal_t              *OvrHal,
     NFCSTATUS wStatus;
     phNciNfc_RemoteDevInformation_t *pNciRemDevHandle = NULL;
     phLibNfc_sRemoteDevInformation_t *pLibRemDevHandle = NULL;
+    phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
+
     PH_LOG_FRI_FUNC_ENTRY();
     if((NULL == OvrHal) || (NULL == CompletionInfo) || (NULL == RemoteDevInfo))
     {
@@ -251,7 +253,7 @@ NFCSTATUS phFriNfc_OvrHal_Reconnect(phFriNfc_OvrHal_t              *OvrHal,
     else
     {
         phFriNfc_OvrHal_SetComplInfo(OvrHal, CompletionInfo, PH_FRINFC_OVRHAL_DIS);
-        pNciRemDevHandle = (phNciNfc_RemoteDevInformation_t *)gpphLibNfc_Context->Connected_handle;
+        pNciRemDevHandle = (phNciNfc_RemoteDevInformation_t *)pLibContext->Connected_handle;
 
         wStatus = phLibNfc_MapRemoteDevHandle(&pLibRemDevHandle,&pNciRemDevHandle,PH_LIBNFC_INTERNAL_NCITOLIB_MAP);
         if(NFCSTATUS_SUCCESS == wStatus)
@@ -276,6 +278,8 @@ NFCSTATUS phFriNfc_OvrHal_Connect(phFriNfc_OvrHal_t              *OvrHal,
 {
     NFCSTATUS status = NFCSTATUS_PENDING;
     phNciNfc_RemoteDevInformation_t *pNciRemDevHandle = NULL;
+    phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
+
     PH_LOG_FRI_FUNC_ENTRY();
     if((NULL == OvrHal) || (NULL == CompletionInfo) || (NULL == RemoteDevInfo) ||
         (NULL == DevInputParam))
@@ -287,7 +291,7 @@ NFCSTATUS phFriNfc_OvrHal_Connect(phFriNfc_OvrHal_t              *OvrHal,
         phFriNfc_OvrHal_SetComplInfo(OvrHal, CompletionInfo, PH_FRINFC_OVRHAL_CON);
 
         /* Map Nci remote device to LibNfc remote device handle handle */
-        pNciRemDevHandle = (phNciNfc_RemoteDevInformation_t *)gpphLibNfc_Context->Connected_handle;
+        pNciRemDevHandle = (phNciNfc_RemoteDevInformation_t *)pLibContext->Connected_handle;
         if(NULL != pNciRemDevHandle)
         {
             status = phLibNfc_MapRemoteDevHandle(&RemoteDevInfo,

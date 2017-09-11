@@ -11,8 +11,6 @@
 #include "phNciNfc_CoreSend.h"
 #include "phNciNfc_CoreRecv.h"
 
-#define PHNCINFC_GETNCICORECONTEXT() gpphNciNfc_CoreContext
-
 /**
 * \ingroup grp_nci_nfc
 * \brief The supported NCI version of the specification
@@ -26,11 +24,7 @@
 #define PH_NCINFC_VERSION_MINOR_2x                  (0x00)
 
 #define PH_NCINFC_VERSION_1x                        ((PH_NCINFC_VERSION_MAJOR_1x << 4) | PH_NCINFC_VERSION_MINOR_1x)
-#define PH_NCINFC_VERSION_IS_1x(x)                  ((x->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) <= \
-                                                     (PH_NCINFC_VERSION_1x & PH_NCINFC_VERSION_MAJOR_MASK))
 #define PH_NCINFC_VERSION_2x                        ((PH_NCINFC_VERSION_MAJOR_2x << 4) | PH_NCINFC_VERSION_MINOR_2x)
-#define PH_NCINFC_VERSION_IS_2x(x)                  ((x->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) == \
-                                                     (PH_NCINFC_VERSION_2x & PH_NCINFC_VERSION_MAJOR_MASK))
 
 /**
  * \ingroup grp_nci_nfc_core
@@ -971,8 +965,8 @@ typedef struct phNciNfc_CoreContext
     uint8_t bLogDataMessages;
 }phNciNfc_CoreContext_t, *pphNciNfc_CoreContext_t;  /**< pointer to #phNciNfc_CoreContext_t */
 
+extern pphNciNfc_CoreContext_t phNciNfc_GetCoreContext();
 
-extern pphNciNfc_CoreContext_t volatile gpphNciNfc_CoreContext;
 /**
  *  \ingroup grp_nci_nfc_core
  *

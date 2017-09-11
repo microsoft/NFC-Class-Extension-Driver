@@ -45,6 +45,7 @@ NFCSTATUS phLibNfc_Mgt_IoCtl(void*                      pDriverHandle,
                             )
 {
     NFCSTATUS      wStatus = NFCSTATUS_SUCCESS;
+    phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
 
@@ -66,27 +67,27 @@ NFCSTATUS phLibNfc_Mgt_IoCtl(void*                      pDriverHandle,
     {
         case PHLIBNFC_ENABLE_DTA_MODE:
         {
-            if(NULL != gpphLibNfc_Context)
+            if(NULL != pLibContext)
             {
-                gpphLibNfc_Context->bDtaFlag = 1;
-                gpphLibNfc_Context->ndef_cntx.psNdefMap->bDtaFlag = 1;
-                gpphLibNfc_Context->llcp_cntx.sLlcpContext.bDtaFlag = 1;
+                pLibContext->bDtaFlag = 1;
+                pLibContext->ndef_cntx.psNdefMap->bDtaFlag = 1;
+                pLibContext->llcp_cntx.sLlcpContext.bDtaFlag = 1;
 
-                PHLIBNFC_INIT_SEQUENCE(gpphLibNfc_Context, gphLibNfc_DtaEnableSequence);
-                wStatus = phLibNfc_SeqHandler(gpphLibNfc_Context,NFCSTATUS_SUCCESS,NULL);
+                PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_DtaEnableSequence);
+                wStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,NULL);
             }
         }
         break;
         case PHLIBNFC_DISABLE_DTA_MODE:
         {
-            if(NULL != gpphLibNfc_Context)
+            if(NULL != pLibContext)
             {
-                gpphLibNfc_Context->bDtaFlag = 0;
-                gpphLibNfc_Context->ndef_cntx.psNdefMap->bDtaFlag = 0;
-                gpphLibNfc_Context->llcp_cntx.sLlcpContext.bDtaFlag = 0;
+                pLibContext->bDtaFlag = 0;
+                pLibContext->ndef_cntx.psNdefMap->bDtaFlag = 0;
+                pLibContext->llcp_cntx.sLlcpContext.bDtaFlag = 0;
 
-                PHLIBNFC_INIT_SEQUENCE(gpphLibNfc_Context, gphLibNfc_DtaDisableSequence);
-                wStatus = phLibNfc_SeqHandler(gpphLibNfc_Context,NFCSTATUS_SUCCESS,NULL);
+                PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_DtaDisableSequence);
+                wStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,NULL);
             }
         }
         break;
@@ -169,6 +170,7 @@ NFCSTATUS
 phLibNfc_IoctlSetRfCfgCmd(void* pContext, NFCSTATUS status, void* pInfo)
 {
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
 
     UNUSED(pInfo);
     UNUSED(status);
@@ -176,13 +178,13 @@ phLibNfc_IoctlSetRfCfgCmd(void* pContext, NFCSTATUS status, void* pInfo)
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
 
-    if(NULL != gpphLibNfc_Context)
+    if(NULL != pLibContext)
     {
-        wStatus = phNciNfc_SetConfigRaw(gpphLibNfc_Context->sHwReference.pNciHandle,
-                                        gpphLibNfc_Context->tRfRawConfig.buffer,
-                                        (uint16_t) gpphLibNfc_Context->tRfRawConfig.length,
+        wStatus = phNciNfc_SetConfigRaw(pLibContext->sHwReference.pNciHandle,
+                                        pLibContext->tRfRawConfig.buffer,
+                                        (uint16_t) pLibContext->tRfRawConfig.length,
                                         (pphNciNfc_IfNotificationCb_t)&phLibNfc_InternalSequence,
-                                        gpphLibNfc_Context);
+                                        pLibContext);
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;
@@ -210,10 +212,11 @@ phLibNfc_IoctlSetRfCfgComplete(void* pContext,NFCSTATUS status,void* pInfo)
 {
     UNUSED(pInfo);
     UNUSED(pContext);
+    phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
 
-    if (NULL != gpphLibNfc_Context)
+    if (NULL != pLibContext)
     {
         /* Invoke upper layer with proper status */
         phLibNfc_Ioctl_Mgmt_CB(&gphLibNfc_IoctlCtx,NULL,status);
@@ -228,18 +231,19 @@ static
 NFCSTATUS phLibNfc_IoctlSetRfConfig(uint8_t *pInBuffer, uint32_t Size)
 {
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
+    phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
 
-    if((NULL != pInBuffer) && (0 != Size) && (NULL != gpphLibNfc_Context))
+    if((NULL != pInBuffer) && (0 != Size) && (NULL != pLibContext))
     {
-        gpphLibNfc_Context->tRfRawConfig.length = (uint16_t) Size;
-        gpphLibNfc_Context->tRfRawConfig.buffer = pInBuffer;
+        pLibContext->tRfRawConfig.length = (uint16_t) Size;
+        pLibContext->tRfRawConfig.buffer = pInBuffer;
 
         /* Initialize the sequence and start */
-        PHLIBNFC_INIT_SEQUENCE(gpphLibNfc_Context,gphLibNfc_IoctlSetRfConfig);
+        PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_IoctlSetRfConfig);
 
-        wStatus = phLibNfc_SeqHandler(gpphLibNfc_Context,NFCSTATUS_SUCCESS,NULL);
+        wStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,NULL);
     }
 
     PH_LOG_LIBNFC_FUNC_EXIT();
@@ -307,10 +311,12 @@ NFCSTATUS
 phLibNfc_DtaSetConfigComplete(void* pContext,NFCSTATUS status,void* pInfo)
 {
     NFCSTATUS wStatus = NFCSTATUS_FAILED;
+    phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
+
     UNUSED(pInfo);
     UNUSED(pContext);
 
-    if(NULL != gpphLibNfc_Context)
+    if(NULL != pLibContext)
     {
         if(NFCSTATUS_SUCCESS == status)
         {

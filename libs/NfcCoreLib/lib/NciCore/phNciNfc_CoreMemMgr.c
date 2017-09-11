@@ -94,7 +94,7 @@ void phNciNfc_CoreUpdatePacketLen(pphNciNfc_CoreContext_t pCoreCtx,uint16_t wLen
     {
         PH_LOG_NCI_CRIT_STR("NULL Nci Core context!");
     }
-    else if (pCoreCtx != PHNCINFC_GETNCICORECONTEXT())
+    else if (pCoreCtx != phNciNfc_GetCoreContext())
     {
         PH_LOG_NCI_CRIT_STR("Invalid Nci Core context!");
     }
@@ -128,7 +128,7 @@ void phNciNfc_CoreDeleteList(pphNciNfc_CoreContext_t pCoreCtx)
     if (NULL == pCoreCtx) {
         PH_LOG_NCI_CRIT_STR("NULL Nci Core context!");
     }
-    else if (pCoreCtx != PHNCINFC_GETNCICORECONTEXT())
+    else if (pCoreCtx != phNciNfc_GetCoreContext())
     {
         PH_LOG_NCI_CRIT_STR("Invalid Nci Core context!");
     }
@@ -177,7 +177,7 @@ void phNciNfc_CoreRemoveLastChainedNode(pphNciNfc_CoreContext_t pCoreCtx)
     {
         PH_LOG_NCI_CRIT_STR("NULL Nci Core context!");
     }
-    else if (pCoreCtx != PHNCINFC_GETNCICORECONTEXT())
+    else if (pCoreCtx != phNciNfc_GetCoreContext())
     {
         PH_LOG_NCI_CRIT_STR("Invalid Nci Core context!");
     }
@@ -211,7 +211,7 @@ pphNciNfc_sCoreRecvBuff_List_t phNciNfc_CoreGetNewNode(pphNciNfc_CoreContext_t p
     pphNciNfc_sCoreRecvBuff_List_t pList = NULL;
     pphNciNfc_sCoreRecvBuff_List_t pNewNode = NULL;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCoreCtx) && (pCoreCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCoreCtx) && (pCoreCtx == phNciNfc_GetCoreContext()))
     {
         /*Check if head is free to use*/
         pList = &(pCoreCtx->tReceiveInfo.ListHead);

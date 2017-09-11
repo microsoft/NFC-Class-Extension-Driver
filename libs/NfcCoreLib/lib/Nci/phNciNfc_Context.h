@@ -16,8 +16,6 @@
 #include "phNciNfc_NfceeMgmt.h"
 #include "phNciNfc_Discovery.h"
 
-#define PHNCINFC_GETNCICONTEXT() gpphNciNfc_Context
-
 typedef struct phNciNfc_Context
 {
     phNciNfc_Config_t Config;
@@ -50,6 +48,6 @@ typedef struct phNciNfc_Context
     phNciNfc_SeEventList_t  tSeEventList;       /**< Structure holding Se event registrations*/
 }phNciNfc_Context_t, *pphNciNfc_Context_t;      /**< pointer to #phNciNfc_Context_t structure */
 
-extern pphNciNfc_Context_t volatile gpphNciNfc_Context;      /**< GLobal variable storing Nci conetxt structure pointer */
+extern pphNciNfc_Context_t phNciNfc_GetContext();
 
 extern void phNciNfc_NciCtxInitialize(pphNciNfc_Context_t pNciCtx);

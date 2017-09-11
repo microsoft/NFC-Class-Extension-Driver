@@ -57,7 +57,7 @@ typedef struct phOsalNfc_Context
     phOsalNfc_MsgQueue_t            MsgQueue[PH_OSAL_MSG_QUEUE_MAX_SIZE];
 } phOsalNfc_Context_t;/**< Structure Instance to access variables of Context structure */
 
-extern phOsalNfc_Context_t *gpphOsalNfc_Context;
+extern phOsalNfc_Context_t* phOsalNfc_GetContext();
 
 /**
  * \ingroup grp_osal_nfc

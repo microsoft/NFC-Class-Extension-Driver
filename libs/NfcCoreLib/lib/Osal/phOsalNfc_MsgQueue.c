@@ -13,20 +13,22 @@ static DWORD WINAPI phOsalNfc_MsgQueue_Thread(void* pContext);
 NFCSTATUS phOsalNfc_MsgQueue_Init(void)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    phOsalNfc_Context_t* pOsalContext = phOsalNfc_GetContext();
+
     PH_LOG_OSAL_FUNC_ENTRY();
 
-    InitializeCriticalSection(&gpphOsalNfc_Context->MsgQueueLock);
+    InitializeCriticalSection(&pOsalContext->MsgQueueLock);
 
-    gpphOsalNfc_Context->hMsgQueueEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    pOsalContext->hMsgQueueEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-    if(gpphOsalNfc_Context->hMsgQueueEvent != NULL)
+    if(pOsalContext->hMsgQueueEvent != NULL)
     {
-        gpphOsalNfc_Context->hCallbackThread = CreateThread(NULL, 0, phOsalNfc_MsgQueue_Thread, NULL, CREATE_SUSPENDED, (LPDWORD)&gpphOsalNfc_Context->dwCallbackThreadID);
+        pOsalContext->hCallbackThread = CreateThread(NULL, 0, phOsalNfc_MsgQueue_Thread, NULL, CREATE_SUSPENDED, (LPDWORD)&pOsalContext->dwCallbackThreadID);
 
-        if(gpphOsalNfc_Context->hCallbackThread != NULL)
+        if(pOsalContext->hCallbackThread != NULL)
         {
-            SetThreadPriority(gpphOsalNfc_Context->hCallbackThread, THREAD_PRIORITY_TIME_CRITICAL);
-            ResumeThread(gpphOsalNfc_Context->hCallbackThread);
+            SetThreadPriority(pOsalContext->hCallbackThread, THREAD_PRIORITY_TIME_CRITICAL);
+            ResumeThread(pOsalContext->hCallbackThread);
         }
         else
         {
@@ -47,29 +49,30 @@ NFCSTATUS phOsalNfc_MsgQueue_Init(void)
 void phOsalNfc_MsgQueue_DeInit(void)
 {
     PH_LOG_OSAL_FUNC_ENTRY();
+    phOsalNfc_Context_t* pOsalContext = phOsalNfc_GetContext();
 
-    if(gpphOsalNfc_Context != NULL)
+    if(pOsalContext != NULL)
     {
-        if(gpphOsalNfc_Context->hCallbackThread != NULL)
+        if(pOsalContext->hCallbackThread != NULL)
         {
             phOsalNfc_PostMsg(PH_OSALNFC_EXIT_THREAD, (UINT_PTR)NULL, (UINT_PTR)NULL, (UINT_PTR)NULL, (UINT_PTR)NULL);
-            WaitForSingleObject(gpphOsalNfc_Context->hCallbackThread, INFINITE);
+            WaitForSingleObject(pOsalContext->hCallbackThread, INFINITE);
 
-            CloseHandle(gpphOsalNfc_Context->hCallbackThread);
-            gpphOsalNfc_Context->hCallbackThread = NULL;
+            CloseHandle(pOsalContext->hCallbackThread);
+            pOsalContext->hCallbackThread = NULL;
         }
 
-        if(gpphOsalNfc_Context->hMsgQueueEvent != NULL)
+        if(pOsalContext->hMsgQueueEvent != NULL)
         {
-            CloseHandle(gpphOsalNfc_Context->hMsgQueueEvent);
-            gpphOsalNfc_Context->hMsgQueueEvent = NULL;
+            CloseHandle(pOsalContext->hMsgQueueEvent);
+            pOsalContext->hMsgQueueEvent = NULL;
         }
 
-        DeleteCriticalSection(&gpphOsalNfc_Context->MsgQueueLock);
+        DeleteCriticalSection(&pOsalContext->MsgQueueLock);
 
-        gpphOsalNfc_Context->bMsgQueueHead = 0;
-        gpphOsalNfc_Context->bMsgQueueTail = 0;
-        gpphOsalNfc_Context->bMsgQueueUsed = 0;
+        pOsalContext->bMsgQueueHead = 0;
+        pOsalContext->bMsgQueueTail = 0;
+        pOsalContext->bMsgQueueUsed = 0;
     }
 
     PH_LOG_OSAL_FUNC_EXIT();
@@ -78,54 +81,56 @@ void phOsalNfc_MsgQueue_DeInit(void)
 void phOsalNc_GetMsg(_Out_ uint32_t *pMessage, _Out_ UINT_PTR * pParam1, _Out_ UINT_PTR * pParam2, _Out_ UINT_PTR * pParam3, _Out_ UINT_PTR * pParam4)
 {
     bool_t bMessageAvailable = FALSE;
+    phOsalNfc_Context_t* pOsalContext = phOsalNfc_GetContext();
 
-    NT_ASSERT(gpphOsalNfc_Context->dwCallbackThreadID == GetCurrentThreadId());
+    NT_ASSERT(pOsalContext->dwCallbackThreadID == GetCurrentThreadId());
 
     while(!bMessageAvailable)
     {
-        WaitForSingleObject(gpphOsalNfc_Context->hMsgQueueEvent, INFINITE);
+        WaitForSingleObject(pOsalContext->hMsgQueueEvent, INFINITE);
 
-        EnterCriticalSection(&gpphOsalNfc_Context->MsgQueueLock);
-        bMessageAvailable = gpphOsalNfc_Context->bMsgQueueUsed > 0;
+        EnterCriticalSection(&pOsalContext->MsgQueueLock);
+        bMessageAvailable = pOsalContext->bMsgQueueUsed > 0;
 
         if(bMessageAvailable)
         {
-            *pMessage = gpphOsalNfc_Context->MsgQueue[gpphOsalNfc_Context->bMsgQueueHead].Message;
-            *pParam1 = gpphOsalNfc_Context->MsgQueue[gpphOsalNfc_Context->bMsgQueueHead].Param1;
-            *pParam2 = gpphOsalNfc_Context->MsgQueue[gpphOsalNfc_Context->bMsgQueueHead].Param2;
-            *pParam3 = gpphOsalNfc_Context->MsgQueue[gpphOsalNfc_Context->bMsgQueueHead].Param3;
-            *pParam4 = gpphOsalNfc_Context->MsgQueue[gpphOsalNfc_Context->bMsgQueueHead].Param4;
+            *pMessage = pOsalContext->MsgQueue[pOsalContext->bMsgQueueHead].Message;
+            *pParam1 = pOsalContext->MsgQueue[pOsalContext->bMsgQueueHead].Param1;
+            *pParam2 = pOsalContext->MsgQueue[pOsalContext->bMsgQueueHead].Param2;
+            *pParam3 = pOsalContext->MsgQueue[pOsalContext->bMsgQueueHead].Param3;
+            *pParam4 = pOsalContext->MsgQueue[pOsalContext->bMsgQueueHead].Param4;
 
-            gpphOsalNfc_Context->bMsgQueueHead = ((gpphOsalNfc_Context->bMsgQueueHead+1) < PH_OSAL_MSG_QUEUE_MAX_SIZE) ? gpphOsalNfc_Context->bMsgQueueHead+1 : 0; 
-            gpphOsalNfc_Context->bMsgQueueUsed--;
+            pOsalContext->bMsgQueueHead = ((pOsalContext->bMsgQueueHead+1) < PH_OSAL_MSG_QUEUE_MAX_SIZE) ? pOsalContext->bMsgQueueHead+1 : 0; 
+            pOsalContext->bMsgQueueUsed--;
 
-            if(gpphOsalNfc_Context->bMsgQueueUsed == 0) {
-                ResetEvent(gpphOsalNfc_Context->hMsgQueueEvent);
+            if(pOsalContext->bMsgQueueUsed == 0) {
+                ResetEvent(pOsalContext->hMsgQueueEvent);
             }
         }
 
-        LeaveCriticalSection(&gpphOsalNfc_Context->MsgQueueLock);
+        LeaveCriticalSection(&pOsalContext->MsgQueueLock);
     }
 }
 
 void phOsalNfc_PostMsg(_In_ uint32_t Message, _In_ UINT_PTR Param1, _In_ UINT_PTR Param2, _In_ UINT_PTR Param3, _In_ UINT_PTR Param4)
 {
-    phOsalNfc_MsgQueue_t msgEntry = {0};
+    phOsalNfc_Context_t* pOsalContext = phOsalNfc_GetContext();
 
+    phOsalNfc_MsgQueue_t msgEntry = {0};
     msgEntry.Message = Message;
     msgEntry.Param1 = Param1;
     msgEntry.Param2 = Param2;
     msgEntry.Param3 = Param3;
     msgEntry.Param4 = Param4;
 
-    EnterCriticalSection(&gpphOsalNfc_Context->MsgQueueLock);
+    EnterCriticalSection(&pOsalContext->MsgQueueLock);
 
-    if(gpphOsalNfc_Context->bMsgQueueUsed < PH_OSAL_MSG_QUEUE_MAX_SIZE)
+    if(pOsalContext->bMsgQueueUsed < PH_OSAL_MSG_QUEUE_MAX_SIZE)
     {
-        phOsalNfc_MemCopy(&gpphOsalNfc_Context->MsgQueue[gpphOsalNfc_Context->bMsgQueueTail], &msgEntry, sizeof(phOsalNfc_MsgQueue_t));
-        gpphOsalNfc_Context->bMsgQueueTail = ((gpphOsalNfc_Context->bMsgQueueTail+1) < PH_OSAL_MSG_QUEUE_MAX_SIZE) ? gpphOsalNfc_Context->bMsgQueueTail+1 : 0;
-        gpphOsalNfc_Context->bMsgQueueUsed++;
-        SetEvent(gpphOsalNfc_Context->hMsgQueueEvent);
+        phOsalNfc_MemCopy(&pOsalContext->MsgQueue[pOsalContext->bMsgQueueTail], &msgEntry, sizeof(phOsalNfc_MsgQueue_t));
+        pOsalContext->bMsgQueueTail = ((pOsalContext->bMsgQueueTail+1) < PH_OSAL_MSG_QUEUE_MAX_SIZE) ? pOsalContext->bMsgQueueTail+1 : 0;
+        pOsalContext->bMsgQueueUsed++;
+        SetEvent(pOsalContext->hMsgQueueEvent);
     }
     else
     {
@@ -136,7 +141,7 @@ void phOsalNfc_PostMsg(_In_ uint32_t Message, _In_ UINT_PTR Param1, _In_ UINT_PT
         phOsalNfc_RaiseException(phOsalNfc_e_InternalErr,1);
     }
 
-    LeaveCriticalSection(&gpphOsalNfc_Context->MsgQueueLock);
+    LeaveCriticalSection(&pOsalContext->MsgQueueLock);
 }
 
 static DWORD WINAPI phOsalNfc_MsgQueue_Thread(void* pContext)
@@ -144,6 +149,7 @@ static DWORD WINAPI phOsalNfc_MsgQueue_Thread(void* pContext)
     bool_t bContinue = TRUE;
     uint32_t message;
     UINT_PTR param1, param2, param3, param4;
+    phOsalNfc_Context_t* pOsalContext = phOsalNfc_GetContext();
 
     PH_LOG_OSAL_FUNC_ENTRY();
 
@@ -179,7 +185,7 @@ static DWORD WINAPI phOsalNfc_MsgQueue_Thread(void* pContext)
         }
         else
         {
-            gpphOsalNfc_Context->pfnCallback(gpphOsalNfc_Context->pCallbackContext, message, param1, param2, param3, param4);
+            pOsalContext->pfnCallback(pOsalContext->pCallbackContext, message, param1, param2, param3, param4);
         }
     }
 

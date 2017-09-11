@@ -23,7 +23,7 @@ void phLibNfc_CardEmulation_DataReceiveCb(void* pContext,NFCSTATUS status,void* 
 
     (void)phLibNfc_StateHandler(pLibContext, TrigEvent, pInfo, NULL, NULL);
 
-    if((NULL != pLibContext) && (gpphLibNfc_Context == pLibContext)&& (NULL != pTransInfo))
+    if((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext)&& (NULL != pTransInfo))
     {
         pUpperLayerCb = pLibContext->CBInfo.pCeHostNtfCb;
         pUpperLayerCtx = pLibContext->CBInfo.pCeHostNtfCntx;
@@ -74,7 +74,7 @@ phLibNfc_CardEmulation_NtfRegister(
                                    )
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-    pphLibNfc_Context_t pCtx = PHLIBNFC_GETCONTEXT();
+    pphLibNfc_Context_t pCtx = phLibNfc_GetContext();
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NULL == pNotificationHandler)
     {
@@ -109,7 +109,7 @@ phLibNfc_CardEmulation_NtfRegister(
 NFCSTATUS phLibNfc_RegisterForHceActivation(void)
 {
     NFCSTATUS wStatus=NFCSTATUS_SUCCESS;
-    pphLibNfc_Context_t pLibContext = PHLIBNFC_GETCONTEXT();
+    pphLibNfc_Context_t pLibContext = phLibNfc_GetContext();
     wStatus = phNciNfc_ReceiveData(pLibContext->sHwReference.pNciHandle,
         (pphNciNfc_IfNotificationCb_t)&phLibNfc_CardEmulation_DataReceiveCb,
         (void *)pLibContext);

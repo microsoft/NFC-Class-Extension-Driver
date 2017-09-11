@@ -47,7 +47,7 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
     /* Initialize the local variable */
     pLibContext  = (pphLibNfc_LibContext_t)pContext;
 
-    if((NULL != pLibContext) && (PHLIBNFC_GETCONTEXT() == pLibContext))
+    if((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext))
     {
         if(NFCSTATUS_SUCCESS == tempStatus)
         {
@@ -110,7 +110,7 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                     *created using the connection Control Messages defined in Section 4.4.2 and is never closed
                     */
                     if (pLibContext->pHciContext == NULL &&
-                        !PH_NCINFC_VERSION_IS_1x(pNciContext) &&
+                        !phNciNfc_IsVersion1x(pNciContext) &&
                         pNciContext->InitRspParams.DataHCIPktPayloadLen > 0)
                     {
                         pHciContext = (phHciNfc_HciContext_t*)phOsalNfc_GetMemory(sizeof(phHciNfc_HciContext_t));
@@ -183,7 +183,7 @@ static NFCSTATUS phLibNfc_InitializeProcess(void* pContext, NFCSTATUS status, vo
     pphNciNfc_TransactInfo_t pTransactInfo = (pphNciNfc_TransactInfo_t)pInfo;
     PH_LOG_LIBNFC_FUNC_ENTRY();
 
-    if((NULL != pCtx) && (PHLIBNFC_GETCONTEXT() == pCtx))
+    if((NULL != pCtx) && (phLibNfc_GetContext() == pCtx))
     {
         wStatus = phLibNfc_InitCb(pContext,status,pInfo);
         if (wStatus == NFCSTATUS_SUCCESS)
@@ -895,7 +895,7 @@ static NFCSTATUS phLibNfc_InitializeComplete(void* pContext, NFCSTATUS status, v
     if(NFCSTATUS_SUCCESS == wStatus)
     {
         /* Initializing the Flags during init*/
-        gpphLibNfc_Context->HCE_FirstBuf = 0;
+        pLibContext->HCE_FirstBuf = 0;
         pLibContext->bPcdConnected = FALSE;
         pLibContext->dev_cnt = 0;
 
@@ -925,6 +925,8 @@ static NFCSTATUS phLibNfc_GetNfccFeatures(void *pNciHandle)
 {
     phNciNfc_NfccFeatures_t tNfccFeatures;
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
+
     PH_LOG_LIBNFC_FUNC_ENTRY();
     wStatus = phNciNfc_GetNfccFeatures(pNciHandle,&tNfccFeatures);
     if(NFCSTATUS_SUCCESS != wStatus)
@@ -933,7 +935,7 @@ static NFCSTATUS phLibNfc_GetNfccFeatures(void *pNciHandle)
     }
     else
     {
-        PHLIBNFC_GETCONTEXT()->tNfccFeatures = tNfccFeatures;
+        pLibContext->tNfccFeatures = tNfccFeatures;
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;

@@ -118,7 +118,7 @@ phLibNfc_Sequence_t gphLibNfc_eSEHandleClearAllPipesSequence[] =
 
 void phLibNfc_HciDeInit()
 {
-    pphLibNfc_Context_t pLibCtx = gpphLibNfc_Context;
+    pphLibNfc_Context_t pLibCtx = phLibNfc_GetContext();
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NULL != pLibCtx)
@@ -141,9 +141,9 @@ NFCSTATUS phLibNfc_eSE_Transceive (phLibNfc_Handle hSE_Handle,
     NFCSTATUS      wStatus = NFCSTATUS_SUCCESS;
     phLibNfc_SE_List_t *pSeList = NULL;
     uint8_t bIndex = 0;
-    pphLibNfc_Context_t pLibCtx = PHLIBNFC_GETCONTEXT();
+    pphLibNfc_Context_t pLibCtx = phLibNfc_GetContext();
     PH_LOG_LIBNFC_FUNC_ENTRY();
-    wStatus = phLibNfc_IsInitialised(PHLIBNFC_GETCONTEXT());
+    wStatus = phLibNfc_IsInitialised(pLibCtx);
     if((NFCSTATUS_SUCCESS != wStatus) || (NULL == pLibCtx))
     {
         PH_LOG_LIBNFC_CRIT_STR("LibNfc Stack not Initialised");
@@ -858,7 +858,7 @@ void phLibNfc_WaitForEvtHotPlug(void *pCtx, NFCSTATUS Status, void* pInfo)
 
 void phLibNfc_SeEventHotPlugCb(void* pContext,  NFCSTATUS wStatus,void *pInfo)
 {
-    pphLibNfc_LibContext_t pLibContext = gpphLibNfc_Context;
+    pphLibNfc_LibContext_t pLibContext = phLibNfc_GetContext();
     UNUSED(pContext);
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
@@ -922,7 +922,7 @@ phHciNfc_ProcessEventsOnApduPipe(void *pContext, NFCSTATUS wStatus, void *pInfo)
     
     phLibNfc_Handle hSecureElement = (phLibNfc_Handle)NULL;
     uint8_t bCount = 0;
-    pphLibNfc_LibContext_t  pLibContext = PHLIBNFC_GETCONTEXT();
+    pphLibNfc_LibContext_t  pLibContext = phLibNfc_GetContext();
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if ((NULL != pContext) && (wStatus == NFCSTATUS_SUCCESS)  \
@@ -1296,7 +1296,7 @@ static NFCSTATUS phLibNfc_NfceeModeSet(void *pContext,NFCSTATUS wStatus,void *pI
     UNUSED(pInfo);
     UNUSED(wStatus);
     PH_LOG_LIBNFC_FUNC_ENTRY();
-    if((NULL != pLibContext) && (PHLIBNFC_GETCONTEXT() == pLibContext))
+    if((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext))
     {
         pNfceeHandle = (pphNciNfc_NfceeDeviceHandle_t)pLibContext->sSeContext.pActiveSeInfo->hSecureElement;
         if (pNfceeHandle->tDevInfo.eNfceeStatus == PH_NCINFC_EXT_NFCEEMODE_ENABLE && pNfceeHandle->tDevInfo.bNfceeID == phHciNfc_e_TerminalHostID)
@@ -1330,7 +1330,7 @@ static NFCSTATUS phLibNfc_NfceeModeSetProc(void *pContext, NFCSTATUS wStatus, vo
     pphLibNfc_LibContext_t pLibContext = pContext;
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
-    if((NULL != pLibContext) && (PHLIBNFC_GETCONTEXT() == pLibContext))
+    if((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext))
     {
         wIntStatus = wStatus;
         if(NFCSTATUS_SUCCESS == wIntStatus)
@@ -1486,7 +1486,7 @@ NFCSTATUS phLibNfc_HciLaunchDevInitSequence(void *pContext)
     {
         pLibContext->tSeInfo.bSeState[phLibNfc_SE_Index_HciNwk] = phLibNfc_SeStateInitializing;
         pLibContext->sSeContext.pActiveSeInfo = (pphLibNfc_SE_List_t)(&pLibContext->tSeInfo.tSeList[phLibNfc_SE_Index_HciNwk]);
-        if (PH_NCINFC_VERSION_IS_1x(PHNCINFC_GETNCICONTEXT()))
+        if (phNciNfc_IsVersion1x(phNciNfc_GetContext()))
         {
             PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_HciInitSequenceNci1x);
         }
@@ -1522,7 +1522,7 @@ NFCSTATUS phLibNfc_HciLaunchChildDevInitSequence(void *pContext,phLibNfc_SE_Inde
         pLibContext->sSeContext.pActiveSeInfo = &pLibContext->tSeInfo.tSeList[bIndex];
 
         /*Start the Sequence for active element*/
-        if (PH_NCINFC_VERSION_IS_1x(PHNCINFC_GETNCICONTEXT()))
+        if (phNciNfc_IsVersion1x(phNciNfc_GetContext()))
         {
             PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_HciChildDevCommonInitSequenceNci1x);
         }
@@ -1576,7 +1576,7 @@ static void phHciNfc_eSEGetAtrTimeOutCb(uint32_t dwTimerId, void *pContext)
 
 static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInfo)
 {
-    pphLibNfc_Context_t pLibCtx = PHLIBNFC_GETCONTEXT();
+    pphLibNfc_Context_t pLibCtx = phLibNfc_GetContext();
     phHciNfc_HciContext_t *pHciContext = NULL;
     phHciNfc_ReceiveParams_t *pReceivedParams;
     pphLibNfc_GetAtrCallback_t pClientCb = NULL;
@@ -1660,7 +1660,7 @@ phLibNfc_eSE_GetAtr(
     void* pContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-    pphLibNfc_Context_t pLibCtx = PHLIBNFC_GETCONTEXT();
+    pphLibNfc_Context_t pLibCtx = phLibNfc_GetContext();
     phHciNfc_HciContext_t* pHciContext = (phHciNfc_HciContext_t *)pLibCtx->pHciContext;
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
@@ -1783,7 +1783,7 @@ phLibNfc_eSE_GetAtr(
 NFCSTATUS phHciNfc_CheckTransactionOnApduPipe(void)
 {
     NFCSTATUS wStatus = NFCSTATUS_FAILED;
-    pphLibNfc_Context_t pLibCtx = PHLIBNFC_GETCONTEXT();
+    pphLibNfc_Context_t pLibCtx = phLibNfc_GetContext();
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if (pLibCtx->CBInfo.pSeClientTransCb != NULL ||
         pLibCtx->CBInfo.pSeClientGetAtrCb != NULL)
@@ -2206,7 +2206,7 @@ static void phLibNfc_NfceeNtfDelayCb(uint32_t dwTimerId, void *pContext)
     /* Internal event is made failed in order to remain in same state */
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     PH_LOG_LIBNFC_FUNC_ENTRY();
-    if ((NULL != pLibContext) && (PHLIBNFC_GETCONTEXT() == pLibContext))
+    if ((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext))
     {
         /* Stop timer and delete the same */
         (void)phOsalNfc_Timer_Stop(dwTimerId);
@@ -2224,7 +2224,7 @@ NFCSTATUS phLibNfc_SetModeSeqEnd(void *pContext, NFCSTATUS wStatus, void *pInfo)
     pphLibNfc_LibContext_t pLibContext = pContext;
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
-    if ((NULL != pLibContext) && (PHLIBNFC_GETCONTEXT() == pLibContext))
+    if ((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext))
     {
         wIntStatus = wStatus;
     }
@@ -2263,7 +2263,7 @@ NFCSTATUS phLibNfc_eSEClearALLPipeComplete(void* pContext, NFCSTATUS status, voi
 
 void phHciNfc_Process_eSE_ClearALLPipes(void)
 {
-    pphLibNfc_Context_t pLibCtx = PHLIBNFC_GETCONTEXT();
+    pphLibNfc_Context_t pLibCtx = phLibNfc_GetContext();
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
 
     PH_LOG_LIBNFC_FUNC_ENTRY();

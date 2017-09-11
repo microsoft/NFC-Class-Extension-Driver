@@ -138,7 +138,7 @@ NFCSTATUS phNciNfc_CoreReleaseSenderStateMachine(void *pContext)
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     pphNciNfc_CoreContext_t pCtx = (pphNciNfc_CoreContext_t)pContext;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
     }else
     {
@@ -152,7 +152,7 @@ void phNciNfc_CoreResetSendStateMachine(void *pContext)
 {
     pphNciNfc_CoreContext_t pCoreCtx = (pphNciNfc_CoreContext_t)pContext;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCoreCtx) && (pCoreCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCoreCtx) && (pCoreCtx == phNciNfc_GetCoreContext()))
     {
         /* Reset number of bytes to be sent */
         pCoreCtx->dwBytes_Remaining = 0;
@@ -178,7 +178,7 @@ NFCSTATUS phNciNfc_StateHandler(void* pContext, phNciNfc_EvtSend_t CurrEvent)
 
     PH_LOG_NCI_FUNC_ENTRY();
 
-    if((NULL == pCtx) || (pCtx != PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL == pCtx) || (pCtx != phNciNfc_GetCoreContext()))
     {
         PH_LOG_NCI_CRIT_STR("Invalid input parameter!");
         Result = NFCSTATUS_INVALID_PARAMETER;
@@ -257,7 +257,7 @@ NFCSTATUS phNciNfc_StateHandler(void* pContext, phNciNfc_EvtSend_t CurrEvent)
         }
 
         /*Entry of next state*/
-        if((NULL != PHNCINFC_GETNCICORECONTEXT()) && (NULL != pStateCtx->pfStateFunction[TrgtState].pfEntry))
+        if((NULL != phNciNfc_GetCoreContext()) && (NULL != pStateCtx->pfStateFunction[TrgtState].pfEntry))
         {
             Result = pStateCtx->pfStateFunction[TrgtState].pfEntry(pContext);
             /* Check if send is successful */
@@ -291,7 +291,7 @@ static NFCSTATUS phNciNfc_CoreSendIdleExit(void *pContext)
     pphNciNfc_CoreContext_t pCtx = pContext;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         phOsalNfc_MemCopy(&(pCtx->TxInfo), pCtx->tTemp.pTxInfo, sizeof(phNciNfc_CoreTxInfo_t));
         pCtx->IntNtf = pCtx->tTemp.NciCb; /*Needs to register with Response Manager*/
@@ -317,7 +317,7 @@ static NFCSTATUS phNciNfc_CoreSendEntry(void *pContext)
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     pphNciNfc_CoreContext_t pCtx = pContext;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         if (phNciNfc_e_NciCoreMsgTypeData == pCtx->TxInfo.tHeaderInfo.eMsgType)
         {
@@ -365,7 +365,7 @@ static NFCSTATUS phNciNfc_CoreSendExit(void *pContext)
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     pphNciNfc_CoreContext_t pCtx = pContext;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
     }else
     {
@@ -401,7 +401,7 @@ static uint8_t phNciNfc_CoreSendChkPktType(void *pContext)
     pphNciNfc_CoreContext_t pCtx = pContext;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         if (phNciNfc_e_NciCoreMsgTypeData == pCtx->TxInfo.tHeaderInfo.eMsgType)
         {
@@ -427,7 +427,7 @@ static uint8_t phNciNfc_CoreSendChkSize(void *pContext)
     pphNciNfc_CoreContext_t pCtx = pContext;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         if (pCtx->dwBytes_Remaining == 0)
         {
@@ -452,7 +452,7 @@ static uint8_t phNciNfc_CoreSendChkCreditAvail(void *pContext)
     pphNciNfc_CoreContext_t pCtx = pContext;
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         wStatus = phNciNfc_GetConnCredits(pCtx->TxInfo.tHeaderInfo.bConn_ID, &Val);
         if(NFCSTATUS_SUCCESS == wStatus)
@@ -503,7 +503,7 @@ static NFCSTATUS phNciNfc_CoreRegisterForNotifications(void *pContext)
     uint16_t wTimeOutMultiplier = 0;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         /* Incase of TxRx, register call back function which shall be invoked when
            a response is received */
@@ -618,7 +618,7 @@ static NFCSTATUS phNciNfc_StateSend2Idle(void *pContext)
     pphNciNfc_CoreContext_t pCtx = pContext;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         /* Incase of TxRx, if sending fails upper layer call back shall be invoked  */
         /* Incase of TxOnly, after send complete or if sending fails upper layer call back shall be invoked  */
@@ -648,7 +648,7 @@ static NFCSTATUS phNciNfc_UnRegCallBack(void *pContext)
     phNciNfc_NciCoreMsgType_t eMsgType;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         /* Only incase of TxRx, call back function would be registered */
         if(pCtx->IntNtfFlag == 0)
@@ -773,7 +773,7 @@ phNciNfc_CreditsUpdateCB(void* pContext, uint8_t bCredits, NFCSTATUS wStatus)
 
     PH_LOG_NCI_FUNC_ENTRY();
 
-    if((NULL != pCoreCtxt) && (gpphNciNfc_CoreContext == pCoreCtxt))
+    if((NULL != pCoreCtxt) && (phNciNfc_GetCoreContext() == pCoreCtxt))
     {
         if((NFCSTATUS_SUCCESS != wStatus) || (0 == bCredits))
         {

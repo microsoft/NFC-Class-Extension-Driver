@@ -173,7 +173,7 @@ void phLibNfc_InternConnect_Cb(void *   pContext,\
     phLibNfc_sRemoteDevInformation_t *pLibRemoteDevHandle = NULL;
     PH_LOG_LIBNFC_FUNC_ENTRY();
 
-    if( (NULL == pLibContext) || (pLibContext != PHLIBNFC_GETCONTEXT()) )
+    if( (NULL == pLibContext) || (pLibContext != phLibNfc_GetContext()) )
     {
         PH_LOG_LIBNFC_CRIT_STR("Wrong libNfc context received from NCI layer");
         wStatus = NFCSTATUS_FAILED;
@@ -184,7 +184,7 @@ void phLibNfc_InternConnect_Cb(void *   pContext,\
 
         if(NFCSTATUS_SUCCESS == wStatus)
         {
-            pNciRemoteDevHandle = (pphNciNfc_RemoteDevInformation_t)gpphLibNfc_Context->DummyConnect_handle;
+            pNciRemoteDevHandle = (pphNciNfc_RemoteDevInformation_t)pLibContext->DummyConnect_handle;
             wStatus = phLibNfc_MapRemoteDevHandle(&pLibRemoteDevHandle,
                                                   &pNciRemoteDevHandle,
                                                   PH_LIBNFC_INTERNAL_NCITOLIB_MAP);
@@ -214,7 +214,7 @@ void phLibNfc_InternConnect_Cb(void *   pContext,\
 
         if((wStatus == NFCSTATUS_SUCCESS) && (NULL != pLibRemoteDevHandle) && (NULL != pNciRemoteDevHandle))
         {
-            gpphLibNfc_Context->Connected_handle = pNciRemoteDevHandle;
+            pLibContext->Connected_handle = pNciRemoteDevHandle;
             pLibRemoteDevHandle->SessionOpened = pNciRemoteDevHandle->SessionOpened;
         }
         else

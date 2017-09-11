@@ -178,7 +178,7 @@ phNciNfc_NfcDepPollRdrAInit(
             Activation Parameters.
             */
             if(0 != ActvnParamsLen && pRemDevInf->tRemoteDevInfo.NfcIP_Info.Nfcip_Active == 1 &&
-               PH_NCINFC_VERSION_IS_2x(PHNCINFC_GETNCICONTEXT()))
+               phNciNfc_IsVersion2x(phNciNfc_GetContext()))
             {
                 status = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_INVALID_PARAMETER);
                 PH_LOG_NCI_INFO_STR(" Invalid Params..");

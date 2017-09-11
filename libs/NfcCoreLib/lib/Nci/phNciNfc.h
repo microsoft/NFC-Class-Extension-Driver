@@ -1308,6 +1308,14 @@ typedef NFCSTATUS (*pphNciNfc_RegDataCb_t)(
   ################################################################################
 */
 
+typedef struct phNciNfc_Context* pphNciNfc_Context_t;
+
+extern bool_t
+phNciNfc_IsVersion1x(_In_ pphNciNfc_Context_t pNciContext);
+
+extern bool_t
+phNciNfc_IsVersion2x(_In_ pphNciNfc_Context_t pNciContext);
+
 /**
  * \ingroup grp_nci_nfc
  *

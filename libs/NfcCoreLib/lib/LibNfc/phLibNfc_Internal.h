@@ -26,8 +26,6 @@
 #include "phLibNfc_Ioctl.h"
 #include "phLibNfc_IoctlUtils.h"
 
-#define PHLIBNFC_GETCONTEXT() gpphLibNfc_Context
-
 /**Maximum number of Records.Presently set to a realistic value of 128 Configurable upto 1K*/
 #define PH_LIBNFC_INTERNAL_MAX_NO_OF_RECORDS        128U
 
@@ -420,8 +418,7 @@ typedef struct phLibNfc_LibContext
     phNciNfc_PowerSubState_t TgtPwrSubState;   /**< The targetted switched on sub state */
 }phLibNfc_LibContext_t,*pphLibNfc_LibContext_t, *pphLibNfc_Context_t; /**< pointer to #phLibNfc_LibContext_t structure */
 
-/**< Global variable storing LibNfc conetxt structure pointer */
-extern pphLibNfc_LibContext_t gpphLibNfc_Context;
+extern pphLibNfc_LibContext_t phLibNfc_GetContext();
 
 extern NFCSTATUS phLibNfc_MapCmds(phNciNfc_RFDevType_t RemDevType, phLibNfc_sTransceiveInfo_t* pTransceiveInfo, pphNciNfc_TransceiveInfo_t pMappedTranscvIf);
 extern NFCSTATUS phLibNfc_NciTranscv(void* pNciHandle, void* pDevicehandle, pphNciNfc_TransceiveInfo_t psTransceiveInfo, void* pContext);

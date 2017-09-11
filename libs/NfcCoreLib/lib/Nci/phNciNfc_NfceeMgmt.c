@@ -115,7 +115,7 @@ static NFCSTATUS phNciNfc_ProcessModeSetRsp(void *pContext, NFCSTATUS wStatus)
             if( (NULL != pNciContext->RspBuffInfo.pBuff) &&
                 (PH_NCINFC_STATUS_OK == pNciContext->RspBuffInfo.pBuff[0]))
             {
-                if (PH_NCINFC_VERSION_IS_1x(pNciContext))
+                if (phNciNfc_IsVersion1x(pNciContext))
                 {
                     pNciContext->tNfceeContext.pNfceeDevInfo[0].tDevInfo.eNfceeStatus = \
                         pNciContext->tNfceeContext.eNfceeMode;
@@ -148,8 +148,8 @@ static NFCSTATUS phNciNfc_CompleteModeSetSequence(void *pContext, NFCSTATUS wSta
             pNciCtx->tSendPayload.wPayloadSize = 0;
         }
 
-        if (PH_NCINFC_VERSION_IS_1x(pNciCtx) ||
-             (PH_NCINFC_VERSION_IS_2x(pNciCtx) &&
+        if (phNciNfc_IsVersion1x(pNciCtx) ||
+             (phNciNfc_IsVersion2x(pNciCtx) &&
                 wStatus != NFCSTATUS_SUCCESS))
         {
             phNciNfc_Notify(pNciCtx, wStatus, NULL);

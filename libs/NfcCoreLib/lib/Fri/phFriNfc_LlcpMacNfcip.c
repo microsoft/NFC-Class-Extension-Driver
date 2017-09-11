@@ -190,9 +190,10 @@ phFriNfc_LlcpMac_Nfcip_Send_Cb(
 {
    phFriNfc_LlcpMac_t            *LlcpMac = (phFriNfc_LlcpMac_t *)pContext;
    phLibNfc_State_t State = phLibNfc_StateInvalid;
+   phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
 
    PH_LOG_LLCP_FUNC_ENTRY();
-   State = phLibNfc_GetState(gpphLibNfc_Context);
+   State = phLibNfc_GetState(pLibContext);
    if(phLibNfc_StateReset == State)
    {
       Status = NFCSTATUS_SHUTDOWN;
@@ -217,9 +218,10 @@ phFriNfc_LlcpMac_Nfcip_Receive_Cb(
    phLibNfc_State_t State;
    phFriNfc_LlcpMac_Send_CB_t       pfSendCB = NULL;
    void                             *pSendContext = NULL;
+   phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
 
    PH_LOG_LLCP_FUNC_ENTRY();
-   State = phLibNfc_GetState(gpphLibNfc_Context);
+   State = phLibNfc_GetState(pLibContext);
    if(phLibNfc_StateReset == State)
    {
       Status = NFCSTATUS_SHUTDOWN;
@@ -269,9 +271,10 @@ phFriNfc_LlcpMac_Nfcip_Transceive_Cb(
 {
    phFriNfc_LlcpMac_t               *LlcpMac = (phFriNfc_LlcpMac_t *)pContext;
    phLibNfc_State_t State;
+   phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
 
    PH_LOG_LLCP_FUNC_ENTRY();
-   State = phLibNfc_GetState(gpphLibNfc_Context);
+   State = phLibNfc_GetState(pLibContext);
    if(phLibNfc_StateReset == State)
    {
       Status = NFCSTATUS_SHUTDOWN;

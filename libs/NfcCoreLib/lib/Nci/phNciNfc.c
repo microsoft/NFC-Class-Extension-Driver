@@ -88,6 +88,38 @@ static phNciNfc_SequenceP_t gphNciNfc_SetPowerSubStateSequence[] = {
     {NULL, &phNciNfc_CompleteSetPowerSubStateSequence}
 };
 
+inline pphNciNfc_Context_t phNciNfc_GetContext()
+{
+    return gpphNciNfc_Context;
+}
+
+void phNciNfc_SetContext(_In_opt_ pphNciNfc_Context_t pNciCtx)
+{
+    gpphNciNfc_Context = pNciCtx;
+}
+
+inline pphNciNfc_CoreContext_t phNciNfc_GetCoreContext()
+{
+    return gpphNciNfc_CoreContext;
+}
+
+void phNciNfc_SetCoreContext(_In_opt_ pphNciNfc_CoreContext_t pCoreCtx)
+{
+    gpphNciNfc_CoreContext = pCoreCtx;
+}
+
+inline bool_t
+phNciNfc_IsVersion1x(_In_ pphNciNfc_Context_t pNciContext)
+{
+    return ((pNciContext->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) <= (PH_NCINFC_VERSION_1x & PH_NCINFC_VERSION_MAJOR_MASK));
+}
+
+inline bool_t
+phNciNfc_IsVersion2x(_In_ pphNciNfc_Context_t pNciContext)
+{
+    return ((pNciContext->ResetInfo.NciVer & PH_NCINFC_VERSION_MAJOR_MASK) == (PH_NCINFC_VERSION_2x & PH_NCINFC_VERSION_MAJOR_MASK));
+}
+
 static NFCSTATUS phNciNfc_SendTxData(void *pContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
@@ -159,7 +191,7 @@ phNciNfc_Initialise(
                     phNciNfc_ResetType_t         eResetType)
 {
     pphNciNfc_CoreContext_t pCoreContext = NULL;
-    pphNciNfc_Context_t     pNciContext = NULL;
+    pphNciNfc_Context_t     pNciContext = phNciNfc_GetContext();
     NFCSTATUS               wStatus = NFCSTATUS_SUCCESS;
     PH_LOG_NCI_FUNC_ENTRY();
     if ((NULL == pHwRef) || (NULL == pConfig) || (NULL == pInitNotifyCb))
@@ -167,16 +199,16 @@ phNciNfc_Initialise(
         PH_LOG_NCI_CRIT_STR("Invalid input parameter");
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
-    else if(NULL == gpphNciNfc_Context)
+    else if(NULL == pNciContext)
     {
-        gpphNciNfc_Context = (pphNciNfc_Context_t)phOsalNfc_GetMemory(sizeof(phNciNfc_Context_t));
-        if(NULL != gpphNciNfc_Context)
+        pNciContext = (pphNciNfc_Context_t)phOsalNfc_GetMemory(sizeof(phNciNfc_Context_t));
+        if(NULL != pNciContext)
         {
-            phOsalNfc_SetMemory(gpphNciNfc_Context, 0, sizeof(phNciNfc_Context_t));
-            phOsalNfc_MemCopy(&gpphNciNfc_Context->Config, pConfig, sizeof(phNciNfc_Config_t));
+            phOsalNfc_SetMemory(pNciContext, 0, sizeof(phNciNfc_Context_t));
+            phOsalNfc_MemCopy(&pNciContext->Config, pConfig, sizeof(phNciNfc_Config_t));
 
-            pNciContext = gpphNciNfc_Context;
-            gpphNciNfc_CoreContext = &(pNciContext->NciCoreContext);
+            phNciNfc_SetCoreContext(&pNciContext->NciCoreContext);
+            phNciNfc_SetContext(pNciContext);
 
             phNciNfc_NciCtxInitialize(pNciContext);
         }
@@ -218,16 +250,16 @@ phNciNfc_Initialise(
                     PH_LOG_NCI_CRIT_STR("Init Sequence failed!");
                     phNciNfc_FreeSendPayloadBuff(pNciContext);
                     phOsalNfc_FreeMemory(pNciContext);
-                    gpphNciNfc_Context = NULL;
-                    gpphNciNfc_CoreContext = NULL;
+                    phNciNfc_SetContext(NULL);
+                    phNciNfc_SetCoreContext(NULL);
                 }
             }
             else
             {
                 PH_LOG_NCI_WARN_STR("phNciNfc_LogConnInit failed!");
                 phOsalNfc_FreeMemory(pNciContext);
-                gpphNciNfc_Context = NULL;
-                gpphNciNfc_CoreContext = NULL;
+                phNciNfc_SetContext(NULL);
+                phNciNfc_SetCoreContext(NULL);
                 wStatus = NFCSTATUS_FAILED;
             }
         }
@@ -235,8 +267,8 @@ phNciNfc_Initialise(
         {
             PH_LOG_NCI_WARN_STR("phNciNfc_CoreInitialise failed!");
             phOsalNfc_FreeMemory(pNciContext);
-            gpphNciNfc_Context = NULL;
-            gpphNciNfc_CoreContext = NULL;
+            phNciNfc_SetContext(NULL);
+            phNciNfc_SetCoreContext(NULL);
             wStatus = NFCSTATUS_FAILED;
         }
     }
@@ -252,7 +284,7 @@ phNciNfc_ReInitialise(void* pNciHandle,
     pphNciNfc_Context_t     pNciContext = (pphNciNfc_Context_t )pNciHandle;
     NFCSTATUS               wStatus = NFCSTATUS_SUCCESS;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciHandle) || (pNciHandle != gpphNciNfc_Context))
+    if((NULL == pNciHandle) || (pNciHandle != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -290,8 +322,8 @@ NFCSTATUS phNciNfc_StartDiscovery(void* pNciHandle,
     NFCSTATUS               wStatus = NFCSTATUS_SUCCESS;
     /* Store the Number of Discovery configurations */
     uint8_t bNoofConfigs=0;
-    bool_t fIsNci1x = PH_NCINFC_VERSION_IS_1x(pNciContext);
-    bool_t fIsNci2x = PH_NCINFC_VERSION_IS_2x(pNciContext);
+    bool_t fIsNci1x = phNciNfc_IsVersion1x(pNciContext);
+    bool_t fIsNci2x = phNciNfc_IsVersion2x(pNciContext);
 
     /*Note: ListenNfcFActive and PollNfcFActive exist only in NCI1.x specification.*/
 
@@ -443,7 +475,7 @@ NFCSTATUS phNciNfc_Nfcee_StartDiscovery(void * pNciHandle,
         pNciContext->tNfceeContext.bNfceeDiscState = \
                     PH_NCINFC_NFCEE_DISC_ENABLE;
 
-        if (PH_NCINFC_VERSION_IS_1x(pNciContext))
+        if (phNciNfc_IsVersion1x(pNciContext))
         {
             pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEDISC_PAYLOADLEN_1x);
             if (NULL == pTargetInfo)
@@ -460,7 +492,7 @@ NFCSTATUS phNciNfc_Nfcee_StartDiscovery(void * pNciHandle,
                     (uint16_t)PHNCINFC_NFCEEDISC_PAYLOADLEN_1x;
             }
         }
-        else if (PH_NCINFC_VERSION_IS_2x(pNciContext))
+        else if (phNciNfc_IsVersion2x(pNciContext))
         {
             pNciContext->tSendPayload.pBuff = NULL;
             pNciContext->tSendPayload.wPayloadSize = \
@@ -910,7 +942,7 @@ phNciNfc_SetConfigRfParameters(
     uint16_t bNumParamsOffset = 0;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciHandle) || (pNciHandle != gpphNciNfc_Context))
+    if((NULL == pNciHandle) || (pNciHandle != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -1006,7 +1038,7 @@ NFCSTATUS phNciNfc_GetConfigRaw(
     pphNciNfc_Context_t     pNciContext = (pphNciNfc_Context_t )pNciHandle;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciHandle) || (pNciHandle != gpphNciNfc_Context))
+    if((NULL == pNciHandle) || (pNciHandle != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -1048,7 +1080,7 @@ phNciNfc_ConfigMapping (void*                        pNciHandle,
     uint8_t *pPayloadBuff = NULL;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciHandle) || (pNciHandle != gpphNciNfc_Context))
+    if((NULL == pNciHandle) || (pNciHandle != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -1132,7 +1164,7 @@ phNciNfc_SetRtngTableConfig(void*                     pNciHandle,
     uint16_t wPayloadSize = 0;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciHandle) || (pNciHandle != gpphNciNfc_Context))
+    if((NULL == pNciHandle) || (pNciHandle != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -1217,7 +1249,7 @@ phNciNfc_GetRtngTableConfig(void*                        pNciHandle,
     pphNciNfc_Context_t     pNciContext = (pphNciNfc_Context_t )pNciHandle;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciHandle) || (pNciHandle != gpphNciNfc_Context))
+    if((NULL == pNciHandle) || (pNciHandle != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -1269,7 +1301,7 @@ phNciNfc_RfParameterUpdate(void*                        pNciHandle,
     uint8_t *pPayloadBuff = NULL;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciContext) || (pNciContext != gpphNciNfc_Context))
+    if((NULL == pNciContext) || (pNciContext != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -1495,7 +1527,7 @@ NFCSTATUS phNciNfc_RegisterHciSeEvent(void* pNciCtx,
     }
 
     if (wStatus == NFCSTATUS_SUCCESS &&
-        (NULL == pNciContext || gpphNciNfc_Context != pNciContext) )
+        (NULL == pNciContext || phNciNfc_GetContext() != pNciContext) )
     {
         PH_LOG_NCI_CRIT_STR("Invalid Nci context!");
         wStatus = NFCSTATUS_INVALID_STATE;
@@ -1503,7 +1535,7 @@ NFCSTATUS phNciNfc_RegisterHciSeEvent(void* pNciCtx,
 
     if (wStatus == NFCSTATUS_SUCCESS)
     {
-        if (!PH_NCINFC_VERSION_IS_1x(pNciContext))
+        if (!phNciNfc_IsVersion1x(pNciContext))
         {
             bConnId = CONNHCITYPE_STATIC;
         }
@@ -1560,7 +1592,7 @@ static void phNciNfc_ClearNciContext(void* pNciContext)
     pphNciNfc_Context_t pNciCtx = (pphNciNfc_Context_t ) pNciContext;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciCtx) || (pNciCtx != gpphNciNfc_Context))
+    if((NULL == pNciCtx) || (pNciCtx != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
     }
@@ -1599,7 +1631,7 @@ phNciNfc_Reset(void*                        pNciHandle,
 {
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
     phNciNfc_ResetType_t         eNfccResetType;
-    pphNciNfc_Context_t pNciContext = PHNCINFC_GETNCICONTEXT();
+    pphNciNfc_Context_t pNciContext = phNciNfc_GetContext();
     UNUSED(pNciHandle);
     /*Dont rely on Ncihandle passed, this a priority call*/
     /*Check if internally NciHandle is availble*/
@@ -1678,7 +1710,7 @@ NFCSTATUS phNciNfc_GetNfccFeatures(void *pNciCtx,
     pphNciNfc_Context_t     pNciContext = (pphNciNfc_Context_t )pNciCtx;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciContext) || (pNciContext != gpphNciNfc_Context))
+    if((NULL == pNciContext) || (pNciContext != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -1730,7 +1762,7 @@ NFCSTATUS phNciNfc_SetConfigRaw(
     pphNciNfc_Context_t     pNciContext = (pphNciNfc_Context_t )pNciHandle;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciHandle) || (pNciHandle != gpphNciNfc_Context))
+    if((NULL == pNciHandle) || (pNciHandle != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -1767,7 +1799,7 @@ phNciNfc_IsoDepPresenceChk(void* pNciHandle,
     pphNciNfc_Context_t     pNciContext = (pphNciNfc_Context_t )pNciHandle;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciHandle) || (pNciHandle != gpphNciNfc_Context))
+    if((NULL == pNciHandle) || (pNciHandle != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -1803,7 +1835,7 @@ phNciNfc_SetPowerSubState(void* pNciHandle,
     uint8_t                 *pTargetInfo;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciHandle) || (pNciHandle != gpphNciNfc_Context))
+    if((NULL == pNciHandle) || (pNciHandle != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -1849,7 +1881,7 @@ void phNciNfc_AbortDataTransfer(void *pNciHandle)
 {
     pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t )pNciHandle;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pNciHandle) && (pNciHandle == gpphNciNfc_Context))
+    if((NULL != pNciHandle) && (pNciHandle == phNciNfc_GetContext()))
     {
         /* Invalidate the Transceive call back function and Remote device receive call back
         function incase of P2P*/
@@ -1866,7 +1898,7 @@ void phNciNfc_PrepareNciShutDown(void* pNciHandle)
 {
     pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t )pNciHandle;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pNciHandle) && (pNciHandle == gpphNciNfc_Context))
+    if((NULL != pNciHandle) && (pNciHandle == phNciNfc_GetContext()))
     {
         /* Invalidate upper layer call back function if any already exists */
         pNciContext->tTranscvCtxt.pNotify = NULL;
@@ -1899,11 +1931,7 @@ phNciNfc_Release(
     {
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
-    else if(NULL == gpphNciNfc_Context)
-    {
-        wStatus = NFCSTATUS_NOT_INITIALISED;
-    }
-    else if(pNciContext != gpphNciNfc_Context)
+    else if(pNciContext != phNciNfc_GetContext())
     {
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
@@ -1945,11 +1973,7 @@ phNciNfc_ResetNfcc(
     {
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
-    else if(NULL == gpphNciNfc_Context)
-    {
-        wStatus = NFCSTATUS_NOT_INITIALISED;
-    }
-    else if(pNciContext != gpphNciNfc_Context)
+    else if(pNciContext != phNciNfc_GetContext())
     {
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
@@ -1977,7 +2001,7 @@ phNciNfc_ResetNfcc(
 static void
 phNciNfc_ReleaseNfceeCntx(void )
 {
-    pphNciNfc_Context_t pNciCtx = PHNCINFC_GETNCICONTEXT();
+    pphNciNfc_Context_t pNciCtx = phNciNfc_GetContext();
     uint8_t bIndex = 0;
 
     PH_LOG_NCI_FUNC_ENTRY();
@@ -2003,7 +2027,7 @@ NFCSTATUS
 phNciNfc_ReleaseNciHandle(void )
 {
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
-    pphNciNfc_Context_t pNciCtx = PHNCINFC_GETNCICONTEXT();
+    pphNciNfc_Context_t pNciCtx = phNciNfc_GetContext();
 
     PH_LOG_NCI_FUNC_ENTRY();
     if (NULL != pNciCtx)
@@ -2048,8 +2072,8 @@ phNciNfc_ReleaseNciHandle(void )
             phNciNfc_ReleaseNfceeCntx();
 
             phOsalNfc_FreeMemory(pNciCtx);
-            gpphNciNfc_CoreContext = NULL;
-            gpphNciNfc_Context = NULL;
+            phNciNfc_SetCoreContext(NULL);
+            phNciNfc_SetContext(NULL);
         }
         else
         {
@@ -2068,7 +2092,7 @@ phNciNfc_ReleaseNciHandle(void )
 static NFCSTATUS phNciNfc_SeEventCb(void* pContext, void *pInfo, NFCSTATUS wStatus)
 {
     NFCSTATUS status = NFCSTATUS_FAILED;
-    pphNciNfc_Context_t pNciContext = gpphNciNfc_Context;
+    pphNciNfc_Context_t pNciContext = phNciNfc_GetContext();
     pphNciNfc_TransactInfo_t pTransInfo = pInfo;
     phNciNfc_TransactInfo_t tTransInfo;
     pphNciNfc_RegDataCb_t pUpperLayerCb = NULL;
@@ -2078,7 +2102,7 @@ static NFCSTATUS phNciNfc_SeEventCb(void* pContext, void *pInfo, NFCSTATUS wStat
 
     PH_LOG_NCI_FUNC_ENTRY();
     if( (NULL != pNciContext) &&
-        (!PH_NCINFC_VERSION_IS_1x(pNciContext) || (NULL != pSeHandle)) )
+        (!phNciNfc_IsVersion1x(pNciContext) || (NULL != pSeHandle)) )
     {
         if(NULL != pInfo)
         {

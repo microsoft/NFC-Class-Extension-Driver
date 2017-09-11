@@ -81,7 +81,17 @@ static const phOsalNfc_ErrorMapping_t g_NfcToNTStatusMap [] = {
     {NFCSTATUS_CONNECTION_FAILED,           STATUS_UNSUCCESSFUL},
 };
 
-phOsalNfc_Context_t *gpphOsalNfc_Context = NULL;
+static phOsalNfc_Context_t* gpphOsalNfc_Context = NULL;
+
+phOsalNfc_Context_t* phOsalNfc_GetContext()
+{
+    return gpphOsalNfc_Context;
+}
+
+void phOsalNfc_SetContext(_In_opt_ phOsalNfc_Context_t* pOsalContext)
+{
+    gpphOsalNfc_Context = pOsalContext;
+}
 
 void phOsalNfc_RaiseException(phOsalNfc_ExceptionType_t eExceptiontype, uint16_t reason)
 {
@@ -127,26 +137,29 @@ NFCSTATUS phOsalNfc_CreateMutex(void **hMutex)
 NFCSTATUS phOsalNfc_Init(pphOsalNfc_Config_t pOsalConfig)
 {
     NFCSTATUS wInitStatus = NFCSTATUS_SUCCESS;
+    phOsalNfc_Context_t* pOsalContext = phOsalNfc_GetContext();
+
     PH_LOG_OSAL_FUNC_ENTRY();
 
     /* Check whether OSAL is already Initialized */
-    if(NULL == gpphOsalNfc_Context)
+    if(NULL == pOsalContext)
     {
         if( (NULL != pOsalConfig) &&
             (NULL != pOsalConfig->pfnCallback) &&
             (NULL != pOsalConfig->pCallbackContext) )
         {
-            gpphOsalNfc_Context = phOsalNfc_GetMemory(sizeof(phOsalNfc_Context_t));
-            if(NULL != gpphOsalNfc_Context)
+            pOsalContext = phOsalNfc_GetMemory(sizeof(phOsalNfc_Context_t));
+            if(NULL != pOsalContext)
             {
-                phOsalNfc_SetMemory((void *)gpphOsalNfc_Context,0x00,sizeof(phOsalNfc_Context_t));
+                phOsalNfc_SetMemory((void *)pOsalContext,0x00,sizeof(phOsalNfc_Context_t));
+                phOsalNfc_SetContext(pOsalContext);
 
                 wInitStatus = phOsalNfc_MsgQueue_Init();
                 if(NFCSTATUS_SUCCESS == wInitStatus)
                 {
-                    gpphOsalNfc_Context->pfnCallback = pOsalConfig->pfnCallback;
-                    gpphOsalNfc_Context->pCallbackContext = pOsalConfig->pCallbackContext;
-                    pOsalConfig->dwCallbackThreadId = gpphOsalNfc_Context->dwCallbackThreadID;
+                    pOsalContext->pfnCallback = pOsalConfig->pfnCallback;
+                    pOsalContext->pCallbackContext = pOsalConfig->pCallbackContext;
+                    pOsalConfig->dwCallbackThreadId = pOsalContext->dwCallbackThreadID;
                     phOsalNfc_Timer_Init();
                 }
                 else
@@ -179,16 +192,18 @@ NFCSTATUS phOsalNfc_Init(pphOsalNfc_Config_t pOsalConfig)
 void phOsalNfc_DeInit(void )
 {
     PH_LOG_OSAL_FUNC_ENTRY();
-    if(NULL != gpphOsalNfc_Context)
+    phOsalNfc_Context_t* pOsalContext = phOsalNfc_GetContext();
+
+    if(NULL != pOsalContext)
     {
         phOsalNfc_Timer_DeInit();
         phOsalNfc_MsgQueue_DeInit();
 
         /* Reset all the values of the Context structure,release memory and set to NULL */
-        phOsalNfc_SetMemory((void *)gpphOsalNfc_Context,0x00,sizeof(phOsalNfc_Context_t));
+        phOsalNfc_SetMemory((void *)pOsalContext, 0x00,sizeof(phOsalNfc_Context_t));
 
-        phOsalNfc_FreeMemory((void *)gpphOsalNfc_Context);
-        gpphOsalNfc_Context = NULL;
+        phOsalNfc_FreeMemory((void *)pOsalContext);
+        phOsalNfc_SetContext(NULL);
     }
     PH_LOG_OSAL_FUNC_EXIT();
 }

@@ -140,7 +140,7 @@ NFCSTATUS phNciNfc_RecvStateHandler(void* pContext, phNciNfc_EvtRecv_t CurrEvent
     uint8_t Index = 0;
     PH_LOG_NCI_FUNC_ENTRY();
 
-    if ((NULL == pCtx) || (pCtx != PHNCINFC_GETNCICORECONTEXT()))
+    if ((NULL == pCtx) || (pCtx != phNciNfc_GetCoreContext()))
     {
         Result = NFCSTATUS_INVALID_PARAMETER;
         goto Done;
@@ -221,7 +221,7 @@ NFCSTATUS phNciNfc_RecvStateHandler(void* pContext, phNciNfc_EvtRecv_t CurrEvent
             }
         }
 
-        if(NULL != PHNCINFC_GETNCICORECONTEXT())
+        if(NULL != phNciNfc_GetCoreContext())
         {
             /*Entry of next state*/
             if(NULL != pStateCtx->pfStateFunction[TrgtState].pfEntry)
@@ -249,7 +249,7 @@ static uint8_t phNciNfc_CoreRecvChkPktType(void *pContext)
 
     PH_LOG_NCI_FUNC_ENTRY();
 
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         pStateCtx = &(pCtx->RecvStateContext);
         /* Validate the buffer sent from Tml and length of received data should be 0 */
@@ -338,7 +338,7 @@ static uint8_t phNciNfc_CoreRecvChkPbfAndUpdate(void *pContext)
     uint8_t bPbf = 0;
     pphNciNfc_CoreContext_t pCtx = pContext;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         /* Get pbf status */
         bPbf = PHNCINFC_CORE_GET_PBF(pCtx->pInfo.pBuff);
@@ -370,7 +370,7 @@ static uint8_t phNciNfc_CoreRecvChkExptdPktType(void *pContext)
     uint8_t temp = 0;
     pphNciNfc_CoreContext_t pCtx = pContext;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
        bMsgType = PHNCINFC_CORE_GET_MT(pCtx->pInfo.pBuff);
        if(bMsgType == pCtx->tReceiveInfo.HeaderInfo.eMsgType)
@@ -424,7 +424,7 @@ static NFCSTATUS phNciNfc_CoreRecvIdleEntry(void *pContext)
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     pphNciNfc_CoreContext_t pCtx = pContext;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
     }else
     {
@@ -519,7 +519,7 @@ static NFCSTATUS phNciNfc_StateDummy2Idle(void *pContext)
     uint8_t bStopTimer = 0;
     phNciNfc_sCoreHeaderInfo_t HeaderInfo;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         if (1 == pCtx->TimerInfo.TimerStatus)/*Is Timer Running*/
         {
@@ -617,7 +617,7 @@ void phNciNfc_RspTimeOutCb(uint32_t TimerId, void *pContext)
     pphNciNfc_CoreContext_t pCtx = pContext;
     phNciNfc_EvtRecv_t TrigEvt = phNciNfc_EvtRecvTimeOut;
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCtx) && (pCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
         /* No response received and the timer expired */
         (void)phOsalNfc_Timer_Stop(TimerId);

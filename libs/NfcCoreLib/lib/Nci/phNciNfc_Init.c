@@ -104,7 +104,7 @@ static NFCSTATUS phNciNfc_Init(void *pContext)
     TxInfo.tHeaderInfo.Group_ID = phNciNfc_e_CoreNciCoreGid;
     TxInfo.tHeaderInfo.Opcode_ID.OidType.NciCoreCmdOid = phNciNfc_e_NciCoreInitCmdOid;
 
-    if (PH_NCINFC_VERSION_IS_2x(PHNCINFC_GETNCICONTEXT()))
+    if (phNciNfc_IsVersion2x(pNciContext))
     {
         TxInfo.Buff = (uint8_t *)phOsalNfc_GetMemory(2);
         TxInfo.wLen = 2;
@@ -134,11 +134,11 @@ static NFCSTATUS phNciNfc_ProcessInitRsp(void *pContext, NFCSTATUS Status)
     PH_LOG_NCI_FUNC_ENTRY();
     if (NULL != pNciContext)
     {
-        if (PH_NCINFC_VERSION_IS_1x(pNciContext))
+        if (phNciNfc_IsVersion1x(pNciContext))
         {
             wStatus = phNciNfc_ProcessInitRspNci1x(pContext, Status);
         }
-        else if (PH_NCINFC_VERSION_IS_2x(pNciContext))
+        else if (phNciNfc_IsVersion2x(pNciContext))
         {
             wStatus = phNciNfc_ProcessInitRspNci2x(pContext, Status);
         }
@@ -415,7 +415,7 @@ static void phNciNfc_DelayForCreditNtfCb(void* pContext, uint8_t bCredits, NFCST
     }
     else
     {
-        if (NULL != pNciContext && PH_NCINFC_VERSION_IS_2x(pNciContext))
+        if (NULL != pNciContext && phNciNfc_IsVersion2x(pNciContext))
         {
             tTranscInfo.pContext = (void*)pNciContext;
             tTranscInfo.pbuffer = (void*)&pNciContext->ResetInfo.ResetTypeRsp;
@@ -584,7 +584,7 @@ static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS Status)
                     /* Nfcc supported Nci version */
                     pNciContext->ResetInfo.NciVer = pNciContext->RspBuffInfo.pBuff[1];
 
-                    if(PH_NCINFC_VERSION_IS_1x(pNciContext))
+                    if(phNciNfc_IsVersion1x(pNciContext))
                     {
                         /* Update Reset type */
                         if (pNciContext->RspBuffInfo.pBuff[2] == phNciNfc_ResetType_KeepConfig)
@@ -619,7 +619,7 @@ static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS Status)
                 /*Check Status Byte*/
                 if (pNciContext->RspBuffInfo.pBuff[0] == PH_NCINFC_STATUS_OK)
                 {
-                    if (PH_NCINFC_VERSION_IS_2x(pNciContext))
+                    if (phNciNfc_IsVersion2x(pNciContext))
                     {
                         wStatus = NFCSTATUS_SUCCESS;
                     }
@@ -657,7 +657,7 @@ static NFCSTATUS phNciNfc_CompleteInitSequence(void *pContext, NFCSTATUS wStatus
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL != pNciCtx)
     {
-        if (PH_NCINFC_VERSION_IS_1x(pNciCtx))
+        if (phNciNfc_IsVersion1x(pNciCtx))
         {
             tTranscInfo.pContext = (void*)pNciCtx;
             tTranscInfo.pbuffer = (void*)&pNciCtx->ResetInfo.ResetTypeRsp;
@@ -781,7 +781,7 @@ phNciNfc_ResetNtfCb(void*     pContext,
         {
             /* Nfcc supported Nci version */
             pNciCtx->ResetInfo.NciVer = pTransInfo->pbuffer[2];
-            if (PH_NCINFC_VERSION_IS_2x(pNciCtx))
+            if (phNciNfc_IsVersion2x(pNciCtx))
             {
                 /* Update Reset type */
                 if (pTransInfo->pbuffer[1] == phNciNfc_ResetType_KeepConfig)

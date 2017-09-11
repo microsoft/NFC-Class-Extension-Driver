@@ -16,7 +16,7 @@ phLibNfc_Mgt_SetP2P_ConfigParams(phLibNfc_sNfcIPCfg_t *pConfigInfo,
                                  void *  pContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_FAILED;
-    pphLibNfc_LibContext_t pLibContext = gpphLibNfc_Context;
+    pphLibNfc_LibContext_t pLibContext = phLibNfc_GetContext();
     pphNciNfc_RfDiscConfigParams_t pRfDiscConfParam = NULL;
     uint8_t bGeneralBytesLength = 0;
     phLibNfc_DummyInfo_t Info;
@@ -140,7 +140,7 @@ void phLibNfc_P2pConfigParamsCb(void* pContext,NFCSTATUS status,void* pInfo)
 {
     pphNciNfc_RfDiscConfigParams_t pRfDiscConfParam = (pphNciNfc_RfDiscConfigParams_t) pContext;
     NFCSTATUS wStatus = status;
-    pphLibNfc_LibContext_t pLibContext = gpphLibNfc_Context;
+    pphLibNfc_LibContext_t pLibContext = phLibNfc_GetContext();
     phLibNfc_Event_t TrigEvent = phLibNfc_EventReqCompleted;
 
     PH_LOG_LIBNFC_FUNC_ENTRY();

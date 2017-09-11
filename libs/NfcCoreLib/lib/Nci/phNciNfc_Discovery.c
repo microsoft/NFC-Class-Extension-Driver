@@ -216,7 +216,7 @@ void phNciNfc_HandlePriorityDeactv(pphNciNfc_DiscContext_t pDiscCtx)
     phNciNfc_sCoreHeaderInfo_t tHeaderInfo;
     uint8_t bUnRegister = 0;
     phNciNfc_RFDevType_t eRemDevType = phNciNfc_eInvalid_DevType;
-    pphNciNfc_CoreContext_t pNciCoreCtx = PHNCINFC_GETNCICORECONTEXT();
+    pphNciNfc_CoreContext_t pNciCoreCtx = phNciNfc_GetCoreContext();
 
     if((NULL != pDiscCtx) && (NULL != pNciCoreCtx))
     {
@@ -1071,8 +1071,8 @@ NFCSTATUS phNciNfc_UpdateDiscConfigParams(void *pNciHandle,
     pphNciNfc_Context_t     pNciContext = pNciHandle;
     /* Index to construct discover command payload */
     uint8_t bIndex=1;
-    bool_t fIsNci1x = PH_NCINFC_VERSION_IS_1x(pNciContext);
-    bool_t fIsNci2x = PH_NCINFC_VERSION_IS_2x(pNciContext);
+    bool_t fIsNci1x = phNciNfc_IsVersion1x(pNciContext);
+    bool_t fIsNci2x = phNciNfc_IsVersion2x(pNciContext);
     PH_LOG_NCI_FUNC_ENTRY();
 
     /*Note: ListenNfcFActive and PollNfcFActive exist only in NCI1.x specification.*/
@@ -1738,7 +1738,7 @@ NFCSTATUS phNciNfc_ProcessActvNtf(void *pContext,void *pInfo,NFCSTATUS wStatus)
 
 NFCSTATUS phNciNfc_ProcessDeActvNtf(void* pContext, void *pInfo, NFCSTATUS status)
 {
-    pphNciNfc_Context_t pNciCtx = (pphNciNfc_Context_t )gpphNciNfc_Context;
+    pphNciNfc_Context_t pNciCtx = phNciNfc_GetContext();
     pphNciNfc_TransactInfo_t pTransInfo = pInfo;
     phNciNfc_NotificationInfo_t tRfDeactvInfo = {0};
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;

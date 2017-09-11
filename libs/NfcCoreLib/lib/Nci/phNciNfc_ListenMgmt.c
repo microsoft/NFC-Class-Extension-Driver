@@ -122,7 +122,7 @@ phNciNfc_ReceiveData(void *pNciCtx,
     uint8_t bFreeTempBuff = 0;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciContext) || (pNciContext != gpphNciNfc_Context))
+    if((NULL == pNciContext) || (pNciContext != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
     }
@@ -235,7 +235,7 @@ phNciNfc_SendData(void *pNciCtx,
     phNciNfc_Context_t *pNciContext = (phNciNfc_Context_t *)pNciCtx;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciContext) || (pNciContext != gpphNciNfc_Context))
+    if((NULL == pNciContext) || (pNciContext != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -332,7 +332,7 @@ phNciNfc_SeSendData(void* pNciCtx,
     phNciNfc_Context_t* pNciContext = (phNciNfc_Context_t *)pNciCtx;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL == pNciContext) || (pNciContext != gpphNciNfc_Context))
+    if((NULL == pNciContext) || (pNciContext != phNciNfc_GetContext()))
     {
         PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
@@ -353,7 +353,7 @@ phNciNfc_SeSendData(void* pNciCtx,
         {
             /* Fill the data packet details into TxInfo */
             TxInfo.tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeData;
-            if (!PH_NCINFC_VERSION_IS_1x(pNciContext))
+            if (!phNciNfc_IsVersion1x(pNciContext))
             {
                 TxInfo.tHeaderInfo.bConn_ID = CONNHCITYPE_STATIC;
             }

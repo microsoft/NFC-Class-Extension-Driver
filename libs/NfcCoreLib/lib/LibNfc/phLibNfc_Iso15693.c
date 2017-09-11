@@ -151,7 +151,7 @@ static NFCSTATUS phLibNfc_GetSysInfoComplete(void *pContext,NFCSTATUS status,voi
         {
             TrigEvent = pLibContext->DiscTagTrigEvent;
         }
-        (void)phLibNfc_ProcessDevInfo(gpphLibNfc_Context, TrigEvent, gpphLibNfc_Context->pInfo ,wStatus);
+        (void)phLibNfc_ProcessDevInfo(pLibContext, TrigEvent, pLibContext->pInfo ,wStatus);
     }
     else
     {

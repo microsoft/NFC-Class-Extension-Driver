@@ -672,8 +672,8 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
             break;
             case phLibNfc_DummyEventFelicaChkPresExtn:
             {
-                PHLIBNFC_INIT_SEQUENCE(gpphLibNfc_Context,gphLibNfc_Felica_CheckPresSeq);
-                wStatus = phLibNfc_SeqHandler(gpphLibNfc_Context,NFCSTATUS_SUCCESS,Param3);
+                PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_Felica_CheckPresSeq);
+                wStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,Param3);
                 if( NFCSTATUS_PENDING != wStatus )
                 {
                     wStatus = NFCSTATUS_FAILED;
@@ -682,8 +682,8 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
             break;
             case phLibNfc_DummyEventIsoDepChkPresExtn:
             {
-                PHLIBNFC_INIT_SEQUENCE(gpphLibNfc_Context,gphLibNfc_IsoDep_CheckPresSeq);
-                wStatus = phLibNfc_SeqHandler(gpphLibNfc_Context,NFCSTATUS_SUCCESS,NULL);
+                PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_IsoDep_CheckPresSeq);
+                wStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,NULL);
                 if( NFCSTATUS_PENDING != wStatus )
                 {
                     wStatus = NFCSTATUS_FAILED;
@@ -693,44 +693,44 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
             case phLibNfc_DummyEventChkPresMFC:
             {
                 /* If Authentication CMD is already stored, then use this command for presence check*/
-                if((gpphLibNfc_Context->tMfcInfo.cmd == phNfc_eMifareAuthentA) ||
-                    (gpphLibNfc_Context->tMfcInfo.cmd == phNfc_eMifareAuthentB)||
-                    (gpphLibNfc_Context->tMfcInfo.cmd == phNfc_eMifareAuthKeyNumA)||
-                    (gpphLibNfc_Context->tMfcInfo.cmd == phNfc_eMifareAuthKeyNumB))
+                if((pLibContext->tMfcInfo.cmd == phNfc_eMifareAuthentA) ||
+                    (pLibContext->tMfcInfo.cmd == phNfc_eMifareAuthentB)||
+                    (pLibContext->tMfcInfo.cmd == phNfc_eMifareAuthKeyNumA)||
+                    (pLibContext->tMfcInfo.cmd == phNfc_eMifareAuthKeyNumB))
                 {
-                    PHLIBNFC_INIT_SEQUENCE(PHLIBNFC_GETCONTEXT(),gphLibNfc_MFCSendAuthCmdForPresChk);
+                    PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_MFCSendAuthCmdForPresChk);
                 }
                 else
                 {
                     /*Authentication CMD not available, deactivate to Sleep and Select the tag to know
                       the presence */
-                    if(PHLIBNFC_GETCONTEXT()->bReactivation_Flag == PH_LIBNFC_REACT_ONLYSELECT)
+                    if(pLibContext->bReactivation_Flag == PH_LIBNFC_REACT_ONLYSELECT)
                     {
-                        PHLIBNFC_INIT_SEQUENCE(PHLIBNFC_GETCONTEXT(),gphLibNfc_ReActivate_MFCSeq2Select);
+                        PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_ReActivate_MFCSeq2Select);
                     }
                     else
                     {
-                        PHLIBNFC_INIT_SEQUENCE(PHLIBNFC_GETCONTEXT(),gphLibNfc_ReActivate_MFCSeq2);
+                        PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_ReActivate_MFCSeq2);
                     }
                 }
-                wStatus = phLibNfc_SeqHandler(PHLIBNFC_GETCONTEXT(),NFCSTATUS_SUCCESS,NULL);
+                wStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,NULL);
             }
             break;
             case phLibNfc_DummyEventSetRtngCfg:
             {
-                if((phLibNfc_StateInit == gpphLibNfc_Context->StateContext.CurrState) &&
-                    (phLibNfc_StateTransitionComplete == gpphLibNfc_Context->StateContext.Flag))
+                if((phLibNfc_StateInit == pLibContext->StateContext.CurrState) &&
+                    (phLibNfc_StateTransitionComplete == pLibContext->StateContext.Flag))
                 {
                     bNumRtngEntries = *(uint8_t *)pInfo->Params;
-                    if((NULL != gpphLibNfc_Context->sSeContext.pRoutingCfgBuffer) &&
+                    if((NULL != pLibContext->sSeContext.pRoutingCfgBuffer) &&
                         (0 != bNumRtngEntries))
                     {
                         /* Invoke NCI layer */
-                        wStatus = phNciNfc_SetRtngTableConfig(gpphLibNfc_Context->sHwReference.pNciHandle,\
+                        wStatus = phNciNfc_SetRtngTableConfig(pLibContext->sHwReference.pNciHandle,\
                                                               bNumRtngEntries,\
-                                                              gpphLibNfc_Context->sSeContext.pRoutingCfgBuffer,\
+                                                              pLibContext->sSeContext.pRoutingCfgBuffer,\
                                                               &phLibNfc_ConfigRoutingTableCb,\
-                                                              gpphLibNfc_Context);
+                                                              pLibContext);
                     }
                 }
                 else
@@ -978,20 +978,20 @@ static uint8_t phLibNfc_ConnIsRfListnerRegisterd(void *pContext,void *pInfo)
             {
                 pLibContext->Disc_handle[bIndex] = pNciDevInfo->pRemDevList[bIndex];
                 pLibContext->Map_Handle[bIndex].pNci_RemoteDev_List = pNciDevInfo->pRemDevList[bIndex];
-                gpphLibNfc_Context->bDiscovery_Notify_Enable = 0x00;
+                pLibContext->bDiscovery_Notify_Enable = 0x00;
             }
             bRetVal = 0x00;
             pLibContext->dev_cnt=bIndex;
         }
         else
         {
-            gpphLibNfc_Context->bDiscovery_Notify_Enable = 0x01;
+            pLibContext->bDiscovery_Notify_Enable = 0x01;
         }
     }
     else
     {
         bRetVal = 0x01;
-        gpphLibNfc_Context->bDiscovery_Notify_Enable = 0x01;
+        pLibContext->bDiscovery_Notify_Enable = 0x01;
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return bRetVal;
@@ -1205,7 +1205,7 @@ static uint8_t phLibNfc_ChkDeActType(void *pContext,void *pInfo)
 uint8_t phLibNfc_ChkDiscoveryTypeAndMode(void *DidcMode,void *pInfo, void *TrigEvnt)
 {
     uint8_t                     bRetVal = 1;
-    pphLibNfc_Context_t         pLibContext = PHLIBNFC_GETCONTEXT();
+    pphLibNfc_Context_t         pLibContext = phLibNfc_GetContext();
     phLibNfc_sADD_Cfg_t         *pDiscConfig = pInfo;
     phNfc_eDiscAndDisconnMode_t *pDiscMode = NULL;
     phLibNfc_Event_t            *pTrigEvent = NULL;
@@ -1242,7 +1242,7 @@ uint8_t phLibNfc_ChkDiscoveryTypeAndMode(void *DidcMode,void *pInfo, void *TrigE
         }
         else if(0 == pPollInfo->DisableCardEmulation)
         {
-            if( (gpphLibNfc_Context->tSeInfo.bSeCount > 0) || (gpphLibNfc_Context->bHceSak > 0) )
+            if( (pLibContext->tSeInfo.bSeCount > 0) || (pLibContext->bHceSak > 0) )
             {
                 PH_LOG_LIBNFC_INFO_STR("Card emulation is enabled");
                 bRetVal = 0;
@@ -1291,6 +1291,8 @@ uint8_t phLibNfc_ChkDiscoveryType(void *pContext,void *pInfo)
     uint8_t bRetVal = 1;
     phLibNfc_sADD_Cfg_t *pDiscConfig = pInfo;
     phNfc_sPollDevInfo_t *pPollInfo = NULL;
+    phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
+
     UNUSED(pContext);
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if(NULL != pDiscConfig)
@@ -1321,7 +1323,7 @@ uint8_t phLibNfc_ChkDiscoveryType(void *pContext,void *pInfo)
         }
         else if(0 == pPollInfo->DisableCardEmulation)
         {
-            if( (gpphLibNfc_Context->tSeInfo.bSeCount > 0) || (gpphLibNfc_Context->bHceSak > 0) )
+            if( (pLibContext->tSeInfo.bSeCount > 0) || (pLibContext->bHceSak > 0) )
             {
                 PH_LOG_LIBNFC_INFO_STR("Card emulation is enabled");
                 bRetVal = 0;

@@ -174,7 +174,7 @@ NFCSTATUS phLibNfc_Discovery2Active(void *pContext, void *Param1, void *Param2, 
                   (pphNciNfc_RemoteDevInformation_t)Param1,
                   eRfInterface,
                   NULL,
-                  (void *)gpphLibNfc_Context);
+                  (void *)pCtx);
     }else
     {
         wStatus = NFCSTATUS_INVALID_PARAMETER;
@@ -237,7 +237,7 @@ NFCSTATUS phLibNfc_TranscvExit(void *pContext, void *Param1, void *Param2, void 
     /* Since 'phLibNfc_TranscvExit' is part of 'phLibNfc_StateFptr' exit function,
        this function gets invoked during RemoteDev_Disconnect in which case transceive is
        not required. Inorder to skip the same, this flag has been used */
-    if(gpphLibNfc_Context->bSkipTransceive != PH_LIBNFC_INTERNAL_INPROGRESS)
+    if(pCtx->bSkipTransceive != PH_LIBNFC_INTERNAL_INPROGRESS)
     {
         if((NULL != pCtx) && (NULL != Param1)) /*Parms one holds tranceive info*/
         {
@@ -785,7 +785,7 @@ static NFCSTATUS phLibNfc_SendAuthCmdResp(void *pContext,NFCSTATUS wStatus,void 
     else
     {
         PH_LOG_LIBNFC_CRIT_STR("Authentication command failed!");
-        phLibNfc_MfcAuthInfo_Clear(gpphLibNfc_Context);
+        phLibNfc_MfcAuthInfo_Clear(pCtx);
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;
@@ -853,12 +853,12 @@ static NFCSTATUS phLibNfc_MfcChkPresAuth(void *pContext,NFCSTATUS wStatus,void *
     {
         pRemDevHandle = (pphNciNfc_RemoteDevInformation_t )pCtx->Connected_handle;
 
-        PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex++] = PHLIBNFC_GETCONTEXT()->tMfcInfo.cmd;
-        PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex++] = PHLIBNFC_GETCONTEXT()->tMfcInfo.addr;
-        PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex++] = PHLIBNFC_GETCONTEXT()->tMfcInfo.key;
+        pCtx->aSendBuff[bIndex++] = pCtx->tMfcInfo.cmd;
+        pCtx->aSendBuff[bIndex++] = pCtx->tMfcInfo.addr;
+        pCtx->aSendBuff[bIndex++] = pCtx->tMfcInfo.key;
 
-        phOsalNfc_MemCopy(&(PHLIBNFC_GETCONTEXT()->aSendBuff[bIndex]),
-                            PHLIBNFC_GETCONTEXT()->tMfcInfo.MFCKey,
+        phOsalNfc_MemCopy(&(pCtx->aSendBuff[bIndex]),
+                            pCtx->tMfcInfo.MFCKey,
                             PHLIBNFC_MFC_AUTHKEYLEN);
 
         bIndex += PHLIBNFC_MFC_AUTHKEYLEN;
@@ -866,10 +866,10 @@ static NFCSTATUS phLibNfc_MfcChkPresAuth(void *pContext,NFCSTATUS wStatus,void *
         phOsalNfc_SetMemory(&tNciTranscvInfo,0x00,sizeof(phNciNfc_TransceiveInfo_t));
 
         tNciTranscvInfo.uCmd.T2TCmd = phNciNfc_eT2TAuth;
-        tNciTranscvInfo.bAddr = gpphLibNfc_Context->tMfcInfo.addr;
-        tNciTranscvInfo.tSendData.pBuff = PHLIBNFC_GETCONTEXT()->aSendBuff;
+        tNciTranscvInfo.bAddr = pCtx->tMfcInfo.addr;
+        tNciTranscvInfo.tSendData.pBuff = pCtx->aSendBuff;
         tNciTranscvInfo.tSendData.wLen = bIndex;
-        tNciTranscvInfo.tRecvData.pBuff = PHLIBNFC_GETCONTEXT()->aRecvBuff;
+        tNciTranscvInfo.tRecvData.pBuff = pCtx->aRecvBuff;
         tNciTranscvInfo.tRecvData.wLen = PH_LIBNFC_INTERNAL_RECV_BUFF_SIZE;
 
         wStatus = phNciNfc_Transceive(pCtx->sHwReference.pNciHandle,
@@ -915,7 +915,7 @@ static NFCSTATUS phLibNfc_MfcChkPresAuthComplete(void *pContext,NFCSTATUS wStatu
     phNfc_sData_t tResData;
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
-    if((NULL != pContext) && (pContext == gpphLibNfc_Context))
+    if((NULL != pContext) && (pContext == phLibNfc_GetContext()))
     {
         pLibCtx = (pphLibNfc_Context_t)pContext;
         if(NULL != pLibCtx->psTransceiveInfo)
@@ -940,20 +940,20 @@ static NFCSTATUS phLibNfc_MfcChkPresAuthComplete(void *pContext,NFCSTATUS wStatu
         else
         {
             PH_LOG_LIBNFC_WARN_STR("Mifare classic - Auth failed");
-            phLibNfc_MfcAuthInfo_Clear(gpphLibNfc_Context);
+            phLibNfc_MfcAuthInfo_Clear(pLibCtx);
 
             /* Mif Classic authentication failed,
               Re-Check using Deactv to Sleep and Re-activation sequence */
-            if(PHLIBNFC_GETCONTEXT()->bReactivation_Flag == PH_LIBNFC_REACT_ONLYSELECT)
+            if(pLibCtx->bReactivation_Flag == PH_LIBNFC_REACT_ONLYSELECT)
             {
-                PHLIBNFC_INIT_SEQUENCE(PHLIBNFC_GETCONTEXT(),gphLibNfc_ReActivate_MFCSeq2Select);
+                PHLIBNFC_INIT_SEQUENCE(pLibCtx, gphLibNfc_ReActivate_MFCSeq2Select);
             }
             else
             {
-                PHLIBNFC_INIT_SEQUENCE(PHLIBNFC_GETCONTEXT(),gphLibNfc_ReActivate_MFCSeq2);
+                PHLIBNFC_INIT_SEQUENCE(pLibCtx, gphLibNfc_ReActivate_MFCSeq2);
             }
 
-            wStatus = phLibNfc_SeqHandler(PHLIBNFC_GETCONTEXT(),NFCSTATUS_SUCCESS,NULL);
+            wStatus = phLibNfc_SeqHandler(pLibCtx, NFCSTATUS_SUCCESS, NULL);
         }
     }
     else

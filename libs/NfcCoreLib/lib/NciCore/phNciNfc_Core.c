@@ -253,7 +253,7 @@ NFCSTATUS phNciNfc_CoreRecv(pphNciNfc_CoreContext_t pCoreCtx)
     pphNciNfc_sCoreRecvBuff_List_t pNode = NULL;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCoreCtx) && (pCoreCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NULL != pCoreCtx) && (pCoreCtx == phNciNfc_GetCoreContext()))
     {
         /* Add new node the linked list.
         This memory shall always be shared with TML for storing the received packet */
@@ -294,7 +294,7 @@ static void phNciNfc_CoreRecvCb(void *pContext, phTmlNfc_TransactInfo_t *pInfo)
 
     if((NULL != ptNciCoreCtx) && (NULL != pInfo))
     {
-        if(PHNCINFC_GETNCICORECONTEXT() == ptNciCoreCtx)
+        if(phNciNfc_GetCoreContext() == ptNciCoreCtx)
         {
             if (ptNciCoreCtx->bLogDataMessages)
             {
@@ -323,7 +323,7 @@ static void phNciNfc_CoreRecvCb(void *pContext, phTmlNfc_TransactInfo_t *pInfo)
         goto Done;
     }
 
-    if((NFCSTATUS_SUCCESS == wStatus)  && (NULL != pInfo) && (NULL != ptNciCoreCtx) && (ptNciCoreCtx == PHNCINFC_GETNCICORECONTEXT()))
+    if((NFCSTATUS_SUCCESS == wStatus)  && (NULL != pInfo) && (NULL != ptNciCoreCtx) && (ptNciCoreCtx == phNciNfc_GetCoreContext()))
     {
         /*Convert Status to */
         ptNciCoreCtx->pInfo.pBuff = pInfo->pBuff;
@@ -339,7 +339,7 @@ static void phNciNfc_CoreRecvCb(void *pContext, phTmlNfc_TransactInfo_t *pInfo)
     }
 
     /* If Nci release is requested */
-    if(NULL == gpphNciNfc_CoreContext)
+    if(NULL == phNciNfc_GetCoreContext())
     {
         PH_LOG_NCI_INFO_STR("NciCore context is being released!");;
     }
@@ -764,7 +764,7 @@ static void phNciNfc_CoreSendCb(void *pContext, phTmlNfc_TransactInfo_t *pInfo)
     NFCSTATUS wStatus;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if((NULL != pCoreCtx) && (PHNCINFC_GETNCICORECONTEXT() == pCoreCtx))
+    if((NULL != pCoreCtx) && (phNciNfc_GetCoreContext() == pCoreCtx))
     {
         /*Check status*/
         if (NULL == pInfo)
