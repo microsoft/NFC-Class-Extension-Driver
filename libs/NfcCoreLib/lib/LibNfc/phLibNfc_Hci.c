@@ -102,6 +102,7 @@ phLibNfc_Sequence_t gphLibNfc_HciChildDevInitSequenceNci2x[] = {
     { &phLibNfc_HciSetWhiteList, &phLibNfc_HciSetWhiteListProc },
     { &phLibNfc_NfceeModeSet, &phLibNfc_NfceeModeSetProc },
     { &phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc },
+    { &phLibNfc_HciGetHostTypeList,&phLibNfc_HciGetHostTypeListProc },
     { NULL, &phLibNfc_HciChildDevInitComplete }
 };
 
