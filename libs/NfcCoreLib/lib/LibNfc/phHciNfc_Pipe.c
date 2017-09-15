@@ -913,7 +913,7 @@ phHciNfc_ProcessPipeCreateNotifyCmd(phHciNfc_ReceiveParams_t *pReceivedParams,
         {
             /* Pipe Created Ntf from eSE*/
             /* Check the Gate ID to which Pipe Request is received */
-            if((tPipeCreatedNtfParams.bDestGID == phHciNfc_e_ApduGateId))
+            if(tPipeCreatedNtfParams.bDestGID == phHciNfc_e_ApduGateId)
             {
                 /* Update the Session ID Pipe Presence Indicator Byte */
                 aSetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX] = SET_BITS8(aSetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX],
@@ -926,6 +926,20 @@ phHciNfc_ProcessPipeCreateNotifyCmd(phHciNfc_ReceiveParams_t *pReceivedParams,
                 /*Update the Pipe List used later for Transceive for checking*/
                 pHciContext ->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = tPipeCreatedNtfParams.bPipeID;
                 pHciContext ->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId = tPipeCreatedNtfParams.bDestGID;
+            }
+            else if (tPipeCreatedNtfParams.bDestGID == phHciNfc_e_ProprietaryApduGateId)
+            {
+                /* Update the Session ID Pipe Presence Indicator Byte */
+                aSetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX] = SET_BITS8(aSetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX],
+                                                                      PHHCI_ESE_PROPRIETARY_APDU_PIPE_CREATED_BIT_INDEX,
+                                                                      1,
+                                                                      0);
+                /* Update the received Pipe ID in its alloted slot of Session ID*/
+                aSetHciSessionId[PHHCI_ESE_PROPRIETARY_APDU_PIPE_STORAGE_INDEX] = tPipeCreatedNtfParams.bPipeID;
+
+                /*Update the Pipe List used later for Transceive for checking*/
+                pHciContext->aSEPipeList[PHHCI_ESE_PROPRIETARY_APDU_PIPE_LIST_INDEX].bPipeId = tPipeCreatedNtfParams.bPipeID;
+                pHciContext->aSEPipeList[PHHCI_ESE_PROPRIETARY_APDU_PIPE_LIST_INDEX].bGateId = tPipeCreatedNtfParams.bDestGID;
             }
             else if( tPipeCreatedNtfParams.bDestGID == phHciNfc_e_ConnectivityGateId)
             {
@@ -1000,6 +1014,26 @@ static NFCSTATUS phHciNfc_ProcessClearAllPipeNotifyCmd(phHciNfc_ReceiveParams_t 
             pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = PHHCINFC_NO_PIPE_DATA;
             pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId = PHHCINFC_NO_PIPE_DATA;
         }
+
+        if (0 == GET_BITS8(pHciContext->aGetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX],
+                                PHHCI_ESE_PROPRIETARY_APDU_PIPE_CREATED_BIT_INDEX, 1))
+        {
+            /* Read the Session ID to clear the pipe data */
+            phOsalNfc_MemCopy(aSetHciSessionId, pHciContext->aGetHciSessionId, PHHCINFC_PIPE_SESSIONID_LEN);
+            /* Reset the Pipe Presence bit*/
+            aSetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX] = SET_BITS8(aSetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX],
+                                                                        PHHCI_ESE_PROPRIETARY_APDU_PIPE_CREATED_BIT_INDEX,
+                                                                        1,
+                                                                        1);
+            /* Reset the APDU Pipe data present in Session ID for eSE*/
+            aSetHciSessionId[PHHCI_ESE_PROPRIETARY_APDU_PIPE_STORAGE_INDEX] = PHHCINFC_NO_PIPE_DATA;
+            phOsalNfc_MemCopy(pHciContext->aGetHciSessionId, aSetHciSessionId, PHHCINFC_PIPE_SESSIONID_LEN);
+
+            /* Reset the APDU Pipe data present in the List for eSE*/
+            pHciContext->aSEPipeList[PHHCI_ESE_PROPRIETARY_APDU_PIPE_LIST_INDEX].bPipeId = PHHCINFC_NO_PIPE_DATA;
+            pHciContext->aSEPipeList[PHHCI_ESE_PROPRIETARY_APDU_PIPE_LIST_INDEX].bGateId = PHHCINFC_NO_PIPE_DATA;
+        }
+
         if(0 == GET_BITS8(pHciContext->aGetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX],
                                 PHHCI_ESE_CONNECTIVITY_PIPE_CREATED_BIT_INDEX,1))
         {
@@ -1158,8 +1192,18 @@ phHciNfc_ReceiveOpenPipeNotifyCmd(void *pContext,NFCSTATUS wStatus, void *pInfo)
                 wStatus = phHciNfc_CoreSend (pHciContext,&tSendParams,&phHciNfc_AnyOkCb, pHciContext);
                 if((NFCSTATUS_PENDING == wStatus))
                 {
-                    /* Do not register for events at APDU Gate Pipe */
-                    if(pReceivedParams->bPipeId != pHciContext->aGetHciSessionId[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX])
+                    /* Do not register for events at ETSI APDU Gate Pipe */
+                    if (pReceivedParams->bPipeId == pHciContext->aGetHciSessionId[PHHCI_ESE_PROPRIETARY_APDU_PIPE_STORAGE_INDEX])
+                    {
+                        /* Register for Evt for the opened pipe */
+                        tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+                        tHciRegData.bPipeId = pReceivedParams->bPipeId;
+                        (void)phHciNfc_RegisterCmdRspEvt(pHciContext,
+                                                         &tHciRegData,
+                                                         &phHciNfc_ProcessEventsOnApduPipe,
+                                                         pHciContext);
+                    }
+                    else if(pReceivedParams->bPipeId != pHciContext->aGetHciSessionId[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX])
                     {
                         /* Register for Evt for the opened pipe */
                         tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;

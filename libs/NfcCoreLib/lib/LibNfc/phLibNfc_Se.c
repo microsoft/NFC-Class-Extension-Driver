@@ -766,6 +766,7 @@ void phLibNfc_InvokeSeNtfCallback(void* pContext,void* pInfo,NFCSTATUS status,ui
                hSecureElement = pLibCtx->tSeInfo.tSeList[bCount].hSecureElement;
            }
            else if( ((bPipeId == pHciContext->aGetHciSessionId[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX])||
+                    (bPipeId == pHciContext->aGetHciSessionId[PHHCI_ESE_PROPRIETARY_APDU_PIPE_STORAGE_INDEX])||
                     (bPipeId == pHciContext->aGetHciSessionId[PHHCI_ESE_CONNECTIVITY_PIPE_STORAGE_INDEX])) &&\
                     (pLibCtx->tSeInfo.tSeList[bCount].eSE_Type == phLibNfc_SE_Type_eSE))
            {

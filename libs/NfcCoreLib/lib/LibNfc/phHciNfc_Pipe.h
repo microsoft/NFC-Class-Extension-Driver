@@ -40,10 +40,15 @@
 #define PHHCI_ESE_APDU_PIPE_CREATED_BIT_INDEX            7
 #define PHHCI_ESE_APDU_PIPE_LIST_INDEX                   0
 
-/* Macros used to Store Pipe Info of eSE for APDU gate in Session ID*/
+/* Macros used to Store Pipe Info of eSE for proprietary APDU gate in Session ID*/
 #define PHHCI_ESE_CONNECTIVITY_PIPE_STORAGE_INDEX        5
 #define PHHCI_ESE_CONNECTIVITY_PIPE_CREATED_BIT_INDEX    6
 #define PHHCI_ESE_CONN_PIPE_LIST_INDEX                   1
+
+/* Macros used to Store Pipe Info of eSE for proprietary APDU gate in Session ID*/
+#define PHHCI_ESE_PROPRIETARY_APDU_PIPE_STORAGE_INDEX     4
+#define PHHCI_ESE_PROPRIETARY_APDU_PIPE_CREATED_BIT_INDEX 5
+#define PHHCI_ESE_PROPRIETARY_APDU_PIPE_LIST_INDEX        0
 
 /* Macros used to Store Pipe Info of UICC for connectivity gate in Session ID*/
 #define PHHCI_UICC_CONNECTIVITY_PIPE_STORAGE_INDEX       3
