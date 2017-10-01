@@ -543,7 +543,8 @@ typedef enum phNciNfc_CoreRfMgtNtfOid
 typedef enum phNciNfc_CoreNfceeMgtCmdOid
 {
     phNciNfc_e_NfceeMgtNfceeDiscCmdOid = 0x00,              /**<NFCEE Management NFCEE discover command OID */
-    phNciNfc_e_NfceeMgtModeSetCmdOid = 0x01                 /**<NFCEE Management NFCEE mode set command OID */
+    phNciNfc_e_NfceeMgtModeSetCmdOid = 0x01,                /**<NFCEE Management NFCEE mode set command OID */
+    phNciNfc_e_NfceeMgtPowerAndLinkCtrlCmdOid = 0x03        /**<NFCEE Management NFCEE Power And Link Control command OID */
 }phNciNfc_CoreNfceeMgtCmdOid_t ;
 
 /**
@@ -556,7 +557,8 @@ typedef enum phNciNfc_CoreNfceeMgtCmdOid
 typedef enum phNciNfc_CoreNfceeMgtRspOid
 {
     phNciNfc_e_NfceeMgtNfceeDiscRspOid = 0x00,              /**<NFCEE Management NFCEE discover response OID */
-    phNciNfc_e_NfceeMgtModeSetRspOid = 0x01                 /**<NFCEE Management NFCEE mode set response OID */
+    phNciNfc_e_NfceeMgtModeSetRspOid = 0x01,                /**<NFCEE Management NFCEE mode set response OID */
+    phNciNfc_e_NfceeMgtPowerAndLinkCtrlRspOid = 0x03        /**<NFCEE Management NFCEE Power And Link Control command OID */
 }phNciNfc_CoreNfceeMgtRspOid_t ;
 
 /**

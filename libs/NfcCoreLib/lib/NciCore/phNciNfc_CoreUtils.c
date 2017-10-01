@@ -109,6 +109,7 @@ static NFCSTATUS phNciNfc_CoreUtilsValidateRspPktOID(uint8_t bGID, uint8_t bOID)
         {
             case phNciNfc_e_NfceeMgtNfceeDiscRspOid:
             case phNciNfc_e_NfceeMgtModeSetRspOid:
+            case phNciNfc_e_NfceeMgtPowerAndLinkCtrlRspOid:
                 bRetNfcStat = NFCSTATUS_SUCCESS;
                 break;
             default:
