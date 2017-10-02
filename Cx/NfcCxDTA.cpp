@@ -4959,10 +4959,10 @@ Return Value:
         case RoutingTypeProtocol:
             RtngTable[i].hSecureElement = RoutingTable->TableEntries[i].ProtoRoutingInfo.hSecureElement;
             RtngTable[i].Type = phNfc_LstnModeRtngProtocolBased;
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tRfTechnology = (phNfc_eRfTechnologies_t)RoutingTable->TableEntries[i].ProtoRoutingInfo.eRfProtocolType;
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn  = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 1);
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 2);
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bBatteryOff  = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 3);
+            RtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tRfProtocol = (phNfc_eRfProtocols_t)RoutingTable->TableEntries[i].ProtoRoutingInfo.eRfProtocolType;
+            RtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn  = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 1);
+            RtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 2);
+            RtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bBatteryOff  = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 3);
             break;
 
         case RoutingTypeAid:
@@ -4970,9 +4970,10 @@ Return Value:
             RtngTable[i].Type = phNfc_LstnModeRtngAidBased;
             RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.bAidSize = (uint8_t)RoutingTable->TableEntries[i].AidRoutingInfo.cbAid;
             RtlCopyMemory(RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.aAid, RoutingTable->TableEntries[i].AidRoutingInfo.pbAid, RoutingTable->TableEntries[i].AidRoutingInfo.cbAid);
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn  = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 1);
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 2);
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bBatteryOff  = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 3);
+            RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOn  = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 1);
+            RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 2);
+            RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bBatteryOff  = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 3);
+            break;
             break;
 
         default:
