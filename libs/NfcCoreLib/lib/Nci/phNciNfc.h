@@ -72,6 +72,18 @@
 
 /**
  * \ingroup grp_nci_nfc
+ * \brief Max length of System Code value in an System Code based routing
+ */
+#define PH_NCINFC_MAX_SYSTEM_CODE_LEN                (64U)
+
+/**
+ * \ingroup grp_nci_nfc
+ * \brief Max length of Apdu Pattern value in an Apdu Pattern based routing
+ */
+#define PH_NCINFC_MAX_APDU_PATTERN_LEN               (124U)
+
+/**
+ * \ingroup grp_nci_nfc
  * \brief Max length of ATR_RES General bytes
  */
 #define PH_NCINFC_MAX_ATR_RES_GEN_BYTES_LEN          (0x30U)
@@ -358,9 +370,11 @@ typedef enum phNciNfc_GenericErrCode
  */
  typedef enum phNciNfc_LstnModeRtngType
  {
-     phNciNfc_e_LstnModeRtngTechBased = 0,    /**< Technology-based routing entry */
-     phNciNfc_e_LstnModeRtngProtocolBased = 1,/**< Protocol-based routing entry */
-     phNciNfc_e_LstnModeRtngAidBased = 2      /**< AID-based routing entry */
+     phNciNfc_e_LstnModeRtngTechBased = 0,        /**< Technology-based routing entry */
+     phNciNfc_e_LstnModeRtngProtocolBased = 1,    /**< Protocol-based routing entry */
+     phNciNfc_e_LstnModeRtngAidBased = 2,         /**< AID-based routing entry */
+     phNciNfc_e_LstnModeRtngSystemCodeBased = 3,  /**< System Code-based routing entry */
+     phNciNfc_e_LstnModeRtngApduPatternBased = 4, /**< Apdu Pattern-based routing entry */
 }phNciNfc_LstnModeRtngType_t;
 
 /*!
@@ -904,6 +918,31 @@ typedef struct phNciNfc_AidBasedRtngValue
 
 /**
  * \ingroup grp_nci_nfc
+ * \brief System Code based listen mode routing
+ */
+typedef struct phNciNfc_SystemCodeBasedRtngValue
+{
+    uint8_t bRoute;                                     /**< An Nfcee Id(Nfcee id: 1-15) or Dh-Nfcee Id(Nfcee id: 0) */
+    phNciNfc_PowerState_t tPowerState;                  /**< Power state */
+    uint8_t aSystemCode[PH_NCINFC_MAX_SYSTEM_CODE_LEN]; /**< A buffer containing System Code (2-64 bytes) */
+    uint8_t bSystemCodeSize;                            /**< Size of SystemCode stored in 'aSystemCode' */
+}phNciNfc_SystemCodeBasedRtngValue_t, *pphNciNfc_SystemCodeBasedRtngValue_t;/**< pointer to #phNciNfc_SystemCodeBasedRtngValue_t */
+
+/**
+ * \ingroup grp_nci_nfc
+ * \brief System Code based listen mode routing
+ */
+typedef struct phNciNfc_ApduPatternBasedRtngValue
+{
+    uint8_t bRoute;                                         /**< An Nfcee Id(Nfcee id: 1-15) or Dh-Nfcee Id(Nfcee id: 0) */
+    phNciNfc_PowerState_t tPowerState;                      /**< Power state */
+    uint8_t aReferenceData[PH_NCINFC_MAX_APDU_PATTERN_LEN]; /**< A buffer containing Reference Data (1-124 bytes) */
+    uint8_t aMask[PH_NCINFC_MAX_APDU_PATTERN_LEN];          /**< A buffer containing Mask (1-124 bytes) */
+    uint8_t bApduPatternSize;                               /**< Size of Reference Data/Mask stored in 'aReferenceData' and 'aMask' */
+}phNciNfc_ApduPatternBasedRtngValue_t, *pphNciNfc_ApduPatternBasedRtngValue_t;/**< pointer to #phNciNfc_ApduPatternBasedRtngValue_t */
+
+/**
+ * \ingroup grp_nci_nfc
  * \brief Listen mode routing entry
  */
 typedef struct phNciNfc_RtngConfig
@@ -911,10 +950,12 @@ typedef struct phNciNfc_RtngConfig
     phNciNfc_LstnModeRtngType_t Type;   /**< The type filed of 'TLV' coding for Listen Mode Routing */
     union
     {
-        phNciNfc_TechnBasedRtngValue_t tTechBasedRtngValue;  /**< Technology based routing value */
-        phNciNfc_ProtoBasedRtngValue_t tProtoBasedRtngValue; /**< Protocol based routing value */
-        phNciNfc_AidBasedRtngValue_t   tAidBasedRtngValue;   /**< Aid based routing value */
-    }LstnModeRtngValue;                                           /**< Value filed of Listen mode routing entry */
+        phNciNfc_TechnBasedRtngValue_t tTechBasedRtngValue;              /**< Technology based routing value */
+        phNciNfc_ProtoBasedRtngValue_t tProtoBasedRtngValue;             /**< Protocol based routing value */
+        phNciNfc_AidBasedRtngValue_t   tAidBasedRtngValue;               /**< Aid based routing value */
+        phNciNfc_SystemCodeBasedRtngValue_t tSystemCodeBasedRtngValue;   /**< SystemCode based routing value */
+        phNciNfc_ApduPatternBasedRtngValue_t tApduPatternBasedRtngValue;  /**< Apdu Pattern based routing value */
+    }LstnModeRtngValue;                                                  /**< Value filed of Listen mode routing entry */
 }phNciNfc_RtngConfig_t, *pphNciNfc_RtngConfig_t;/**< pointer to #phNciNfc_RtngConfig_t */
 
 /**
@@ -1136,9 +1177,12 @@ typedef struct phNciNfc_NfccFeatures
     }DiscConfigInfo;                        /**<Discovery configuration information*/
     struct
     {
-        BitField_t AidBasedRouting:1;       /**<Supported if the bit is set to 1b */
-        BitField_t ProtocolBasedRouting:1;  /**<Supported if bit is set to 1b */
-        BitField_t TechnBasedRouting:1;     /**<Supported if bit is set to 1b */
+        BitField_t AidBasedRouting:1;           /**<Supported if bit is set to 1b */
+        BitField_t ProtocolBasedRouting:1;      /**<Supported if bit is set to 1b */
+        BitField_t TechnBasedRouting:1;         /**<Supported if bit is set to 1b */
+        BitField_t SystemCodeBasedRouting : 1;  /**<Supported if bit is set to 1b */
+        BitField_t ApduPatternBasedRouting : 1; /**<Supported if bit is set to 1b */
+        BitField_t ForceBasedRouting : 1;       /**<Supported if bit is set to 1b */
     }RoutingInfo;                           /**<Types of routing suported by NFCC*/
     uint16_t RoutingTableSize;              /**< Maximum Routing table size*/
     struct

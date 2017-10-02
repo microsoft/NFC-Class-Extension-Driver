@@ -956,6 +956,64 @@ static NFCSTATUS phLibNfc_UpdateRtngInfo(pphNciNfc_RtngConfig_t pNciRtngCfg,
                     PH_LOG_LIBNFC_CRIT_STR("Invalid input AID size");
                 }
                 break;
+            case phNfc_LstnModeRtngSystemCodeBased:
+                pNciRtngCfg->Type = phNciNfc_e_LstnModeRtngSystemCodeBased;
+                pNciRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.bRoute = bNfceeId;
+                pNciRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bBatteryOff =
+                    pLibNfcRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bBatteryOff;
+                pNciRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bSwitchedOff =
+                    pLibNfcRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bSwitchedOff;
+                pNciRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bSwitchedOn =
+                    pLibNfcRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bSwitchedOn;
+                pNciRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bSwitchedOnSub1 = 0;
+                pNciRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bSwitchedOnSub2 = 0;
+                pNciRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bSwitchedOnSub3 =
+                    (0 == pLibNfcRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bSwitchedOn) ? 0 : pLibCtx->Config.bSwitchedOnSubState;
+                if (pLibNfcRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize <= PH_NCINFC_MAX_SYSTEM_CODE_LEN)
+                {
+                    phOsalNfc_MemCopy(pNciRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.aSystemCode,
+                        pLibNfcRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.aSystemCode,
+                        pLibNfcRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize);
+                    pNciRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize =
+                        pLibNfcRtngCfg->LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize;
+                }
+                else
+                {
+                    wStatus = NFCSTATUS_INVALID_PARAMETER;
+                    PH_LOG_LIBNFC_CRIT_STR("Invalid input System Code size");
+                }
+                break;
+            case phNfc_LstnModeRtngApduPatternBased:
+                pNciRtngCfg->Type = phNciNfc_e_LstnModeRtngApduPatternBased;
+                pNciRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.bRoute = bNfceeId;
+                pNciRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bBatteryOff =
+                    pLibNfcRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bBatteryOff;
+                pNciRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bSwitchedOff =
+                    pLibNfcRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bSwitchedOff;
+                pNciRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bSwitchedOn =
+                    pLibNfcRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bSwitchedOn;
+                pNciRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bSwitchedOnSub1 = 0;
+                pNciRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bSwitchedOnSub2 = 0;
+                pNciRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bSwitchedOnSub3 =
+                    (0 == pLibNfcRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bSwitchedOn) ? 0 : pLibCtx->Config.bSwitchedOnSubState;
+                if (pLibNfcRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize <= PH_NCINFC_MAX_APDU_PATTERN_LEN)
+                {
+                    phOsalNfc_MemCopy(pNciRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.aReferenceData,
+                        pLibNfcRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.aReferenceData,
+                        pLibNfcRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize);
+                    phOsalNfc_MemCopy(pNciRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.aMask,
+                        pLibNfcRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.aMask,
+                        pLibNfcRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize);
+
+                    pNciRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize =
+                        pLibNfcRtngCfg->LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize;
+                }
+                else
+                {
+                    wStatus = NFCSTATUS_INVALID_PARAMETER;
+                    PH_LOG_LIBNFC_CRIT_STR("Invalid input Apdu Pattern size");
+                }
+                break;
             default:
                 PH_LOG_LIBNFC_CRIT_STR("Input SE handle not valid!");
                 wStatus = NFCSTATUS_INVALID_PARAMETER;

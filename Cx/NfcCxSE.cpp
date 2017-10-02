@@ -1520,6 +1520,9 @@ Return Value:
         "NfcCxSEInterfaceDispatchGetNfccCapabilities",
         TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
         TraceLoggingValue(pCapabilities->cbMaxRoutingTableSize, "cbMaxRoutingTableSize"),
+        TraceLoggingValue(pCapabilities->IsForceRoutingSupported, "IsForceRoutingSupported"),
+        TraceLoggingValue(pCapabilities->IsApduPatternRoutingSupported, "IsApduPatternRoutingSupported"),
+        TraceLoggingValue(pCapabilities->IsSystemCodeRoutingSupported, "IsSystemCodeRoutingSupported"),
         TraceLoggingValue(pCapabilities->IsAidRoutingSupported, "IsAidRoutingSupported"),
         TraceLoggingValue(pCapabilities->IsProtocolRoutingSupported, "IsProtocolRoutingSupported"),
         TraceLoggingValue(pCapabilities->IsTechRoutingSupported, "IsTechRoutingSupported"));
@@ -2864,6 +2867,25 @@ Return Value:
             }
             cbRoutingTable += NCI_AID_ROUTING_ENTRY_SIZE(pRoutingTable->TableEntries[i].AidRoutingInfo.cbAid);
             break;
+        case RoutingTypeSystemCode:
+            if ((pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode < MINIMUM_SYSTEM_CODE_LENGTH) ||
+                (pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode > MAXIMUM_SYSTEM_CODE_LENGTH)) {
+                status = STATUS_INVALID_PARAMETER;
+                TRACE_LINE(LEVEL_ERROR, "Invalid System Code route size = %lu", pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode);
+                goto Done;
+            }
+            cbRoutingTable += pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode;
+            break;
+        case RoutingTypeApduPattern:
+            if ((pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern < MINIMUM_APDU_PATTERN_LENGTH) ||
+                (pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern > MAXIMUM_APDU_PATTERN_LENGTH)) {
+                status = STATUS_INVALID_PARAMETER;
+                TRACE_LINE(LEVEL_ERROR, "Invalid Apdu Pattern route size = %lu", pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern);
+                goto Done;
+            }
+            cbRoutingTable += pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern;
+            break;
+
         default:
             status = STATUS_INVALID_PARAMETER;
             goto Done;
@@ -2935,6 +2957,14 @@ Return Value:
             secureElementId = pRoutingTable->TableEntries[i].AidRoutingInfo.guidSecureElementId;
             break;
 
+        case RoutingTypeSystemCode:
+            secureElementId = pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.guidSecureElementId;
+            break;
+
+        case RoutingTypeApduPattern:
+            secureElementId = pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.guidSecureElementId;
+            break;
+
         default:
             status = STATUS_INVALID_PARAMETER;
             goto Done;
@@ -2987,6 +3017,21 @@ Return Value:
             // No need to validate the length here as it was validated before
             RtlCopyMemory(pRtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.aAid, pRoutingTable->TableEntries[i].AidRoutingInfo.pbAid, pRtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.bAidSize);
             pRtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState = powerState;
+            break;
+        case RoutingTypeSystemCode:
+            pRtngTable[i].Type = phNfc_LstnModeRtngSystemCodeBased;
+            pRtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize = (uint8_t)pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode;
+            // No need to validate the length here as it was validated before
+            RtlCopyMemory(pRtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.aSystemCode, pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.pbSystemCode, pRtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize);
+            pRtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState = powerState;
+            break;
+        case RoutingTypeApduPattern:
+            pRtngTable[i].Type = phNfc_LstnModeRtngApduPatternBased;
+            pRtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize = (uint8_t)pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern;
+            // No need to validate the length here as it was validated before
+            RtlCopyMemory(pRtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.aReferenceData, pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.pbReferenceData, pRtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize);
+            RtlCopyMemory(pRtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.aMask, pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.pbMask, pRtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize);
+            pRtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState = powerState;
             break;
         default:
             status = STATUS_INVALID_PARAMETER;
@@ -3138,6 +3183,31 @@ Return Value:
                           RtngTableEntry.LstnModeRtngValue.tAidBasedRtngValue.bAidSize);
             status = IsEqualGUID(pRoutingTable->TableEntries[i].AidRoutingInfo.guidSecureElementId, GUID_NULL) ? STATUS_INTERNAL_ERROR : STATUS_SUCCESS;
             break;
+        case phNfc_LstnModeRtngSystemCodeBased:
+            pRoutingTable->TableEntries[i].eRoutingType = RoutingTypeSystemCode;
+            pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.guidSecureElementId = NfcCxSEInterfaceGetSecureElementId(RFInterface, RtngTableEntry.hSecureElement);
+            pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode = RtngTableEntry.LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize;
+
+            _Analysis_assume_(MAXIMUM_SYSTEM_CODE_LENGTH >= RtngTableEntry.LstnModeRtngValue.tSystemCodeRtngValue.bAidSize);
+            RtlCopyMemory(pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.pbSystemCode,
+                          RtngTableEntry.LstnModeRtngValue.tSystemCodeBasedRtngValue.aSystemCode,
+                          RtngTableEntry.LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize);
+            status = IsEqualGUID(pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.guidSecureElementId, GUID_NULL) ? STATUS_INTERNAL_ERROR : STATUS_SUCCESS;
+            break;
+        case phNfc_LstnModeRtngApduPatternBased:
+            pRoutingTable->TableEntries[i].eRoutingType = RoutingTypeApduPattern;
+            pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.guidSecureElementId = NfcCxSEInterfaceGetSecureElementId(RFInterface, RtngTableEntry.hSecureElement);
+            pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern = RtngTableEntry.LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize;
+
+            _Analysis_assume_(MAXIMUM_APDU_PATTERN_LENGTH >= RtngTableEntry.LstnModeRtngValue.tApduPatternRtngValue.bApduPatternSize);
+            RtlCopyMemory(pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.pbReferenceData,
+                          RtngTableEntry.LstnModeRtngValue.tApduPatternBasedRtngValue.aReferenceData,
+                          RtngTableEntry.LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize);
+            RtlCopyMemory(pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.pbMask,
+                          RtngTableEntry.LstnModeRtngValue.tApduPatternBasedRtngValue.aMask,
+                          RtngTableEntry.LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize);
+            status = IsEqualGUID(pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.guidSecureElementId, GUID_NULL) ? STATUS_INTERNAL_ERROR : STATUS_SUCCESS;
+            break;
         default:
             status = STATUS_INTERNAL_ERROR;
             goto Done;
@@ -3214,6 +3284,14 @@ Return Value:
             case phNfc_LstnModeRtngAidBased:
                 *pbIsRoutingTableChanged |= !NfcCxSEInterfaceIsPowerStateEqual(RFInterface->pLibNfcContext->RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState, PowerState);
                 pRtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState = PowerState;
+                break;
+            case phNfc_LstnModeRtngSystemCodeBased:
+                *pbIsRoutingTableChanged |= !NfcCxSEInterfaceIsPowerStateEqual(RFInterface->pLibNfcContext->RtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState, PowerState);
+                pRtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState = PowerState;
+                break;
+            case phNfc_LstnModeRtngApduPatternBased:
+                *pbIsRoutingTableChanged |= !NfcCxSEInterfaceIsPowerStateEqual(RFInterface->pLibNfcContext->RtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState, PowerState);
+                pRtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState = PowerState;
                 break;
             default:
                 status = STATUS_INVALID_PARAMETER;

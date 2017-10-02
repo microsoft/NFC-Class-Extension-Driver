@@ -4905,6 +4905,18 @@ Return Value:
                 status = STATUS_INVALID_PARAMETER;
             }
             break;
+        case RoutingTypeSystemCode:
+            if ((RoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode < MINIMUM_SYSTEM_CODE_LENGTH) ||
+                (RoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode > MAXIMUM_SYSTEM_CODE_LENGTH)) {
+                status = STATUS_INVALID_PARAMETER;
+            }
+            break;
+        case RoutingTypeApduPattern:
+            if ((RoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern < MINIMUM_APDU_PATTERN_LENGTH) ||
+                (RoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern > MAXIMUM_APDU_PATTERN_LENGTH)) {
+                status = STATUS_INVALID_PARAMETER;
+            }
+            break;
         default:
             status = STATUS_INVALID_PARAMETER;
             break;
@@ -4974,6 +4986,26 @@ Return Value:
             RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 2);
             RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bBatteryOff  = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 3);
             break;
+
+        case RoutingTypeSystemCode:
+            RtngTable[i].hSecureElement = RoutingTable->TableEntries[i].SystemCodeRoutingInfo.hSecureElement;
+            RtngTable[i].Type = phNfc_LstnModeRtngSystemCodeBased;
+            RtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize = (uint8_t)RoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode;
+            RtlCopyMemory(RtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.aSystemCode, RoutingTable->TableEntries[i].SystemCodeRoutingInfo.pbSystemCode, RoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode);
+            RtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bSwitchedOn = BIT_AT_POSITION(RoutingTable->TableEntries[i].SystemCodeRoutingInfo.bPowerState, 1);
+            RtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].SystemCodeRoutingInfo.bPowerState, 2);
+            RtngTable[i].LstnModeRtngValue.tSystemCodeBasedRtngValue.tPowerState.bBatteryOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].SystemCodeRoutingInfo.bPowerState, 3);
+            break;
+
+        case RoutingTypeApduPattern:
+            RtngTable[i].hSecureElement = RoutingTable->TableEntries[i].ApduPatternRoutingInfo.hSecureElement;
+            RtngTable[i].Type = phNfc_LstnModeRtngApduPatternBased;
+            RtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.bApduPatternSize = (uint8_t)RoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern;
+            RtlCopyMemory(RtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.aReferenceData, RoutingTable->TableEntries[i].ApduPatternRoutingInfo.pbReferenceData, RoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern);
+            RtlCopyMemory(RtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.aMask, RoutingTable->TableEntries[i].ApduPatternRoutingInfo.pbMask, RoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern);
+            RtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bSwitchedOn = BIT_AT_POSITION(RoutingTable->TableEntries[i].ApduPatternRoutingInfo.bPowerState, 1);
+            RtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].ApduPatternRoutingInfo.bPowerState, 2);
+            RtngTable[i].LstnModeRtngValue.tApduPatternBasedRtngValue.tPowerState.bBatteryOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].ApduPatternRoutingInfo.bPowerState, 3);
             break;
 
         default:

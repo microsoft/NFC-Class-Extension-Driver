@@ -2325,12 +2325,18 @@ NFCSTATUS phLibNfc_Mgt_GetstackCapabilities(phLibNfc_StackCapabilities_t* phLibN
         phLibNfc_StackCapabilities->psDevCapabilities.PowerStateInfo.BatteryOffState =
             pLibContext->tNfccFeatures.PowerStateInfo.BatteryOffState;
 
+        phLibNfc_StackCapabilities->psDevCapabilities.RoutingInfo.ForceBasedRouting =
+            pLibContext->tNfccFeatures.RoutingInfo.ForceBasedRouting;
         phLibNfc_StackCapabilities->psDevCapabilities.RoutingInfo.AidBasedRouting =
             pLibContext->tNfccFeatures.RoutingInfo.AidBasedRouting;
        phLibNfc_StackCapabilities->psDevCapabilities.RoutingInfo.ProtocolBasedRouting =
             pLibContext->tNfccFeatures.RoutingInfo.ProtocolBasedRouting;
        phLibNfc_StackCapabilities->psDevCapabilities.RoutingInfo.TechnBasedRouting =
             pLibContext->tNfccFeatures.RoutingInfo.TechnBasedRouting;
+       phLibNfc_StackCapabilities->psDevCapabilities.RoutingInfo.SystemCodeBasedRouting =
+           pLibContext->tNfccFeatures.RoutingInfo.SystemCodeBasedRouting;
+       phLibNfc_StackCapabilities->psDevCapabilities.RoutingInfo.ApduPatternBasedRouting =
+           pLibContext->tNfccFeatures.RoutingInfo.ApduPatternBasedRouting;
 
         phLibNfc_StackCapabilities->psDevCapabilities.RoutingTableSize =
             pLibContext->tNfccFeatures.RoutingTableSize;

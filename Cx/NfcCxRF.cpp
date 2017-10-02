@@ -1828,13 +1828,18 @@ Return Value:
 
     pCapabilities->cbMaxRoutingTableSize =
         RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingTableSize;
+    pCapabilities->IsForceRoutingSupported =
+        (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.ForceBasedRouting == 1);
+    pCapabilities->IsSystemCodeRoutingSupported =
+        (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.SystemCodeBasedRouting == 1);
+    pCapabilities->IsApduPatternRoutingSupported =
+        (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.ApduPatternBasedRouting == 1);
     pCapabilities->IsAidRoutingSupported =
         (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.AidBasedRouting == 1);
     pCapabilities->IsProtocolRoutingSupported =
         (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.ProtocolBasedRouting == 1);
     pCapabilities->IsTechRoutingSupported =
         (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.TechnBasedRouting == 1);
-
     WdfWaitLockRelease(RFInterface->DeviceLock);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
