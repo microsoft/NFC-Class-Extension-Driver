@@ -479,6 +479,48 @@
 /**
   * \ingroup grp_nci_nfc
   *
+  * \brief Length of the first two parameters of the value field of the System Code based routing
+  */
+#define PHNCINFC_RFCONFIG_SYSTEM_CODE_VALUE_DEFAULT_LEN         (2U)
+
+/**
+  * \ingroup grp_nci_nfc
+  *
+  * \brief Minimum length of System Code
+  */
+#define PHNCINFC_RFCONFIG_SYSTEM_CODE_MINLEN            (2U)
+
+/**
+  * \ingroup grp_nci_nfc
+  *
+  * \brief Minimum length of System Code
+  */
+#define PHNCINFC_RFCONFIG_SYSTEM_CODE_MAXLEN            (64U)
+
+  /**
+  * \ingroup grp_nci_nfc
+  *
+  * \brief Minimum length of Apdu Pattern
+  */
+#define PHNCINFC_RFCONFIG_APDU_PATTERN_MINLEN           (1U)
+
+  /**
+  * \ingroup grp_nci_nfc
+  *
+  * \brief Maximum length of  Apdu Pattern
+  */
+#define PHNCINFC_RFCONFIG_APDU_PATTERN_MAXLEN           (124U)
+
+  /**
+  * \ingroup grp_nci_nfc
+  *
+  * \brief Length of the first two parameters of the value field of the Apdu Pattern based routing
+  */
+#define PHNCINFC_RFCONFIG_APDU_PATTERN_VALUE_DEFAULT_LEN         (2U)
+
+/**
+  * \ingroup grp_nci_nfc
+  *
   * \brief NFCEE or DH-NFCEE ID reserved for future
   */
 #define PHNCINFC_RFCONFIG_NFCEE_ID_RFU                  (255U)

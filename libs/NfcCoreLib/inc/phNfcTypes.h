@@ -103,6 +103,8 @@ uint16_t        NFCSTATUS;                  /**< \ingroup grp_nfc_common
 
 #define SESSIONID_SIZE                  0x08U
 #define MAX_AID_LEN                     0x10U
+#define MAX_SYSTEM_CODE_LEN             0x40U       /*< System Code max len = 2n Octets with 1 <= n <= 32 */
+#define MAX_APDU_PATTERN_LEN            0x7CU
 #define MAX_UICC_PARAM_LEN              0xFFU
 
 typedef struct phNfc_KeyInfo
@@ -250,9 +252,12 @@ typedef struct phNfc_sDeviceCapabilities
 
     struct
     {
-        BitField_t          AidBasedRouting : 1;       /**<Supported if the bit is set to 1b*/
-        BitField_t          ProtocolBasedRouting : 1;  /**<Supported if the bit is set to 1b*/
-        BitField_t          TechnBasedRouting : 1;     /**<Supported if the bit is set to 1b*/
+        BitField_t          ForceBasedRouting : 1;     /**<Supported if the bit is set to 1b*/
+        BitField_t          AidBasedRouting : 1;        /**<Supported if the bit is set to 1b*/
+        BitField_t          ProtocolBasedRouting : 1;   /**<Supported if the bit is set to 1b*/
+        BitField_t          TechnBasedRouting : 1;      /**<Supported if the bit is set to 1b*/
+        BitField_t          SystemCodeBasedRouting : 1; /**<Supported if the bit is set to 1b*/
+        BitField_t          ApduPatternBasedRouting : 1;/**<Supported if the bit is set to 1b*/
     } RoutingInfo;                                     /**<Types of routing suported by NFCC*/
 
     uint16_t                RoutingTableSize;          /**<Maximum Routing table size*/
@@ -1278,9 +1283,11 @@ typedef struct phNfc_sSmartMX_Cfg
   */
 typedef enum phNfc_eLstnModeRtngType
  {
-     phNfc_LstnModeRtngTechBased = 0,    /**< Technology-based routing entry */
-     phNfc_LstnModeRtngProtocolBased = 1,/**< Protocol-based routing entry */
-     phNfc_LstnModeRtngAidBased = 2      /**< AID-based routing entry */
+     phNfc_LstnModeRtngTechBased = 0,       /**< Technology-based routing entry */
+     phNfc_LstnModeRtngProtocolBased = 1,   /**< Protocol-based routing entry */
+     phNfc_LstnModeRtngAidBased = 2,        /**< AID-based routing entry */
+     phNfc_LstnModeRtngSystemCodeBased = 3, /**< SystemCode-based routing entry */
+     phNfc_LstnModeRtngApduPatternBased = 4,/**< ApduPattern-based routing entry */
 }phNfc_eLstnModeRtngType_t;
 
 /**
@@ -1357,6 +1364,31 @@ typedef struct phNfc_AidBasedRtngValue
 
 /**
  * \ingroup grp_hal_common
+ * \brief System Code based listen mode routing
+ */
+
+typedef struct phNfc_SystemCodeRtngValue
+{
+    phNfc_PowerState_t tPowerState;             /**< Power state */
+    uint8_t aSystemCode[MAX_SYSTEM_CODE_LEN];   /**< A buffer containing System Code (2-64 bytes) */
+    uint8_t bSystemCodeSize;                    /**< Size of System Code stored in 'aSystemCode' */
+}phNfc_SystemCodeRtngValue_t, *pphNfc_SystemCodeRtngValue_t;/**< pointer to #phNfc_SystemCodeRtngValue_t */
+
+/**
+ * \ingroup grp_hal_common
+ * \brief Apdu pattern based listen mode routing
+ */
+
+typedef struct phNfc_ApduPatternRtngValue
+{
+    phNfc_PowerState_t tPowerState;               /**< Power state */
+    uint8_t aReferenceData[MAX_APDU_PATTERN_LEN]; /**< A buffer containing Reference Data (1-124 bytes) */
+    uint8_t aMask[MAX_APDU_PATTERN_LEN];          /**< A buffer containing Mask (1-124 bytes) */
+    uint8_t bApduPatternSize;                     /**< Size of Reference Data/Mask stored in 'aReferenceData' and 'aMask' */
+}phNfc_ApduPatternRtngValue_t, *pphNfc_ApduPatternRtngValue_t;/**< pointer to #phNfc_ApduPatternRtngValue_t */
+
+/**
+ * \ingroup grp_hal_common
  * \brief Listen mode routing entry
  */
 
@@ -1366,10 +1398,12 @@ typedef struct phNfc_RtngConfig
     phNfc_eLstnModeRtngType_t Type;             /**< The type filed of 'TLV' coding for Listen Mode Routing */
     union
     {
-        phNfc_TechnBasedRtngValue_t tTechBasedRtngValue;  /**< Technology based routing value */
-        phNfc_ProtoBasedRtngValue_t tProtoBasedRtngValue; /**< Protocol based routing value */
-        phNfc_AidBasedRtngValue_t   tAidBasedRtngValue;   /**< Aid based routing value */
-    }LstnModeRtngValue;                                   /**< Value filed of Listen mode routing entry */
+        phNfc_TechnBasedRtngValue_t  tTechBasedRtngValue;        /**< Technology based routing value */
+        phNfc_ProtoBasedRtngValue_t  tProtoBasedRtngValue;       /**< Protocol based routing value */
+        phNfc_AidBasedRtngValue_t    tAidBasedRtngValue;         /**< Aid based routing value */
+        phNfc_SystemCodeRtngValue_t  tSystemCodeBasedRtngValue;  /**< System Code based routing value */
+        phNfc_ApduPatternRtngValue_t tApduPatternBasedRtngValue; /**< Apdu Pattern based routing value */
+    }LstnModeRtngValue;                                          /**< Value filed of Listen mode routing entry */
 }phNfc_RtngConfig_t, *pphNfc_RtngConfig_t;/**< pointer to #phNfc_RtngConfig_t*/
 
 /** \ingroup grp_hal_common
