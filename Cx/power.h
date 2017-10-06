@@ -21,10 +21,24 @@ Environment:
 enum NFC_CX_POWER_RF_STATE : LONG
 {
     // Values are bit flags
-    NfcCxPowerRfState_Off = 0x0,
-    NfcCxPowerRfState_NfpEnabled = 0x1,
-    NfcCxPowerRfState_SeEnabled = 0x2,
-    NfcCxPowerRfState_ESeEnabled = 0x4,
+    NfcCxPowerRfState_None = 0x0,
+    NfcCxPowerRfState_ProximityEnabled = 0x1,
+    NfcCxPowerRfState_CardEmulationEnabled = 0x2,
+    NfcCxPowerRfState_StealthListenEnabled = 0x4,
+    NfcCxPowerRfState_NoListenEnabled = 0x8,
+    NfcCxPowerRfState_ESeEnabled = 0x10,
+};
+
+enum NFC_CX_POWER_REFERENCE_TYPE
+{
+    // Note: These values are indexes into the 'PowerReferences' array.
+    NfcCxPowerReferenceType_Proximity = 0,
+    NfcCxPowerReferenceType_CardEmulation,
+    NfcCxPowerReferenceType_StealthListen,
+    NfcCxPowerReferenceType_NoListen,
+    NfcCxPowerReferenceType_ESe,
+    // Max count
+    NfcCxPowerReferenceType_MaxCount,
 };
 
 typedef struct _NFCCX_POWER_MANAGER
@@ -33,11 +47,9 @@ typedef struct _NFCCX_POWER_MANAGER
 
     WDFWAITLOCK WaitLock;
 
-    LONG NfpPowerPolicyReferences;
-    BOOLEAN NfpRadioState;
+    LONG PowerReferences[NfcCxPowerReferenceType_MaxCount];
 
-    LONG SEPowerPolicyReferences;
-    LONG ESEPowerPolicyReferences;
+    BOOLEAN NfpRadioState;
     BOOLEAN SERadioState;
 
     BOOLEAN DeviceStopIdle;             // TRUE == 'WdfDeviceStopIdle' has been called.
@@ -67,11 +79,28 @@ NfcCxPowerStop(
     _In_ PNFCCX_POWER_MANAGER PowerManager
     );
 
+BOOLEAN
+NfcCxPowerShouldStopIdle(
+    _In_ NFC_CX_POWER_RF_STATE RfState
+    );
+
+BOOLEAN
+NfcCxPowerShouldEnableDiscovery(
+    _In_ NFC_CX_POWER_RF_STATE RfState
+    );
+
 NTSTATUS
-NfcCxPowerSetPolicy(
+NfcCxPowerFileAddReference(
     _In_ PNFCCX_POWER_MANAGER PowerManager,
     _In_ PNFCCX_FILE_CONTEXT FileContext,
-    _In_ BOOLEAN CanPowerDown
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type
+    );
+
+NTSTATUS
+NfcCxPowerFileRemoveReference(
+    _In_ PNFCCX_POWER_MANAGER PowerManager,
+    _In_ PNFCCX_FILE_CONTEXT FileContext,
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type
     );
 
 NFC_CX_POWER_RF_STATE
@@ -79,7 +108,7 @@ NfcCxPowerGetRfState(
     _In_ PNFCCX_POWER_MANAGER PowerManager
     );
 
-NTSTATUS
+void
 NfcCxPowerCleanupFilePolicyReferences(
     _In_ PNFCCX_POWER_MANAGER PowerManager,
     _In_ PNFCCX_FILE_CONTEXT FileContext
@@ -103,15 +132,14 @@ _Requires_lock_held_(PowerManager->WaitLock)
 NTSTATUS
 NfcCxPowerAcquireFdoContextReferenceLocked(
     _In_ PNFCCX_POWER_MANAGER PowerManager,
-    _In_ PNFCCX_FILE_CONTEXT FileContext,
-    _Out_ BOOLEAN* pReferenceTaken
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type
     );
 
 _Requires_lock_held_(PowerManager->WaitLock)
 NTSTATUS
 NfcCxPowerReleaseFdoContextReferenceLocked(
     _In_ PNFCCX_POWER_MANAGER PowerManager,
-    _In_ PNFCCX_FILE_CONTEXT FileContext
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type
     );
 
 _Requires_lock_held_(PowerManager->WaitLock)

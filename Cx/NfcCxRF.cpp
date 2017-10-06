@@ -762,7 +762,7 @@ Return Value:
 
     status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_DEINIT, NULL, NULL);
 
-    RFInterface->RFPowerState = NfcCxPowerRfState_Off;
+    RFInterface->RFPowerState = NfcCxPowerRfState_None;
 
     WdfWaitLockRelease(RFInterface->DeviceLock);
 
@@ -2113,7 +2113,7 @@ Return Value:
     pDiscoveryConfig->FelicaPollCfg.ReqCode = pDiscoveryConfig->FelicaPollCfg.TimeSlotNum = 0;
     memset(pDiscoveryConfig->FelicaPollCfg.SystemCode, 0xFF, sizeof(pDiscoveryConfig->FelicaPollCfg.SystemCode));
 
-    if (RFInterface->RFPowerState & NfcCxPowerRfState_NfpEnabled)
+    if (RFInterface->RFPowerState & NfcCxPowerRfState_ProximityEnabled)
     {
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableIso14443A = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_A) != 0;
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableIso14443B = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_B) != 0;
@@ -2128,7 +2128,7 @@ Return Value:
         discoveryEnabled = TRUE;
     }
 
-    if (RFInterface->RFPowerState & NfcCxPowerRfState_SeEnabled)
+    if (RFInterface->RFPowerState & NfcCxPowerRfState_CardEmulationEnabled)
     {
         pDiscoveryConfig->CE_Mode_Config = RFInterface->uiNfcCE_Mode;
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.DisableCardEmulation = 0x0;
@@ -6513,9 +6513,7 @@ NfcCxRFInterfaceConnChkDiscMode(
     _In_ PNFCCX_STATE_INTERFACE StateInterface
     )
 {
-    // Return 'true' if we should enable RF discovery.
-    return NfcCxPowerRfState_NfpEnabled & StateInterface->FdoContext->RFInterface->RFPowerState ||
-        NfcCxPowerRfState_SeEnabled & StateInterface->FdoContext->RFInterface->RFPowerState;
+    return NfcCxPowerShouldEnableDiscovery(StateInterface->FdoContext->RFInterface->RFPowerState);
 }
 
 BOOLEAN

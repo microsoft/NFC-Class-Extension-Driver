@@ -72,7 +72,6 @@ Return Value:
     InitializeListHead(&fileContext->SendListEntry);
     fileContext->FdoContext = fdoContext;
     fileContext->FileObject = FileObject;
-    fileContext->PowerPolicyReferences = 0;
     fileContext->Enabled = TRUE;
     fileContext->Role = ROLE_UNDEFINED;
     fileContext->pszTypes = NULL;
@@ -345,16 +344,39 @@ Return Value:
                               fileContext->Tnf);
 #endif
 
-    //
-    // If this is a pub/sub, eSE or vendor test, add a power reference
-    //
-    if (NfcCxFileObjectIsPubSub(fileContext) ||
-        fileContext->Role ==  ROLE_EMBEDDED_SE ||
-        NFC_CX_DEVICE_MODE_RAW == fdoContext->NfcCxClientGlobal->Config.DeviceMode) {
-        status = NfcCxPowerSetPolicy(NfcCxFileObjectGetFdoContext(fileContext)->Power, fileContext, /*CanPowerDown*/ FALSE);
-        if (!NT_SUCCESS(status)) {
-            TRACE_LINE(LEVEL_ERROR, "Failed to add a power policy reference, %!STATUS!", status);
+    if (NFC_CX_DEVICE_MODE_RAW == fdoContext->NfcCxClientGlobal->Config.DeviceMode)
+    {
+        // In RAW mode, we place the device in D0 and then just leave it there.
+        // This is presumably because the hardware is being tested, so it is fine to leave the NFC Controller in
+        // a powered up state..
+        TRACE_LINE(LEVEL_INFO, "Raw device mode. Powering up");
+        status = WdfDeviceStopIdle(fdoContext->Device, /*WaitForD0*/ TRUE);
+        if (!NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_INFO, "WdfDeviceStopIdle failed, %!STATUS!", status);
             goto Done;
+        }
+    }
+    else
+    {
+        switch (fileContext->Role)
+        {
+        case ROLE_SUBSCRIPTION:
+        case ROLE_PUBLICATION:
+        case ROLE_EMBEDDED_SE:
+        {
+            NFC_CX_POWER_REFERENCE_TYPE powerReferenceType = (fileContext->Role == ROLE_EMBEDDED_SE) ?
+                NfcCxPowerReferenceType_ESe :
+                NfcCxPowerReferenceType_Proximity;
+
+            status = NfcCxPowerFileAddReference(fdoContext->Power, fileContext, powerReferenceType);
+            if (!NT_SUCCESS(status))
+            {
+                TRACE_LINE(LEVEL_ERROR, "Failed to add a power policy reference, %!STATUS!", status);
+                goto Done;
+            }
+            break;
+        }
         }
     }
 
@@ -594,8 +616,7 @@ Return Value:
     //
     // Cleanup any left over power references from this file object
     //
-    (VOID)NfcCxPowerCleanupFilePolicyReferences(fdoContext->Power,
-                                                fileContext);
+    NfcCxPowerCleanupFilePolicyReferences(fdoContext->Power, fileContext);
 
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 
@@ -984,9 +1005,10 @@ Return Value:
     //
     // Remove the power reference
     //
-    status = NfcCxPowerSetPolicy(NfcCxFileObjectGetFdoContext(FileContext)->Power,
-                                FileContext,
-                                TRUE); // CanPowerDown
+    status = NfcCxPowerFileRemoveReference(
+        FileContext->FdoContext->Power,
+        FileContext,
+        NfcCxPowerReferenceType_Proximity);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to set the power policy, %!STATUS!", status);
         goto Done;
@@ -1054,9 +1076,10 @@ Return Value:
     //
     // Add the power reference
     //
-    status = NfcCxPowerSetPolicy(NfcCxFileObjectGetFdoContext(FileContext)->Power,
-                                FileContext,
-                                FALSE); // CanPowerDown
+    status = NfcCxPowerFileAddReference(
+        FileContext->FdoContext->Power,
+        FileContext,
+        NfcCxPowerReferenceType_Proximity);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to set the power policy, %!STATUS!", status);
         goto Done;

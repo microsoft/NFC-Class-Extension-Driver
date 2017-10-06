@@ -18,6 +18,8 @@ Environment:
 
 #pragma once
 
+#include "power.h"
+
 #define NFCCX_FILE_CONTEXT_SIGNATURE ('FcfN') //'NfcF'
 
 typedef enum _FILE_OBJECT_ROLE {
@@ -64,9 +66,9 @@ typedef struct _NFCCX_FILE_CONTEXT {
     BOOLEAN IsAppContainerProcess;
 
     //
-    // Protected by fdoContext.PowerPolicyWaitLock
+    // Protected by fdoContext.Power->WaitLock
     //
-    ULONG PowerPolicyReferences;
+    LONG PowerReferences[NfcCxPowerReferenceType_MaxCount];
 
     //
     // File object state lock

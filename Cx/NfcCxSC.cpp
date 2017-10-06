@@ -3447,7 +3447,10 @@ NfcCxSCEnsureCardConnectedPowerReferenceIsHeld(
     if (ScInterface->CurrentClient != nullptr &&
         !ScInterface->ClientPowerReferenceHeld)
     {
-        status = NfcCxPowerSetPolicy(ScInterface->FdoContext->Power, ScInterface->CurrentClient, /*CanPowerDown*/ FALSE);
+        status = NfcCxPowerFileAddReference(
+            ScInterface->FdoContext->Power,
+            ScInterface->CurrentClient,
+            NfcCxPowerReferenceType_Proximity);
         if (!NT_SUCCESS(status))
         {
             TRACE_LINE(LEVEL_ERROR, "Failed to acquire power policy reference. Status=%!STATUS!", status);
@@ -3475,7 +3478,10 @@ NfcCxSCEnsureCardConnectedPowerReferenceIsReleased(
 
         // Release the client's power reference, allowing the NFC Controller to go back to sleep
         // (assuming nothing else is keeping it awake).
-        NTSTATUS status = NfcCxPowerSetPolicy(ScInterface->FdoContext->Power, ScInterface->CurrentClient, /*CanPowerDown*/ TRUE);
+        NTSTATUS status = NfcCxPowerFileRemoveReference(
+            ScInterface->FdoContext->Power,
+            ScInterface->CurrentClient,
+            NfcCxPowerReferenceType_Proximity);
         if (!NT_SUCCESS(status))
         {
             TRACE_LINE(LEVEL_ERROR, "Failed to release power policy reference. Status=%!STATUS!", status);

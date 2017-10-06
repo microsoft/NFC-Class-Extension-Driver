@@ -115,7 +115,7 @@ Return Value:
     // Add a power reference (if required).
     if (Dispatcher->PowerManaged)
     {
-        status = NfcCxPowerSetPolicy(FdoContext->Power, fileContext, /*CanPowerDown*/ FALSE);
+        status = NfcCxPowerFileAddReference(FdoContext->Power, fileContext, NfcCxPowerReferenceType_Proximity);
         if (!NT_SUCCESS(status))
         {
             TRACE_LINE(LEVEL_VERBOSE, "Failed to acquire power reference. %!STATUS!", status);
@@ -164,7 +164,7 @@ Done:
 
         if (powerReferenceAcquired)
         {
-            NfcCxPowerSetPolicy(FdoContext->Power, fileContext, /*CanPowerDown*/ TRUE);
+            NfcCxPowerFileRemoveReference(FdoContext->Power, fileContext, NfcCxPowerReferenceType_Proximity);
         }
     }
 
@@ -232,7 +232,7 @@ Return Value:
     // Release power reference (if required).
     if (Dispatcher->PowerManaged)
     {
-        NfcCxPowerSetPolicy(FdoContext->Power, fileContext, /*CanPowerDown*/ TRUE);
+        NfcCxPowerFileRemoveReference(FdoContext->Power, fileContext, NfcCxPowerReferenceType_Proximity);
     }
 
     // Complete the request
@@ -287,7 +287,7 @@ Return Value:
     // Release power reference (if required).
     if (dispatcher->PowerManaged)
     {
-        NfcCxPowerSetPolicy(fdoContext->Power, fileContext, /*CanPowerDown*/ TRUE);
+        NfcCxPowerFileRemoveReference(fdoContext->Power, fileContext, NfcCxPowerReferenceType_Proximity);
     }
 
     // Complete the request.

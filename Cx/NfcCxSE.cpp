@@ -787,12 +787,11 @@ Return Value:
     PNFCCX_RF_INTERFACE rfInterface = SEInterface->FdoContext->RFInterface;
     phLibNfc_SE_List_t SEList[MAX_NUMBER_OF_SE] = {0};
     uint8_t SECount = 0;
-    SECURE_ELEMENT_SET_CARD_EMULATION_MODE_INFO EmulationMode;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (NfcCxFileObjectIsSEManager(FileContext)) {
-
+    if (NfcCxFileObjectIsSEManager(FileContext))
+    {
         WdfWaitLockAcquire(SEInterface->SEManagerLock, NULL);
 
         if (SEInterface->SEManager != FileContext) {
@@ -814,19 +813,40 @@ Return Value:
         // Force turn off card emulation mode in case if it is still left on when the
         // SE manager handle is being released
         //
-        for (uint8_t i=0; (i < SECount) && (SEInterface->FdoContext->Power->SEPowerPolicyReferences != 0); i++) {
-
+        for (uint8_t i = 0; i < SECount; i++)
+        {
             if (SEList[i].eSE_ActivationMode == phLibNfc_SE_ActModeOff) {
                 continue;
             }
 
+            GUID secureElementId = NfcCxSEInterfaceGetSecureElementId(rfInterface, SEList[i].hSecureElement);
+            bool isEmulationOn = false;
+
+            {
+                // Acquire lock for 'SEInterface->SEPowerSettings'.
+                // Note: We can't call 'NfcCxSEInterfaceSetCardEmulationMode' while holding the lock as WDF locks
+                // aren't recursive.
+                WdfWaitLockAcquire(SEInterface->SEPowerSettingsLock, NULL);
+
+                NFCCX_POWER_SETTING* sePower = NfcCxSEInterfaceGetSettingsListItem(SEInterface, secureElementId);
+                isEmulationOn = sePower != nullptr && sePower->EmulationMode != EmulationOff;
+
+                WdfWaitLockRelease(SEInterface->SEPowerSettingsLock);
+            }
+
+            if (!isEmulationOn)
+            {
+                continue;
+            }
+
+            SECURE_ELEMENT_SET_CARD_EMULATION_MODE_INFO EmulationMode;
             EmulationMode.eMode = EmulationOff;
-            EmulationMode.guidSecureElementId = NfcCxSEInterfaceGetSecureElementId(rfInterface, SEList[i].hSecureElement);
+            EmulationMode.guidSecureElementId = secureElementId;
             (void)NfcCxSEInterfaceSetCardEmulationMode(FileContext, &EmulationMode);
         }
-        
-    } else if (NfcCxFileObjectIsSEEvent(FileContext)) {
-
+    }
+    else if (NfcCxFileObjectIsSEEvent(FileContext))
+    {
         WdfWaitLockAcquire(SEInterface->SEEventsLock, NULL);
         RemoveEntryList(&FileContext->ListEntry);
         WdfWaitLockRelease(SEInterface->SEEventsLock);
@@ -2434,7 +2454,6 @@ Return Value:
         }
     }
 
-    bool setPowerReference = false;
     bool enableCardEmulation = NfcCxSEIsCardEmulationEnabled(pMode->eMode);
 
     //
@@ -2471,7 +2490,6 @@ Return Value:
     // Check if the card emulation mode has switch from an on to off state or vice versa.
     //
     bool previousEnableCardEmulation = NfcCxSEIsCardEmulationEnabled(sePower->EmulationMode);
-    setPowerReference = previousEnableCardEmulation != enableCardEmulation;
 
     //
     // Update SE's power settings.
@@ -2487,15 +2505,25 @@ Return Value:
     //
     // Ensure RF (NFCC radio) has card emulation enabled when required
     //
-    if (setPowerReference)
+    if (previousEnableCardEmulation != enableCardEmulation)
     {
-        BOOLEAN canPowerDown = !enableCardEmulation;
-        status = NfcCxPowerSetPolicy(fdoContext->Power,
-                                     FileContext,
-                                     canPowerDown);
-        if (!NT_SUCCESS(status)) {
-            TRACE_LINE(LEVEL_ERROR, "Failed to set power policy reference, %!STATUS!", status);
-            goto Done;
+        if (enableCardEmulation)
+        {
+            status = NfcCxPowerFileAddReference(fdoContext->Power, FileContext, NfcCxPowerReferenceType_CardEmulation);
+            if (!NT_SUCCESS(status))
+            {
+                TRACE_LINE(LEVEL_ERROR, "NfcCxPowerFileAddReference failed, %!STATUS!", status);
+                goto Done;
+            }
+        }
+        else
+        {
+            status = NfcCxPowerFileRemoveReference(fdoContext->Power, FileContext, NfcCxPowerReferenceType_CardEmulation);
+            if (!NT_SUCCESS(status))
+            {
+                TRACE_LINE(LEVEL_ERROR, "NfcCxPowerFileRemoveReference failed, %!STATUS!", status);
+                goto Done;
+            }
         }
     }
 
