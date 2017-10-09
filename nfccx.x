@@ -167,6 +167,7 @@ typedef enum _NFC_CX_SEQUENCE {
     SequenceShutdownComplete,
     SequencePreRecovery,
     SequenceRecoveryComplete,
+    SequenceNfceeSetModeComplete,
     SequenceMaximum,
 } NFC_CX_SEQUENCE, *PNFC_CX_SEQUENCE;
 
