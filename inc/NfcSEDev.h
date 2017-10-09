@@ -111,6 +111,9 @@ typedef struct _SECURE_ELEMENT_SET_CARD_EMULATION_MODE_INFO {
 
 typedef struct _SECURE_ELEMENT_NFCC_CAPABILITIES {
     USHORT cbMaxRoutingTableSize;
+    BOOLEAN IsForceRoutingSupported;
+    BOOLEAN IsApduPatternRoutingSupported;
+    BOOLEAN IsSystemCodeRoutingSupported;
     BOOLEAN IsAidRoutingSupported;
     BOOLEAN IsProtocolRoutingSupported;
     BOOLEAN IsTechRoutingSupported;
@@ -119,7 +122,9 @@ typedef struct _SECURE_ELEMENT_NFCC_CAPABILITIES {
 typedef enum _SECURE_ELEMENT_ROUTING_TYPE {
     RoutingTypeTech = 0,
     RoutingTypeProtocol = 1,
-    RoutingTypeAid = 2
+    RoutingTypeAid = 2,
+    RoutingTypeSystemCode = 3,
+    RoutingTypeApduPattern = 4,
 } SECURE_ELEMENT_ROUTING_TYPE, *PSECURE_ELEMENT_ROUTING_TYPE;
 
 typedef struct _SECURE_ELEMENT_TECH_ROUTING_INFO {
@@ -141,6 +146,25 @@ typedef struct _SECURE_ELEMENT_AID_ROUTING_INFO {
     _Field_size_bytes_(cbAid) BYTE pbAid[ISO_7816_MAXIMUM_AID_LENGTH];
 } SECURE_ELEMENT_AID_ROUTING_INFO, *PSECURE_ELEMENT_AID_ROUTING_INFO;
 
+#define MINIMUM_SYSTEM_CODE_LENGTH 2
+#define MAXIMUM_SYSTEM_CODE_LENGTH 64
+
+typedef struct _SECURE_ELEMENT_SYSTEM_CODE_ROUTING_INFO {
+    GUID guidSecureElementId;
+    _Field_range_(<= , MAXIMUM_SYSTEM_CODE_LENGTH) DWORD cbSystemCode;
+    _Field_size_bytes_(cbSystemCode) BYTE pbSystemCode[MAXIMUM_SYSTEM_CODE_LENGTH];
+} SECURE_ELEMENT_SYSTEM_CODE_ROUTING_INFO, *PSECURE_ELEMENT_SYSTEM_CODE_ROUTING_INFO;
+
+#define MINIMUM_APDU_PATTERN_LENGTH 1
+#define MAXIMUM_APDU_PATTERN_LENGTH 124
+
+typedef struct _SECURE_ELEMENT_APDU_PATTERN_ROUTING_INFO {
+    GUID guidSecureElementId;
+    _Field_range_(<= , MAXIMUM_APDU_PATTERN_LENGTH) DWORD cbApduPattern;
+    _Field_size_bytes_(cbApduPattern) BYTE pbReferenceData[MAXIMUM_APDU_PATTERN_LENGTH];
+    _Field_size_bytes_(cbApduPattern) BYTE pbMask[MAXIMUM_APDU_PATTERN_LENGTH];
+} SECURE_ELEMENT_APDU_PATTERN_ROUTING_INFO, *PSECURE_ELEMENT_APDU_PATTERN_ROUTING_INFO;
+
 #pragma warning(push)
 #pragma warning(disable:4201) // anonymous unions warning
 
@@ -150,6 +174,8 @@ typedef struct _SECURE_ELEMENT_ROUTING_TABLE_ENTRY {
         SECURE_ELEMENT_TECH_ROUTING_INFO TechRoutingInfo;
         SECURE_ELEMENT_PROTO_ROUTING_INFO ProtoRoutingInfo;
         SECURE_ELEMENT_AID_ROUTING_INFO AidRoutingInfo;
+        SECURE_ELEMENT_SYSTEM_CODE_ROUTING_INFO SystemCodeRoutingInfo;
+        SECURE_ELEMENT_APDU_PATTERN_ROUTING_INFO ApduPatternRoutingInfo;
     };
 } SECURE_ELEMENT_ROUTING_TABLE_ENTRY, *PSECURE_ELEMENT_ROUTING_TABLE_ENTRY;
 
