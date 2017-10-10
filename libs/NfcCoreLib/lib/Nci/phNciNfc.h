@@ -1478,6 +1478,12 @@ phNciNfc_Nfcee_ModeSet(void * pNciHandle,
                        phNciNfc_NfceeModes_t eNfceeMode,
                        pphNciNfc_IfNotificationCb_t pNotifyCb,
                        void *pContext);
+extern
+NFCSTATUS phNciNfc_SE_ModeSet(void * pNciHandle,
+	uint8_t bNfceeID,
+	phNciNfc_NfceeModes_t eNfceeMode,
+	pphNciNfc_IfNotificationCb_t pNotifyCb,
+	void *pContext);
 
 /**
  * \ingroup grp_nci_nfc

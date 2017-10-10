@@ -77,3 +77,5 @@ phLibNfc_SE_Type_t phLibNfc_SE_GetType(void* pContext,
 
 NFCSTATUS phLibNfc_DelayForSeNtfProc(void* pContext,NFCSTATUS status,void* pInfo);
 NFCSTATUS phLibNfc_DelayForSeNtf(void* pContext, NFCSTATUS status, void* pInfo);
+NFCSTATUS phLibNfc_DelayForNfceeAtrProc(void* pContext, NFCSTATUS status, void* pInfo);
+NFCSTATUS phLibNfc_DelayForNfceeAtr(void* pContext, NFCSTATUS status, void* pInfo);

@@ -41,6 +41,7 @@
 #define PHHCINFC_HCI_APDU_GATE_PIPE_ID_INDEX        0x1
 
 #define PHHCINFC_HCI_MAX_NO_OF_HOSTS                0x2
+#define PHHCINFC_HOST_TYPE_LIST_LEN                 0x2
 
 typedef enum phHciNfc_Status
 {
@@ -125,7 +126,10 @@ typedef enum phHciNfc_HostID
     phHciNfc_e_HostControllerID                 = 0x00U,
     phHciNfc_e_TerminalHostID                   = 0x01U,
     phHciNfc_e_UICCHostID                       = 0x02U,
-    phHciNfc_e_ESeHostID                         = 0xC0U
+    phHciNfc_e_DynamicHostID_Min                = 0x80U,
+    phHciNfc_e_DynamicHostID_Max                = 0xBFU,
+    phHciNfc_e_ProprietaryHostID_Min            = 0xC0U,
+    phHciNfc_e_ProprietaryHostID_Max            = 0xFFU,
 } phHciNfc_HostID_t;
 
 // ETSI HCI v12.1, Section 4.3, Table 2
@@ -138,6 +142,9 @@ typedef enum phHciNfc_GateID
     phHciNfc_e_ApduGateId                       = 0x30U,
     // ETSI HCI v12.1, Section 11.2, Table 48
     phHciNfc_e_ConnectivityGateId               = 0x41U,
+    // ETSI HCI v12.1, Section 11.2, Table 2
+    phHciNfc_e_ProprietaryGateId_Min            = 0xF0U,
+    phHciNfc_e_ProprietaryGateId_Max            = 0xFFU,
 } phHciNfc_GateID_t;
 
 // ETSI HCI v12.1, Section 4.4, Table 3
@@ -269,6 +276,18 @@ typedef struct phHciNfc_HciContext
     phHciNfc_TimerInfo_t             tHciSeGetAtrTimerInfo;
     /* Store the compliancy of eSE*/
     uint8_t                          eSE_Compliancy;
+	/* Store the compliancy of NFCC*/
+	uint8_t                          NFCC_Compliancy;
+	/* Count of Host with ETSI 12 compliant*/
+	uint8_t                          bNoOfHostsETSI12Compliant;
+	/* Count of Host with ETSI 12 compliant*/
+	uint8_t                          aHostID_ETSI12Compliant[PHHCINFC_HCI_MAX_NO_OF_HOSTS];
+	/* Active Host with ETSI 12 compliant*/
+	uint8_t                          bHostActive_ETSI12Compliant;
+	/* No of Host pipe creation done*/
+	uint8_t                          bNoHostsInitialized;
+	/* No of Host pipe creation done*/
+	uint8_t                          bLastHost_ETS12Compliant;
     /*< Flag to indicate clear all pipe has come*/
     uint8_t                          bClearALL_eSE_pipes;
     /* <Flag to indicate clear all pipe has come for which host*/

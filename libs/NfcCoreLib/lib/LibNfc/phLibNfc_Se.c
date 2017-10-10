@@ -1183,6 +1183,49 @@ NFCSTATUS phLibNfc_DelayForSeNtfProc(void* pContext,NFCSTATUS status,void* pInfo
     return NFCSTATUS_SUCCESS;
 }
 
+NFCSTATUS phLibNfc_DelayForNfceeAtr(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    NFCSTATUS wStatus = status;
+    pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t)pContext;
+    UNUSED(pInfo);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if ((NULL != pCtx) && (NFCSTATUS_SUCCESS == wStatus))
+    {
+        PH_LOG_LIBNFC_INFO_U32MSG("Delay to receive ATR ntf", pCtx->dwHciInitDelay);
+
+        pCtx->dwHciTimerId = phOsalNfc_Timer_Create();
+        if (PH_OSALNFC_TIMER_ID_INVALID != pCtx->dwHciTimerId)
+        {
+            wStatus = phOsalNfc_Timer_Start(pCtx->dwHciTimerId,
+                pCtx->dwHciInitDelay,
+                &phLibNfc_NfceeNtfDelayCb,
+                (void *)pCtx);
+            if (NFCSTATUS_SUCCESS == wStatus)
+            {
+                wStatus = NFCSTATUS_PENDING;
+            }
+            else
+            {
+                (void)phOsalNfc_Timer_Delete(pCtx->dwHciTimerId);
+                pCtx->dwHciTimerId = 0;
+                wStatus = NFCSTATUS_FAILED;
+            }
+        }
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+NFCSTATUS phLibNfc_DelayForNfceeAtrProc(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    UNUSED(pInfo);
+    UNUSED(status);
+    UNUSED(pContext);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return NFCSTATUS_SUCCESS;
+}
+
 static NFCSTATUS phLibNfc_NfceeDiscSeqComplete(void* pContext, NFCSTATUS status, void* pInfo)
 {
     NFCSTATUS wStatus = status;
@@ -1504,13 +1547,10 @@ phLibNfc_SE_Type_t phLibNfc_SE_GetType(void* pContext, pphNciNfc_NfceeInfo_t pNf
                 }
             }
 
-            switch (bHciHostId)
-            {
-            case phHciNfc_e_UICCHostID:
+            if(bHciHostId == phHciNfc_e_UICCHostID)
                 return phLibNfc_SE_Type_UICC;
-            case phHciNfc_e_ESeHostID:
+            else if (((bHciHostId >= phHciNfc_e_ProprietaryHostID_Min) && (bHciHostId <= phHciNfc_e_ProprietaryHostID_Max)))
                 return phLibNfc_SE_Type_eSE;
-            }
         }
     }
     return phLibNfc_SE_Type_Invalid;

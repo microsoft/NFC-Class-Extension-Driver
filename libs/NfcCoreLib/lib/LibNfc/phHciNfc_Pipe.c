@@ -244,8 +244,16 @@ phHciNfc_Transceive(void    *pHciContext,
         wStatus = phHciNfc_CoreSend (pHciCtxt,&tSendParams,&phHciNfc_CmdSendCb, pHciCtxt);
         if(NFCSTATUS_PENDING == wStatus)
         {
-            pHciCtxt->Cb_Info.pClientInitCb = pRspCb;
-            pHciCtxt->Cb_Info.pClientCntx = pContext;
+            if (tSendParams.bIns == PHHCINFC_EVENT_ABORT)
+            {
+                pHciCtxt->Cb_Info.pClientInitCb = NULL;
+                pHciCtxt->Cb_Info.pClientCntx = NULL;
+            }
+            else
+            {
+                pHciCtxt->Cb_Info.pClientInitCb = pRspCb;
+                pHciCtxt->Cb_Info.pClientCntx = pContext;
+            }
             pHciCtxt->SendCb_Info.pClientInitCb = NULL;
             pHciCtxt->SendCb_Info.pClientCntx = NULL;
         }
@@ -913,8 +921,11 @@ phHciNfc_ProcessPipeCreateNotifyCmd(phHciNfc_ReceiveParams_t *pReceivedParams,
         {
             /* Pipe Created Ntf from eSE*/
             /* Check the Gate ID to which Pipe Request is received */
-            if((tPipeCreatedNtfParams.bDestGID == phHciNfc_e_ApduGateId))
+            if((tPipeCreatedNtfParams.bDestGID == phHciNfc_e_ApduGateId) ||
+                ((tPipeCreatedNtfParams.bDestGID <= phHciNfc_e_ProprietaryGateId_Max) &&
+                (tPipeCreatedNtfParams.bDestGID >= phHciNfc_e_ProprietaryGateId_Min)))
             {
+                PH_LOG_LIBNFC_INFO_X32MSG("phHciNfc_ProcessPipeCreateNotifyCmd gate - %d", (uint8_t)tPipeCreatedNtfParams.bDestGID);
                 /* Update the Session ID Pipe Presence Indicator Byte */
                 aSetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX] = SET_BITS8(aSetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX],
                                                                       PHHCI_ESE_APDU_PIPE_CREATED_BIT_INDEX,
@@ -929,6 +940,7 @@ phHciNfc_ProcessPipeCreateNotifyCmd(phHciNfc_ReceiveParams_t *pReceivedParams,
             }
             else if( tPipeCreatedNtfParams.bDestGID == phHciNfc_e_ConnectivityGateId)
             {
+                PH_LOG_LIBNFC_INFO_X32MSG("phHciNfc_ProcessPipeCreateNotifyCmd gate - %d", (uint8_t)tPipeCreatedNtfParams.bDestGID);
                 /* Update the Session ID Pipe Presence Indicator Byte */
                 aSetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX] = SET_BITS8(aSetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX],
                                                                       PHHCI_ESE_CONNECTIVITY_PIPE_CREATED_BIT_INDEX,
@@ -964,11 +976,13 @@ phHciNfc_ProcessPipeCreateNotifyCmd(phHciNfc_ReceiveParams_t *pReceivedParams,
 
         phOsalNfc_MemCopy(pHciContext->aGetHciSessionId,aSetHciSessionId, PHHCINFC_PIPE_SESSIONID_LEN);
         pHciContext->bCreatePipe = TRUE;
+
     }
     else
     {
         wIntStatus = phHciNfc_e_RspAnyERegAccessDenied;
     }
+
     PH_LOG_HCI_FUNC_EXIT();
     return wIntStatus;
 }
@@ -1169,7 +1183,9 @@ phHciNfc_ReceiveOpenPipeNotifyCmd(void *pContext,NFCSTATUS wStatus, void *pInfo)
                                                 &phHciNfc_ProcessEventsOnPipe,
                                                 pHciContext);
                         /* According to ETSI12 spec, when CLEAR_PIPE notification arrives at DH, we need to recreate the pipe*/
-                        if ((pReceivedParams->bPipeId == PHHCINFC_HCI_CONNECTIVITY_GATE_PIPE_ID) && (pHciContext->bClearALL_HostId == phHciNfc_e_ESeHostID)) 
+                        if ((pReceivedParams->bPipeId == PHHCINFC_HCI_CONNECTIVITY_GATE_PIPE_ID) &&
+                            ((pHciContext->bClearALL_HostId >= phHciNfc_e_ProprietaryHostID_Min) &&
+                             (pHciContext->bClearALL_HostId <= phHciNfc_e_ProprietaryHostID_Max)))
                         {
                             pHciContext->bClearALL_eSE_pipes = TRUE;
                             pHciContext->bClearALL_HostId = 0x0;
@@ -1248,7 +1264,7 @@ void phHciNfc_ProcessEventsOnPipe( void *pContext,NFCSTATUS wStatus, void *pInfo
 }
 
 NFCSTATUS
-phHciNfc_GetPipeId(void *pContext, uint8_t bGateType, uint8_t *bPipeId)
+phHciNfc_GetPipeId(void *pContext, uint8_t *bPipeId)
 {
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
     pphHciNfc_HciContext_t    pHciContext = NULL;
@@ -1262,7 +1278,9 @@ phHciNfc_GetPipeId(void *pContext, uint8_t bGateType, uint8_t *bPipeId)
         for(bIndex = 0;bIndex < 3;bIndex++)
         {
             /* Check for the Gate Id present in the list */
-            if(pHciContext->aSEPipeList[bIndex].bGateId == bGateType)
+            if((pHciContext->aSEPipeList[bIndex].bGateId == phHciNfc_e_ApduGateId)||
+                ((pHciContext->aSEPipeList[bIndex].bGateId <= phHciNfc_e_ProprietaryGateId_Max)&&
+                   (pHciContext->aSEPipeList[bIndex].bGateId >= phHciNfc_e_ProprietaryGateId_Min)))
             {
                 /* Return the Pipe for the Gate Id present in the list */
                 *bPipeId = pHciContext->aSEPipeList[bIndex].bPipeId;
@@ -1276,7 +1294,7 @@ phHciNfc_GetPipeId(void *pContext, uint8_t bGateType, uint8_t *bPipeId)
     return wStatus;
 }
 
-static void phHciNfc_CreateApduPipeCb(void *pContext, NFCSTATUS wStatus, void *pInfo)
+static void phHciNfc_CreatePipeCb(void *pContext, NFCSTATUS wStatus, void *pInfo)
 {
     NFCSTATUS wIntStatus = NFCSTATUS_FAILED;
     pphHciNfc_HciContext_t    pHciContext = NULL;
@@ -1310,16 +1328,17 @@ static void phHciNfc_CreateApduPipeCb(void *pContext, NFCSTATUS wStatus, void *p
                 if (sizeof(tPipeCreatedNtfParams) == pReceivedParams->wLen)
                 {
                     phOsalNfc_MemCopy(&tPipeCreatedNtfParams, &pReceivedParams->pData[0], sizeof(phHciNfc_AdmNotfPipeCrCmdParams_t));
-                    if (tPipeCreatedNtfParams.bSourceGID == phHciNfc_e_ApduGateId &&
-                        tPipeCreatedNtfParams.bSourceHID == phHciNfc_e_TerminalHostID &&
-                        tPipeCreatedNtfParams.bDestGID == phHciNfc_e_ApduGateId &&
-                        tPipeCreatedNtfParams.bDestHID == phHciNfc_e_ESeHostID)
-                    {
-                        PH_LOG_HCI_INFO_STR("Success!");
-                        wStatus = phHciNfc_ProcessPipeCreateNotifyCmd(pReceivedParams, pHciContext);
-                        pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId = tPipeCreatedNtfParams.bDestGID;
-                        pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = tPipeCreatedNtfParams.bPipeID;
-                        wIntStatus = NFCSTATUS_SUCCESS;
+					if (tPipeCreatedNtfParams.bDestHID == pHciContext->bHostActive_ETSI12Compliant)
+					{
+						PH_LOG_HCI_INFO_STR("Pipe create Success!");
+						wStatus = phHciNfc_ProcessPipeCreateNotifyCmd(pReceivedParams, pHciContext);
+						if( ((pHciContext->bHostActive_ETSI12Compliant >= phHciNfc_e_ProprietaryHostID_Min) &&
+                            (pHciContext->bHostActive_ETSI12Compliant <= phHciNfc_e_ProprietaryHostID_Max)))
+						{
+							pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId = tPipeCreatedNtfParams.bDestGID;
+							pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = tPipeCreatedNtfParams.bPipeID;
+							wIntStatus = NFCSTATUS_SUCCESS;
+						}
                     }
                     else
                     {
@@ -1366,15 +1385,14 @@ static void phHciNfc_CreateApduPipeCb(void *pContext, NFCSTATUS wStatus, void *p
     PH_LOG_HCI_FUNC_EXIT();
 }
 NFCSTATUS
-phHciNfc_CreateApduPipe(void  *pHciContext,
-    uint8_t  bPipeId,
+phHciNfc_CreatePipe(void  *pHciContext,
+	phHciNfc_AdmPipeCreateCmdParams_t  tPipeCreateParams,
     pphHciNfc_RspCb_t  pRspCb,
     void  *pContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_FAILED;
     phHciNfc_SendParams_t *pSendParams = NULL;
     pphHciNfc_HciContext_t pHciCtxt = (pphHciNfc_HciContext_t)pHciContext;
-    phHciNfc_AdmPipeCreateCmdParams_t tPipeCreateParams;
     PH_LOG_HCI_FUNC_ENTRY();
 
     if (NULL != pHciCtxt)
@@ -1389,12 +1407,10 @@ phHciNfc_CreateApduPipe(void  *pHciContext,
             /*Message Type is Command */
             pSendParams->bMsgType = phHciNfc_e_HcpMsgTypeCommand;
             /*Pipe id for the command */
-            pSendParams->bPipeId = bPipeId;
+            pSendParams->bPipeId = phHciNfc_e_HciAdminPipeId;
             /*Instruction on the pipe */
             pSendParams->bIns = phHciNfc_e_AdmCreatePipe;
-            tPipeCreateParams.bDestGID = phHciNfc_e_ApduGateId;
-            tPipeCreateParams.bSourceGID = phHciNfc_e_ApduGateId;
-            tPipeCreateParams.bDestHID = phHciNfc_e_ESeHostID;
+
 
             /* Frame HCI payload for Create Pipe */
             pSendParams->pData = (uint8_t *)phOsalNfc_GetMemory(sizeof(tPipeCreateParams));
@@ -1409,7 +1425,7 @@ phHciNfc_CreateApduPipe(void  *pHciContext,
                     pHciCtxt->Cb_Info.pClientInitCb = pRspCb;
                     pHciCtxt->Cb_Info.pClientCntx = pContext;
                     /* Store the call back of the Send command that can be called on send complete*/
-                    pHciCtxt->SendCb_Info.pClientInitCb = &phHciNfc_CreateApduPipeCb;
+                    pHciCtxt->SendCb_Info.pClientInitCb = &phHciNfc_CreatePipeCb;
                     pHciCtxt->SendCb_Info.pClientCntx = pHciCtxt;
                 }
                 else

@@ -180,7 +180,7 @@ phHciNfc_ProcessEventsOnPipe( void *pContext,NFCSTATUS wStatus, void *pInfo );
 
 extern
 NFCSTATUS
-phHciNfc_GetPipeId(void *pContext, uint8_t bGateType, uint8_t *bPipeId);
+phHciNfc_GetPipeId(void *pContext, uint8_t *bPipeId);
 
 extern void phHciNfc_CmdSendCb(void *pContext, NFCSTATUS wStatus);
 
@@ -201,17 +201,9 @@ extern void phHciNfc_CmdSendCb(void *pContext, NFCSTATUS wStatus);
 */
 extern
 NFCSTATUS
-phHciNfc_CreateApduPipe(
+phHciNfc_CreatePipe(
     void *pHciContext,
-    uint8_t bPipeId,
-    pphHciNfc_RspCb_t pRspCb,
-    void *pContext
-    );
-
-NFCSTATUS
-phHciNfc_eSE_EvtAbort(
-    void *pHciContext,
-    uint8_t bPipeId,
+	phHciNfc_AdmPipeCreateCmdParams_t Pipedata,
     pphHciNfc_RspCb_t pRspCb,
     void *pContext
     );
