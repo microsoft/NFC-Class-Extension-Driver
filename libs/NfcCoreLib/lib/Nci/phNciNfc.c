@@ -692,12 +692,12 @@ NFCSTATUS phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
     PH_LOG_NCI_FUNC_ENTRY();
     if (NULL == pNciContext)
     {
-        PH_LOG_NCI_CRIT_STR("Stack not initialized (phNciNfc_Nfcee_SePowerAndLinkCtrlSet)");
+        PH_LOG_NCI_CRIT_STR("Stack not initialized");
         wStatus = NFCSTATUS_NOT_INITIALISED;
     }
     else if (NULL == pNotifyCb)
     {
-        PH_LOG_NCI_CRIT_STR("Invalid parameter passed(phNciNfc_Nfcee_SePowerAndLinkCtrlSet)");
+        PH_LOG_NCI_CRIT_STR("Invalid parameter passed");
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
     else
@@ -711,7 +711,7 @@ NFCSTATUS phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
                 pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEMODESET_PAYLOADLEN);
                 if (NULL == pTargetInfo)
                 {
-                    PH_LOG_NCI_CRIT_STR("Memory not available(phNciNfc_Nfcee_SePowerAndLinkCtrlSet)");
+                    PH_LOG_NCI_CRIT_STR("Memory not available");
                     wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
                 }
                 else
