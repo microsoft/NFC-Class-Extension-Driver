@@ -1431,9 +1431,8 @@ static NFCSTATUS phLibNfc_SePowerAndLinkCtrlEnd(void *pContext, NFCSTATUS wStatu
     return wStatus;
 }
 
-static NFCSTATUS phLibNfc_SePowerAndLinkCtrlCompleteSequence(void* pContext, NFCSTATUS Status, void *pInfo)
+static NFCSTATUS phLibNfc_SePowerAndLinkCtrlCompleteSequence(void* pContext, NFCSTATUS wStatus, void *pInfo)
 {
-    NFCSTATUS wStatus = Status;
     pphLibNfc_LibContext_t pCtx = phLibNfc_GetContext();
     pphLibNfc_RspCb_t clientCb = NULL;
     void *clientContext = NULL;
