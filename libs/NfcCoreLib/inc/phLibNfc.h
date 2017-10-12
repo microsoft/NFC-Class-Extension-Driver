@@ -769,10 +769,10 @@ NFCSTATUS phLibNfc_SE_SetMode ( phLibNfc_Handle              hSE_Handle,
 * \retval   #NFCSTATUS_FAILED              Request failed
 */
 NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handle,
-    phLibNfc_PowerLinkModes_t  ePowerAndLinkModes,
-    pphLibNfc_RspCb_t  pSE_PowerAndLinkControl_Rsp_cb,
-    void *                       pContext
-);
+                                          phLibNfc_PowerLinkModes_t    ePowerAndLinkModes,
+                                          pphLibNfc_RspCb_t            pSE_PowerAndLinkControl_Rsp_cb,
+                                          void *                       pContext
+    );
 
 /**
 * \ingroup grp_lib_nfc
