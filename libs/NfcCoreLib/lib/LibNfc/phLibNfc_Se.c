@@ -1388,20 +1388,18 @@ phLibNfc_SePowerAndLinkCtrlSeq(void *pContext,
                                NFCSTATUS wStatus,
                                void *pInfo)
 {
-    NFCSTATUS wIntStatus = wStatus;
+    NFCSTATUS wIntStatus = NFCSTATUS_FAILED;
     pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t)pContext;
     UNUSED(pInfo);
+    UNUSED(wStatus);
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if ((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext))
     {
-        if (NFCSTATUS_SUCCESS == wIntStatus)
-        {
-            wIntStatus = phNciNfc_Nfcee_SePowerAndLinkCtrlSet(pLibContext->sHwReference.pNciHandle,
-                                    (void *)pLibContext->sSeContext.pActiveSeInfo->hSecureElement,
-                                    pLibContext->sSeContext.ePowerLinkMode,
-                                    (pphNciNfc_IfNotificationCb_t)&phLibNfc_InternalSequence,
-                                    (void *)pLibContext);
-        }
+        wIntStatus = phNciNfc_Nfcee_SePowerAndLinkCtrlSet(pLibContext->sHwReference.pNciHandle,
+                                (void *)pLibContext->sSeContext.pActiveSeInfo->hSecureElement,
+                                pLibContext->sSeContext.ePowerLinkMode,
+                                (pphNciNfc_IfNotificationCb_t)&phLibNfc_InternalSequence,
+                                (void *)pLibContext);
     }
     else
     {
