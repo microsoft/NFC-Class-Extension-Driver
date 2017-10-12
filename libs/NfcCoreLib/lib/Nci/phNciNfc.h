@@ -294,15 +294,15 @@ typedef enum phNciNfc_NfceeModes
 typedef enum phNciNfc_PowerLinkMode
 {
     /** NFCEE  NFCC decides identifier*/
-    phNciNfc_NfceeNfccDecides = 0x00,
+    phNciNfc_PLM_NfccDecides = 0x00,
     /** NFCEE  power supply always on*/
-    phNciNfc_NfceePowerSupplyAlwaysOn = 0x01,
+    phNciNfc_PLM_PowerSupplyAlwaysOn = 0x01,
     /** NFCEE  NFCC to NFCEE Communication link always active when the NFCEE is powered on*/
-    phNciNfc_NfceeComLinkActiveOnPowerOn = 0x02,
+    phNciNfc_PLM_ComLinkActiveOnPowerOn = 0x02,
     /** NFCEE Power supply and NFCC to NFCEE communication link are always on*/
-    phNciNfc_NfceePowerNfccLinkAlwaysOn = 0x03,
+    phNciNfc_PLM_PowerNfccLinkAlwaysOn = 0x03,
     /** Future or unknown identifier */
-    phNciNfc_NfceePowerLinkUnknown,
+    phNciNfc_PLM_PowerLinkUnknown,
 }phNciNfc_PowerLinkModes_t;
 
 /*!
