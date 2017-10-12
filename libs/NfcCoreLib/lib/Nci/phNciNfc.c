@@ -685,7 +685,7 @@ NFCSTATUS phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     phNciNfc_Context_t * pNciContext = (phNciNfc_Context_t *)pNciHandle;
-    pphNciNfc_NfceeDeviceHandle_t pDevHandle = \
+    pphNciNfc_NfceeDeviceHandle_t pDevHandle =
         (pphNciNfc_NfceeDeviceHandle_t)pNfceeHandle;
     uint8_t *pTargetInfo;
 
@@ -702,8 +702,8 @@ NFCSTATUS phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
     }
     else
     {
-        if ((NULL != pDevHandle) && \
-            (0 != pDevHandle->tDevInfo.bNfceeID) && \
+        if ((NULL != pDevHandle) &&
+            (0 != pDevHandle->tDevInfo.bNfceeID) &&
             (PHNCINFC_INVALID_DISCID != pDevHandle->tDevInfo.bNfceeID))
         {
             if (phNciNfc_IsVersion2x(pNciContext))
@@ -720,7 +720,7 @@ NFCSTATUS phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
                     pTargetInfo[0] = pDevHandle->tDevInfo.bNfceeID;
                     pTargetInfo[1] = (uint8_t)eActivationMode;
                     pNciContext->tSendPayload.pBuff = pTargetInfo;
-                    pNciContext->tSendPayload.wPayloadSize = \
+                    pNciContext->tSendPayload.wPayloadSize =
                         (uint16_t)PHNCINFC_NFCEEMODESET_PAYLOADLEN;
                     pNciContext->IfNtf = pNotifyCb;
                     pNciContext->IfNtfCtx = pContext;
