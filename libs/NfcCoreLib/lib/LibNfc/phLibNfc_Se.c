@@ -1437,16 +1437,12 @@ static NFCSTATUS phLibNfc_SePowerAndLinkCtrlCompleteSequence(void* pContext, NFC
     pphLibNfc_LibContext_t pCtx = phLibNfc_GetContext();
     pphLibNfc_RspCb_t ClientCb = NULL;
     void *ClientContext = NULL;
-    phLibNfc_Handle hSeHandle;
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if ((NULL != pCtx) && (pContext == pCtx))
     {
         ClientCb = pCtx->CBInfo.pPowerCtrlLinkCb;
         ClientContext = pCtx->CBInfo.pPowerCtrlLinkCntx;
-        hSeHandle = pCtx->sSeContext.pActiveSeInfo->hSecureElement;
-
-        pCtx->StateContext.Flag = phLibNfc_StateTransitionComplete;
 
         if (NULL != ClientCb)
         {
