@@ -1418,11 +1418,7 @@ static NFCSTATUS phLibNfc_SePowerAndLinkCtrlEnd(void *pContext, NFCSTATUS wStatu
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if ((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext))
     {
-        if (NFCSTATUS_SUCCESS == wStatus)
-        {
-            PH_LOG_LIBNFC_INFO_STR("Set Se Power Mode success");
-        }
-        else
+        if (NFCSTATUS_SUCCESS != wStatus)
         {
             PH_LOG_LIBNFC_CRIT_STR("Set Se Power Mode Failed!");
         }
