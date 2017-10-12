@@ -1435,18 +1435,18 @@ static NFCSTATUS phLibNfc_SePowerAndLinkCtrlCompleteSequence(void* pContext, NFC
 {
     NFCSTATUS wStatus = Status;
     pphLibNfc_LibContext_t pCtx = phLibNfc_GetContext();
-    pphLibNfc_RspCb_t ClientCb = NULL;
-    void *ClientContext = NULL;
+    pphLibNfc_RspCb_t clientCb = NULL;
+    void *clientContext = NULL;
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if ((NULL != pCtx) && (pContext == pCtx))
     {
-        ClientCb = pCtx->CBInfo.pPowerCtrlLinkCb;
-        ClientContext = pCtx->CBInfo.pPowerCtrlLinkCntx;
+        clientCb = pCtx->CBInfo.pPowerCtrlLinkCb;
+        clientContext = pCtx->CBInfo.pPowerCtrlLinkCntx;
 
-        if (NULL != ClientCb)
+        if (NULL != clientCb)
         {
-            ClientCb(ClientContext, wStatus);
+            clientCb(clientContext, wStatus);
         }
     }
     else
