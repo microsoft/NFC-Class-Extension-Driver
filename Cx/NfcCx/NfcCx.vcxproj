@@ -107,6 +107,7 @@
     <Link>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(SolutionDir)libs\$(Platform)</AdditionalLibraryDirectories>
       <AdditionalDependencies>%(AdditionalDependencies);WdfCxProxy.lib</AdditionalDependencies>
+      <AdditionalOptions>/IGNORE:4099 %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
