@@ -77,7 +77,7 @@ Return Value:
     WDF_OBJECT_ATTRIBUTES objectAttrib;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     eseInterface = (PNFCCX_ESE_INTERFACE)malloc(sizeof((*eseInterface)));
     if (NULL == eseInterface) {
         TRACE_LINE(LEVEL_ERROR, "Failed to allocate the SC interface");
@@ -240,7 +240,21 @@ Return Value:
                                                         sizeof(readerKind),
                                                         &readerKind);
             if (!NT_SUCCESS(status)) {
-                TRACE_LINE(LEVEL_ERROR, "Failed to assign property for the NFC eSE smart card reader device interface, %!STATUS!", status);
+                TRACE_LINE(LEVEL_ERROR, "Failed to assign ReaderKind property for the NFC eSE smart card reader device interface, %!STATUS!", status);
+                goto Done;
+            }
+
+            WDF_DEVICE_INTERFACE_PROPERTY_DATA_INIT(&nfcScReaderData,
+                                                    &GUID_DEVINTERFACE_SMARTCARD_READER,
+                                                    &DEVPKEY_Device_ReaderSecureElementId);
+            nfcScReaderData.ReferenceString = &nfcESeReaderReference;
+            status = WdfDeviceAssignInterfaceProperty(fdoContext->Device,
+                                                        &nfcScReaderData,
+                                                        DEVPROP_TYPE_GUID,
+                                                        sizeof(ESEInterface->SecureElementId),
+                                                        &ESEInterface->SecureElementId);
+            if (!NT_SUCCESS(status)) {
+                TRACE_LINE(LEVEL_ERROR, "Failed to assign ReaderSecureElementId property for the NFC eSE smart card reader device interface, %!STATUS!", status);
                 goto Done;
             }
 
@@ -298,7 +312,7 @@ Return Value:
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
-BOOLEAN 
+BOOLEAN
 NfcCxESEInterfaceIsIoctlSupported(
     _In_ PNFCCX_FDO_CONTEXT FdoContext,
     _In_ ULONG IoControlCode
@@ -309,7 +323,7 @@ Routine Description:
 
     This routine returns true if the provided IOCTL is supported by the
     module.
-    
+
 Arguments:
 
     FdoContext - The FDO Context
@@ -344,7 +358,7 @@ NfcCxESEIsPowerManagedRequest(
 Routine Description:
 
     This routine returns true if the provided IOCTL is power managed.
-    
+
 Arguments:
 
     FdoContext - The FDO Context
@@ -368,7 +382,7 @@ Return Value:
     return FALSE;
 }
 
-NTSTATUS 
+NTSTATUS
 NfcCxESEInterfaceIoDispatch(
     _In_opt_ PNFCCX_FILE_CONTEXT FileContext,
     _In_ WDFREQUEST    Request,
@@ -519,7 +533,7 @@ Return Value:
 
     for (i = 0; i < ARRAYSIZE(g_ESeDispatch); i++) {
         if (g_ESeDispatch[i].IoControlCode == IoControlCode) {
-            
+
             if (g_ESeDispatch[i].MinimumInputBufferLength > InputBufferLength) {
                 TRACE_LINE(LEVEL_ERROR, "Invalid Input buffer.  Expected %I64x, got %I64x",
                     g_ESeDispatch[i].MinimumInputBufferLength,
@@ -617,7 +631,7 @@ Arguments:
 
     ESEInterface - A pointer to the ESEInterface
     FileContext - Client to add
-    
+
 Return Value:
 
     NTSTATUS
@@ -689,7 +703,7 @@ Routine Description:
 Arguments:
 
     ESEInterface - A pointer to the ESEInterface
-    
+
 Return Value:
 
     VOID
@@ -750,7 +764,7 @@ Arguments:
 
     ESEInterface - ESEInterface object corresponding to smartcard connection
     RFInterface - RFInterface of ESEInterface provided containing data for ESEInterface
-    
+
 Return Value:
 
     VOID
@@ -1045,7 +1059,7 @@ Return Value:
             "Completing request %p, with %!STATUS!, 0x%I64x", Request, status, sizeof(DWORD));
         WdfRequestCompleteWithInformation(Request, status, sizeof(DWORD));
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1053,7 +1067,7 @@ Return Value:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1134,7 +1148,7 @@ Return Value:
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1221,7 +1235,7 @@ Done:
             "Completing request %p, with %!STATUS!, 0x%I64x", Request, status, sizeof(DWORD));
         WdfRequestCompleteWithInformation(Request, status, sizeof(DWORD));
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1229,7 +1243,7 @@ Done:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1301,7 +1315,7 @@ Return Value:
 Done:
     if (NT_SUCCESS(status)) {
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1372,13 +1386,13 @@ Return Value:
     }
 
     WdfWaitLockRelease(eseInterface->SmartCardLock);
-    
+
     status = NfcCxSCPresentAbsentDispatcherSetRequest(eseInterface->FdoContext, &eseInterface->PresentDispatcher, Request);
 
 Done:
     if (NT_SUCCESS(status)) {
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1468,7 +1482,7 @@ Done:
             "Completing request %p, with %!STATUS!, Output buffer length = %Iu", Request, status, OutputBufferUsed);
         WdfRequestCompleteWithInformation(Request, status, OutputBufferUsed);
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1559,7 +1573,7 @@ Return Value:
         status = STATUS_INVALID_DEVICE_STATE;
         goto Done;
     }
-    
+
     status = NfcCxCopyToBuffer(&SCReaderCurrentProtocolType, sizeof(SCReaderCurrentProtocolType), pbOutputBuffer, pcbOutputBuffer);
 
 Done:
