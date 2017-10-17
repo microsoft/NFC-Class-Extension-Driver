@@ -207,6 +207,24 @@ Return Value:
 }
 
 NTSTATUS
+NfcCxPowerFileAddRemoveReference(
+    _In_ PNFCCX_POWER_MANAGER PowerManager,
+    _In_ PNFCCX_FILE_CONTEXT FileContext,
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type,
+    _In_ BOOLEAN AddReference
+    )
+{
+    if (AddReference)
+    {
+        return NfcCxPowerFileAddReference(PowerManager, FileContext, Type);
+    }
+    else
+    {
+        return NfcCxPowerFileRemoveReference(PowerManager, FileContext, Type);
+    }
+}
+
+NTSTATUS
 NfcCxPowerFileAddReference(
     _In_ PNFCCX_POWER_MANAGER PowerManager,
     _In_ PNFCCX_FILE_CONTEXT FileContext,

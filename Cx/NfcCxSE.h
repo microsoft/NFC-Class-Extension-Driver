@@ -47,12 +47,18 @@ NFCCX_SE_DISPATCH_HANDLER(
 
 typedef NFCCX_SE_DISPATCH_HANDLER *PFN_NFCCX_SE_DISPATCH_HANDLER;
 
-typedef struct _NFCCX_POWER_SETTING
+typedef struct _NFCCX_SE_POWER_SETTINGS
 {
-    GUID SecureElementId;
     SECURE_ELEMENT_CARD_EMULATION_MODE EmulationMode;
     BOOLEAN WiredMode;
-} NFCCX_POWER_SETTING;
+    BOOLEAN ForcePowerOn;
+} NFCCX_SE_POWER_SETTINGS;
+
+typedef struct _NFCCX_SE_POWER_SETTINGS_LIST_ITEM
+{
+    GUID SecureElementId;
+    NFCCX_SE_POWER_SETTINGS Settings;
+} NFCCX_SE_POWER_SETTINGS_LIST_ITEM;
 
 typedef struct _NFCCX_SE_INTERFACE {
 
@@ -89,7 +95,7 @@ typedef struct _NFCCX_SE_INTERFACE {
     // Secure Element Emulation Mode
     //
     WDFWAITLOCK SEPowerSettingsLock;
-    NFCCX_POWER_SETTING SEPowerSettings[MAX_NUMBER_OF_SE];
+    NFCCX_SE_POWER_SETTINGS_LIST_ITEM SEPowerSettings[MAX_NUMBER_OF_SE];
     DWORD SEPowerSettingsCount;
 
 } NFCCX_SE_INTERFACE, *PNFCCX_SE_INTERFACE;
@@ -185,6 +191,7 @@ NFCCX_SE_DISPATCH_HANDLER NfcCxSEInterfaceDispatchGetRoutingTable;
 NFCCX_SE_DISPATCH_HANDLER NfcCxSEInterfaceDispatchSetRoutingTable;
 NFCCX_SE_DISPATCH_HANDLER NfcCxSEInterfaceDispatchHCERemoteRecv;
 NFCCX_SE_DISPATCH_HANDLER NfcCxSEInterfaceDispatchHCERemoteSend;
+NFCCX_SE_DISPATCH_HANDLER NfcCxSEInterfaceDispatchSetPowerMode;
 
 NTSTATUS
 NfcCxSEInterfaceCopyEventData(
@@ -254,6 +261,14 @@ NfcCxSEInterfaceSetCardWiredMode(
     _In_ BOOLEAN WiredMode
     );
 
+_Requires_lock_held_(SEInterface->SEPowerSettingsLock)
+NTSTATUS
+NfcCxSEInterfaceUpdateSEActivationMode(
+    _In_ PNFCCX_SE_INTERFACE SEInterface,
+    _In_ const GUID& SecureElementId,
+    _In_ const NFCCX_SE_POWER_SETTINGS& PowerSettings
+    );
+
 NTSTATUS
 NfcCxSEInterfaceResetCard(
     _In_ PNFCCX_SE_INTERFACE SEInterface,
@@ -305,18 +320,25 @@ NfcCxSEInterfaceGetSEInfo(
     );
 
 _Requires_lock_held_(SEInterface->SEPowerSettingsLock)
-NFCCX_POWER_SETTING*
-NfcCxSEInterfaceGetSettingsListItem(
+NFCCX_SE_POWER_SETTINGS_LIST_ITEM*
+NfcCxSEInterfaceGetPowerSettingsListItem(
     _In_ PNFCCX_SE_INTERFACE SEInterface,
-    _In_ const GUID& secureElementId
+    _In_ const GUID& SecureElementId
+    );
+
+_Requires_lock_held_(SEInterface->SEPowerSettingsLock)
+NFCCX_SE_POWER_SETTINGS
+NfcCxSEInterfaceGetPowerSettings(
+    _In_ PNFCCX_SE_INTERFACE SEInterface,
+    _In_ const GUID& SecureElementId
     );
 
 _Requires_lock_held_(SEInterface->SEPowerSettingsLock)
 NTSTATUS
-NfcCxSEInterfaceGetOrAddSettingsListItem(
+NfcCxSEInterfaceSetPowerSettings(
     _In_ PNFCCX_SE_INTERFACE SEInterface,
     _In_ const GUID& SecureElementId,
-    _Outptr_ NFCCX_POWER_SETTING** listItem
+    _In_ const NFCCX_SE_POWER_SETTINGS& PowerSettings
     );
 
 BOOLEAN FORCEINLINE
