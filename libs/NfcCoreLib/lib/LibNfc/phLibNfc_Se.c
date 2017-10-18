@@ -319,7 +319,7 @@ NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handl
     }
     else
     {
-        wStatus = NFCSTATUS_FAILED;
+        wStatus = NFCSTATUS_FEATURE_NOT_SUPPORTED;
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;
