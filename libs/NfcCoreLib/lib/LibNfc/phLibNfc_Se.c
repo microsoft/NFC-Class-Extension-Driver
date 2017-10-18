@@ -319,6 +319,7 @@ NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handl
     }
     else
     {
+        PH_LOG_LIBNFC_CRIT_STR("NFCC is not operating in NCI2.0 mode!");
         wStatus = NFCSTATUS_FEATURE_NOT_SUPPORTED;
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
