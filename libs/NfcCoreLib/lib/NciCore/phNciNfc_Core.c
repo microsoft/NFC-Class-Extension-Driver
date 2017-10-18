@@ -616,7 +616,7 @@ phNciNfc_CoreValidateNfceeMgtCmd(pphNciNfc_CoreTxInfo_t pTxInfo,
             }
             break;
         case phNciNfc_e_NfceeMgtPowerAndLinkCtrlCmdOid:
-            if ((PHNCINFC_CORE_NFCEEMODESET_CMD_PAYLOADLEN == pTxInfo->wLen) && (NULL != pTxInfo->Buff))
+            if ((PHNCINFC_CORE_NFCEEPOWERANDLINKCTRL_CMD_PAYLOADLEN == pTxInfo->wLen) && (NULL != pTxInfo->Buff))
             {
                 wStatus = NFCSTATUS_SUCCESS;
             }

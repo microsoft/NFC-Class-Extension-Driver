@@ -29,6 +29,8 @@
 #define PH_NCINFC_NFCEE_PROTOS_PROP_MIN             (0x80)
 #define PH_NCINFC_NFCEE_PROTOS_PROP_MAX             (0xFE)
 
+#define PH_NCINFC_NFCEEPOWERLINKCTRL_PAYLOADLEN     (0x02)
+
 typedef struct phNciNfc_NfceeContext
 {
     /** Total number of Nfcee discovered from response*/

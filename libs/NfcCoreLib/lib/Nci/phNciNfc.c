@@ -706,37 +706,30 @@ NFCSTATUS phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
             (0 != pDevHandle->tDevInfo.bNfceeID) &&
             (PHNCINFC_INVALID_DISCID != pDevHandle->tDevInfo.bNfceeID))
         {
-            if (phNciNfc_IsVersion2x(pNciContext))
+            pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PH_NCINFC_NFCEEPOWERLINKCTRL_PAYLOADLEN);
+            if (NULL == pTargetInfo)
             {
-                pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEMODESET_PAYLOADLEN);
-                if (NULL == pTargetInfo)
-                {
-                    PH_LOG_NCI_CRIT_STR("Memory not available");
-                    wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
-                }
-                else
-                {
-                    /* Store the Payload */
-                    pTargetInfo[0] = pDevHandle->tDevInfo.bNfceeID;
-                    pTargetInfo[1] = (uint8_t)eActivationMode;
-                    pNciContext->tSendPayload.pBuff = pTargetInfo;
-                    pNciContext->tSendPayload.wPayloadSize =
-                        (uint16_t)PHNCINFC_NFCEEMODESET_PAYLOADLEN;
-                    pNciContext->IfNtf = pNotifyCb;
-                    pNciContext->IfNtfCtx = pContext;
-                    PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_SePowerAndLinkCtrlSequence);
-                    wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
-                    if (NFCSTATUS_PENDING != wStatus)
-                    {
-                        PH_LOG_NCI_CRIT_STR("Nfcee PowerAndLinkCtrlSet Sequence failed!");
-                        phOsalNfc_FreeMemory(pTargetInfo);
-                        pNciContext->tSendPayload.pBuff = NULL;
-                    }
-                }
+                PH_LOG_NCI_CRIT_STR("Memory not available");
+                wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
             }
             else
             {
-                wStatus = NFCSTATUS_FEATURE_NOT_SUPPORTED;
+                /* Store the Payload */
+                pTargetInfo[0] = pDevHandle->tDevInfo.bNfceeID;
+                pTargetInfo[1] = (uint8_t)eActivationMode;
+                pNciContext->tSendPayload.pBuff = pTargetInfo;
+                pNciContext->tSendPayload.wPayloadSize =
+                    (uint16_t)PH_NCINFC_NFCEEPOWERLINKCTRL_PAYLOADLEN;
+                pNciContext->IfNtf = pNotifyCb;
+                pNciContext->IfNtfCtx = pContext;
+                PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_SePowerAndLinkCtrlSequence);
+                wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
+                if (NFCSTATUS_PENDING != wStatus)
+                {
+                    PH_LOG_NCI_CRIT_STR("Nfcee PowerAndLinkCtrlSet Sequence failed!");
+                    phOsalNfc_FreeMemory(pTargetInfo);
+                    pNciContext->tSendPayload.pBuff = NULL;
+                }
             }
         }
         else
