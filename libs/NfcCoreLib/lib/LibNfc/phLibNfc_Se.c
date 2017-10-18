@@ -295,8 +295,13 @@ NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handl
 
     wStatus = phLibNfc_IsInitialised(pCtx);
 
-    if ((NULL == (void *)hSE_Handle) ||
-        (NULL == pSE_PowerAndLinkControl_Rsp_cb))
+    if (NFCSTATUS_SUCCESS != wStatus)
+    {
+        PH_LOG_LIBNFC_CRIT_STR("LibNfc Stack not Initialised");
+        wStatus = NFCSTATUS_NOT_INITIALISED;
+    }
+    else if ((NULL == (void *)hSE_Handle) ||
+             (NULL == pSE_PowerAndLinkControl_Rsp_cb))
     {
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
