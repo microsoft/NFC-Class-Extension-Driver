@@ -255,7 +255,8 @@ phHciNfc_PrintHciCommand(_In_ phHciNfc_HciContext_t* pHciContext, const phHciNfc
             CHAR data[PRINT_HCI_COMMAND_MAX_COUNT*3 + 1] = { 0 };
             for (uint32_t i = 0; i != len; ++i)
             {
-                sprintf(data + i * 3, "%02X ", (int)params->pData[i]);
+                const size_t arraySize = 4; // 3 chars per byte + null terminator
+                sprintf_s(data + i * 3, arraySize, "%02X ", (int)params->pData[i]);
             }
 
             PH_LOG_HCI_INFO_STR("Data: %s", data);
