@@ -138,6 +138,7 @@ typedef enum phHciNfc_GateID
     phHciNfc_e_ApduGateId                       = 0x30U,
     // ETSI HCI v12.1, Section 11.2, Table 48
     phHciNfc_e_ConnectivityGateId               = 0x41U,
+    phHciNfc_e_ProprietaryApduGateId            = 0xF0U,
 } phHciNfc_GateID_t;
 
 // ETSI HCI v12.1, Section 4.4, Table 3
