@@ -35,10 +35,6 @@ typedef enum phFriNfc_eRONdefSeq
 
 }phFriNfc_eRONdefSeq_t;
 
-#define ISO15693_STM_LRIS64K_MAX_SIZE       8192
-#define ISO15693_STM_M24LR16ER_MAX_SIZE     2048
-#define ISO15693_STM_M24LR64X_MAX_SIZE      8192
-
 /* State Machine declaration */
 
 /* CHECK NDEF state */
@@ -63,13 +59,6 @@ typedef enum phFriNfc_eRONdefSeq
 #define ISO15693_MAPPING_VERSION            0x01U
 /* Major version is in upper 2 bits */
 #define ISO15693_MAJOR_VERSION_MASK         0xC0U
-
-/* CC indicating tag is capable of multi-block read */
-#define ISO15693_CC_USE_MBR                 0x01U
-/* CC indicating tag is capable of inventory page read */
-#define ISO15693_CC_USE_IPR                 0x02U
-/* CC indicating tag memory size exceeds the CC2 field */
-#define ISO15693_CC_MEM_EXCEEDED            0x04U
 
 /* EXTRA byte in the response */
 #define ISO15693_EXTRA_RESP_BYTE            0x01U
@@ -1586,15 +1575,33 @@ phFriNfc_ReadRemainingInMultiple (
 {
     NFCSTATUS result = NFCSTATUS_FAILED;
     phFriNfc_ISO15693Cont_t *ps_iso_15693_con = &(psNdefMap->ISO15693Container);
+    phHal_sIso15693Info_t   *ps_iso_15693_info =
+                            &(psNdefMap->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info);
     uint32_t remaining_size = ISO15693_GET_REMAINING_SIZE(ps_iso_15693_con->max_data_size,
                                            startBlock, 0);
     // Check capabilities
     if (ps_iso_15693_con->read_capabilities & ISO15693_CC_USE_MBR) {
         // Multi-page read command
-        uint8_t mbread[1];
-        mbread[0] = (uint8_t)((remaining_size / ISO15693_BYTES_PER_BLOCK) - 1);
-        result = phFriNfc_ISO15693_H_ReadWrite (psNdefMap, ISO15693_READ_MULTIPLE_COMMAND,
-                mbread, 1);
+        uint8_t mbread[2];
+        uint8_t mbread_len = 1;
+        uint32_t nb_blocks = 0;
+
+        /* Compute how many block can be read at a time.
+           If we are read M24LR tags, we can read 32 blocks maximum if they are all located in the same sector.
+         */
+        nb_blocks = ((remaining_size / ISO15693_BYTES_PER_BLOCK) - 1);
+
+        if (ISO15693_PROTOEXT_FLAG_REQUIRED(ps_iso_15693_info->Uid) &&
+            ((nb_blocks + (ps_iso_15693_con->current_block % ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR)) >= ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR - 1))
+        {
+            nb_blocks = ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR - (ps_iso_15693_con->current_block % ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR) - 1;
+            mbread_len = 2;
+        }
+        mbread[0] = (uint8_t)nb_blocks;
+        mbread[1] = (uint8_t)(nb_blocks >> 8);
+
+        result = phFriNfc_ISO15693_H_ReadWrite(psNdefMap, ISO15693_READ_MULTIPLE_COMMAND,
+                                               mbread, mbread_len);
     } else if (ps_iso_15693_con->read_capabilities & ISO15693_CC_USE_IPR) {
         uint32_t page = 0;
         uint32_t pagesToRead = (remaining_size / ISO15693_BYTES_PER_BLOCK / 4) - 1;

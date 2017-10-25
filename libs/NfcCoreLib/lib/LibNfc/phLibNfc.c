@@ -1896,7 +1896,7 @@ static NFCSTATUS phLibNfc_InternalPresenceCheck(phLibNfc_Handle     hRemoteDevic
                                            0x05   /*Byte1 of 2 byte BlockList => 0x05 (BlockNumber)*/
                                           };
     static uint8_t bFelicaRespBuff[27];
-    static uint8_t bCommonCmdBuff[3] = {0};
+    static uint8_t bCommonCmdBuff[4] = {0};
     static uint8_t bCommonRespBuff[68]; /* Max 528 bits can be received */
     uint8_t bIndex=0;
     uint8_t bIndex1=0;
@@ -2039,15 +2039,23 @@ static NFCSTATUS phLibNfc_InternalPresenceCheck(phLibNfc_Handle     hRemoteDevic
         else if(phNfc_eISO15693_PICC == pLibNfc_RemoteDevInfo->RemDevType)
         {
             /* Sending Ack command */
-            bCommonCmdBuff[0] = 0x02;
-            bCommonCmdBuff[1] = 0x20;
-            bCommonCmdBuff[2] = 0x00;
+            bCommonCmdBuff[bIndex++] = 0x02;
+            if (ISO15693_PROTOEXT_FLAG_REQUIRED(pLibNfc_RemoteDevInfo->RemoteDevInfo.Iso15693_Info.Uid))
+            {
+                bCommonCmdBuff[0] |= ISO15693_FLAG_PROTOEXT;
+            }
+            bCommonCmdBuff[bIndex++] = 0x20;
+            bCommonCmdBuff[bIndex++] = 0x00;
+            if (ISO15693_PROTOEXT_FLAG_REQUIRED(pLibNfc_RemoteDevInfo->RemoteDevInfo.Iso15693_Info.Uid))
+            {
+                bCommonCmdBuff[bIndex++] = 0x00;
+            }
 
             phOsalNfc_SetMemory(&TransceiveInfo, 0x00, sizeof(phLibNfc_sTransceiveInfo_t));
             TransceiveInfo.cmd.Iso15693Cmd = phNfc_eIso15693_Raw;
 
             TransceiveInfo.sSendData.buffer = bCommonCmdBuff;
-            TransceiveInfo.sSendData.length = sizeof(bCommonCmdBuff);
+            TransceiveInfo.sSendData.length = bIndex;
             TransceiveInfo.sRecvData.buffer = bCommonRespBuff;
             TransceiveInfo.sRecvData.length = sizeof(bCommonRespBuff);
             wStatus =phLibNfc_InternalTransceive(hRemoteDevice,
