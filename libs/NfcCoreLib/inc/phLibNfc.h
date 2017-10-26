@@ -62,6 +62,19 @@ typedef enum
     phLibNfc_SE_ActModeOff     = 0x01,
 }phLibNfc_eSE_ActivationMode;
 
+/**
+* \ingroup grp_nci_nfc
+* \brief NFCEE Power and Link Control Info contains power related identifier..
+*/
+typedef enum phLibNfc_PowerLinkMode
+{
+    phLibNfc_PLM_NfccDecides = 0x00,                /** NFCEE  NFCC decides identifier*/
+    phLibNfc_PLM_PowerSupplyAlwaysOn = 0x01,        /** NFCEE  power supply always on*/
+    phLibNfc_PLM_ComLinkActiveWhenPowerOn = 0x02,   /** NFCEE  NFCC to NFCEE Communication link always active when the NFCEE is powered on*/
+    phLibNfc_PLM_PowerAndComLinkAlwaysOn = 0x03,    /** NFCEE Power supply and NFCC to NFCEE communication link are always on*/
+    phLibNfc_PLM_PowerLinkUnknown,                  /** Future or unknown identifier */
+}phLibNfc_PowerLinkModes_t;
+
 /** \ingroup grp_lib_nfc
     SE event information */
 typedef union phLibNfc_uSeEvtInfo
@@ -719,6 +732,41 @@ NFCSTATUS phLibNfc_SE_SetMode ( phLibNfc_Handle              hSE_Handle,
                                 phLibNfc_eSE_ActivationMode  eActivation_mode,
                                 pphLibNfc_SE_SetModeRspCb_t  pSE_SetMode_Rsp_cb,
                                 void *                       pContext
+    );
+
+/**
+* \ingroup grp_lib_nfc
+* \brief Sets power and link control configuration for the eSE secure element type.
+*
+* This function configures SE to different power mode.
+*
+* -# If mode is set to #phLibNfc_SE_NfccDecides then the NFCC will be responsible for powering
+* the eSE.
+* -# If mode is set to #phLibNfc_SE_PowerSupplyAlwaysOn then the NFCC will keep the eSE power
+* supply always on.
+* -# If mode is set to #phLibNfc_SE_NfccComLinkActiveOnPowerOn then the NFCC will keep the eSE
+* link always on.
+* -# If mode is set to #phLibNfc_SE_PowerNfccLinkAlwaysOn then the NFCC will keep the eSE
+* power supply and the link always on.
+*
+* \param[in]  hSE_Handle           Secure element handle
+* \param[in]  ePowerAndLinkModes   eSE power and link modes
+* \param[in]  pSE_PowerAndLinkControl_Rsp_cb   Pointer to response callback
+* \param[in]  pContext             Client context which will be included in
+*                                  callback when the request is completed.
+*
+* \retval   #NFCSTATUS_PENDING             SE power and link control transaction started
+* \retval   #NFCSTATUS_SHUTDOWN            Shutdown in progress
+* \retval   #NFCSTATUS_NOT_INITIALISED     LibNfc is not yet initialized
+* \retval   #NFCSTATUS_INVALID_HANDLE      Invalid handle
+* \retval   #NFCSTATUS_INVALID_PARAMETER   Invalid parameter
+* \retval   #NFCSTATUS_REJECTED            Invalid request
+* \retval   #NFCSTATUS_FAILED              Request failed
+*/
+NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handle,
+                                          phLibNfc_PowerLinkModes_t    ePowerAndLinkModes,
+                                          pphLibNfc_RspCb_t            pSE_PowerAndLinkControl_Rsp_cb,
+                                          void *                       pContext
     );
 
 /**

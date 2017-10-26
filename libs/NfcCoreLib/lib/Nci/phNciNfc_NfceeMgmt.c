@@ -47,6 +47,10 @@ static NFCSTATUS phNciNfc_ModeSet(void *pContext);
 static NFCSTATUS phNciNfc_ProcessModeSetRsp(void *pContext, NFCSTATUS wStatus);
 static NFCSTATUS phNciNfc_CompleteModeSetSequence(void *pContext, NFCSTATUS wStatus);
 
+static NFCSTATUS phNciNfc_PowerAndLinkCtrl(void *pContext);
+static NFCSTATUS phNciNfc_PowerAndLinkCtrlRsp(void *pContext, NFCSTATUS wStatus);
+static NFCSTATUS phNciNfc_CompletePowerAndLinkCtrlSequence(void *pContext, NFCSTATUS wStatus);
+
 static NFCSTATUS phNciNfc_NfceeDiscover(void *pContext);
 static NFCSTATUS phNciNfc_ProcessNfceeDiscoverRsp(void *pContext, NFCSTATUS Status);
 static NFCSTATUS phNciNfc_CompleteNfceeDiscoverSequence(void *pContext, NFCSTATUS Status);
@@ -66,6 +70,11 @@ static NFCSTATUS phNciNfc_NfceeStoreTlv(pphNciNfc_NfceeDiscReqNtfInfo_t pDiscReq
 phNciNfc_SequenceP_t gphNciNfc_ModeSetSequence[] = {
     {&phNciNfc_ModeSet, &phNciNfc_ProcessModeSetRsp},
     {NULL, &phNciNfc_CompleteModeSetSequence}
+};
+
+phNciNfc_SequenceP_t gphNciNfc_SePowerAndLinkCtrlSequence[] = {
+    { &phNciNfc_PowerAndLinkCtrl, &phNciNfc_PowerAndLinkCtrlRsp },
+    { NULL, &phNciNfc_CompletePowerAndLinkCtrlSequence }
 };
 
 phNciNfc_SequenceP_t gphNciNfc_NfceeDiscSequence[] = {
@@ -154,6 +163,69 @@ static NFCSTATUS phNciNfc_CompleteModeSetSequence(void *pContext, NFCSTATUS wSta
         {
             phNciNfc_Notify(pNciCtx, wStatus, NULL);
         }
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phNciNfc_PowerAndLinkCtrl(void *pContext)
+{
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    phNciNfc_CoreTxInfo_t TxInfo = { 0 };
+    pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t)pContext;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NULL != pNciContext)
+    {
+        if (phNciNfc_IsVersion2x(pNciContext))
+        {
+            phOsalNfc_SetMemory(&TxInfo, 0x00, sizeof(phNciNfc_CoreTxInfo_t));
+            /* Build the Discover Command Header */
+            TxInfo.tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlCmd;
+            TxInfo.tHeaderInfo.Group_ID = phNciNfc_e_CoreNfceeMgtGid;
+            TxInfo.tHeaderInfo.Opcode_ID.OidType.NfceeMgtCmdOid = phNciNfc_e_NfceeMgtPowerAndLinkCtrlCmdOid;
+            TxInfo.Buff = (uint8_t *)pNciContext->tSendPayload.pBuff;
+            TxInfo.wLen = pNciContext->tSendPayload.wPayloadSize;
+            wStatus = phNciNfc_CoreIfTxRx(&(pNciContext->NciCoreContext),
+                                          &TxInfo,
+                                          &(pNciContext->RspBuffInfo),
+                                          PHNCINFC_NCI_CMD_RSP_TIMEOUT,
+                                          (pphNciNfc_CoreIfNtf_t)&phNciNfc_GenericSequence,
+                                          pContext);
+        }
+        else
+        {
+            wStatus = NFCSTATUS_FEATURE_NOT_SUPPORTED;
+        }
+    }
+    else
+    {
+        wStatus = NFCSTATUS_FAILED;
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phNciNfc_PowerAndLinkCtrlRsp(void *pContext, NFCSTATUS wStatus)
+{
+    UNUSED(pContext);
+    return wStatus;
+}
+
+static NFCSTATUS phNciNfc_CompletePowerAndLinkCtrlSequence(void *pContext, NFCSTATUS wStatus)
+{
+    pphNciNfc_Context_t pNciCtx = pContext;
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NULL != pNciCtx)
+    {
+        if (NULL != pNciCtx->tSendPayload.pBuff)
+        {
+            phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
+            pNciCtx->tSendPayload.pBuff = NULL;
+            pNciCtx->tSendPayload.wPayloadSize = 0;
+        }
+
+        phNciNfc_Notify(pNciCtx, wStatus, NULL);
     }
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;

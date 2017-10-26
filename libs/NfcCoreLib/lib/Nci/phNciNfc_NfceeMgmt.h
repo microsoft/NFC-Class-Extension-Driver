@@ -29,6 +29,8 @@
 #define PH_NCINFC_NFCEE_PROTOS_PROP_MIN             (0x80)
 #define PH_NCINFC_NFCEE_PROTOS_PROP_MAX             (0xFE)
 
+#define PH_NCINFC_NFCEEPOWERLINKCTRL_PAYLOADLEN     (0x02)
+
 typedef struct phNciNfc_NfceeContext
 {
     /** Total number of Nfcee discovered from response*/
@@ -51,6 +53,7 @@ typedef void (*pphNciNfc_Notification_CB_t) (
 
 extern phNciNfc_SequenceP_t gphNciNfc_NfceeDiscSequence[];
 extern phNciNfc_SequenceP_t gphNciNfc_ModeSetSequence[];
+extern phNciNfc_SequenceP_t gphNciNfc_SePowerAndLinkCtrlSequence[];
 
 NFCSTATUS phNciNfc_DeActivateNfcee(void *pContext);
 NFCSTATUS phNciNfc_RfFieldInfoNtfHandler(void *pContext, void *pInfo,NFCSTATUS Status);

@@ -12,6 +12,10 @@ static NFCSTATUS phLibNfc_SetModeSeq(void *pContext, NFCSTATUS wStatus, void *pI
 static NFCSTATUS phLibNfc_SetModeSeqEnd(void* pContext, NFCSTATUS status, void* pInfo);
 static NFCSTATUS phLibNfc_SetSeModeSeqComplete(void* pContext, NFCSTATUS Status, void *pInfo);
 
+static NFCSTATUS phLibNfc_SePowerAndLinkCtrlSeq(void *pContext, NFCSTATUS wStatus, void *pInfo);
+static NFCSTATUS phLibNfc_SePowerAndLinkCtrlEnd(void* pContext, NFCSTATUS status, void* pInfo);
+static NFCSTATUS phLibNfc_SePowerAndLinkCtrlCompleteSequence(void* pContext, NFCSTATUS Status, void *pInfo);
+
 static NFCSTATUS phLibNfc_StartNfceeDisc(void* pContext, NFCSTATUS status, void* pInfo);
 static NFCSTATUS phLibNfc_ProcessStartNfceeDiscRsp(void* pContext, NFCSTATUS wStatus, void* pInfo);
 static NFCSTATUS phLibNfc_NfceeStartDiscSeqComplete(void *pContext, NFCSTATUS Status, void *pInfo);
@@ -44,6 +48,12 @@ phLibNfc_Sequence_t gphLibNfc_SetSeModeSeq[] = {
     {&phLibNfc_SetModeSeq, &phLibNfc_SetModeSeqEnd},
     {&phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc},
     {NULL, &phLibNfc_SetSeModeSeqComplete}
+};
+
+/* NFCEE power and link control sequence */
+phLibNfc_Sequence_t gphLibNfc_SePowerAndLinkCtrlSeq[] = {
+    { &phLibNfc_SePowerAndLinkCtrlSeq, &phLibNfc_SePowerAndLinkCtrlEnd },
+    { NULL, &phLibNfc_SePowerAndLinkCtrlCompleteSequence }
 };
 
 /* NFCEE discovery sequence */
@@ -266,6 +276,56 @@ NFCSTATUS phLibNfc_SE_SetMode ( phLibNfc_Handle              hSE_Handle,
             pCtx->CBInfo.pSeSetModeCb = pSE_SetMode_Rsp_cb;
             pCtx->CBInfo.pSeSetModeCtxt = pContext;
         }
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handle,
+                                          phLibNfc_PowerLinkModes_t    powerLinkModes,
+                                          pphLibNfc_RspCb_t            pSE_PowerAndLinkControl_Rsp_cb,
+                                          void *                       pContext
+                                         )
+{
+    NFCSTATUS      wStatus = NFCSTATUS_SUCCESS;
+    pphLibNfc_Context_t pCtx = phLibNfc_GetContext();
+    phLibNfc_Event_t TrigEvent = phLibNfc_EventDummy;
+    phLibNfc_DummyInfo_t Info;
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+
+    wStatus = phLibNfc_IsInitialised(pCtx);
+
+    if (NFCSTATUS_SUCCESS != wStatus)
+    {
+        PH_LOG_LIBNFC_CRIT_STR("LibNfc Stack not Initialised");
+        wStatus = NFCSTATUS_NOT_INITIALISED;
+    }
+    else if ((NULL == (void *)hSE_Handle) ||
+             (NULL == pSE_PowerAndLinkControl_Rsp_cb))
+    {
+        wStatus = NFCSTATUS_INVALID_PARAMETER;
+    }
+    else if (phNciNfc_IsVersion2x(pCtx->sHwReference.pNciHandle))
+    {
+        Info.Evt = phLibNfc_DummyEventPowerAndLinkCtrl;
+
+        Info.Params = (void *)&powerLinkModes;
+        wStatus = phLibNfc_StateHandler(pCtx,
+                                        TrigEvent,
+                                        (void *)hSE_Handle, /*Secure Element Handle*/
+                                        (void *)&Info, /*Information for setting Power and Link for SE*/
+                                        NULL);
+        if (NFCSTATUS_PENDING == wStatus)
+        {
+            /*Store CB info in SE Context*/
+            pCtx->CBInfo.pPowerCtrlLinkCb = pSE_PowerAndLinkControl_Rsp_cb;
+            pCtx->CBInfo.pPowerCtrlLinkCntx = pContext;
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("NFCC is not operating in NCI2.0 mode!");
+        wStatus = NFCSTATUS_FEATURE_NOT_SUPPORTED;
     }
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;
@@ -1319,6 +1379,73 @@ static NFCSTATUS phLibNfc_SetSeModeSeqComplete (void* pContext,NFCSTATUS Status,
         if(NULL != ClientCb)
         {
             ClientCb(ClientContext, hSeHandle, wStatus);
+        }
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid input parameter!");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS
+phLibNfc_SePowerAndLinkCtrlSeq(void *pContext,
+                               NFCSTATUS wStatus,
+                               void *pInfo)
+{
+    NFCSTATUS wIntStatus = NFCSTATUS_FAILED;
+    pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t)pContext;
+    UNUSED(pInfo);
+    UNUSED(wStatus);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if ((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext))
+    {
+        wIntStatus = phNciNfc_Nfcee_SePowerAndLinkCtrlSet(pLibContext->sHwReference.pNciHandle,
+                                (void *)pLibContext->sSeContext.pActiveSeInfo->hSecureElement,
+                                pLibContext->sSeContext.ePowerLinkMode,
+                                (pphNciNfc_IfNotificationCb_t)&phLibNfc_InternalSequence,
+                                (void *)pLibContext);
+    }
+    else
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid Context passed from lower layer!");
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wIntStatus;
+}
+
+static NFCSTATUS phLibNfc_SePowerAndLinkCtrlEnd(void *pContext, NFCSTATUS wStatus, void *pInfo)
+{
+    pphLibNfc_LibContext_t pLibContext = pContext;
+    UNUSED(pInfo);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if ((NULL != pLibContext) && (phLibNfc_GetContext() == pLibContext))
+    {
+        if (NFCSTATUS_SUCCESS != wStatus)
+        {
+            PH_LOG_LIBNFC_CRIT_STR("Set Se Power Mode Failed!");
+        }
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return wStatus;
+}
+
+static NFCSTATUS phLibNfc_SePowerAndLinkCtrlCompleteSequence(void* pContext, NFCSTATUS wStatus, void *pInfo)
+{
+    pphLibNfc_LibContext_t pCtx = phLibNfc_GetContext();
+    pphLibNfc_RspCb_t clientCb = NULL;
+    void *clientContext = NULL;
+    UNUSED(pInfo);
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+    if ((NULL != pCtx) && (pContext == pCtx))
+    {
+        clientCb = pCtx->CBInfo.pPowerCtrlLinkCb;
+        clientContext = pCtx->CBInfo.pPowerCtrlLinkCntx;
+
+        if (NULL != clientCb)
+        {
+            clientCb(clientContext, wStatus);
         }
     }
     else

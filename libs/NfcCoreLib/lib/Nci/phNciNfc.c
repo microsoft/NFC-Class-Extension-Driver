@@ -677,6 +677,70 @@ NFCSTATUS phNciNfc_Nfcee_ModeSet(void * pNciHandle,
     return wStatus;
 }
 
+NFCSTATUS phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
+                                               void * pNfceeHandle,
+                                               phNciNfc_PowerLinkModes_t eActivationMode,
+                                               pphNciNfc_IfNotificationCb_t pNotifyCb,
+                                               void *pContext)
+{
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    phNciNfc_Context_t * pNciContext = (phNciNfc_Context_t *)pNciHandle;
+    pphNciNfc_NfceeDeviceHandle_t pDevHandle =
+        (pphNciNfc_NfceeDeviceHandle_t)pNfceeHandle;
+    uint8_t *pTargetInfo;
+
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NULL == pNciContext)
+    {
+        PH_LOG_NCI_CRIT_STR("Stack not initialized");
+        wStatus = NFCSTATUS_NOT_INITIALISED;
+    }
+    else if (NULL == pNotifyCb)
+    {
+        PH_LOG_NCI_CRIT_STR("Invalid parameter passed");
+        wStatus = NFCSTATUS_INVALID_PARAMETER;
+    }
+    else
+    {
+        if ((NULL != pDevHandle) &&
+            (0 != pDevHandle->tDevInfo.bNfceeID) &&
+            (PHNCINFC_INVALID_DISCID != pDevHandle->tDevInfo.bNfceeID))
+        {
+            pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PH_NCINFC_NFCEEPOWERLINKCTRL_PAYLOADLEN);
+            if (NULL == pTargetInfo)
+            {
+                PH_LOG_NCI_CRIT_STR("Memory not available");
+                wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
+            }
+            else
+            {
+                /* Store the Payload */
+                pTargetInfo[0] = pDevHandle->tDevInfo.bNfceeID;
+                pTargetInfo[1] = (uint8_t)eActivationMode;
+                pNciContext->tSendPayload.pBuff = pTargetInfo;
+                pNciContext->tSendPayload.wPayloadSize =
+                    (uint16_t)PH_NCINFC_NFCEEPOWERLINKCTRL_PAYLOADLEN;
+                pNciContext->IfNtf = pNotifyCb;
+                pNciContext->IfNtfCtx = pContext;
+                PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_SePowerAndLinkCtrlSequence);
+                wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
+                if (NFCSTATUS_PENDING != wStatus)
+                {
+                    PH_LOG_NCI_CRIT_STR("Nfcee PowerAndLinkCtrlSet Sequence failed!");
+                    phOsalNfc_FreeMemory(pTargetInfo);
+                    pNciContext->tSendPayload.pBuff = NULL;
+                }
+            }
+        }
+        else
+        {
+            wStatus = NFCSTATUS_INVALID_PARAMETER;
+        }
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
 NFCSTATUS phNciNfc_RegisterNotification(
                         void                        *pNciHandle,
                         phNciNfc_RegisterType_t     eRegisterType,

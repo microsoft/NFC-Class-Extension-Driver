@@ -287,6 +287,19 @@ typedef enum phNciNfc_NfceeModes
    PH_NCINFC_NFCEEDISC_UNKNOWN
 }phNciNfc_NfceeModes_t;
 
+/**
+* \ingroup grp_nci_nfc
+* \brief NFCEE Power and Link Control Info contains power related identifier..
+*/
+typedef enum phNciNfc_PowerLinkMode
+{
+    phNciNfc_PLM_NfccDecides = 0x00,            /** NFCEE  NFCC decides identifier*/
+    phNciNfc_PLM_PowerSupplyAlwaysOn = 0x01,    /** NFCEE  power supply always on*/
+    phNciNfc_PLM_ComLinkActiveOnPowerOn = 0x02, /** NFCEE  NFCC to NFCEE Communication link always active when the NFCEE is powered on*/
+    phNciNfc_PLM_PowerNfccLinkAlwaysOn = 0x03,  /** NFCEE Power supply and NFCC to NFCEE communication link are always on*/
+    phNciNfc_PLM_PowerLinkUnknown,              /** Future or unknown identifier */
+}phNciNfc_PowerLinkModes_t;
+
 /*!
  * \ingroup grp_nci_nfc
  * \brief NFCEE Information TLV types(NCI Spec Table 84)
@@ -1478,6 +1491,31 @@ phNciNfc_Nfcee_ModeSet(void * pNciHandle,
                        phNciNfc_NfceeModes_t eNfceeMode,
                        pphNciNfc_IfNotificationCb_t pNotifyCb,
                        void *pContext);
+
+/**
+* \ingroup grp_nci_nfc
+*
+* \brief This is a Nfcee power mode set Api, to establish a control power with
+* a SE or NFCEE.(establishing connection is prereqisite of Nfcee communication)
+*
+* \param[in]  pNciHandle        NCI layer specific context.
+* \param[in]  pNfceeHandle      Nfcee Handle for which Mode set is executed.
+* \param[in]  eActivationMode   NFCEE and NFCC Power and Link mode
+* \param[in]  pNotifyCb         Upper layer call back function
+* \param[in]  pContext          Context of the Upper Layer.
+*
+* \retval NFCSTATUS_PENDING                If the command is yet to be processed.
+* \retval NFCSTATUS_INVALID_PARAMETER      At least one parameter of the function is invalid.
+* \retval NFCSTATUS_INVALID_DEVICE         The device has not been opened or has
+*                                          been disconnected meanwhile
+*/
+extern NFCSTATUS
+phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
+                                     void * pNfceeHandle,
+                                     phNciNfc_PowerLinkModes_t eActivationMode,
+                                     pphNciNfc_IfNotificationCb_t pNotifyCb,
+                                     void *pContext);
+
 
 /**
  * \ingroup grp_nci_nfc
