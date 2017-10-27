@@ -24,8 +24,10 @@ Environment:
 
 /* Command identifiers */
 #define ISO15693_READ_COMMAND               0x20U
+#define ISO15693_EXT_READ_COMMAND           0x30U
 #define ISO15693_READ_MULTIPLE_COMMAND      0x23U
 #define ISO15693_WRITE_COMMAND              0x21U
+#define ISO15693_EXT_WRITE_COMMAND          0x31U
 
 /* Response flags */
 #define ISO15693_RESPONSE_ERROR_FLAG        0x01
@@ -46,6 +48,9 @@ Environment:
 #define ISO15693_MANUFACTURER_STM           0x02U
 #define ISO15693_MANUFACTURER_NXP           0x04U
 #define ISO15693_MANUFACTURER_TI            0x07U
+
+#define ISO15693_UID_BYTE_5                 0x05U
+#define ISO15693_UID_BYTE_6                 0x06U
   
 /* UID value for SL2 ICS20, SL2S2002 */
 #define ISO15693_UIDBYTE_5_VALUE_SLI_X      0x01U
@@ -67,6 +72,15 @@ Environment:
 #define ISO15693_UIDBYTE_5_STM_M24LR64R     0x2C
 #define ISO15693_UIDBYTE_5_STM_M24LR64ER    0x5C
 #define ISO15693_UIDBYTE_5_STM_M24LR16ER    0x4C
+
+#define ISO15693_FLAG_PROTOEXT              0x08U
+/* Check if protocol extension bit is needed in the request flag */
+#define ISO15693_PROTOEXT(pUid) \
+    ((ISO15693_MANUFACTURER_STM == pUid[ISO15693_UID_BYTE_6]) && \
+        ((pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_LRIS64K || \
+         (pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR64R || \
+         (pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR64ER || \
+         (pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR16ER))
 
 class StorageClassISO15693 : public IStorageClass
 {

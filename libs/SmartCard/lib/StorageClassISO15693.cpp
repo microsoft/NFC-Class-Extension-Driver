@@ -226,12 +226,8 @@ StorageClassISO15693::ValidateUpdateBinaryParameters(
     ApduResult retResult = RESULT_SUCCESS;
 
     UNREFERENCED_PARAMETER(p1);
+    UNREFERENCED_PARAMETER(p2);
 
-    if (p2 != 0x00) {
-        retResult = RESULT_WRONG_P1P2;
-        goto Done;
-    }
-    
     if (lc != ISO15693_BYTES_PER_BLOCK) {
         retResult = RESULT_WRONG_LENGTH;
         goto Done;
@@ -257,10 +253,23 @@ StorageClassISO15693::PrepareTransceiveForUpdate(
         goto Done;
     }
 
-    m_CommandBuffer[size++] = 0; // Request Flags
-    m_CommandBuffer[size++] = ISO15693_WRITE_COMMAND;
-    m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
-
+    if (ISO15693_PROTOEXT(m_Uid) == TRUE) {
+        m_CommandBuffer[size++] = ISO15693_FLAG_PROTOEXT; // Request Flags
+        m_CommandBuffer[size++] = ISO15693_WRITE_COMMAND;
+        m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
+        m_CommandBuffer[size++] = pPcscCmdApdu->P2;
+    }
+    else if (pPcscCmdApdu->P2 != 0) {
+        m_CommandBuffer[size++] = 0; // Request Flags
+        m_CommandBuffer[size++] = ISO15693_EXT_WRITE_COMMAND;
+        m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
+        m_CommandBuffer[size++] = pPcscCmdApdu->P2;
+    }
+    else {
+        m_CommandBuffer[size++] = 0; // Request Flags
+        m_CommandBuffer[size++] = ISO15693_WRITE_COMMAND;
+        m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
+    }
     RtlCopyMemory(&m_CommandBuffer[size], pPcscCmdApdu->DataIn, ISO15693_BYTES_PER_BLOCK);
     size += ISO15693_BYTES_PER_BLOCK;
 
@@ -337,11 +346,7 @@ StorageClassISO15693::ValidateReadBinaryParamters(
     ApduResult retResult = RESULT_SUCCESS;
 
     UNREFERENCED_PARAMETER(p1);
-
-    if (p2 != 0x00) {
-        retResult = RESULT_WRONG_P1P2;
-        goto Done;
-    }
+    UNREFERENCED_PARAMETER(p2);
 
     if (le != ISO15693_BYTES_PER_BLOCK) {
         retResult = RESULT_WRONG_LENGTH;
@@ -368,10 +373,23 @@ StorageClassISO15693::PrepareTransceiveForRead(
     UNREFERENCED_PARAMETER(p2);
 
     if (le == ISO15693_BYTES_PER_BLOCK) {
-        m_CommandBuffer[size++] = 0; // Request Flags
-        m_CommandBuffer[size++] = ISO15693_READ_COMMAND;
-        m_CommandBuffer[size++] = p1;
-
+        if (ISO15693_PROTOEXT(m_Uid) == TRUE) {
+            m_CommandBuffer[size++] = ISO15693_FLAG_PROTOEXT; // Request Flags
+            m_CommandBuffer[size++] = ISO15693_READ_COMMAND;
+            m_CommandBuffer[size++] = p1;
+            m_CommandBuffer[size++] = p2;
+        }
+        else if (p2 != 0) {
+            m_CommandBuffer[size++] = 0; // Request Flags
+            m_CommandBuffer[size++] = ISO15693_EXT_READ_COMMAND;
+            m_CommandBuffer[size++] = p1;
+            m_CommandBuffer[size++] = p2;
+        }
+        else {
+            m_CommandBuffer[size++] = 0; // Request Flags
+            m_CommandBuffer[size++] = ISO15693_READ_COMMAND;
+            m_CommandBuffer[size++] = p1;
+        }
         m_CmdBufferSize = size;
     }
     else {
