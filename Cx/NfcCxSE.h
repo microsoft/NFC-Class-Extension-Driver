@@ -361,7 +361,8 @@ NfcCxSEInterfaceValidateEmulationMode(
 {
     return (eMode == EmulationOff ||
             eMode == EmulationOnPowerIndependent ||
-            eMode == EmulationOnPowerDependent);
+            eMode == EmulationOnPowerDependent ||
+            eMode == EmulationStealthListen);
 }
 
 phLibNfc_eSE_ActivationMode FORCEINLINE
@@ -378,6 +379,13 @@ NfcCxSEInterfaceGetActivationMode(
     }
 }
 
+// The NFC Controller's Routing Table allows you to specify under what power conditions a routing
+// entry is active.
+//
+// Settings:
+//      bSwitchedOn: Routing entry active when system is powered on.
+//      bSwitchedOff: Routing entry active when system is powered off and there is battery power.
+//      bBatteryOff: Routing entry active when system is powered off and there is no battery power.
 BOOLEAN FORCEINLINE
 NfcCxSEInterfaceGetPowerState(
     _In_ SECURE_ELEMENT_CARD_EMULATION_MODE eMode,
@@ -385,20 +393,32 @@ NfcCxSEInterfaceGetPowerState(
     _Out_ phNfc_PowerState_t *pPowerState
     )
 {
-    switch (eMode) {
+    switch (eMode)
+    {
     case EmulationOnPowerDependent:
+        pPowerState->bSwitchedOn = 0x1;
+        pPowerState->bSwitchedOff = 0x0;
+        pPowerState->bBatteryOff = 0x0;
+        return TRUE;
     case EmulationOnPowerIndependent:
         pPowerState->bSwitchedOn = 0x1;
-        pPowerState->bSwitchedOff = (eMode == EmulationOnPowerIndependent) && Caps.PowerStateInfo.SwitchOffState;
-        pPowerState->bBatteryOff = (eMode == EmulationOnPowerIndependent) && Caps.PowerStateInfo.BatteryOffState;
+        pPowerState->bSwitchedOff = Caps.PowerStateInfo.SwitchOffState;
+        pPowerState->bBatteryOff = Caps.PowerStateInfo.BatteryOffState;
         return TRUE;
     case EmulationOff:
         pPowerState->bSwitchedOn = 0x1;
-        pPowerState->bSwitchedOff = pPowerState->bBatteryOff = 0x0;
+        pPowerState->bSwitchedOff = 0x0;
+        pPowerState->bBatteryOff = 0x0;
+        return TRUE;
+    case EmulationStealthListen:
+        pPowerState->bSwitchedOn = 0x1;
+        pPowerState->bSwitchedOff = 0x0;
+        pPowerState->bBatteryOff = 0x0;
         return TRUE;
     default:
         pPowerState->bSwitchedOn = 0x0;
-        pPowerState->bSwitchedOff = pPowerState->bBatteryOff = 0x0;
+        pPowerState->bSwitchedOff = 0x0;
+        pPowerState->bBatteryOff = 0x0;
         return FALSE;
     }
 }

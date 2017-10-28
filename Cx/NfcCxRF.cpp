@@ -2093,8 +2093,6 @@ Return Value:
 
 --*/
 {
-    BOOLEAN discoveryEnabled = FALSE;
-
     RtlZeroMemory(pDiscoveryConfig, sizeof(phLibNfc_sADD_Cfg_t));
 
     pDiscoveryConfig->Duration = RFInterface->uiDuration;
@@ -2123,16 +2121,34 @@ Return Value:
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableNfcActive = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_ACTIVE) != 0;
         pDiscoveryConfig->PollDevInfo.PollCfgInfo.EnableKovio = (RFInterface->uiPollDevInfo & NFC_CX_POLL_NFC_A_KOVIO) != 0;
         pDiscoveryConfig->NfcIP_Mode = RFInterface->uiNfcIP_Mode;
-        pDiscoveryConfig->NfcIP_Tgt_Mode_Config = RFInterface->uiNfcIP_Tgt_Mode;
-        pDiscoveryConfig->NfcIP_Tgt_Disable = 0x0;
-        discoveryEnabled = TRUE;
     }
 
-    if (RFInterface->RFPowerState & NfcCxPowerRfState_CardEmulationEnabled)
+    if (!(RFInterface->RFPowerState & NfcCxPowerRfState_NoListenEnabled))
     {
-        pDiscoveryConfig->CE_Mode_Config = RFInterface->uiNfcCE_Mode;
-        pDiscoveryConfig->PollDevInfo.PollCfgInfo.DisableCardEmulation = 0x0;
-        discoveryEnabled = TRUE;
+        if (RFInterface->RFPowerState & NfcCxPowerRfState_StealthListenEnabled)
+        {
+            // Restrict listening modes to active RF technologies.
+            // This will allow us to detect the presence of NFC terminals, which don't support peer-to-peer, without establishing a connection.
+            // Ideally we wouldn't allow peer-to-peer connections either. But no such RF mode is avaliable.
+            pDiscoveryConfig->NfcIP_Tgt_Mode_Config = RFInterface->uiNfcIP_Tgt_Mode & (phNfc_eP2PTargetNfcActiveATech | phNfc_eP2PTargetNfcActiveFTech);
+            pDiscoveryConfig->NfcIP_Tgt_Disable = 0x0;
+        }
+        else
+        {
+            if (RFInterface->RFPowerState & NfcCxPowerRfState_ProximityEnabled)
+            {
+                // Enable all supported listening technologies, both passive and active.
+                pDiscoveryConfig->NfcIP_Tgt_Mode_Config = RFInterface->uiNfcIP_Tgt_Mode;
+                pDiscoveryConfig->NfcIP_Tgt_Disable = 0x0;
+            }
+
+            if (RFInterface->RFPowerState & NfcCxPowerRfState_CardEmulationEnabled)
+            {
+                // Enable all supported passive listening technologies.
+                pDiscoveryConfig->CE_Mode_Config = RFInterface->uiNfcCE_Mode;
+                pDiscoveryConfig->PollDevInfo.PollCfgInfo.DisableCardEmulation = 0x0;
+            }
+        }
     }
 }
 

@@ -65,6 +65,7 @@ typedef enum _SECURE_ELEMENT_CARD_EMULATION_MODE {
     EmulationOff = 0,
     EmulationOnPowerIndependent = 1,
     EmulationOnPowerDependent = 2,
+    EmulationStealthListen = 3,
 } SECURE_ELEMENT_CARD_EMULATION_MODE, *PSECURE_ELEMENT_CARD_EMULATION_MODE;
 
 typedef struct _SECURE_ELEMENT_ENDPOINT_INFO {

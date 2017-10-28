@@ -2463,10 +2463,31 @@ Done:
     return status;
 }
 
-static bool
-NfcCxSEIsCardEmulationEnabled(SECURE_ELEMENT_CARD_EMULATION_MODE EmulationMode)
+enum class EmulationPowerReferenceType
 {
-    return EmulationMode != EmulationOff;
+    Off,
+    CardEmulation,
+    StealthListen,
+};
+
+static EmulationPowerReferenceType
+NfcCxSeGetPowerReferenceTypeForCardEmulationMode(
+    _In_ SECURE_ELEMENT_CARD_EMULATION_MODE EmulationMode
+    )
+{
+    switch (EmulationMode)
+    {
+    case EmulationOnPowerIndependent:
+    case EmulationOnPowerDependent:
+        return EmulationPowerReferenceType::CardEmulation;
+
+    case EmulationStealthListen:
+        return EmulationPowerReferenceType::StealthListen;
+
+    case EmulationOff:
+    default:
+        return EmulationPowerReferenceType::Off;
+    }
 }
 
 NTSTATUS
@@ -2549,14 +2570,14 @@ Return Value:
         }
     }
 
-    bool newEnableCardEmulation = NfcCxSEIsCardEmulationEnabled(pMode->eMode);
-
     // Acquire SE Power Settings Lock
     WdfWaitLockAcquire(seInterface->SEPowerSettingsLock, NULL);
     sePowerSettingsLockHeld = true;
 
     NFCCX_SE_POWER_SETTINGS powerSettings = NfcCxSEInterfaceGetPowerSettings(seInterface, pMode->guidSecureElementId);
-    bool previousEnableCardEmulation = NfcCxSEIsCardEmulationEnabled(powerSettings.EmulationMode);
+
+    EmulationPowerReferenceType previousPowerReferenceType = NfcCxSeGetPowerReferenceTypeForCardEmulationMode(powerSettings.EmulationMode);
+    EmulationPowerReferenceType newPowerReferenceType = NfcCxSeGetPowerReferenceTypeForCardEmulationMode(pMode->eMode);
 
     // Create updated power settings for SE
     powerSettings.EmulationMode = pMode->eMode;
@@ -2573,16 +2594,34 @@ Return Value:
     WdfWaitLockRelease(seInterface->SEPowerSettingsLock);
     sePowerSettingsLockHeld = false;
 
-    //
-    // Ensure RF (NFCC radio) has card emulation enabled when required
-    //
-    if (previousEnableCardEmulation != newEnableCardEmulation)
+    if (previousPowerReferenceType != newPowerReferenceType)
     {
-        status = NfcCxPowerFileAddRemoveReference(fdoContext->Power, FileContext, NfcCxPowerReferenceType_CardEmulation, /*AddReference*/ newEnableCardEmulation);
-        if (!NT_SUCCESS(status))
+        // Remove any previous power reference we had.
+        // Note: We are deliberately closing one power reference before opening a new one to avoid restarting RF discovery twice in a row.
+        //   As the power manager has a de-bounce on powering down a reference but no de-bounce on powering up a reference.
+        // Note 2: It is impossible for NCI to deinitialize during this time as we are holding a WDF Device Idle power reference.
+        //   (See, 'NFCCX_SE_DISPATCH_ENTRY::fPowerManaged' at the top of this file.)
+        if (previousPowerReferenceType != EmulationPowerReferenceType::Off)
         {
-            TRACE_LINE(LEVEL_ERROR, "NfcCxPowerFileAddRemoveReference failed, %!STATUS!", status);
-            goto Done;
+            auto powerReferenceType = (previousPowerReferenceType == EmulationPowerReferenceType::StealthListen) ? NfcCxPowerReferenceType_StealthListen : NfcCxPowerReferenceType_CardEmulation;
+            status = NfcCxPowerFileRemoveReference(fdoContext->Power, FileContext, powerReferenceType);
+            if (!NT_SUCCESS(status))
+            {
+                TRACE_LINE(LEVEL_ERROR, "NfcCxPowerFileRemoveReference failed, %!STATUS!", status);
+                goto Done;
+            }
+        }
+
+        // Add a new power reference, if required.
+        if (newPowerReferenceType != EmulationPowerReferenceType::Off)
+        {
+            auto powerReferenceType = (newPowerReferenceType == EmulationPowerReferenceType::StealthListen) ? NfcCxPowerReferenceType_StealthListen : NfcCxPowerReferenceType_CardEmulation;
+            status = NfcCxPowerFileAddReference(fdoContext->Power, FileContext, powerReferenceType);
+            if (!NT_SUCCESS(status))
+            {
+                TRACE_LINE(LEVEL_ERROR, "NfcCxPowerFileAddReference failed, %!STATUS!", status);
+                goto Done;
+            }
         }
     }
 
@@ -2668,8 +2707,9 @@ NfcCxSEInterfaceUpdateSEActivationMode(
     }
 
     // Calculate SE's new activation mode
-    bool enableSE = PowerSettings.WiredMode || PowerSettings.ForcePowerOn ||
-        NfcCxSEIsCardEmulationEnabled(PowerSettings.EmulationMode);
+    bool enableSE = PowerSettings.WiredMode ||
+        PowerSettings.ForcePowerOn ||
+        PowerSettings.EmulationMode != EmulationOff;
 
     phLibNfc_eSE_ActivationMode activationMode = enableSE ? phLibNfc_SE_ActModeOn : phLibNfc_SE_ActModeOff;
 
