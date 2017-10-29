@@ -1657,8 +1657,6 @@ Return Value:
         goto Done;
     }
 
-    phLibNfc_eSE_ActivationMode currentActivationMode = pSecureElement->eSE_ActivationMode;
-
     //
     // Turn off SE
     //
@@ -1678,7 +1676,7 @@ Return Value:
     status = NfcCxRFInterfaceExecute(RFInterface,
                                      LIBNFC_SE_SET_MODE,
                                      (UINT_PTR)pSecureElement,
-                                     (UINT_PTR)currentActivationMode);
+                                     (UINT_PTR)phLibNfc_SE_ActModeOn);
     if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "Failed to restore SE activation mode, %!STATUS!", status);
