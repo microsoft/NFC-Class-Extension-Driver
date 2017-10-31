@@ -676,6 +676,62 @@ NFCSTATUS phNciNfc_Nfcee_ModeSet(void * pNciHandle,
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
 }
+NFCSTATUS phNciNfc_SE_ModeSet(void * pNciHandle,
+									uint8_t bNfceeID,
+									phNciNfc_NfceeModes_t eNfceeMode,
+									pphNciNfc_IfNotificationCb_t pNotifyCb,
+									void *pContext)
+{
+	NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+	phNciNfc_Context_t * pNciContext = (phNciNfc_Context_t *)pNciHandle;
+	uint8_t *pTargetInfo;
+
+	PH_LOG_NCI_FUNC_ENTRY();
+	if (NULL == pNciContext)
+	{
+		PH_LOG_NCI_CRIT_STR("Stack not initialized (phNciNfc_Nfcee_ModeSet)");
+		wStatus = NFCSTATUS_NOT_INITIALISED;
+	}
+	else if ((eNfceeMode > PH_NCINFC_EXT_NFCEEMODE_ENABLE) || \
+		(NULL == pNotifyCb))
+	{
+		PH_LOG_NCI_CRIT_STR("Invalid parameter passed(phNciNfc_Nfcee_ModeSet)");
+		wStatus = NFCSTATUS_INVALID_PARAMETER;
+	}
+	else
+	{
+		pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_NFCEEMODESET_PAYLOADLEN);
+		if (NULL == pTargetInfo)
+		{
+			PH_LOG_NCI_CRIT_STR("Memory not available(phNciNfc_Nfcee_ModeSet)");
+			wStatus = NFCSTATUS_INSUFFICIENT_RESOURCES;
+		}
+		else
+		{
+			/* Store the Payload */
+			pNciContext->tNfceeContext.eNfceeMode = eNfceeMode;
+			pTargetInfo[0] = bNfceeID;
+			pTargetInfo[1] = (uint8_t)eNfceeMode;
+			pNciContext->tSendPayload.pBuff = pTargetInfo;
+			pNciContext->tSendPayload.wPayloadSize = \
+				(uint16_t)PHNCINFC_NFCEEMODESET_PAYLOADLEN;
+			pNciContext->IfNtf = pNotifyCb;
+			pNciContext->IfNtfCtx = pContext;
+			PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_ModeSetSequence);
+			wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
+			if (NFCSTATUS_PENDING != wStatus)
+			{
+				PH_LOG_NCI_CRIT_STR("Nfcee ModeSet Sequence failed!");
+				phOsalNfc_FreeMemory(pTargetInfo);
+				pNciContext->tSendPayload.pBuff = NULL;
+			}
+		}
+
+	}
+	PH_LOG_NCI_FUNC_EXIT();
+	return wStatus;
+}
+
 
 NFCSTATUS phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
                                                void * pNfceeHandle,
