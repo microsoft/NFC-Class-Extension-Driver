@@ -409,12 +409,29 @@ typedef struct _NFC_SE_AID_ROUTING_INFO {
     _Field_size_bytes_(cbAid) BYTE pbAid[ISO_7816_MAXIMUM_AID_LENGTH];
 } NFC_SE_AID_ROUTING_INFO, *PNFC_SE_AID_ROUTING_INFO;
 
+typedef struct _NFC_SE_SYSTEM_CODE_ROUTING_INFO {
+    NFC_SE_HANDLE hSecureElement;
+	BYTE bPowerState;
+    _Field_range_(<= , MAXIMUM_SYSTEM_CODE_LENGTH) DWORD cbSystemCode;
+    _Field_size_bytes_(cbSystemCode) BYTE pbSystemCode[MAXIMUM_SYSTEM_CODE_LENGTH];
+} NFC_SE_SYSTEM_CODE_ROUTING_INFO, *PNFC_SE_SYSTEM_CODE_ROUTING_INFO;
+
+typedef struct _NFC_SE_APDU_PATTERN_ROUTING_INFO {
+    NFC_SE_HANDLE hSecureElement;
+	BYTE bPowerState;
+    _Field_range_(<= , MAXIMUM_APDU_PATTERN_LENGTH) DWORD cbApduPattern;
+    _Field_size_bytes_(cbApduPattern) BYTE pbReferenceData[MAXIMUM_APDU_PATTERN_LENGTH];
+    _Field_size_bytes_(cbApduPattern) BYTE pbMask[MAXIMUM_APDU_PATTERN_LENGTH];
+} NFC_SE_APDU_PATTERN_ROUTING_INFO, *PNFC_SE_APDU_PATTERN_ROUTING_INFO;
+
 typedef struct _NFC_SE_ROUTING_TABLE_ENTRY {
     NFC_SE_ROUTING_TABLE_TYPE eRoutingType;
     union {
         NFC_SE_TECH_ROUTING_INFO TechRoutingInfo;
         NFC_SE_PROTO_ROUTING_INFO ProtoRoutingInfo;
         NFC_SE_AID_ROUTING_INFO AidRoutingInfo;
+        NFC_SE_SYSTEM_CODE_ROUTING_INFO SystemCodeRoutingInfo;
+        NFC_SE_APDU_PATTERN_ROUTING_INFO ApduPatternRoutingInfo;
     };
 } NFC_SE_ROUTING_TABLE_ENTRY, *PNFC_SE_ROUTING_TABLE_ENTRY;
 
