@@ -2982,7 +2982,7 @@ Return Value:
                 TRACE_LINE(LEVEL_ERROR, "Invalid System Code route size = %lu", pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode);
                 goto Done;
             }
-            cbRoutingTable += pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode;
+            cbRoutingTable += NCI_SYSTEM_CODE_ROUTING_ENTRY_SIZE(pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode);
             break;
         case RoutingTypeApduPattern:
             if ((pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern < MINIMUM_APDU_PATTERN_LENGTH) ||
@@ -2991,7 +2991,7 @@ Return Value:
                 TRACE_LINE(LEVEL_ERROR, "Invalid Apdu Pattern route size = %lu", pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern);
                 goto Done;
             }
-            cbRoutingTable += pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern;
+            cbRoutingTable += NCI_APDU_PATTERN_ROUTING_ENTRY_SIZE(pRoutingTable->TableEntries[i].ApduPatternRoutingInfo.cbApduPattern);
             break;
 
         default:
