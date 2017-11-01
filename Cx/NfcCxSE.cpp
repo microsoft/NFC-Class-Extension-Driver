@@ -3296,7 +3296,7 @@ Return Value:
             pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.guidSecureElementId = NfcCxSEInterfaceGetSecureElementId(RFInterface, RtngTableEntry.hSecureElement);
             pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.cbSystemCode = RtngTableEntry.LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize;
 
-            _Analysis_assume_(MAXIMUM_SYSTEM_CODE_LENGTH >= RtngTableEntry.LstnModeRtngValue.tSystemCodeRtngValue.bAidSize);
+            _Analysis_assume_(MAXIMUM_SYSTEM_CODE_LENGTH >= RtngTableEntry.LstnModeRtngValue.tSystemCodeRtngValue.bSystemCodeSize);
             RtlCopyMemory(pRoutingTable->TableEntries[i].SystemCodeRoutingInfo.pbSystemCode,
                           RtngTableEntry.LstnModeRtngValue.tSystemCodeBasedRtngValue.aSystemCode,
                           RtngTableEntry.LstnModeRtngValue.tSystemCodeBasedRtngValue.bSystemCodeSize);
