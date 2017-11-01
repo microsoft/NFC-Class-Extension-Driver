@@ -252,7 +252,7 @@ typedef struct phNfc_sDeviceCapabilities
 
     struct
     {
-        BitField_t          ForceBasedRouting : 1;     /**<Supported if the bit is set to 1b*/
+        BitField_t          ForcedRouting : 1;          /**<Supported if the bit is set to 1b - Not implemented in the NfcCx */
         BitField_t          AidBasedRouting : 1;        /**<Supported if the bit is set to 1b*/
         BitField_t          ProtocolBasedRouting : 1;   /**<Supported if the bit is set to 1b*/
         BitField_t          TechnBasedRouting : 1;      /**<Supported if the bit is set to 1b*/

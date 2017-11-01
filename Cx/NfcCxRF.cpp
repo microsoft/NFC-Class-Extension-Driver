@@ -1829,7 +1829,7 @@ Return Value:
     pCapabilities->cbMaxRoutingTableSize =
         RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingTableSize;
     pCapabilities->IsForceRoutingSupported =
-        (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.ForceBasedRouting == 1);
+        (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.ForcedRouting == 1);
     pCapabilities->IsSystemCodeRoutingSupported =
         (RFInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities.RoutingInfo.SystemCodeBasedRouting == 1);
     pCapabilities->IsApduPatternRoutingSupported =

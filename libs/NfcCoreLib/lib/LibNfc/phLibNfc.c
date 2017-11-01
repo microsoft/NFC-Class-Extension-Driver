@@ -2325,7 +2325,7 @@ NFCSTATUS phLibNfc_Mgt_GetstackCapabilities(phLibNfc_StackCapabilities_t* phLibN
         phLibNfc_StackCapabilities->psDevCapabilities.PowerStateInfo.BatteryOffState =
             pLibContext->tNfccFeatures.PowerStateInfo.BatteryOffState;
 
-        phLibNfc_StackCapabilities->psDevCapabilities.RoutingInfo.ForceBasedRouting =
+        phLibNfc_StackCapabilities->psDevCapabilities.RoutingInfo.ForcedRouting =
             pLibContext->tNfccFeatures.RoutingInfo.ForceBasedRouting;
         phLibNfc_StackCapabilities->psDevCapabilities.RoutingInfo.AidBasedRouting =
             pLibContext->tNfccFeatures.RoutingInfo.AidBasedRouting;
