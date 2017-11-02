@@ -879,6 +879,7 @@ Return Value:
 
     if (RadioState->SystemStateUpdate) {
         fdoContext->NfpPowerOffSystemOverride = RadioState->MediaRadioOn ? FALSE : TRUE;
+        fdoContext->NfpPowerOffPolicyOverride = RadioState->MediaRadioOn ? FALSE : TRUE;
     }
     else {
         //
