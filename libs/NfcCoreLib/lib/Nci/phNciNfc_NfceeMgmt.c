@@ -208,8 +208,39 @@ static NFCSTATUS phNciNfc_PowerAndLinkCtrl(void *pContext)
 
 static NFCSTATUS phNciNfc_PowerAndLinkCtrlRsp(void *pContext, NFCSTATUS wStatus)
 {
-    UNUSED(pContext);
-    return wStatus;
+    PH_LOG_NCI_FUNC_ENTRY();
+
+    NFCSTATUS status = NFCSTATUS_SUCCESS;
+    pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t)pContext;
+
+    if (wStatus != NFCSTATUS_SUCCESS)
+    {
+        status = wStatus;
+    }
+    else if (pNciContext == NULL)
+    {
+        status = NFCSTATUS_FAILED;
+    }
+    else if (pNciContext->RspBuffInfo.pBuff == NULL ||
+        pNciContext->RspBuffInfo.wLen == 0)
+    {
+        status = NFCSTATUS_FAILED;
+    }
+    else
+    {
+        uint8_t nciStatus = pNciContext->RspBuffInfo.pBuff[0];
+        if (nciStatus == PH_NCINFC_STATUS_REJECTED)
+        {
+            status = NFCSTATUS_REJECTED;
+        }
+        else if (nciStatus != PH_NCINFC_STATUS_OK)
+        {
+            status = NFCSTATUS_FAILED;
+        }
+    }
+
+    PH_LOG_NCI_FUNC_ENTRY();
+    return status;
 }
 
 static NFCSTATUS phNciNfc_CompletePowerAndLinkCtrlSequence(void *pContext, NFCSTATUS wStatus)

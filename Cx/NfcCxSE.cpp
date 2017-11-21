@@ -2713,11 +2713,30 @@ NfcCxSEInterfaceUpdateSEActivationMode(
 
     phLibNfc_eSE_ActivationMode activationMode = enableSE ? phLibNfc_SE_ActModeOn : phLibNfc_SE_ActModeOff;
 
+    phLibNfc_PowerLinkModes_t powerMode = phLibNfc_PLM_NfccDecides;
+    if (PowerSettings.WiredMode)
+    {
+        // Some NFC Controllers will completley power-down the NFC-EE if a command hasn't been sent in
+        // a while, resulting in the loss of any context. On other NFC Controllers (e.g. NCI 1.x) the
+        // NFC-EE remains powered until it is deactivated. So we need to ensure that the NFC Controller
+        // keeps the NFC-EE powered while there is a connected client process. Note: This only works on
+        // NFC Controllers that support the Power and Link Control command (e.g. NCI 2.0).
+        powerMode = phLibNfc_PLM_PowerAndComLinkAlwaysOn;
+    }
+    else if (PowerSettings.ForcePowerOn)
+    {
+        // Ensure the NFC-EE has power as requested by the IOCTL_NFCSE_SET_POWER_MODE.
+        // Note: Using the Activation Mode (above) is one way of doing this. But using the Power and
+        // Link Control command (when avaliable) is more explicit.
+        powerMode = phLibNfc_PLM_PowerSupplyAlwaysOn;
+    }
+
     // Update SE's activation mode
     status = NfcCxRFInterfaceSetCardActivationMode(
         SEInterface->FdoContext->RFInterface,
         hSecureElement,
-        activationMode);
+        activationMode,
+        powerMode);
     if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "Failed to set card emulation mode, %!STATUS!", status);

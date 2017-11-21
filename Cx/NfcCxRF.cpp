@@ -94,7 +94,7 @@ NfcCxRFInterfaceDumpState(
     TRACE_LINE(LEVEL_INFO, "    DiscoveredDeviceList = %p", RFInterface->pLibNfcContext->pRemDevList);
 }
 
-VOID
+static void
 NfcCxRFInterfaceDumpSEList(
     _In_ PNFCCX_RF_INTERFACE RFInterface
     )
@@ -109,7 +109,7 @@ NfcCxRFInterfaceDumpSEList(
     }
 }
 
-FORCEINLINE VOID
+static void
 NfcCxRFInterfaceGetSEList(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _Out_writes_to_(MAX_NUMBER_OF_SE, *SECount) phLibNfc_SE_List_t SEList[MAX_NUMBER_OF_SE],
@@ -119,6 +119,18 @@ NfcCxRFInterfaceGetSEList(
     uint8_t bHceIndex = NfcCxRFInterfaceIsHCESupported(RFInterface) ? 1 : 0;
     phLibNfc_SE_GetSecureElementList(&SEList[bHceIndex], SECount);
     *SECount += bHceIndex;
+}
+
+static void
+NfcCxRFInterfaceUpdateSEList(
+    _In_ PNFCCX_RF_INTERFACE RFInterface
+    )
+{
+    NfcCxRFInterfaceGetSEList(RFInterface,
+                              RFInterface->pLibNfcContext->SEList,
+                              &RFInterface->pLibNfcContext->SECount);
+
+    NfcCxRFInterfaceDumpSEList(RFInterface);
 }
 
 FORCEINLINE NTSTATUS
@@ -1520,6 +1532,28 @@ Done:
     return status;
 }
 
+static phLibNfc_SE_List_t*
+NfcCxRFInterfaceGetSecureElementFromHandle(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ phLibNfc_Handle hSecureElement)
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    for (uint8_t i = 0; i < RFInterface->pLibNfcContext->SECount; i++)
+    {
+        phLibNfc_SE_List_t* se = &RFInterface->pLibNfcContext->SEList[i];
+
+        if (se->hSecureElement == hSecureElement)
+        {
+            TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+            return se;
+        }
+    }
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+    return nullptr;
+}
+
 static NTSTATUS
 NfcCxRFInterfaceGetSecureElementFromHandle(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
@@ -1529,18 +1563,7 @@ NfcCxRFInterfaceGetSecureElementFromHandle(
     NTSTATUS status = STATUS_SUCCESS;
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    phLibNfc_SE_List_t* pSecureElement = nullptr;
-
-    for (uint8_t i = 0; i < RFInterface->pLibNfcContext->SECount; i++)
-    {
-        phLibNfc_SE_List_t* se = &RFInterface->pLibNfcContext->SEList[i];
-
-        if (se->hSecureElement == hSecureElement)
-        {
-            pSecureElement = se;
-            break;
-        }
-    }
+    phLibNfc_SE_List_t* pSecureElement = NfcCxRFInterfaceGetSecureElementFromHandle(RFInterface, hSecureElement);
 
     if (pSecureElement == nullptr)
     {
@@ -1560,7 +1583,8 @@ NTSTATUS
 NfcCxRFInterfaceSetCardActivationMode(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ phLibNfc_Handle hSecureElement,
-    _In_ phLibNfc_eSE_ActivationMode eActivationMode
+    _In_ phLibNfc_eSE_ActivationMode eActivationMode,
+    _In_ phLibNfc_PowerLinkModes_t ePowerAndLinkControl
     )
 /*++
 
@@ -1588,6 +1612,8 @@ Return Value:
 
     WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
 
+    TRACE_LINE(LEVEL_INFO, "%!phLibNfc_eSE_ActivationMode!, %!phLibNfc_PowerLinkModes_t!", eActivationMode, ePowerAndLinkControl);
+
     phLibNfc_SE_List_t* pSecureElement = nullptr;
     status = NfcCxRFInterfaceGetSecureElementFromHandle(RFInterface, hSecureElement, &pSecureElement);
     if (!NT_SUCCESS(status))
@@ -1596,17 +1622,20 @@ Return Value:
         goto Done;
     }
 
-    // Check if the activation mode is already correct.
-    if (eActivationMode == pSecureElement->eSE_ActivationMode)
+    // Check if the activation mode and power-and-link-control are already correct.
+    if (eActivationMode == pSecureElement->eSE_ActivationMode ||
+        ePowerAndLinkControl == pSecureElement->eSE_PowerLinkMode)
     {
         // Nothing to do.
         goto Done;
     }
 
+    RFInterface->SEActivationMode = eActivationMode;
+    RFInterface->SEPowerAndLinkControl = ePowerAndLinkControl;
     status = NfcCxRFInterfaceExecute(RFInterface,
                                      LIBNFC_SE_SET_MODE,
                                      (UINT_PTR)pSecureElement,
-                                     (UINT_PTR)eActivationMode);
+                                     0);
     if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "Failed to set SE activation mode, %!STATUS!", status);
@@ -1658,14 +1687,17 @@ Return Value:
     }
 
     phLibNfc_eSE_ActivationMode currentActivationMode = pSecureElement->eSE_ActivationMode;
+    phLibNfc_PowerLinkModes_t currentPowerLinkMode = pSecureElement->eSE_PowerLinkMode;
 
     //
     // Turn off SE
     //
+    RFInterface->SEActivationMode = phLibNfc_SE_ActModeOff;
+    RFInterface->SEPowerAndLinkControl = phLibNfc_PLM_NfccDecides;
     status = NfcCxRFInterfaceExecute(RFInterface,
                                      LIBNFC_SE_SET_MODE,
                                      (UINT_PTR)pSecureElement,
-                                     (UINT_PTR)phLibNfc_SE_ActModeOff);
+                                     0);
     if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "Failed to turn off SE, %!STATUS!", status);
@@ -1675,10 +1707,12 @@ Return Value:
     //
     // Restore SE's activation mode
     //
+    RFInterface->SEActivationMode = currentActivationMode;
+    RFInterface->SEPowerAndLinkControl = currentPowerLinkMode;
     status = NfcCxRFInterfaceExecute(RFInterface,
                                      LIBNFC_SE_SET_MODE,
                                      (UINT_PTR)pSecureElement,
-                                     (UINT_PTR)currentActivationMode);
+                                     0);
     if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "Failed to restore SE activation mode, %!STATUS!", status);
@@ -3586,11 +3620,7 @@ NfcCxRFInterfaceSEEnumerateCB(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    NfcCxRFInterfaceGetSEList(rfInterface,
-                              rfInterface->pLibNfcContext->SEList,
-                              &rfInterface->pLibNfcContext->SECount);
-
-    NfcCxRFInterfaceDumpSEList(rfInterface);
+    NfcCxRFInterfaceUpdateSEList(rfInterface);
 
     NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, NULL, NULL);
 
@@ -3625,7 +3655,7 @@ NfcCxRFInterfaceSEEnumerate(
 static VOID
 NfcCxRFInterfaceSESetModeConfigCB(
     _In_ VOID* pContext,
-    _In_ phLibNfc_Handle /*hSecureElement*/,
+    _In_ phLibNfc_Handle hSecureElement,
     _In_ NFCSTATUS NfcStatus
     )
 {
@@ -3634,13 +3664,11 @@ NfcCxRFInterfaceSESetModeConfigCB(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    NfcCxRFInterfaceGetSEList(rfInterface,
-                              rfInterface->pLibNfcContext->SEList,
-                              &rfInterface->pLibNfcContext->SECount);
+    NfcCxRFInterfaceUpdateSEList(rfInterface);
 
-    NfcCxRFInterfaceDumpSEList(rfInterface);
+    phLibNfc_SE_List_t* pSecureElement = NfcCxRFInterfaceGetSecureElementFromHandle(rfInterface, hSecureElement);
 
-    NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, NULL, NULL);
+    NfcCxInternalSequence(rfInterface, ((PNFCCX_RF_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, pSecureElement, NULL);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }
@@ -3650,7 +3678,7 @@ NfcCxRFInterfaceSESetModeConfig(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ NTSTATUS Status,
     _In_opt_ VOID* Param1,
-    _In_opt_ VOID* Param2
+    _In_opt_ VOID* /*Param2*/
     )
 {
     NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
@@ -3659,10 +3687,17 @@ NfcCxRFInterfaceSESetModeConfig(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    phLibNfc_eSE_ActivationMode activationMode = (phLibNfc_eSE_ActivationMode)(ULONG_PTR)Param2;
+    phLibNfc_eSE_ActivationMode activationMode = RFInterface->SEActivationMode;
 
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
+
+    if (activationMode == pSecureElement->eSE_ActivationMode)
+    {
+        // Nothing to do.
+        TRACE_LINE(LEVEL_INFO, "NFC-EE already has correct activation mode.");
+        goto Done;
+    }
 
     if (NULL == pSecureElement->hSecureElement) {
         pSecureElement->eSE_ActivationMode = activationMode;
@@ -3692,6 +3727,89 @@ NfcCxRFInterfaceSESetModeConfig(
 Done:
     Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
 
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    return Status;
+}
+
+void
+NfcCxRFInterfaceSESetPowerAndLinkControlCB(
+    _In_ void* pContext,
+    _In_ NFCSTATUS NfcStatus)
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    auto context = reinterpret_cast<PNFCCX_RF_LIBNFC_REQUEST_CONTEXT>(pContext);
+    PNFCCX_RF_INTERFACE rfInterface = context->RFInterface;
+
+    NfcCxRFInterfaceUpdateSEList(rfInterface);
+
+    // The NFC Controller will return REJECTED if the Power and Link Control command is not supported or
+    // the NFC-EE's power is not managed by the NFC Controller.
+    if (NfcStatus == NFCSTATUS_REJECTED)
+    {
+        // This NFC-EE's power cannot be managed by the NFC Controller.
+        // Power and Link Control is an optional feature (as it only improves existing behavior).
+        // So it is safe to ignore this problem.
+        NfcStatus = NFCSTATUS_SUCCESS;
+    }
+
+    NTSTATUS status = NfcCxNtStatusFromNfcStatus(NfcStatus);
+    NfcCxInternalSequence(context->RFInterface, context->Sequence, status, NULL, NULL);
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+}
+
+NTSTATUS
+NfcCxRFInterfaceSESetPowerAndLinkControl(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS Status,
+    _In_opt_ VOID* Param1,
+    _In_opt_ VOID* /*Param2*/
+    )
+{
+    NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
+    static NFCCX_RF_LIBNFC_REQUEST_CONTEXT LibNfcContext;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    phLibNfc_SE_List_t* pSecureElement = (phLibNfc_SE_List_t*)Param1;
+
+    LibNfcContext.RFInterface = RFInterface;
+    LibNfcContext.Sequence = RFInterface->pSeqHandler;
+
+    if (NULL == pSecureElement->hSecureElement)
+    {
+        // Skip setting Power and Link Control for Host NFC-EE, as it doesn't make any
+        // sense.
+        TRACE_LINE(LEVEL_INFO, "Can't set Power and Link Control on host NFC-EE.");
+        goto Done;
+    }
+
+    phLibNfc_PowerLinkModes_t powerMode = RFInterface->SEPowerAndLinkControl;
+
+    if (pSecureElement->eSE_PowerLinkMode == powerMode)
+    {
+        // Nothing to do.
+        TRACE_LINE(LEVEL_INFO, "NFC-EE already has correct Power and Link Control mode.");
+        goto Done;
+    }
+
+    nfcStatus = phLibNfc_SE_PowerAndLinkControl(
+        pSecureElement->hSecureElement,
+        RFInterface->SEPowerAndLinkControl,
+        NfcCxRFInterfaceSESetPowerAndLinkControlCB,
+        &LibNfcContext);
+    if (nfcStatus == NFCSTATUS_FEATURE_NOT_SUPPORTED)
+    {
+        // It is not an issue if PowerAndLinkControl isn't supported.
+        // We can produce a better behavior when it is. But nothing fundamentally breaks when it is not.
+        TRACE_LINE(LEVEL_INFO, "Power and Link Control not supported.");
+        nfcStatus = NFCSTATUS_SUCCESS;
+        goto Done;
+    }
+
+Done:
+    Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
     return Status;
 }
@@ -3781,11 +3899,7 @@ NfcCxRFInterfaceDisableSecureElementsCB(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    NfcCxRFInterfaceGetSEList(rfInterface,
-                              rfInterface->pLibNfcContext->SEList,
-                              &rfInterface->pLibNfcContext->SECount);
-
-    NfcCxRFInterfaceDumpSEList(rfInterface);
+    NfcCxRFInterfaceUpdateSEList(rfInterface);
 
     if (NT_SUCCESS(status)) {
         NfcCxRepeatSequence(rfInterface, rfInterface->pSeqHandler, 1); // Redo sequence

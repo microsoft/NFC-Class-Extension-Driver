@@ -173,6 +173,7 @@ typedef struct phLibNfc_SE_List
     phLibNfc_Handle             hSecureElement;     /**< handle to Secure Element */
     phLibNfc_SE_Type_t          eSE_Type;           /**< type of Secure Element(SE)*/
     phLibNfc_eSE_ActivationMode eSE_ActivationMode; /**< state of the secure element */
+    phLibNfc_PowerLinkModes_t   eSE_PowerLinkMode;  /**< Power And Link mode of the secure element */
 } phLibNfc_SE_List_t, *pphLibNfc_SE_List_t;
 
 /**

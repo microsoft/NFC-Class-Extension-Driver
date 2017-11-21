@@ -172,6 +172,12 @@ typedef struct _NFCCX_RF_INTERFACE {
     phLibNfc_Data_t sBarcodeMsg;
 
     //
+    // SE Mode data
+    //
+    phLibNfc_eSE_ActivationMode SEActivationMode;
+    phLibNfc_PowerLinkModes_t SEPowerAndLinkControl;
+
+    //
     // Watchdog timer
     //
     PTP_TIMER tpWatchdogTimer;
@@ -324,7 +330,8 @@ NTSTATUS
 NfcCxRFInterfaceSetCardActivationMode(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ phLibNfc_Handle hSecureElement,
-    _In_ phLibNfc_eSE_ActivationMode eActivationMode
+    _In_ phLibNfc_eSE_ActivationMode eActivationMode,
+    _In_ phLibNfc_PowerLinkModes_t ePowerAndLinkControl
     );
 
 NTSTATUS
@@ -502,6 +509,7 @@ FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceSetDefaultRoutingTable;
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceDisableSecureElements;
 
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceSESetModeConfig;
+FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceSESetPowerAndLinkControl;
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceConfigureRoutingTable;
 
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfacePreRecovery;
@@ -571,7 +579,11 @@ FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceESEGetATRStringSeq;
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSetDefaultRoutingTable)
 
 #define RF_INTERFACE_SE_DISABLE_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceDisableSecureElements)
-#define RF_INTERFACE_SE_SET_MODE_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSESetModeConfig)
+
+#define RF_INTERFACE_SE_SET_MODE_SEQUENCE \
+    NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSESetModeConfig) \
+    NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSESetPowerAndLinkControl)
+
 #define RF_INTERFACE_SE_SET_ROUTING_MODE_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceConfigureRoutingTable)
 
 #define RF_INTERFACE_PRE_RECOVERY_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfacePreRecovery)
