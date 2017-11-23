@@ -509,6 +509,7 @@ FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceSetDefaultRoutingTable;
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceDisableSecureElements;
 
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceSESetModeConfig;
+FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceSESetModeComplete;
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceSESetPowerAndLinkControl;
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceConfigureRoutingTable;
 
@@ -582,6 +583,7 @@ FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceESEGetATRStringSeq;
 
 #define RF_INTERFACE_SE_SET_MODE_SEQUENCE \
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSESetModeConfig) \
+    NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSESetModeComplete) \
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSESetPowerAndLinkControl)
 
 #define RF_INTERFACE_SE_SET_ROUTING_MODE_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceConfigureRoutingTable)
