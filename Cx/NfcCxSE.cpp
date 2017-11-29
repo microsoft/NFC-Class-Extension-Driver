@@ -224,7 +224,7 @@ Return Value:
     BOOLEAN seFullyDisabled = (driverFlags & NFC_CX_DRIVER_DISABLE_HOST_CARD_EMULATION) &&
         (driverFlags & NFC_CX_DRIVER_DISABLE_NFCEE_DISCOVERY);
 
-    BOOLEAN enableInterface = fdoContext->Power->SERadioState && !seFullyDisabled;
+    BOOLEAN enableInterface = !seFullyDisabled;
 
     if (enableInterface)
     {
@@ -498,15 +498,6 @@ Return Value:
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     fdoContext = NfcCxFileObjectGetFdoContext(FileContext);
-
-    //
-    // Is the SE radio enabled?
-    //
-    if (FALSE == NfcCxPowerIsAllowedSE(fdoContext->Power)) {
-        TRACE_LINE(LEVEL_ERROR, "SE radio is off");
-        status = STATUS_DEVICE_POWERED_OFF;
-        goto Done;
-    }
 
     //
     // Forward the request to sequential dispatch IO queue

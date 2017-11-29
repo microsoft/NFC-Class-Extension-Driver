@@ -93,10 +93,9 @@ DEFINE_GUID(GUID_NULL, 0,0,0,0,0,0,0,0,0,0,0);
 //
 // Registry settings
 //
-#define NFCCX_REG_NFC_RADIO_TURNED_OFF          L"NfcRadioTurnedOff"
+#define NFCCX_REG_NFC_RADIO_STATE               L"NfcRadioState"
 #define NFCCX_REG_NFC_FLIGHT_MODE               L"NfcRadioFlightMode"
-#define NFCCX_REG_SE_RADIO_TURNED_OFF           L"SERadioTurnedOff"
-#define NFCCX_REG_SE_FLIGHT_MODE                L"SERadioFlightMode"
+#define NFCCX_REG_NFC_RADIO_STATE_BEFORE_FLIGHT_MODE L"NfcRadioStateBeforeFlightMode"
 #define NFCCX_REG_SESSION_IDENTIFIER            L"SessionIdentifier"
 #define NFCCX_REG_LOG_DATA_MESSAGES             L"LogNciDataMessages"
 #define NFCCX_REG_DISABLE_POWER_MANAGER_STOP_IDLE L"DisablePowerManagerStopIdle"

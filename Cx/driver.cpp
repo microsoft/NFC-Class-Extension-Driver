@@ -389,11 +389,7 @@ Return Value:
     fdoContext->Device = Device;
     fdoContext->HasFailed = FALSE;
     fdoContext->NfpRadioInterfaceCreated = FALSE;
-    fdoContext->NfpPowerOffSystemOverride = FALSE;
-    fdoContext->NfpPowerOffPolicyOverride = FALSE;
     fdoContext->SERadioInterfaceCreated = FALSE;
-    fdoContext->SEPowerOffSystemOverride = FALSE;
-    fdoContext->SEPowerOffPolicyOverride = FALSE;
     fdoContext->NfcCxClientGlobal = nfcCxClientGlobal;
     fdoContext->LogNciDataMessages = FALSE;
     fdoContext->NumDriverRestarts = NFCCX_MAX_NUM_DRIVER_RESTARTS;
@@ -504,16 +500,6 @@ Return Value:
             TRACE_LINE(LEVEL_ERROR, "NfcCxFdoReadPersistedDeviceRegistrySettings failed, %!STATUS!", status);
             goto Done;
         }
-
-#ifdef EVENT_WRITE
-        //
-        // Log all settings that could have been overridden from the registry.
-        //
-        EventWriteDevicePersistedRegistrySettings(fdoContext->NfpPowerOffPolicyOverride,
-                                                  fdoContext->NfpPowerOffSystemOverride,
-                                                  fdoContext->SEPowerOffPolicyOverride,
-                                                  fdoContext->SEPowerOffSystemOverride);
-#endif
     }
 
     status = NfcCxFdoCreate(fdoContext);

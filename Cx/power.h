@@ -50,7 +50,8 @@ typedef struct _NFCCX_POWER_MANAGER
     LONG PowerReferences[NfcCxPowerReferenceType_MaxCount];
 
     BOOLEAN NfpRadioState;
-    BOOLEAN SERadioState;
+    BOOLEAN NfpFlightModeEnabled;
+    BOOLEAN NfpRadioStateBeforeFlightMode;
 
     BOOLEAN DeviceStopIdle;             // TRUE == 'WdfDeviceStopIdle' has been called.
 
@@ -178,8 +179,14 @@ NfcCxPowerIsAllowedNfp(
     _In_ PNFCCX_POWER_MANAGER PowerManager
     );
 
-BOOLEAN
-NfcCxPowerIsAllowedSE(
+void
+NfcCxPowerReadRadioStateFromRegistry(
+    _In_ PNFCCX_POWER_MANAGER PowerManager
+    );
+
+_Requires_lock_held_(PowerManager->WaitLock)
+void
+NfcCxPowerWriteRadioStateToRegistry(
     _In_ PNFCCX_POWER_MANAGER PowerManager
     );
 

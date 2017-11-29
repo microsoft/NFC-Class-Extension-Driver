@@ -56,6 +56,34 @@ NfcCxCopyToBuffer(
     _Inout_ size_t* pcbOutputBuffer
     );
 
+NTSTATUS
+NfcCxRegistryQueryULong(
+    _In_ WDFKEY Key,
+    _In_ PCWSTR ValueName,
+    _Out_ ULONG* Value
+    );
+
+NTSTATUS
+NfcCxRegistryQueryBoolean(
+    _In_ WDFKEY Key,
+    _In_ PCWSTR ValueName,
+    _Out_ BOOLEAN* Value
+    );
+
+NTSTATUS
+NfcCxRegistryAssignULong(
+    _In_ WDFKEY Key,
+    _In_ PCWSTR ValueName,
+    _Out_ ULONG Value
+    );
+
+NTSTATUS
+NfcCxRegistryAssignBoolean(
+    _In_ WDFKEY Key,
+    _In_ PCWSTR ValueName,
+    _Out_ BOOLEAN Value
+    );
+
 class CNFCPayload
 {
 public:

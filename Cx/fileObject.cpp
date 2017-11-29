@@ -143,18 +143,6 @@ Return Value:
         }
     }
 
-    if ((ROLE_SECUREELEMENTEVENT == fileContext->Role ||
-         ROLE_SECUREELEMENTMANAGER == fileContext->Role)) {
-        //
-        // The above roles require the SE to be supported and SE radio to be on.
-        //
-        if (!NfcCxPowerIsAllowedSE(fdoContext->Power)) {
-            TRACE_LINE(LEVEL_ERROR, "SE radio state is off, client role %!FILE_OBJECT_ROLE! not supported", fileContext->Role);
-            status = STATUS_INVALID_DEVICE_STATE;
-            goto Done;
-        }
-    }
-
     if (ROLE_SUBSCRIPTION == fileContext->Role) {
 
         InitializeListHead(&fileContext->RoleParameters.Sub.SubscribedMessageQueue);

@@ -41,12 +41,7 @@ typedef struct _NFCCX_FDO_CONTEXT {
     // Power State
     //
     BOOLEAN NfpRadioInterfaceCreated;
-    BOOLEAN NfpPowerOffSystemOverride;  // TRUE == Nfp system state override is off
-    BOOLEAN NfpPowerOffPolicyOverride;  // TRUE == Nfp radio state is off
-
     BOOLEAN SERadioInterfaceCreated;
-    BOOLEAN SEPowerOffSystemOverride;   // TRUE == SE system state override is off
-    BOOLEAN SEPowerOffPolicyOverride;   // TRUE == SE radio state is off
 
     BOOLEAN DisablePowerManagerStopIdle;
 

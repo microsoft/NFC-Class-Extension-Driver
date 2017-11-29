@@ -64,12 +64,12 @@ Return Value:
 
     *powerManager = {};
     powerManager->FdoContext = FdoContext;
+    powerManager->NfpRadioState = TRUE;
 
     if (IsPowerRFManagementEnabled(FdoContext))
     {
         // Check the currently required power state
-        powerManager->NfpRadioState = (!FdoContext->NfpPowerOffPolicyOverride && !FdoContext->NfpPowerOffSystemOverride);
-        powerManager->SERadioState = (!FdoContext->SEPowerOffPolicyOverride && !FdoContext->SEPowerOffSystemOverride);
+        NfcCxPowerReadRadioStateFromRegistry(powerManager);
     }
 
     WDF_OBJECT_ATTRIBUTES objectAttrib;
@@ -379,17 +379,17 @@ Return Value:
         result = (NFC_CX_POWER_RF_STATE)(result | NfcCxPowerRfState_NoListenEnabled);
     }
 
-    if (PowerManager->SERadioState && (PowerManager->PowerReferences[NfcCxPowerReferenceType_CardEmulation] != 0))
+    if (PowerManager->PowerReferences[NfcCxPowerReferenceType_CardEmulation] != 0)
     {
         result = (NFC_CX_POWER_RF_STATE)(result | NfcCxPowerRfState_CardEmulationEnabled);
     }
 
-    if (PowerManager->SERadioState && (PowerManager->PowerReferences[NfcCxPowerReferenceType_StealthListen] != 0))
+    if (PowerManager->PowerReferences[NfcCxPowerReferenceType_StealthListen] != 0)
     {
         result = (NFC_CX_POWER_RF_STATE)(result | NfcCxPowerRfState_StealthListenEnabled);
     }
 
-    if (PowerManager->SERadioState && (PowerManager->PowerReferences[NfcCxPowerReferenceType_ESe] != 0))
+    if (PowerManager->PowerReferences[NfcCxPowerReferenceType_ESe] != 0)
     {
         result = (NFC_CX_POWER_RF_STATE)(result | NfcCxPowerRfState_ESeEnabled);
     }
@@ -859,8 +859,6 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    BOOLEAN desiredRadioState;
-    BOOLEAN currentRadioState;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -877,19 +875,31 @@ Return Value:
         goto Done;
     }
 
-    if (RadioState->SystemStateUpdate) {
-        fdoContext->NfpPowerOffSystemOverride = RadioState->MediaRadioOn ? FALSE : TRUE;
-    }
-    else {
-        //
-        // Since the request is for modifying the radio state
-        // we override the system state.
-        //
-        fdoContext->NfpPowerOffSystemOverride = FALSE;
-        fdoContext->NfpPowerOffPolicyOverride = RadioState->MediaRadioOn ? FALSE : TRUE;
-    }
+    TRACE_LINE(LEVEL_INFO, "SystemStateUpdate: %!BOOLEAN!, MediaRadioOn: %!BOOLEAN!", RadioState->SystemStateUpdate, RadioState->MediaRadioOn);
 
-    desiredRadioState = !fdoContext->NfpPowerOffPolicyOverride && !fdoContext->NfpPowerOffSystemOverride;
+    BOOLEAN desiredRadioState;
+    if (RadioState->SystemStateUpdate)
+    {
+        PowerManager->NfpFlightModeEnabled = !RadioState->MediaRadioOn;
+
+        if (PowerManager->NfpFlightModeEnabled)
+        {
+            // Airplane mode turned on.
+            // Cache the current radio state and turn the radio off.
+            PowerManager->NfpRadioStateBeforeFlightMode = PowerManager->NfpRadioState;
+            desiredRadioState = FALSE;
+        }
+        else
+        {
+            // Airplane mode turned off.
+            // Restore the previous radio state.
+            desiredRadioState = PowerManager->NfpRadioStateBeforeFlightMode;
+        }
+    }
+    else
+    {
+        desiredRadioState = !!RadioState->MediaRadioOn;
+    }
 
     if (PowerManager->NfpRadioState == desiredRadioState) {
         TRACE_LINE(LEVEL_ERROR, "We are already in the requested power state");
@@ -897,20 +907,19 @@ Return Value:
         goto Done;
     }
 
+    TRACE_LINE(LEVEL_INFO, "Current state %d, Desired State %d", PowerManager->NfpRadioState, desiredRadioState);
+
     //
     // Update the radio state here so that when we update the polling loop
     // configuration of the controller so that the correct states are used
     //
     NFC_CX_POWER_RF_STATE previousRfState = NfcCxPowerGetRfState(PowerManager);
 
-    currentRadioState = PowerManager->NfpRadioState;
     PowerManager->NfpRadioState = desiredRadioState;
 
     NFC_CX_POWER_RF_STATE rfState = NfcCxPowerGetRfState(PowerManager);
 
-    TRACE_LINE(LEVEL_INFO, "Current state %d, Desired State %d", 
-                                                    currentRadioState,
-                                                    RadioState->MediaRadioOn);
+
     if (desiredRadioState) {
         if (NfcCxPowerShouldStopIdle(rfState))
         {
@@ -978,7 +987,7 @@ Done:
     //
     // Persist the data into the registry
     //
-    NfcCxFdoWritePersistedDeviceRegistrySettings(fdoContext);
+    NfcCxPowerWriteRadioStateToRegistry(PowerManager);
     WdfWaitLockRelease(PowerManager->WaitLock);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -1059,35 +1068,6 @@ Return Value:
 
     WdfWaitLockAcquire(PowerManager->WaitLock, NULL);
     isAllowed = PowerManager->NfpRadioState;
-    WdfWaitLockRelease(PowerManager->WaitLock);
-
-    return isAllowed;
-}
-
-BOOLEAN
-NfcCxPowerIsAllowedSE(
-    _In_ PNFCCX_POWER_MANAGER PowerManager
-    )
-/*++
-
-Routine Description:
-
-   NfcCxPowerIsAllowedSE returns the current SE radio state.
-
-Arguments:
-
-    PowerManager - Pointer to the Power Manager
-
-Return Value:
-    TRUE - If the radio policy hasn't been overwriten to OFF
-    FALSE - Otherwise
-
---*/
-{
-    BOOLEAN isAllowed = FALSE;
-
-    WdfWaitLockAcquire(PowerManager->WaitLock, NULL);
-    isAllowed = PowerManager->SERadioState;
     WdfWaitLockRelease(PowerManager->WaitLock);
 
     return isAllowed;
@@ -1265,4 +1245,111 @@ Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 
     return status;
+}
+
+void
+NfcCxPowerReadRadioStateFromRegistry(
+    _In_ PNFCCX_POWER_MANAGER PowerManager
+    )
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NTSTATUS status = STATUS_SUCCESS;
+    WDFKEY regkey = nullptr;
+
+    // Open registry key
+    status = WdfDeviceOpenRegistryKey(
+        PowerManager->FdoContext->Device,
+        PLUGPLAY_REGKEY_DEVICE | WDF_REGKEY_DEVICE_SUBKEY,
+        KEY_READ,
+        WDF_NO_OBJECT_ATTRIBUTES,
+        &regkey);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Can't open registry key. %!STATUS!", status);
+        goto Done;
+    }
+
+    // RadioEnabled
+    status = NfcCxRegistryQueryBoolean(regkey, NFCCX_REG_NFC_RADIO_STATE, &PowerManager->NfpRadioState);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to read 'RadioEnabled' value. %!STATUS!", status);
+    }
+
+    // FlightModeEnabled
+    status = NfcCxRegistryQueryBoolean(regkey, NFCCX_REG_NFC_FLIGHT_MODE, &PowerManager->NfpFlightModeEnabled);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to read 'FlightModeEnabled' value. %!STATUS!", status);
+    }
+
+    // RadioEnabledBeforeFlightMode
+    status = NfcCxRegistryQueryBoolean(regkey, NFCCX_REG_NFC_RADIO_STATE_BEFORE_FLIGHT_MODE, &PowerManager->NfpRadioStateBeforeFlightMode);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to read 'NfpRadioStateBeforeFlightMode' value. %!STATUS!", status);
+    }
+
+Done:
+    if (regkey)
+    {
+        WdfRegistryClose(regkey);
+    }
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+}
+
+_Requires_lock_held_(PowerManager->WaitLock)
+void
+NfcCxPowerWriteRadioStateToRegistry(
+    _In_ PNFCCX_POWER_MANAGER PowerManager
+    )
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NTSTATUS status = STATUS_SUCCESS;
+    WDFKEY regkey = nullptr;
+
+     // Open registry key
+    status = WdfDeviceOpenRegistryKey(
+        PowerManager->FdoContext->Device,
+        PLUGPLAY_REGKEY_DEVICE | WDF_REGKEY_DEVICE_SUBKEY,
+        KEY_READ | KEY_SET_VALUE,
+        WDF_NO_OBJECT_ATTRIBUTES,
+        &regkey);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Can't open registry key. %!STATUS!", status);
+        goto Done;
+    }
+
+    // RadioEnabled
+    status = NfcCxRegistryAssignBoolean(regkey, NFCCX_REG_NFC_RADIO_STATE, PowerManager->NfpRadioState);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to write 'RadioEnabled' value. %!STATUS!", status);
+    }
+
+    // FlightModeEnabled
+    status = NfcCxRegistryAssignBoolean(regkey, NFCCX_REG_NFC_FLIGHT_MODE, PowerManager->NfpFlightModeEnabled);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to write 'FlightModeEnabled' value. %!STATUS!", status);
+    }
+
+    // RadioEnabledBeforeFlightMode
+    status = NfcCxRegistryAssignBoolean(regkey, NFCCX_REG_NFC_RADIO_STATE_BEFORE_FLIGHT_MODE, PowerManager->NfpRadioStateBeforeFlightMode);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "Failed to write 'NfpRadioStateBeforeFlightMode' value. %!STATUS!", status);
+    }
+
+Done:
+    if (regkey)
+    {
+        WdfRegistryClose(regkey);
+    }
+
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }

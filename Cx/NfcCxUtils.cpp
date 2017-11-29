@@ -241,6 +241,125 @@ Done:
     return status;
 }
 
+NTSTATUS
+NfcCxRegistryQueryULong(
+    _In_ WDFKEY Key,
+    _In_ PCWSTR ValueName,
+    _Out_ ULONG* Value
+    )
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NTSTATUS status;
+
+    UNICODE_STRING valueNameString;
+    status = RtlUnicodeStringInit(&valueNameString, ValueName);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "RtlUnicodeStringInit failed. %!STATUS!", status);
+        goto Done;
+    }
+
+    status = WdfRegistryQueryULong(
+        Key,
+        &valueNameString,
+        Value);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_INFO, "WdfRegistryQueryULong failed. %!STATUS!", status);
+        goto Done;
+    }
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxRegistryQueryBoolean(
+    _In_ WDFKEY Key,
+    _In_ PCWSTR ValueName,
+    _Out_ BOOLEAN* Value
+    )
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    ULONG tmpValue;
+    NTSTATUS status = NfcCxRegistryQueryULong(
+        Key,
+        ValueName,
+        &tmpValue);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_INFO, "WdfRegistryQueryULong failed. %!STATUS!", status);
+        goto Done;
+    }
+
+    *Value = (tmpValue != FALSE);
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxRegistryAssignULong(
+    _In_ WDFKEY Key,
+    _In_ PCWSTR ValueName,
+    _Out_ ULONG Value
+    )
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NTSTATUS status;
+
+    UNICODE_STRING valueNameString;
+    status = RtlUnicodeStringInit(&valueNameString, ValueName);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "RtlUnicodeStringInit failed. %!STATUS!", status);
+        goto Done;
+    }
+
+    status = WdfRegistryAssignULong(
+        Key,
+        &valueNameString,
+        Value);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_INFO, "WdfRegistryAssignULong failed. %!STATUS!", status);
+        goto Done;
+    }
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxRegistryAssignBoolean(
+    _In_ WDFKEY Key,
+    _In_ PCWSTR ValueName,
+    _Out_ BOOLEAN Value
+    )
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NTSTATUS status = NfcCxRegistryAssignULong(
+        Key,
+        ValueName,
+        !!Value);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_INFO, "NfcCxRegistryAssignULong failed. %!STATUS!", status);
+        goto Done;
+    }
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
 _No_competing_thread_
 NTSTATUS
 CNFCPendedRequest::Initialize(

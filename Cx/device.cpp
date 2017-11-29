@@ -812,78 +812,6 @@ Return Value:
         goto Done;
     }
 
-    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NFC_RADIO_TURNED_OFF);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NFC_RADIO_TURNED_OFF, status);
-        goto Done;
-    }
-
-    status = WdfRegistryQueryULong(
-                            hKey,
-                            &valueName,
-                            &tempValue);
-    if (!NT_SUCCESS(status)) {
-        // Value not present, allow continuation
-        status = STATUS_SUCCESS;
-    } else {
-        TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_NFC_RADIO_TURNED_OFF, tempValue);
-        FdoContext->NfpPowerOffPolicyOverride = (tempValue != 0);
-    }
-
-    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NFC_FLIGHT_MODE);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NFC_FLIGHT_MODE, status);
-        goto Done;
-    }
-
-    status = WdfRegistryQueryULong(
-                            hKey,
-                            &valueName,
-                            &tempValue);
-    if (!NT_SUCCESS(status)) {
-        // Value not present, allow continuation
-        status = STATUS_SUCCESS;
-    } else {
-        TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_NFC_FLIGHT_MODE, tempValue);
-        FdoContext->NfpPowerOffSystemOverride = (tempValue != 0);
-    }
-
-    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SE_RADIO_TURNED_OFF);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SE_RADIO_TURNED_OFF, status);
-        goto Done;
-    }
-
-    status = WdfRegistryQueryULong(
-                            hKey,
-                            &valueName,
-                            &tempValue);
-    if (!NT_SUCCESS(status)) {
-        // Value not present, allow continuation
-        status = STATUS_SUCCESS;
-    } else {
-        TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_SE_RADIO_TURNED_OFF, tempValue);
-        FdoContext->SEPowerOffPolicyOverride = (tempValue != 0);
-    }
-
-    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SE_FLIGHT_MODE);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SE_FLIGHT_MODE, status);
-        goto Done;
-    }
-
-    status = WdfRegistryQueryULong(
-                            hKey,
-                            &valueName,
-                            &tempValue);
-    if (!NT_SUCCESS(status)) {
-        // Value not present, allow continuation
-        status = STATUS_SUCCESS;
-    } else {
-        TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_SE_FLIGHT_MODE, tempValue);
-        FdoContext->SEPowerOffSystemOverride = (tempValue != 0);
-    }
-
     status = RtlUnicodeStringInit(&valueName, NFCCX_REG_DISABLE_POWER_MANAGER_STOP_IDLE);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_DISABLE_POWER_MANAGER_STOP_IDLE, status);
@@ -965,7 +893,6 @@ Return Value:
     NTSTATUS status = STATUS_SUCCESS;
     WDFKEY hKey = NULL;
     UNICODE_STRING valueName;
-    ULONG tempValue = 0;
     DECLARE_UNICODE_STRING_SIZE(guidValueString, STR_GUID_LENGTH);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -981,70 +908,6 @@ Return Value:
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_INFO, "No settings");
         status = STATUS_SUCCESS;
-        goto Done;
-    }
-
-    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NFC_RADIO_TURNED_OFF);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NFC_RADIO_TURNED_OFF, status);
-        goto Done;
-    }
-
-    tempValue = (FdoContext->NfpPowerOffPolicyOverride) ? 1 : 0;
-    status = WdfRegistryAssignULong(
-                            hKey,
-                            &valueName,
-                            tempValue);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d, %!STATUS!", NFCCX_REG_NFC_RADIO_TURNED_OFF, tempValue, status);
-        goto Done;
-    }
-
-    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_NFC_FLIGHT_MODE);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_NFC_FLIGHT_MODE, status);
-        goto Done;
-    }
-
-    tempValue = (FdoContext->NfpPowerOffSystemOverride) ? 1 : 0;
-    status = WdfRegistryAssignULong(
-                            hKey,
-                            &valueName,
-                            tempValue);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d, %!STATUS!", NFCCX_REG_NFC_FLIGHT_MODE, tempValue, status);
-        goto Done;
-    }
-
-    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SE_RADIO_TURNED_OFF);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SE_RADIO_TURNED_OFF, status);
-        goto Done;
-    }
-
-    tempValue = (FdoContext->SEPowerOffPolicyOverride) ? 1 : 0;
-    status = WdfRegistryAssignULong(
-                            hKey,
-                            &valueName,
-                            tempValue);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d, %!STATUS!", NFCCX_REG_SE_RADIO_TURNED_OFF, tempValue, status);
-        goto Done;
-    }
-
-    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SE_FLIGHT_MODE);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SE_FLIGHT_MODE, status);
-        goto Done;
-    }
-
-    tempValue = (FdoContext->SEPowerOffSystemOverride) ? 1 : 0;
-    status = WdfRegistryAssignULong(
-                            hKey,
-                            &valueName,
-                            tempValue);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to persist %S = %d, %!STATUS!", NFCCX_REG_SE_FLIGHT_MODE, tempValue, status);
         goto Done;
     }
 
