@@ -1891,7 +1891,7 @@ NfcCxSEInterfaceDispatchSetPowerMode(
     _In_ PNFCCX_FILE_CONTEXT FileContext,
     _In_ WDFREQUEST Request,
     _In_opt_bytecount_(InputBufferLength) PVOID InputBuffer,
-    _In_ size_t /*InputBufferLength*/,
+    _In_ size_t InputBufferLength,
     _Out_opt_bytecap_(OutputBufferLength) PVOID /*OutputBuffer*/,
     _In_ size_t OutputBufferLength
     )
@@ -1918,6 +1918,8 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    UNREFERENCED_PARAMETER(InputBufferLength);
 
     PNFCCX_FDO_CONTEXT fdoContext = NfcCxFileObjectGetFdoContext(FileContext);
     PNFCCX_SE_INTERFACE seInterface = fdoContext->SEInterface;

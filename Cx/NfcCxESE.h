@@ -187,7 +187,7 @@ NfcCxESEInterfaceDispatchAttributeIccType(
 // Helper methods below don't have locking constraints
 //
 
-_Requires_lock_not_held_(ScInterface->SmartCardLock)
+_Requires_lock_not_held_(ESEInterface->SmartCardLock)
 NTSTATUS
 NfcCxESEInterfaceResetCard(
     _In_ PNFCCX_ESE_INTERFACE ESEInterface

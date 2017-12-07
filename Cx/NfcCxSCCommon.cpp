@@ -65,7 +65,7 @@ g_ScCommonAttributes [] =
 NTSTATUS
 NfcCxSCCommonGetAttribute(
     _In_ DWORD AttributeId,
-    _Out_writes_bytes_to_(*pcbOutputBuffer, *pcbOutputBuffer) PVOID OutputBuffer,
+    _Out_writes_bytes_to_(*OutputBufferLength, *OutputBufferLength) PVOID OutputBuffer,
     _Inout_ size_t* OutputBufferLength)
 {
     NTSTATUS status = STATUS_SUCCESS;

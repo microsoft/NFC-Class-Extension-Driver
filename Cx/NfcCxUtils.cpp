@@ -306,7 +306,7 @@ NTSTATUS
 NfcCxRegistryAssignULong(
     _In_ WDFKEY Key,
     _In_ PCWSTR ValueName,
-    _Out_ ULONG Value
+    _In_ ULONG Value
     )
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -340,7 +340,7 @@ NTSTATUS
 NfcCxRegistryAssignBoolean(
     _In_ WDFKEY Key,
     _In_ PCWSTR ValueName,
-    _Out_ BOOLEAN Value
+    _In_ BOOLEAN Value
     )
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);

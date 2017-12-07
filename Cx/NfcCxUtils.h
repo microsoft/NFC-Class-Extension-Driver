@@ -52,7 +52,7 @@ NTSTATUS
 NfcCxCopyToBuffer(
     _In_reads_bytes_(cbInput) const void* pbInput,
     _In_ size_t cbInput,
-    _Out_writes_bytes_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
+    _Out_writes_bytes_to_(*pcbOutputBuffer, *pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
     );
 
@@ -74,14 +74,14 @@ NTSTATUS
 NfcCxRegistryAssignULong(
     _In_ WDFKEY Key,
     _In_ PCWSTR ValueName,
-    _Out_ ULONG Value
+    _In_ ULONG Value
     );
 
 NTSTATUS
 NfcCxRegistryAssignBoolean(
     _In_ WDFKEY Key,
     _In_ PCWSTR ValueName,
-    _Out_ BOOLEAN Value
+    _In_ BOOLEAN Value
     );
 
 class CNFCPayload
