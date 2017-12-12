@@ -102,6 +102,28 @@ Environment:
 #define PCSC_SWITCH_PROTOCOL_APDU_SIZE              0x09
 #define PCSC_SWITCH_PROTOCOL_INDEX_NOT_FOUND        0xFF
 
+//
+// Macros to support Jewel tag ATR construction
+// Header Rom versions based on jewel IC data sheet Revision1.1
+// refer IRT5002 to IRT5006
+//
+
+#define PCSC_ATR_JEWEL_96BR10_HR0                   0x01
+#define PCSC_ATR_JEWEL_96BR11_HR0                   0x04
+#define PCSC_ATR_JEWEL_192B_HR0                     0x05
+#define PCSC_ATR_JEWEL_384B_HR0                     0x06
+#define PCSC_ATR_JEWEL_1024B_HR0                    0x07
+#define PCSC_ATR_JEWEL_2048B_HR0                    0x08
+
+//
+// Macros to support Topaz tag ATR construction
+// Header Rom versions based on Topaz IC data sheet version M2000-1057-02
+// refer TPZ-201-series section 6.
+//
+
+#define PCSC_ATR_TOPAZ_120B_HR0                     0x11
+#define PCSC_ATR_TOPAZ_512B_HR0                     0x12
+
 typedef struct _NFCCX_SC_INTERFACE {
     //
     // Back link to the fdo context
