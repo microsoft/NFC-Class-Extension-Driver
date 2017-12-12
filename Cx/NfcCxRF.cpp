@@ -624,6 +624,15 @@ Return Value:
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
+    // Ensure that the prescence check thread has shutdown before deleting 'pLibNfcContext' to avoid a race condition.
+    // Note: It is expected that 'NfcCxRFInterfaceStop' has been called at this point. So in theory no new versions of
+    // the thread should be created.
+    if (NULL != RFInterface->tpTagPrescenceWork) {
+        WaitForThreadpoolWorkCallbacks(RFInterface->tpTagPrescenceWork, /*fCancelPendingCallbacks*/ TRUE);
+        CloseThreadpoolWork(RFInterface->tpTagPrescenceWork);
+        RFInterface->tpTagPrescenceWork = NULL;
+    }
+
     //
     // Perform any cleanup associated with the RFInterface
     //
@@ -662,12 +671,6 @@ Return Value:
 
         free(RFInterface->pLibNfcContext);
         RFInterface->pLibNfcContext = NULL;
-    }
-
-    if (NULL != RFInterface->tpTagPrescenceWork) {
-        WaitForThreadpoolWorkCallbacks(RFInterface->tpTagPrescenceWork, TRUE);
-        CloseThreadpoolWork(RFInterface->tpTagPrescenceWork);
-        RFInterface->tpTagPrescenceWork = NULL;
     }
 
     if (NULL != RFInterface->hStartPresenceCheck) {
