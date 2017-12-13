@@ -89,19 +89,6 @@ Environment:
 #define PCSC_ATR_STORAGE_CARD_RID3                  0x03
 #define PCSC_ATR_STORAGE_CARD_RID4                  0x06
 
-#define DEFAULT_14443_4_TRANSCEIVE_TIMEOUT  1500
-
-#define MIFARE_UL_AUTHENTICATE_RESPONSE_BUFFER_SIZE 9
-#define MIFARE_UL_AUTHENTICATE_RESPONSE_TIMEOUT     100
-
-#define PCSC_SELECT_PROTOCOL_MIFARE                 0x03
-#define PCSC_SELECT_PROTOCOL_ISO4A                  0x04
-#define PCSC_SWITCH_PROTOCOL_TYPE                   0X8F
-#define PCSC_SWITCH_PROTOCOL_LENGTH                 0X02
-#define PCSC_SWITCH_PROTOCOL_STD_TYPE               0X00
-#define PCSC_SWITCH_PROTOCOL_APDU_SIZE              0x09
-#define PCSC_SWITCH_PROTOCOL_INDEX_NOT_FOUND        0xFF
-
 //
 // Macros to support Jewel tag ATR construction
 // Header Rom versions based on jewel IC data sheet Revision1.1
@@ -123,6 +110,19 @@ Environment:
 
 #define PCSC_ATR_TOPAZ_120B_HR0                     0x11
 #define PCSC_ATR_TOPAZ_512B_HR0                     0x12
+
+#define DEFAULT_14443_4_TRANSCEIVE_TIMEOUT  1500
+
+#define MIFARE_UL_AUTHENTICATE_RESPONSE_BUFFER_SIZE 9
+#define MIFARE_UL_AUTHENTICATE_RESPONSE_TIMEOUT     100
+
+#define PCSC_SELECT_PROTOCOL_MIFARE                 0x03
+#define PCSC_SELECT_PROTOCOL_ISO4A                  0x04
+#define PCSC_SWITCH_PROTOCOL_TYPE                   0X8F
+#define PCSC_SWITCH_PROTOCOL_LENGTH                 0X02
+#define PCSC_SWITCH_PROTOCOL_STD_TYPE               0X00
+#define PCSC_SWITCH_PROTOCOL_APDU_SIZE              0x09
+#define PCSC_SWITCH_PROTOCOL_INDEX_NOT_FOUND        0xFF
 
 typedef struct _NFCCX_SC_INTERFACE {
     //

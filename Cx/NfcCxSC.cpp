@@ -2938,15 +2938,14 @@ Return Value:
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_JEWEL;
             }
-            else if(
-                pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_TOPAZ_120B_HR0 ||
-                pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_TOPAZ_512B_HR0) {
-                 //
-                 // Topaz
-                 //
-                 Output[index++] = 0x00;
-                 Output[index++] = PSCS_NN_TOPAZ;
-             }
+            else if(pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_TOPAZ_120B_HR0 ||
+                    pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_TOPAZ_512B_HR0) {
+                    //
+                    // Topaz
+                    //
+                    Output[index++] = 0x00;
+                    Output[index++] = PSCS_NN_TOPAZ;
+            }
             else {
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_NO_INFO;
