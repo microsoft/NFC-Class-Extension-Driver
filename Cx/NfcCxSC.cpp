@@ -2926,19 +2926,29 @@ Return Value:
              // 7 Bytes PIX
             Output[index++] = 0x00; // 1 Byte of SS
 
-            if (HINIBBLE(pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0) != 4) { // 2 Bytes for Card Name
+            if (pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_JEWEL_96BR10_HR0 ||
+                pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_JEWEL_96BR11_HR0 ||
+                pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_JEWEL_192B_HR0  ||
+                pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_JEWEL_384B_HR0  ||
+                pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_JEWEL_1024B_HR0 ||
+                pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_JEWEL_2048B_HR0) {
                 //
                 // Jewel
                 //
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_JEWEL;
             }
+            else if(pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_TOPAZ_120B_HR0 ||
+                    pRemDev->RemoteDevInfo.Jewel_Info.HeaderRom0 == PCSC_ATR_TOPAZ_512B_HR0) {
+                    //
+                    // Topaz
+                    //
+                    Output[index++] = 0x00;
+                    Output[index++] = PSCS_NN_TOPAZ;
+            }
             else {
-                //
-                // Topaz
-                //
                 Output[index++] = 0x00;
-                Output[index++] = PSCS_NN_TOPAZ;
+                Output[index++] = PCSC_NN_NO_INFO;
             }
 
             Output[index++] = 0x00; // 4 Bytes for RFU
