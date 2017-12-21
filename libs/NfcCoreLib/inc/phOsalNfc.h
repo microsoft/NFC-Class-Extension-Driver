@@ -173,6 +173,7 @@ NFCSTATUS phOsalNfc_QueueDeferredCallback(_In_ pphOsalNfc_DeferFuncPointer_t Def
  */
 _Must_inspect_result_
 _When_(return!=0, __drv_allocatesMem(Mem))
+_Ret_maybenull_ _Post_writable_byte_size_(Size)
 PVOID FORCEINLINE
 phOsalNfc_GetMemory(
     _In_ uint32_t Size
