@@ -807,10 +807,6 @@ Return Value:
         //
         for (uint8_t i = 0; i < SECount; i++)
         {
-            if (SEList[i].eSE_ActivationMode == phLibNfc_SE_ActModeOff) {
-                continue;
-            }
-
             GUID secureElementId = NfcCxSEInterfaceGetSecureElementId(rfInterface, SEList[i].hSecureElement);
             bool isEmulationOn = false;
 

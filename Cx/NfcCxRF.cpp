@@ -1626,10 +1626,11 @@ Return Value:
     }
 
     // Check if the activation mode and power-and-link-control are already correct.
-    if (eActivationMode == pSecureElement->eSE_ActivationMode ||
+    if (eActivationMode == pSecureElement->eSE_ActivationMode &&
         ePowerAndLinkControl == pSecureElement->eSE_PowerLinkMode)
     {
         // Nothing to do.
+        TRACE_LINE(LEVEL_INFO, "Already correct. Nothing to do.");
         goto Done;
     }
 
