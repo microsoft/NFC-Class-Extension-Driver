@@ -71,7 +71,6 @@ enum PHHCINFC_APDU_APPLICATION_GATE_EVENTS
 #define PHLIBNFC_TRANSACTION_AID                    0x81
 #define PHLIBNFC_TRANSACTION_PARAM                  0x82
 
-#define PHHCINFC_MAX_NFCEES                         0x02
 #define PHHCINFC_TOTAL_NFCEES                       0x03
 
 /*If Reactivate sequnce failed to reactivate Tag then change reactivation sequence
@@ -315,8 +314,8 @@ typedef struct phLibNfc_SE_Info
 {
     uint8_t             bSeCount; /**< No of Se discovered during init*/
     phLibNfc_SE_List_t  tSeList[PHHCINFC_TOTAL_NFCEES]; /**< Structure object to #phLibNfc_SE_List_t*/
-    uint8_t             bSeState[PHHCINFC_TOTAL_NFCEES]; /**< #phLibNfc_SE_Status_t*/    
-    uint8_t             bNfceeSuppNfcTech;   /**< This parameter shall contain information of which NFC technology is
+    uint8_t             bSeState[PHHCINFC_TOTAL_NFCEES]; /**< #phLibNfc_SE_Status_t*/
+    uint8_t             bNfceeSuppNfcTech;   /**< Bitmask, contains information of which NFC technology is
                                                   being supported on connected NFCEE*/
 } phLibNfc_SE_Info_t, *pphLibNfc_SE_Info_t;
 
@@ -328,14 +327,13 @@ typedef enum phLibNfc_SE_Status
     phLibNfc_SeStateInitialized,  /**< State where SE is Initialized*/
 } phLibNfc_SE_Status_t;
 
-#define phLibNfc_SE_Type_HciNwk  phLibNfc_SE_Type_Unknown  /**< Indicates HCI Network, needs to be clubbed with phLibNfc_SE_Type_t */
-
 typedef enum phLibNfc_SE_Index
 {
     phLibNfc_SE_Index_HciNwk     = 0x00,  /**< Index to Store HCI Network Info in tSeInfo element in LibNfc Context*/
     phLibNfc_SE_Index_UICC       = 0x01,  /**< Index to Store UICC Info in tSeInfo element in LibNfc Context*/
-    phLibNfc_SE_Index_eSE        = 0x02  /**< Index to Store eSE Info in tSeInfo element in LibNfc Context*/
-}phLibNfc_SE_Index_t;
+    phLibNfc_SE_Index_eSE        = 0x02,  /**< Index to Store eSE Info in tSeInfo element in LibNfc Context*/
+    phLibNfc_SE_Index_MaxCount   = 0x03   /**< Maximum number of SEs supported by LibNfc Context*/
+} phLibNfc_SE_Index_t;
 
 typedef struct phLibNfc_LibContext
 {

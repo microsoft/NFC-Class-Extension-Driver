@@ -8,7 +8,7 @@
 
 #include <phNciNfc.h>
 
-/* Watch dog time for callback */ 
+/* Watch dog time for callback */
 #define PH_LIBNFC_WD_TIMEOUT 5000
 
 /* Listen Nfc-A technology supported by NFEE */
@@ -72,9 +72,11 @@ phLibNfc_SE_GetIndex(void* pContext,
                      phLibNfc_SE_Status_t bSeState,
                      uint8_t *pbIndex);
 
-extern
-phLibNfc_SE_Type_t phLibNfc_SE_GetType(void* pContext,
-                                       pphNciNfc_NfceeInfo_t pNfceeInfo);
+extern phHciNfc_HostID_t
+phLibNfc_SE_GetHciHostId(void* pContext,
+                         pphNciNfc_NfceeInfo_t pNfceeInfo);
 
 NFCSTATUS phLibNfc_DelayForSeNtfProc(void* pContext,NFCSTATUS status,void* pInfo);
 NFCSTATUS phLibNfc_DelayForSeNtf(void* pContext, NFCSTATUS status, void* pInfo);
+NFCSTATUS phLibNfc_DelayForNfceeAtrProc(void* pContext, NFCSTATUS status, void* pInfo);
+NFCSTATUS phLibNfc_DelayForNfceeAtr(void* pContext, NFCSTATUS status, void* pInfo);

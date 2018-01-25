@@ -299,6 +299,8 @@ typedef struct phNciNfc_Iso14443AInfo
                                                         time as defined in ISO/IEC 14443-4[7] for type A */
     uint8_t         bSensResResp[2];                    /**< SENS_RES Response */
     uint8_t         bSelResRespLen;                     /**< SEL_RES Response Length */
+    uint8_t         bHRx[2];                            /**< HRx Response */
+    uint8_t         bHRxLen;                            /**< HRx Response Length */
     uint8_t         bRatsRespLen;                       /**< Length of RATS Response */
     phNciNfc_RATSResp_t   tRatsResp;                    /**< RATS Response Info */
     phNfc_eMifareULType_t ULType;                       /**< [Mifare Ultralight only (SAK == 0x00)] The type of

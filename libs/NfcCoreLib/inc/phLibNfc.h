@@ -42,7 +42,7 @@ typedef enum phLibNfc_SE_Type
     phLibNfc_SE_Type_eSE         = 0x01, /**< SE type - eSE - connected with Wired Mode */
     phLibNfc_SE_Type_UICC        = 0x02, /**< SE type - UICC */
     phLibNfc_SE_Type_DeviceHost  = 0x03, /**< SE type - DeviceHost */
-    phLibNfc_SE_Type_Unknown     = 0x04  /**< Indicates SE type is Unknown */
+    phLibNfc_SE_Type_HciNwk      = 0x04  /**< Indicates HCI Network */
 }phLibNfc_SE_Type_t;
 
 /**
@@ -171,6 +171,7 @@ typedef struct StackCapabilities
 typedef struct phLibNfc_SE_List
 {
     phLibNfc_Handle             hSecureElement;     /**< handle to Secure Element */
+    uint8_t                     hciHostId;          /**< Host ID in HCI network. */
     phLibNfc_SE_Type_t          eSE_Type;           /**< type of Secure Element(SE)*/
     phLibNfc_eSE_ActivationMode eSE_ActivationMode; /**< state of the secure element */
     phLibNfc_PowerLinkModes_t   eSE_PowerLinkMode;  /**< Power And Link mode of the secure element */
@@ -373,7 +374,7 @@ typedef void (*pphLibNfc_TransceiveCallback_t)(
 /**
  * \ingroup grp_lib_nfc
  * \brief SE Wait Time Extension callback.
- * 
+ *
  * This callback is used to notifiy that the eSE has asked for a timeout extension, during a transceive call.
  *
  * \param[in] pContext           LibNfc client context passed in the SE notification register request

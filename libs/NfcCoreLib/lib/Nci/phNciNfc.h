@@ -1475,7 +1475,7 @@ phNciNfc_Nfcee_StopDiscovery(void * pNciHandle,
  * a SE or NFCEE.(establishing connection is prereqisite of Nfcee communication)
  *
  * \param[in]  pNciHandle        NCI layer specific context.
- * \param[in]  pNfceeHandle      Nfcee Handle for which Mode set is executed.
+ * \param[in]  pNfceeID          Nfcee ID for which Mode set is executed.
  * \param[in]  NfceeMode         NFCEE mode to enable disable the element
  * \param[in]  pNotifyCb         Upper layer call back function
  * \param[in]  pContext          Context of the Upper Layer.
@@ -1487,7 +1487,7 @@ phNciNfc_Nfcee_StopDiscovery(void * pNciHandle,
  */
 extern NFCSTATUS
 phNciNfc_Nfcee_ModeSet(void * pNciHandle,
-                       void * pNfceeHandle,
+                       uint8_t bNfceeID,
                        phNciNfc_NfceeModes_t eNfceeMode,
                        pphNciNfc_IfNotificationCb_t pNotifyCb,
                        void *pContext);

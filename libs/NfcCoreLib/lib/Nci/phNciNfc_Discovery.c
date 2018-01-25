@@ -448,7 +448,7 @@ static NFCSTATUS phNciNfc_ProcessActivatedIfDeActv(void *pContext,\
         {
             /* Clear the Activation flag to indicate Remote devices
                are in HOST_SELECT state*/
-            pRemDevInfo->SessionOpened = 0;                
+            pRemDevInfo->SessionOpened = 0;
         }
         /*If the Deactivation state is Discovery,
           Register for Discovery and Interface activated Notifications*/
@@ -821,7 +821,34 @@ static NFCSTATUS phNciNfc_StoreNfcATechParams(uint8_t bBuffLen, uint8_t *pBuff,
                         pRemDevInfo->tRemoteDevInfo.Iso14443A_Info.bSelResRespLen = pBuff[bIndex++];
                         /* Update Sel-Resp value*/
                         pRemDevInfo->tRemoteDevInfo.Iso14443A_Info.Sak = pBuff[bIndex++];
-                        wStoreStatus = NFCSTATUS_SUCCESS;
+                        if (phNciNfc_IsVersion1x(phNciNfc_GetContext()))
+                        {
+                             wStoreStatus = NFCSTATUS_SUCCESS;
+                        }
+                        else
+                        {
+                            uint8_t HRxLength = pBuff[bIndex++];
+
+                            // Per NCI v2.0, Section 7.1, Table 68.
+                            // HRx Length must be either 0x00 or 0x02.
+                            if (HRxLength == 0 || HRxLength == 2)
+                            {
+                                /* Retrieve HR field from Activiated Notification as per NCI 2.0 spec */
+                                pRemDevInfo->tRemoteDevInfo.Iso14443A_Info.bHRxLen = HRxLength;
+                                if (HRxLength != 0)
+                                {
+                                    phOsalNfc_MemCopy(pRemDevInfo->tRemoteDevInfo.Iso14443A_Info.bHRx,
+                                        &pBuff[bIndex],
+                                        HRxLength);
+                                    bIndex += HRxLength;
+                                }
+                                wStoreStatus = NFCSTATUS_SUCCESS;
+                            }
+                            else
+                            {
+                                PH_LOG_NCI_CRIT_STR("Invalid HRx Length value:%d", HRxLength);
+                            }
+                        }
                     }
                 }
             }

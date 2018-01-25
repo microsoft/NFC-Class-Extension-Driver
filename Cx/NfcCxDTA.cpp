@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     DTA Interface implementation
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -89,7 +89,7 @@ g_DTADispatch [] = {
     { IOCTL_NFCDTA_SNEP_CLIENT_PUT,                     NFC_SNEP_CLIENT_PUT_HEADER,                 0,                                      NfcCxDTAInterfaceDispatchSnepClientPut },
     { IOCTL_NFCDTA_SNEP_CLIENT_GET,                     NFC_SNEP_CLIENT_GET_HEADER,                 sizeof(NFC_SNEP_CLIENT_DATA_BUFFER),    NfcCxDTAInterfaceDispatchSnepClientGet },
     //
-    // SE 
+    // SE
     //
     { IOCTL_NFCDTA_SE_ENUMERATE,                        0,                                          sizeof(NFC_SE_LIST),                    NfcCxDTAInterfaceDispatchSeEnumerate },
     { IOCTL_NFCDTA_SE_SET_EMULATION_MODE,               sizeof(NFC_SE_EMULATION_MODE_INFO),         0,                                      NfcCxDTAInterfaceDispatchSeSetEmulationMode },
@@ -150,7 +150,7 @@ Return Value:
     phOsalNfc_Config_t config = {0};
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     dtaInterface = (PNFCCX_DTA_INTERFACE)malloc(sizeof(*dtaInterface));
     if (NULL == dtaInterface) {
         TRACE_LINE(LEVEL_ERROR, "Failed to allocate the DTA interface");
@@ -308,7 +308,7 @@ Return Value:
             CloseHandle(DTAInterface->pLibNfcContext->hNotifyCompleteEvent);
             DTAInterface->pLibNfcContext->hNotifyCompleteEvent = NULL;
         }
-        
+
         free(DTAInterface->pLibNfcContext);
         DTAInterface->pLibNfcContext = NULL;
     }
@@ -523,7 +523,7 @@ Return Value:
 #endif
 }
 
-BOOLEAN 
+BOOLEAN
 NfcCxDTAInterfaceIsIoctlSupported(
     _In_ PNFCCX_FDO_CONTEXT FdoContext,
     _In_ ULONG IoControlCode
@@ -534,7 +534,7 @@ Routine Description:
 
     This routine returns true if the provided IOCTL is supported by the
     module.
-    
+
 Arguments:
 
     FdoContext - The FDO Context
@@ -567,7 +567,7 @@ Return Value:
 #endif
 }
 
-NTSTATUS 
+NTSTATUS
 NfcCxDTAInterfaceIoDispatch(
     _In_opt_ PNFCCX_FILE_CONTEXT FileContext,
     _In_ WDFREQUEST    Request,
@@ -719,7 +719,7 @@ Return Value:
 
     for (i = 0; i < ARRAYSIZE(g_DTADispatch); i++) {
         if (g_DTADispatch[i].IoControlCode == IoControlCode) {
-            
+
             if (g_DTADispatch[i].MinimumInputBufferLength > InputBufferLength) {
                 TRACE_LINE(LEVEL_ERROR, "Invalid Input buffer.  Expected %I64x, got %I64x",
                     g_DTADispatch[i].MinimumInputBufferLength,
@@ -835,8 +835,8 @@ NTSTATUS CNFCDtaSocketContext::Initialize(
     _In_ NFC_LLCP_SOCKET_HANDLE hSocket,
     _In_ PNFCCX_DTA_INTERFACE pDTAInterface,
     _In_ DWORD WorkingBufferSize
-    )  
-{  
+    )
+{
     NTSTATUS status = STATUS_SUCCESS;
 
     if (NULL != m_sWorkingBuffer.buffer) {
@@ -852,7 +852,7 @@ NTSTATUS CNFCDtaSocketContext::Initialize(
 
     m_sWorkingBuffer.length = WorkingBufferSize;
     m_hSocket = hSocket;
-    m_pDTAInterface = pDTAInterface;                
+    m_pDTAInterface = pDTAInterface;
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -909,7 +909,7 @@ NTSTATUS CNFCDtaSocketContext::EnableSocketError()
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     status = m_SocketError.Initialize(m_pDTAInterface->FdoContext,
-                                      FALSE, 
+                                      FALSE,
                                       NFCCX_MAX_LLCP_SOCKET_ERROR_QUEUE_LENGTH);
 
     if (!NT_SUCCESS(status)) {
@@ -976,8 +976,8 @@ NTSTATUS CNFCDtaSnepServerContext::Initialize(
     _In_ NFC_SNEP_SERVER_HANDLE hSnepServer,
     _In_ PNFCCX_DTA_INTERFACE pDTAInterface,
     _In_ DWORD InboxBufferSize
-    )  
-{  
+    )
+{
     NTSTATUS status = STATUS_SUCCESS;
 
     if (NULL != m_sDataInbox.buffer) {
@@ -1102,7 +1102,7 @@ Return Value:
     UNREFERENCED_PARAMETER(OutputBuffer);
 
     dtaInterface = NfcCxFileObjectGetFdoContext(FileContext)->DTAInterface;
-    
+
     if (0 != OutputBufferLength) {
         TRACE_LINE(LEVEL_ERROR, "Output buffer should be NULL");
         status = STATUS_INVALID_PARAMETER;
@@ -1169,7 +1169,7 @@ Return Value:
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
-    
+
     status = dtaInterface->RemoteDevGetNext.ProcessRequest(FileContext,
                                                            Request,
                                                            OutputBuffer,
@@ -1188,7 +1188,7 @@ Return Value:
 Done:
 
     WdfWaitLockRelease(dtaInterface->DeviceLock);
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);    
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -1375,7 +1375,7 @@ Return Value:
     WdfWaitLockAcquire(dtaInterface->DeviceLock, NULL);
 
     remoteDevRecvInfo->hRemoteDev = remoteDevSendInfo->hRemoteDev;
-    remoteDevRecvInfo->sRecvBuffer.cbBuffer = (USHORT) (OutputBufferLength - (sizeof(DWORD) + 
+    remoteDevRecvInfo->sRecvBuffer.cbBuffer = (USHORT) (OutputBufferLength - (sizeof(DWORD) +
                                                                               offsetof(NFC_REMOTE_DEV_RECV_INFO, sRecvBuffer) +
                                                                               offsetof(NFC_DATA_BUFFER, pbBuffer)));
 
@@ -1399,10 +1399,10 @@ Return Value:
     *((DWORD*)OutputBuffer) = sizeof(DWORD)+
                               offsetof(NFC_REMOTE_DEV_RECV_INFO, sRecvBuffer) +
                               offsetof(NFC_DATA_BUFFER, pbBuffer) +
-                              remoteDevRecvInfo->sRecvBuffer.cbBuffer; 
+                              remoteDevRecvInfo->sRecvBuffer.cbBuffer;
     if (NT_SUCCESS(status)) {
         usedBufferSize = *((DWORD*)OutputBuffer);
-    } 
+    }
     else {
         usedBufferSize = sizeof(DWORD);
     }
@@ -1469,7 +1469,7 @@ Return Value:
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
-    
+
     status = dtaInterface->RemoteDevRecv.ProcessRequest(FileContext,
                                                         Request,
                                                         OutputBuffer,
@@ -1479,7 +1479,7 @@ Return Value:
         TRACE_LINE(LEVEL_ERROR, "Failed to process request with status %!STATUS!", status);
         goto Done;
     }
-    
+
     //
     // Now that the request is in the holding queue or that we have completed it
     // return STATUS_PENDING so the request isn't completed by the calling method.
@@ -1489,7 +1489,7 @@ Return Value:
 Done:
 
     WdfWaitLockRelease(dtaInterface->DeviceLock);
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);    
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -1563,7 +1563,7 @@ Return Value:
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-   
+
     return status;
 }
 
@@ -1652,7 +1652,7 @@ Return Value:
     UNREFERENCED_PARAMETER(OutputBuffer);
 
     dtaInterface = NfcCxFileObjectGetFdoContext(FileContext)->DTAInterface;
-    
+
     if (0 != OutputBufferLength) {
         TRACE_LINE(LEVEL_ERROR, "Output buffer should be NULL");
         status = STATUS_INVALID_PARAMETER;
@@ -1860,7 +1860,7 @@ Return Value:
     dtaInterface = NfcCxFileObjectGetFdoContext(FileContext)->DTAInterface;
 
     if (OutputBufferLength < sizeof(DWORD) +
-                             offsetof(NFC_REMOTE_DEV_RECV_INFO, sRecvBuffer) +   
+                             offsetof(NFC_REMOTE_DEV_RECV_INFO, sRecvBuffer) +
                              offsetof(NFC_DATA_BUFFER, pbBuffer) +
                              dtaInterface->sNdefInfo.dwActualMessageLength) {
         TRACE_LINE(LEVEL_ERROR, "Incorrect buffer size");
@@ -1871,7 +1871,7 @@ Return Value:
     WdfWaitLockAcquire(dtaInterface->DeviceLock, NULL);
 
     dtaInterface->sNdefMsg.buffer = remoteDevRecvInfo->sRecvBuffer.pbBuffer;
-    dtaInterface->sNdefMsg.length = (uint32_t) (OutputBufferLength - (sizeof(DWORD) + 
+    dtaInterface->sNdefMsg.length = (uint32_t) (OutputBufferLength - (sizeof(DWORD) +
                                                                       offsetof(NFC_REMOTE_DEV_RECV_INFO, sRecvBuffer) +
                                                                       offsetof(NFC_DATA_BUFFER, pbBuffer)));
 
@@ -2313,7 +2313,7 @@ Return Value:
                                       NULL);
 
     if (NT_SUCCESS(status)) {
-        usedBufferSize = offsetof(NFC_LLCP_SERVICE_DISCOVER_SAP, SAPEntries) + 
+        usedBufferSize = offsetof(NFC_LLCP_SERVICE_DISCOVER_SAP, SAPEntries) +
                          llcpServiceDiscoverRequest->NumberOfEntries * sizeof(llcpServiceDiscoverSap->SAPEntries);
     }
 
@@ -2444,7 +2444,7 @@ Return Value:
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
-    
+
     status = dtaInterface->LlcpLinkStatus.ProcessRequest(FileContext,
                                                          Request,
                                                          OutputBuffer,
@@ -2463,7 +2463,7 @@ Return Value:
 Done:
 
     WdfWaitLockRelease(dtaInterface->DeviceLock);
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);    
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -2770,7 +2770,7 @@ Return Value:
         WdfWaitLockRelease(dtaInterface->DeviceLock);
         goto Done;
     }
-    
+
     //
     // Now that the request is in the holding queue or that we have completed it
     // return STATUS_PENDING so the request isn't completed by the calling method.
@@ -2780,7 +2780,7 @@ Return Value:
     WdfWaitLockRelease(dtaInterface->DeviceLock);
 
 Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);    
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -3080,7 +3080,7 @@ Return Value:
         WdfWaitLockRelease(dtaInterface->DeviceLock);
         goto Done;
     }
-    
+
     //
     // Now that the request is in the holding queue or that we have completed it
     // return STATUS_PENDING so the request isn't completed by the calling method.
@@ -3090,7 +3090,7 @@ Return Value:
     WdfWaitLockRelease(dtaInterface->DeviceLock);
 
 Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);    
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -3169,7 +3169,7 @@ Return Value:
         WdfWaitLockRelease(dtaInterface->DeviceLock);
         goto Done;
     }
-    
+
     //
     // Now that the request is in the holding queue or that we have completed it
     // return STATUS_PENDING so the request isn't completed by the calling method.
@@ -3179,7 +3179,7 @@ Return Value:
     WdfWaitLockRelease(dtaInterface->DeviceLock);
 
 Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);    
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -3420,7 +3420,7 @@ Return Value:
         WdfWaitLockRelease(dtaInterface->DeviceLock);
         goto Done;
     }
-    
+
     //
     // Now that the request is in the holding queue or that we have completed it
     // return STATUS_PENDING so the request isn't completed by the calling method.
@@ -3430,7 +3430,7 @@ Return Value:
     WdfWaitLockRelease(dtaInterface->DeviceLock);
 
 Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);    
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -3671,7 +3671,7 @@ Return Value:
         WdfWaitLockRelease(dtaInterface->DeviceLock);
         goto Done;
     }
-    
+
     //
     // Now that the request is in the holding queue or that we have completed it
     // return STATUS_PENDING so the request isn't completed by the calling method.
@@ -3681,7 +3681,7 @@ Return Value:
     WdfWaitLockRelease(dtaInterface->DeviceLock);
 
 Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);    
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -3828,7 +3828,7 @@ Return Value:
         WdfWaitLockRelease(dtaInterface->DeviceLock);
         goto Done;
     }
-    
+
     //
     // Now that the request is in the holding queue or that we have completed it
     // return STATUS_PENDING so the request isn't completed by the calling method.
@@ -3838,7 +3838,7 @@ Return Value:
     WdfWaitLockRelease(dtaInterface->DeviceLock);
 
 Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);    
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -3920,7 +3920,7 @@ Return Value:
                               snepServerRespnseEgress->sResponsePayload.cbBuffer;
     if (NT_SUCCESS(status)) {
         usedBufferSize = *((DWORD*)OutputBuffer);
-    } 
+    }
     else {
         usedBufferSize = sizeof(DWORD);
     }
@@ -4172,7 +4172,7 @@ Return Value:
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-   
+
     return status;
 }
 
@@ -4246,7 +4246,7 @@ Return Value:
                               snepClientDataBuffer->cbBuffer;
     if (NT_SUCCESS(status)) {
         usedBufferSize = *((DWORD*)OutputBuffer);
-    } 
+    }
     else {
         usedBufferSize = sizeof(DWORD);
     }
@@ -4268,9 +4268,9 @@ Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
- 
+
 //
-// SE 
+// SE
 //
 NTSTATUS
 NfcCxDTAInterfaceDispatchSeEnumerate(
@@ -4470,7 +4470,7 @@ Return Value:
 
     dtaInterface = NfcCxFileObjectGetFdoContext(FileContext)->DTAInterface;
     routingTable = (PNFC_SE_ROUTING_TABLE) InputBuffer;
-    expectedBufferLength = offsetof(NFC_SE_ROUTING_TABLE, TableEntries) + 
+    expectedBufferLength = offsetof(NFC_SE_ROUTING_TABLE, TableEntries) +
                            routingTable->NumberOfEntries * sizeof(NFC_SE_ROUTING_TABLE_ENTRY);
 
     if (0 != OutputBufferLength) {
@@ -4559,7 +4559,7 @@ Return Value:
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
-    
+
     status = dtaInterface->SeGetNextEvent.ProcessRequest(FileContext,
                                                          Request,
                                                          OutputBuffer,
@@ -4569,7 +4569,7 @@ Return Value:
         TRACE_LINE(LEVEL_ERROR, "Failed to process request with status %!STATUS!", status);
         goto Done;
     }
-    
+
     //
     // Now that the request is in the holding queue or that we have completed it
     // return STATUS_PENDING so the request isn't completed by the calling method.
@@ -4579,7 +4579,7 @@ Return Value:
 Done:
 
     WdfWaitLockRelease(dtaInterface->DeviceLock);
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);    
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -4614,7 +4614,7 @@ NfcCxDTAInterfaceMapRemoteDevInfo(
 {
     NTSTATUS status = STATUS_SUCCESS;
     phLibNfc_sRemoteDevInformation_t* remoteDevInfo = RemoteDev->psRemoteDevInfo;
-    
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     switch (remoteDevInfo->RemDevType) {
@@ -4866,13 +4866,13 @@ NfcCxDTAInterfaceValidateRoutingTable(
 
 Routine Description:
 
-    This internal helper routine is used to perform light validation of the 
-    routing table before it is sent to libnfc. Libnfc does validate other 
+    This internal helper routine is used to perform light validation of the
+    routing table before it is sent to libnfc. Libnfc does validate other
     NCI requirement as uniqueness of the route protocol, technology, and aid
     route entries. It also validate the ranges for aid lengths, technology,
     and protocol.
 
-    This routine makes sure that there are no nfc-dep routing rule. 
+    This routine makes sure that there are no nfc-dep routing rule.
     Also, make sure that AID length is OK
 
 Arguments:
@@ -4929,7 +4929,7 @@ Routine Description:
 
 Arguments:
 
-    RoutingTable - The pointer to DTA DDI routing table structure 
+    RoutingTable - The pointer to DTA DDI routing table structure
     pRtngTable   - The LIBNFC route table
 
 Return Value:
@@ -4959,10 +4959,10 @@ Return Value:
         case RoutingTypeProtocol:
             RtngTable[i].hSecureElement = RoutingTable->TableEntries[i].ProtoRoutingInfo.hSecureElement;
             RtngTable[i].Type = phNfc_LstnModeRtngProtocolBased;
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tRfTechnology = (phNfc_eRfTechnologies_t)RoutingTable->TableEntries[i].ProtoRoutingInfo.eRfProtocolType;
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn  = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 1);
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 2);
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bBatteryOff  = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 3);
+            RtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tRfProtocol = (phNfc_eRfProtocols_t)RoutingTable->TableEntries[i].ProtoRoutingInfo.eRfProtocolType;
+            RtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn  = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 1);
+            RtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 2);
+            RtngTable[i].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bBatteryOff  = BIT_AT_POSITION(RoutingTable->TableEntries[i].ProtoRoutingInfo.bPowerState, 3);
             break;
 
         case RoutingTypeAid:
@@ -4970,9 +4970,9 @@ Return Value:
             RtngTable[i].Type = phNfc_LstnModeRtngAidBased;
             RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.bAidSize = (uint8_t)RoutingTable->TableEntries[i].AidRoutingInfo.cbAid;
             RtlCopyMemory(RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.aAid, RoutingTable->TableEntries[i].AidRoutingInfo.pbAid, RoutingTable->TableEntries[i].AidRoutingInfo.cbAid);
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn  = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 1);
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 2);
-            RtngTable[i].LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bBatteryOff  = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 3);
+            RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOn  = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 1);
+            RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOff = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 2);
+            RtngTable[i].LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bBatteryOff  = BIT_AT_POSITION(RoutingTable->TableEntries[i].AidRoutingInfo.bPowerState, 3);
             break;
 
         default:
@@ -5150,7 +5150,7 @@ NfcCxDTAInterfaceHandleLlcpLinkStatus(
     }
 
     llcpLinkStatus = (PNFC_LLCP_LINK_STATUS)queuedPacket->GetPayload();
-    *llcpLinkStatus = (phFriNfc_LlcpMac_eLinkActivated == LlcpLinkStatus) ? LinkActivated : LinkDeactivated;                       
+    *llcpLinkStatus = (phFriNfc_LlcpMac_eLinkActivated == LlcpLinkStatus) ? LinkActivated : LinkDeactivated;
 
     if (!NT_SUCCESS(DTAInterface->LlcpLinkStatus.ProcessPayload(queuedPacket))) {
         TRACE_LINE(LEVEL_ERROR, "Process payload failed");

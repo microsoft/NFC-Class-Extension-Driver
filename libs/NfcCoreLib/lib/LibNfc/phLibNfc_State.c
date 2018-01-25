@@ -644,14 +644,6 @@ static NFCSTATUS phLibNfc_DummyFunc(void *pContext, void *Param1, void *Param2, 
                         /* Start discover sequence */
                         wStatus = phLibNfc_SeqHandler(pLibContext,NFCSTATUS_SUCCESS,NULL);
                     }
-                    else
-                    {
-                        pLibContext->sSeContext.pActiveSeInfo->hSecureElement = pSeHandle;
-                        pLibContext->sSeContext.pActiveSeInfo->eSE_ActivationMode =
-                            pLibContext->sSeContext.eActivationMode;
-                        /* No change in power mode, and NFCEE mode, return SUCCESS */
-                        wStatus = NFCSTATUS_SUCCESS;
-                    }
                 }
             }
             break;

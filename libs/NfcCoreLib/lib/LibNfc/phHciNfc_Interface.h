@@ -125,8 +125,23 @@ typedef enum phHciNfc_HostID
     phHciNfc_e_HostControllerID                 = 0x00U,
     phHciNfc_e_TerminalHostID                   = 0x01U,
     phHciNfc_e_UICCHostID                       = 0x02U,
-    phHciNfc_e_ESeHostID                         = 0xC0U
+    phHciNfc_e_DynamicHostID_Min                = 0x80U,
+    phHciNfc_e_DynamicHostID_Max                = 0xBFU,
+    phHciNfc_e_ProprietaryHostID_Min            = 0xC0U,
+    phHciNfc_e_ProprietaryHostID_Max            = 0xFFU,
 } phHciNfc_HostID_t;
+
+// ETSI HCI v12.1, Section 7.1.1.1, Table 20
+typedef enum phHciNfc_HostType
+{
+    phHciNfc_e_HostType_HostController = 0x0000U,
+    phHciNfc_e_HostType_Terminal = 0x0100U,
+    phHciNfc_e_HostType_UICC = 0x0200U,
+    phHciNfc_e_HostType_eSE = 0x0300U,
+    phHciNfc_e_HostType_SDCard_Min = 0x0400U,
+    phHciNfc_e_HostType_SDCard_Max = 0x04FFU,
+    phHciNfc_e_HostType_Unknown = 0xFFFFU,
+} phHciNfc_HostType_t;
 
 // ETSI HCI v12.1, Section 4.3, Table 2
 typedef enum phHciNfc_GateID
@@ -138,6 +153,9 @@ typedef enum phHciNfc_GateID
     phHciNfc_e_ApduGateId                       = 0x30U,
     // ETSI HCI v12.1, Section 11.2, Table 48
     phHciNfc_e_ConnectivityGateId               = 0x41U,
+    // ETSI HCI v12.1, Section 4.3, Table 2
+    phHciNfc_e_ProprietaryGateId_Min            = 0xF0U,
+    phHciNfc_e_ProprietaryGateId_Max            = 0xFFU,
 } phHciNfc_GateID_t;
 
 // ETSI HCI v12.1, Section 4.4, Table 3
@@ -171,10 +189,12 @@ typedef enum phHciNfc_IdentityMgmtRegistryId
     phHciNfc_e_IdentityMgmtRegistryId_Max     = 0x06U,
 } phHciNfc_IdentityMgmtRegistryId_t;
 
+// ETSI HCI v12.1, Section 7.1.3, Table 23
 typedef enum phHciNfc_HciVersion
 {
-    phHciNfc_e_HciVersion9                      = 0x09U,
-    phHciNfc_e_HciVersion12                     = 0x12U,
+    phHciNfc_e_HciVersionUnknown = 0x00U, // Uninitialized
+    phHciNfc_e_HciVersion9 = 0x01U, // v9.0.0 - v11.2.0
+    phHciNfc_e_HciVersion12 = 0x02U, // v12.0.0+
 } phHciNfc_HciVersion_t;
 
 typedef struct phHciNfc_GateInfo
@@ -261,14 +281,27 @@ typedef struct phHciNfc_HciContext
     phHciNfc_PipeGateInfo_t          aSEPipeList[3];
     phHciNfc_PipeGateInfo_t          aUICCPipeList[1];
     phHciNfc_TimerInfo_t             tHciSeTxRxTimerInfo;
-    uint8_t                          aHostList[PHHCINFC_HCI_MAX_NO_OF_HOSTS];
-    uint8_t                          bNoOfHosts;
+
+    // HCI_VERSION supported by HostController (NFCC).
+    phHciNfc_HciVersion_t            controllerHciVersion;
+
+    // HCI_VERSION supported by hosts on the HCI network, following the
+    // order of HOST_LIST. NOTE: HostController and Terminal(Dh) are not
+    // being added to hostHciVersion/hostList for compatibility reasons.
+    phHciNfc_HciVersion_t            hostHciVersion[PHHCINFC_HCI_MAX_NO_OF_HOSTS];
+
+    // HOST_LIST excluding HostController and Terminal(Dh).
+    // ETSI HCI v12.1, Section 7.1.1.1, Table 20 - 'HOST_LIST'
+    uint8_t                          hostList[PHHCINFC_HCI_MAX_NO_OF_HOSTS];
+    uint8_t                          hostListSize;
+
+    // Index of first SE in tSeList which has not been evaluated for APDU pipe creation.
+    uint8_t                          hostApduPipeCreationNextSEIndex;
+
     uint8_t                          bClearpipes;
     uint8_t                          bCreatePipe;
     /**< Timer data for Get Atr */
     phHciNfc_TimerInfo_t             tHciSeGetAtrTimerInfo;
-    /* Store the compliancy of eSE*/
-    uint8_t                          eSE_Compliancy;
     /*< Flag to indicate clear all pipe has come*/
     uint8_t                          bClearALL_eSE_pipes;
     /* <Flag to indicate clear all pipe has come for which host*/

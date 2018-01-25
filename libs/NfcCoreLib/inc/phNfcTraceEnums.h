@@ -4,7 +4,7 @@ Copyright (c) 2012  Microsoft Corporation
 
 Module Name:
     phNfcTraceEnums.h
-    
+
 Abstract:
     This module defines the WPP tracing macros for the NFC core library
 
@@ -63,6 +63,9 @@ Environment:
 // end_wpp
 
 // begin_wpp config
+// CUSTOM_TYPE(phNciNfc_NfceeModes_t, ItemEnum(phNciNfc_NfceeModes) );
+// CUSTOM_TYPE(phHciNfc_HostType_t, ItemEnum(phHciNfc_HostType) );
+// CUSTOM_TYPE(phHciNfc_HciVersion_t, ItemEnum(phHciNfc_HciVersion) );
 // CUSTOM_TYPE(phNciNfc_ResetType_t, ItemEnum(phNciNfc_ResetType) );
 // CUSTOM_TYPE(phNciNfc_DestType_t, ItemEnum(phNciNfc_DestType) );
 // CUSTOM_TYPE(phNciNfc_DeActivateType_t, ItemEnum(phNciNfc_DeActivateType) );

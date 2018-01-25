@@ -572,80 +572,75 @@ static NFCSTATUS phNciNfc_ProcessResetRsp(void *pContext, NFCSTATUS Status)
     pphNciNfc_Context_t pNciContext = pContext;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if(NULL != pNciContext)
-    {
-        if(NFCSTATUS_RESPONSE_TIMEOUT != Status)
-        {
-            if (pNciContext->RspBuffInfo.wLen == PHNCINFC_CORE_RESET_RSP_LEN_NCI1x)
-            {
-                /*Check Status Byte*/
-                if (pNciContext->RspBuffInfo.pBuff[0] == PH_NCINFC_STATUS_OK)
-                {
-                    /* Nfcc supported Nci version */
-                    pNciContext->ResetInfo.NciVer = pNciContext->RspBuffInfo.pBuff[1];
-
-                    if(phNciNfc_IsVersion1x(pNciContext))
-                    {
-                        /* Update Reset type */
-                        if (pNciContext->RspBuffInfo.pBuff[2] == phNciNfc_ResetType_KeepConfig)
-                        {
-                            PH_LOG_NCI_INFO_STR("Nfcc reseted to 'phNciNfc_ResetType_KeepConfig'");
-                            pNciContext->ResetInfo.ResetTypeRsp = phNciNfc_ResetType_KeepConfig;
-                        }
-                        else
-                        {
-                            PH_LOG_NCI_INFO_STR("Nfcc reseted to 'phNciNfc_ResetType_ResetConfig'");
-                            pNciContext->ResetInfo.ResetTypeRsp = phNciNfc_ResetType_ResetConfig;
-                        }
-
-                        wStatus = NFCSTATUS_SUCCESS;
-
-                        // Next sequence item is NCI2x specific, so we skip it here.
-                        phNciNfc_SkipSequenceSeq(pNciContext, pNciContext->pSeqHandler, 1);
-                    }
-                    else
-                    {
-                        PH_LOG_NCI_INFO_STR("Unsupported NCI version 0x%02x", pNciContext->ResetInfo.NciVer);
-                        wStatus = NFCSTATUS_FAILED;
-                    }
-                }
-                else
-                {
-                    wStatus = NFCSTATUS_FAILED;
-                }
-            }
-            else if (pNciContext->RspBuffInfo.wLen == PHNCINFC_CORE_RESET_RSP_LEN_NCI2x)
-            {
-                /*Check Status Byte*/
-                if (pNciContext->RspBuffInfo.pBuff[0] == PH_NCINFC_STATUS_OK)
-                {
-                    if (phNciNfc_IsVersion2x(pNciContext))
-                    {
-                        wStatus = NFCSTATUS_SUCCESS;
-                    }
-                    else
-                    {
-                        PH_LOG_NCI_INFO_STR("Unsupported NCI version 0x%02x", pNciContext->ResetInfo.NciVer);
-                        wStatus = NFCSTATUS_FAILED;
-                    }
-                }
-                else
-                {
-                    wStatus = NFCSTATUS_FAILED;
-                }
-            }
-            else
-            {
-                wStatus = NFCSTATUS_INVALID_PARAMETER;
-            }
-        }else
-        {
-            wStatus = NFCSTATUS_FAILED;
-        }
-    }else
+    if (NULL == pNciContext)
     {
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
+    else if(NFCSTATUS_RESPONSE_TIMEOUT == Status)
+    {
+        PH_LOG_NCI_CRIT_STR("Reset Response has reached a timeout.");
+        wStatus = NFCSTATUS_FAILED;
+    }
+    else if (pNciContext->RspBuffInfo.wLen == PHNCINFC_CORE_RESET_RSP_LEN_NCI1x)
+    {
+        /*Check Status Byte*/
+        if (pNciContext->RspBuffInfo.pBuff[0] == PH_NCINFC_STATUS_OK)
+        {
+            /* Nfcc supported Nci version */
+            pNciContext->ResetInfo.NciVer = pNciContext->RspBuffInfo.pBuff[1];
+
+            if(phNciNfc_IsVersion1x(pNciContext))
+            {
+                /* Update Reset type */
+                if (pNciContext->RspBuffInfo.pBuff[2] == phNciNfc_ResetType_KeepConfig)
+                {
+                    PH_LOG_NCI_INFO_STR("Nfcc reseted to 'phNciNfc_ResetType_KeepConfig'");
+                    pNciContext->ResetInfo.ResetTypeRsp = phNciNfc_ResetType_KeepConfig;
+                }
+                else
+                {
+                    PH_LOG_NCI_INFO_STR("Nfcc reseted to 'phNciNfc_ResetType_ResetConfig'");
+                    pNciContext->ResetInfo.ResetTypeRsp = phNciNfc_ResetType_ResetConfig;
+                }
+
+                PH_LOG_NCI_INFO_STR("Reset Response Received for NCI 1.x");
+                wStatus = NFCSTATUS_SUCCESS;
+
+                // Next sequence item is NCI2x specific, so we skip it here.
+                phNciNfc_SkipSequenceSeq(pNciContext, pNciContext->pSeqHandler, 1);
+            }
+            else
+            {
+                PH_LOG_NCI_CRIT_STR("Unsupported NCI version 0x%02x", pNciContext->ResetInfo.NciVer);
+                wStatus = NFCSTATUS_FAILED;
+            }
+        }
+        else
+        {
+            wStatus = NFCSTATUS_FAILED;
+        }
+    }
+    else if (pNciContext->RspBuffInfo.wLen == PHNCINFC_CORE_RESET_RSP_LEN_NCI2x)
+    {
+        /* In NCI 2.0 the reset response will just send Status byte */
+        /* The reset notification will have the NFCC version */
+        /* Check Status Byte */
+        if (pNciContext->RspBuffInfo.pBuff[0] == PH_NCINFC_STATUS_OK)
+        {
+            PH_LOG_NCI_INFO_STR("Reset Response Received for NCI 2.x");
+            wStatus = NFCSTATUS_SUCCESS;
+        }
+        else
+        {
+            wStatus = NFCSTATUS_FAILED;
+        }
+    }
+    else
+    {
+        wStatus = NFCSTATUS_INVALID_PARAMETER;
+    }
+
+
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
 }
@@ -657,13 +652,10 @@ static NFCSTATUS phNciNfc_CompleteInitSequence(void *pContext, NFCSTATUS wStatus
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL != pNciCtx)
     {
-        if (phNciNfc_IsVersion1x(pNciCtx))
-        {
-            tTranscInfo.pContext = (void*)pNciCtx;
-            tTranscInfo.pbuffer = (void*)&pNciCtx->ResetInfo.ResetTypeRsp;
-            tTranscInfo.wLength = sizeof(pNciCtx->ResetInfo.ResetTypeRsp);
-            phNciNfc_Notify(pNciCtx, wStatus, (void *)&tTranscInfo);
-        }
+        tTranscInfo.pContext = (void*)pNciCtx;
+        tTranscInfo.pbuffer = (void*)&pNciCtx->ResetInfo.ResetTypeRsp;
+        tTranscInfo.wLength = sizeof(pNciCtx->ResetInfo.ResetTypeRsp);
+        phNciNfc_Notify(pNciCtx, wStatus, (void *)&tTranscInfo);
     }
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
