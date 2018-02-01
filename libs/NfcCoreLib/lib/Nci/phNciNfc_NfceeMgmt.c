@@ -726,6 +726,10 @@ static NFCSTATUS phNciNfc_NfceeModeSetNtfHandler(void *pContext,
             PH_LOG_NCI_INFO_STR("NFCEE Mode Set process Success");
         }
     }
+    pCtx->IfNtf = pCtx->IfModeSetNtf;
+    pCtx->IfNtfCtx = pCtx->IfNtfModeSetCtx;
+    pCtx->IfModeSetNtf = NULL;
+    pCtx->IfNtfModeSetCtx = NULL;
     phNciNfc_Notify(pCtx, wStatus, NULL);
 
     PH_LOG_NCI_FUNC_EXIT();

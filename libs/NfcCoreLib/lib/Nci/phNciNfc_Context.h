@@ -33,6 +33,8 @@ typedef struct phNciNfc_Context
     phNciNfc_CoreContext_t NciCoreContext;      /**<Structure object to #phNciNfc_CoreContext_t*/
     pphNciNfc_IfNotificationCb_t IfNtf;         /**<Pointer to upper layer call back function*/
     void *IfNtfCtx;                             /**<Pointer to upper layer context*/
+    pphNciNfc_IfNotificationCb_t IfModeSetNtf;  /**<Pointer to upper layer call back function for ModeSet*/
+    void *IfNtfModeSetCtx;                      /**<Pointer to upper layer context for ModeSet*/
     phNciNfc_SequenceP_t *pSeqHandler;          /**<Pointer to #phNciNfc_SequenceP_t*/
     phNciNfc_Buff_t RspBuffInfo;                /**<Buffer to store payload field of the received response*/
     uint8_t SeqNext;                            /**<Next sequence*/

@@ -1908,6 +1908,7 @@ NFCSTATUS phLibNfc_HciCreateApduPipeProc(void* pContext, NFCSTATUS status, void*
             pHciContext = (pphHciNfc_HciContext_t)pLibCtx->pHciContext;
             if (NFCSTATUS_SUCCESS == status)
             {
+                wStatus = status;
                 PH_LOG_LIBNFC_INFO_STR("Succeed to create APDU pipe");
             }
             else
