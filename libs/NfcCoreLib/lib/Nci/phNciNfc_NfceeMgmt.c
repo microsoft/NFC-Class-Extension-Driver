@@ -161,6 +161,10 @@ static NFCSTATUS phNciNfc_CompleteModeSetSequence(void *pContext, NFCSTATUS wSta
              (phNciNfc_IsVersion2x(pNciCtx) &&
                 wStatus != NFCSTATUS_SUCCESS))
         {
+            pNciCtx->IfNtf = pNciCtx->IfModeSetNtf;
+            pNciCtx->IfNtfCtx = pNciCtx->IfNtfModeSetCtx;
+            pNciCtx->IfModeSetNtf = NULL;
+            pNciCtx->IfNtfModeSetCtx = NULL;
             phNciNfc_Notify(pNciCtx, wStatus, NULL);
         }
     }
