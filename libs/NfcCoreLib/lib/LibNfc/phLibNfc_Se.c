@@ -64,7 +64,6 @@ phLibNfc_Sequence_t gphLibNfc_NfceeStartDiscSeq[] = {
 
 /* NFCEE discovery complete sequence */
 phLibNfc_Sequence_t gphLibNfc_NfceeDiscCompleteSeq[] = {
-    {&phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc},
     {&phLibNfc_HciSetSessionIdentity, &phLibNfc_HciSetSessionIdentityProc},
     {NULL, &phLibNfc_NfceeDiscSeqComplete}
 };
