@@ -1894,38 +1894,21 @@ NFCSTATUS phLibNfc_HciCreateApduPipe(void* pContext, NFCSTATUS status, void* pIn
 
 NFCSTATUS phLibNfc_HciCreateApduPipeProc(void* pContext, NFCSTATUS status, void* pInfo)
 {
-    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
-    pphLibNfc_Context_t pLibCtx;
-    pphHciNfc_HciContext_t pHciContext;
     PH_LOG_LIBNFC_FUNC_ENTRY();
     UNUSED(pInfo);
-    if (NULL != pContext)
+    UNUSED(pContext);
+
+    if (NFCSTATUS_SUCCESS == status)
     {
-        pLibCtx = (pphLibNfc_Context_t)pContext;
-        if (NULL != pLibCtx->pHciContext)
-        {
-            PH_LOG_LIBNFC_INFO_STR("Create pipe Response");
-            pHciContext = (pphHciNfc_HciContext_t)pLibCtx->pHciContext;
-            if (NFCSTATUS_SUCCESS == status)
-            {
-                PH_LOG_LIBNFC_INFO_STR("Succeed to create APDU pipe");
-            }
-            else
-            {
-                PH_LOG_LIBNFC_CRIT_STR("Failed to create APDU pipe");
-            }
-        }
-        else
-        {
-            PH_LOG_LIBNFC_CRIT_STR("Invalid Hci context received");
-        }
+        PH_LOG_LIBNFC_INFO_STR("Succeeded to create APDU pipe");
     }
     else
     {
-        PH_LOG_LIBNFC_CRIT_STR("Invalid LibNfc context received");
+        PH_LOG_LIBNFC_CRIT_STR("Failed to create APDU pipe, Status:%!NFCSTATUS!", status);
     }
+
     PH_LOG_LIBNFC_FUNC_EXIT();
-    return wStatus;
+    return status;
 }
 
 NFCSTATUS phLibNfc_HciOpenAPDUPipe(void* pContext, NFCSTATUS status, void* pInfo)
