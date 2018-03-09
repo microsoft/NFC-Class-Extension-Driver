@@ -892,8 +892,9 @@ Return Value:
         else
         {
             // Airplane mode turned off.
-            // Restore the previous radio state.
-            desiredRadioState = PowerManager->NfpRadioStateBeforeFlightMode;
+            // Turn the radio back on if it was on before airplane mode was turned off (and keep the radio on
+            // if it is already on).
+            desiredRadioState = PowerManager->NfpRadioState || PowerManager->NfpRadioStateBeforeFlightMode;
         }
     }
     else
