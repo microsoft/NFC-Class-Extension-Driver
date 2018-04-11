@@ -51,8 +51,6 @@ typedef struct _NFCCX_FDO_CONTEXT {
     // Registry-provided config
     //
     BOOLEAN LogNciDataMessages;
-    _Guarded_by_(HasFailedWaitLock)
-    ULONG NumDriverRestarts;
 
     //
     // IO Queues
@@ -114,18 +112,6 @@ NfcCxFdoCreate(
 NTSTATUS
 NfcCxFdoReadCxDriverRegistrySettings(
     _Out_ BOOLEAN* pLogNciDataMessages
-    );
-
-NTSTATUS
-NfcCxFdoReadCxDeviceVolatileRegistrySettings(
-    _In_ WDFDEVICE Device,
-    _Out_ ULONG* pNumDriverRestarts
-    );
-
-NTSTATUS
-NfcCxFdoWriteCxDeviceVolatileRegistrySettings(
-    _In_ WDFDEVICE Device,
-    _In_ ULONG* pNumDriverRestarts
     );
 
 NTSTATUS

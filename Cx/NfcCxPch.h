@@ -101,14 +101,6 @@ DEFINE_GUID(GUID_NULL, 0,0,0,0,0,0,0,0,0,0,0);
 #define NFCCX_REG_DISABLE_POWER_MANAGER_STOP_IDLE L"DisablePowerManagerStopIdle"
 
 //
-// Volatile registry settings
-//
-#define NFCCX_REG_VOLATILE_SUB_KEY_NAME         L"VolatileParams"
-#define NFCCX_REG_NUM_DRIVER_RESTARTS           L"NumDriverRestarts"
-
-#define NFCCX_MAX_NUM_DRIVER_RESTARTS           5
-
-//
 // As per spec The maximum length of the
 // Protocol component and sub type is 250 characters
 //

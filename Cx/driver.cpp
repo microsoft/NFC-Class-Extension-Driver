@@ -180,10 +180,8 @@ VOID NfcCxDeviceSetFailed(
 
 Routine Description:
 
-    This routine informs the WDF framework that the driver encountered a
-    hardware or software error that is associated with the specified device. It
-    will try to restart the driver if the restart count has not reached the max
-    count.
+    This routine informs the WDF framework that the driver encountered an unexpected
+    hardware or software error that is associated with the specified device.
 
 Arguments:
 
@@ -195,24 +193,20 @@ Return Value:
 
 --*/
 {
-    PNFCCX_FDO_CONTEXT fdoContext;
-    NTSTATUS status;
-    WDF_DEVICE_FAILED_ACTION failedAction;
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    fdoContext = NfcCxFdoGetContext(Device);
+    PNFCCX_FDO_CONTEXT fdoContext = NfcCxFdoGetContext(Device);
 
     WdfWaitLockAcquire(fdoContext->HasFailedWaitLock, NULL);
 
-    if (!fdoContext->HasFailed) {
+    if (!fdoContext->HasFailed)
+    {
         fdoContext->HasFailed = TRUE;
 
-        fdoContext->NumDriverRestarts++;
-        status = NfcCxFdoWriteCxDeviceVolatileRegistrySettings(Device, &fdoContext->NumDriverRestarts);
-
-        failedAction = (NT_SUCCESS(status) && fdoContext->NumDriverRestarts < NFCCX_MAX_NUM_DRIVER_RESTARTS) ? WdfDeviceFailedAttemptRestart : WdfDeviceFailedNoRestart;
-        WdfDeviceSetFailed(Device, failedAction);
+        // Report that the device has failed and don't bother trying to restart the device.
+        // In the past, trying to restart the device has not proven to be effective, as the
+        // same problem that cuased the device to fail in the first place just occurs again.
+        WdfDeviceSetFailed(Device, WdfDeviceFailedNoRestart);
     }
 
     WdfWaitLockRelease(fdoContext->HasFailedWaitLock);
@@ -392,17 +386,10 @@ Return Value:
     fdoContext->SERadioInterfaceCreated = FALSE;
     fdoContext->NfcCxClientGlobal = nfcCxClientGlobal;
     fdoContext->LogNciDataMessages = FALSE;
-    fdoContext->NumDriverRestarts = NFCCX_MAX_NUM_DRIVER_RESTARTS;
 
     status = NfcCxFdoReadCxDriverRegistrySettings(&fdoContext->LogNciDataMessages);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "NfcCxFdoReadCxDriverRegistrySettings failed, %!STATUS!", status);
-        goto Done;
-    }
-
-    status = NfcCxFdoReadCxDeviceVolatileRegistrySettings(Device, &fdoContext->NumDriverRestarts);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "NfcCxFdoReadCxDriverVolatileRegistrySettings failed, %!STATUS!", status);
         goto Done;
     }
 

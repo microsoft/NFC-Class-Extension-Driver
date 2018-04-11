@@ -317,9 +317,19 @@ Return Value:
 
     if (filePowerReference <= 0)
     {
+        // About to underflow the file handle's power policy references
+        NT_ASSERT(false);
+
         status = STATUS_INTEGER_OVERFLOW;
         TRACE_LINE(LEVEL_ERROR, "File power policy references underflow (%d), %!STATUS!", Type, status);
-        NT_ASSERT(false);
+
+        TraceLoggingWrite(
+            g_hNfcCxProvider,
+            "FileHandlePowerRefCountUnderflow",
+            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
+            TraceLoggingInt32(Type, "powerReferenceType"),
+            TraceLoggingInt32(FileContext->Role, "powerHandleRole"));
+
         NfcCxDeviceSetFailed(PowerManager->FdoContext->Device);
         goto Done;
     }
@@ -542,9 +552,17 @@ Return Value:
     if (powerReference <= 0)
     {
         // About to underflow the Policy references
+        NT_ASSERT(false);
+
         status = STATUS_INTEGER_OVERFLOW;
         TRACE_LINE(LEVEL_ERROR, "Power policy references underflow (%d), %!STATUS!", Type, status);
-        NT_ASSERT(false);
+
+        TraceLoggingWrite(
+            g_hNfcCxProvider,
+            "PowerRefCountUnderflow",
+            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
+            TraceLoggingInt32(Type, "powerReferenceType"));
+
         NfcCxDeviceSetFailed(PowerManager->FdoContext->Device);
         goto Done;
     }
@@ -790,6 +808,12 @@ Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     if (!NT_SUCCESS(status))
     {
+        TraceLoggingWrite(
+            g_hNfcCxProvider,
+            "UpdateRfPollingStateFailed",
+            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
+            TraceLoggingNTStatus(status, "status"));
+
         NfcCxDeviceSetFailed(fdoContext->Device);
     }
 }
