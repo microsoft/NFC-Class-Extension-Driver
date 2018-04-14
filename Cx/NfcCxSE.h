@@ -341,6 +341,12 @@ NfcCxSEInterfaceSetPowerSettings(
     _In_ const NFCCX_SE_POWER_SETTINGS& PowerSettings
     );
 
+NTSTATUS
+NfcCxSEInterfaceSetPowerMode(
+    _In_ PNFCCX_FILE_CONTEXT FileContext,
+    _In_ GUID SecureElementId,
+    _In_ SECURE_ELEMENT_POWER_MODE PowerMode);
+
 BOOLEAN FORCEINLINE
 NfcCxSEInterfaceValidateEventType(
     _In_ SECURE_ELEMENT_EVENT_TYPE eEventType

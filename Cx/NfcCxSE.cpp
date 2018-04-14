@@ -808,7 +808,7 @@ Return Value:
         for (uint8_t i = 0; i < SECount; i++)
         {
             GUID secureElementId = NfcCxSEInterfaceGetSecureElementId(rfInterface, SEList[i].hSecureElement);
-            bool isEmulationOn = false;
+            NFCCX_SE_POWER_SETTINGS sePowerSettings;
 
             {
                 // Acquire lock for 'SEInterface->SEPowerSettings'.
@@ -816,21 +816,23 @@ Return Value:
                 // aren't recursive.
                 WdfWaitLockAcquire(SEInterface->SEPowerSettingsLock, NULL);
 
-                NFCCX_SE_POWER_SETTINGS sePower = NfcCxSEInterfaceGetPowerSettings(SEInterface, secureElementId);
-                isEmulationOn = sePower.EmulationMode != EmulationOff;
+                sePowerSettings = NfcCxSEInterfaceGetPowerSettings(SEInterface, secureElementId);
 
                 WdfWaitLockRelease(SEInterface->SEPowerSettingsLock);
             }
 
-            if (!isEmulationOn)
+            if (sePowerSettings.EmulationMode != EmulationOff)
             {
-                continue;
+                SECURE_ELEMENT_SET_CARD_EMULATION_MODE_INFO EmulationMode;
+                EmulationMode.eMode = EmulationOff;
+                EmulationMode.guidSecureElementId = secureElementId;
+                (void)NfcCxSEInterfaceSetCardEmulationMode(FileContext, &EmulationMode);
             }
 
-            SECURE_ELEMENT_SET_CARD_EMULATION_MODE_INFO EmulationMode;
-            EmulationMode.eMode = EmulationOff;
-            EmulationMode.guidSecureElementId = secureElementId;
-            (void)NfcCxSEInterfaceSetCardEmulationMode(FileContext, &EmulationMode);
+            if (sePowerSettings.ForcePowerOn)
+            {
+                (void)NfcCxSEInterfaceSetPowerMode(FileContext, secureElementId, SEPowerMode_AllowOff);
+            }
         }
     }
     else if (NfcCxFileObjectIsSEEvent(FileContext))
@@ -1890,7 +1892,7 @@ NfcCxSEInterfaceDispatchSetPowerMode(
     _In_ size_t InputBufferLength,
     _Out_opt_bytecap_(OutputBufferLength) PVOID /*OutputBuffer*/,
     _In_ size_t OutputBufferLength
-    )
+)
 /*++
 
 Routine Description:
@@ -1917,10 +1919,6 @@ Return Value:
 
     UNREFERENCED_PARAMETER(InputBufferLength);
 
-    PNFCCX_FDO_CONTEXT fdoContext = NfcCxFileObjectGetFdoContext(FileContext);
-    PNFCCX_SE_INTERFACE seInterface = fdoContext->SEInterface;
-    bool sePowerSettingsLockHeld = false;
-
     if (!NfcCxFileObjectIsSEManager(FileContext))
     {
         status = STATUS_INVALID_DEVICE_STATE;
@@ -1939,21 +1937,65 @@ Return Value:
     _Analysis_assume_(InputBufferLength >= sizeof(SECURE_ELEMENT_SET_POWER_MODE_INFO));
     auto info = reinterpret_cast<SECURE_ELEMENT_SET_POWER_MODE_INFO*>(InputBuffer);
 
-    BOOLEAN newForcePowerOn = info->powerMode != SEPowerMode_AllowOff;
+    status = NfcCxSEInterfaceSetPowerMode(FileContext, info->guidSecureElementId, info->powerMode);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "NfcCxSEInterfaceDispatchSetPowerMode failed. %!STATUS!", status);
+        goto Done;
+    }
+
+    // Complete request
+    WdfRequestComplete(Request, STATUS_SUCCESS);
+    status = STATUS_PENDING;
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+};
+
+NTSTATUS
+NfcCxSEInterfaceSetPowerMode(
+    _In_ PNFCCX_FILE_CONTEXT FileContext,
+    _In_ GUID SecureElementId,
+    _In_ SECURE_ELEMENT_POWER_MODE PowerMode)
+/*++
+
+Routine Description:
+
+    Sets the power mode for an SE.
+
+Arguments:
+
+    FileContext - The file context.
+    SecureElementId - The ID of the SE.
+    PowerMode - The desired power mode.
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    PNFCCX_FDO_CONTEXT fdoContext = NfcCxFileObjectGetFdoContext(FileContext);
+    PNFCCX_SE_INTERFACE seInterface = fdoContext->SEInterface;
+    bool sePowerSettingsLockHeld = false;
+
+    BOOLEAN newForcePowerOn = PowerMode != SEPowerMode_AllowOff;
 
     // Acquire power settings lock
     WdfWaitLockAcquire(seInterface->SEPowerSettingsLock, NULL);
     sePowerSettingsLockHeld = true;
 
     // Get current power settings for SE
-    NFCCX_SE_POWER_SETTINGS powerSettings = NfcCxSEInterfaceGetPowerSettings(seInterface, info->guidSecureElementId);
+    NFCCX_SE_POWER_SETTINGS powerSettings = NfcCxSEInterfaceGetPowerSettings(seInterface, SecureElementId);
     BOOLEAN oldForcePowerOn = powerSettings.ForcePowerOn;
 
     // Create updated power settings for SE
     powerSettings.ForcePowerOn = newForcePowerOn;
 
     // Update SE's activation mode
-    status = NfcCxSEInterfaceUpdateSEActivationMode(seInterface, info->guidSecureElementId, powerSettings);
+    status = NfcCxSEInterfaceUpdateSEActivationMode(seInterface, SecureElementId, powerSettings);
     if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "NfcCxSEInterfaceUpdateSEActivationMode failed, %!STATUS!", status);
@@ -1974,10 +2016,6 @@ Return Value:
             goto Done;
         }
     }
-
-    // Complete request
-    WdfRequestComplete(Request, STATUS_SUCCESS);
-    status = STATUS_PENDING;
 
 Done:
     if (sePowerSettingsLockHeld)
