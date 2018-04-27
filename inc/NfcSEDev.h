@@ -53,12 +53,22 @@ typedef enum _SECURE_ELEMENT_TYPE {
 } SECURE_ELEMENT_TYPE, *PSECURE_ELEMENT_TYPE;
 
 typedef enum _SECURE_ELEMENT_EVENT_TYPE {
+    // Signals that an external reader has been discovered and the initial protocol handshake has occured.
     ExternalReaderArrival = 0,
+    // Signals that the external reader is no longer present.
     ExternalReaderDeparture = 1,
+    // Deprecated.
     ApplicationSelected = 2,
+    // Signals that an EVT_TRANSACTION event has been triggered by an SE.
     Transaction = 3,
+    // Signals that a HCE connection has been established.
     HceActivated = 4,
-    HceDeactivated = 5
+    // Signals that the HCE connection has been disconnected.
+    HceDeactivated = 5,
+    // Signals that an external NFC field has been detected.
+    ExternalFieldEnter = 6,
+    // Signals that the external NFC field is no longer present.
+    ExternalFieldExit = 7,
 } SECURE_ELEMENT_EVENT_TYPE, *PSECURE_ELEMENT_EVENT_TYPE;
 
 typedef enum _SECURE_ELEMENT_CARD_EMULATION_MODE {

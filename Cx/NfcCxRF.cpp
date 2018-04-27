@@ -142,14 +142,20 @@ NfcCxRFInterfaceGetSEEvent(
     NTSTATUS status = STATUS_SUCCESS;
 
     switch (LibNfcEventType) {
-    case phLibNfc_eSE_EvtFieldOn:
+    case phLibNfc_eSE_EvtReaderArrival:
         *pSEEventType = ExternalReaderArrival;
         break;
-    case phLibNfc_eSE_EvtFieldOff:
+    case phLibNfc_eSE_EvtReaderDeparture:
         *pSEEventType = ExternalReaderDeparture;
         break;
     case phLibNfc_eSE_EvtTypeTransaction:
         *pSEEventType = Transaction;
+        break;
+    case phLibNfc_eSE_EvtRfFieldEnter:
+        *pSEEventType = ExternalFieldEnter;
+        break;
+    case phLibNfc_eSE_EvtRfFieldExit:
+        *pSEEventType = ExternalFieldExit;
         break;
     default:
         status = STATUS_NOT_SUPPORTED;
@@ -2320,14 +2326,28 @@ NfcCxRFInterfaceHandleSecureElementEvent(
         NfcCxPostLibNfcThreadMessage(rfInterface, LIBNFC_STATE_HANDLER, NfcCxEventDeactivated, NULL, NULL, NULL);
     }
 
-    for (uint8_t i = 0; (i < rfInterface->pLibNfcContext->SECount); i++) {
-        if (((SEEventType == ExternalReaderArrival) || (SEEventType == ExternalReaderDeparture) ||
-            (rfInterface->pLibNfcContext->SEList[i].hSecureElement == hSecureElement)) &&
-            (rfInterface->pLibNfcContext->SEList[i].eSE_ActivationMode == phLibNfc_SE_ActModeOn)) {
-            NfcCxSEInterfaceHandleEvent(NfcCxRFInterfaceGetSEInterface(rfInterface),
-                                        SEEventType,
-                                        &rfInterface->pLibNfcContext->SEList[i],
-                                        pSeEvtInfo);
+    if (SEEventType == ExternalFieldEnter || SEEventType == ExternalFieldExit)
+    {
+        NfcCxSEInterfaceHandleEvent(
+            NfcCxRFInterfaceGetSEInterface(rfInterface),
+            SEEventType,
+            nullptr,
+            pSeEvtInfo);
+    }
+    else
+    {
+        for (uint8_t i = 0; (i < rfInterface->pLibNfcContext->SECount); i++)
+        {
+            if (((SEEventType == ExternalReaderArrival) || (SEEventType == ExternalReaderDeparture) ||
+                (rfInterface->pLibNfcContext->SEList[i].hSecureElement == hSecureElement)) &&
+                (rfInterface->pLibNfcContext->SEList[i].eSE_ActivationMode == phLibNfc_SE_ActModeOn))
+            {
+                NfcCxSEInterfaceHandleEvent(
+                    NfcCxRFInterfaceGetSEInterface(rfInterface),
+                    SEEventType,
+                    &rfInterface->pLibNfcContext->SEList[i],
+                    pSeEvtInfo);
+            }
         }
     }
 

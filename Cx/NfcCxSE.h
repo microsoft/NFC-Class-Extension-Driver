@@ -147,8 +147,8 @@ VOID
 NfcCxSEInterfaceHandleEvent(
     _In_ PNFCCX_SE_INTERFACE SEInterface,
     _In_  SECURE_ELEMENT_EVENT_TYPE EventType,
-    _In_ phLibNfc_SE_List_t *pSEListEntry,
-    _In_ phLibNfc_uSeEvtInfo_t *pSeEvtInfo
+    _In_opt_ phLibNfc_SE_List_t *pSEListEntry,
+    _In_opt_ phLibNfc_uSeEvtInfo_t *pSeEvtInfo
     );
 
 VOID
@@ -211,9 +211,9 @@ NfcCxSEInterfaceMatchesEvent(
 NTSTATUS
 NfcCxSEInterfaceGetEventPayload(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ phLibNfc_SE_List_t *pSEListEntry,
+    _In_opt_ phLibNfc_SE_List_t *pSEListEntry,
     _In_ SECURE_ELEMENT_EVENT_TYPE EventType,
-    _In_ phLibNfc_uSeEvtInfo_t *pSeEvtInfo,
+    _In_opt_ phLibNfc_uSeEvtInfo_t *pSeEvtInfo,
     _Outptr_ CNFCPayload **EventPayload
     );
 
@@ -357,7 +357,9 @@ NfcCxSEInterfaceValidateEventType(
             eEventType == ApplicationSelected ||
             eEventType == Transaction ||
             eEventType == HceActivated ||
-            eEventType == HceDeactivated);
+            eEventType == HceDeactivated ||
+            eEventType == ExternalFieldEnter ||
+            eEventType == ExternalFieldExit);
 }
 
 BOOLEAN FORCEINLINE

@@ -731,12 +731,22 @@ void phLibNfc_SENtfHandler(
             {
                 PH_LOG_LIBNFC_CRIT_STR("RF Field Info: %!phNciNfc_RfFieldInfo_t!", pSEInfo->tRfFieldInfo.eRfFieldInfo);
 
+                if (NULL != pCtx->CBInfo.pSeListenerNtfCb)
+                {
+                    PH_LOG_LIBNFC_INFO_STR("Invoking pSeListenerNtfCb for field on/off.");
+                    phLibNfc_eSE_EvtType_t eventType = (pSEInfo->tRfFieldInfo.eRfFieldInfo == phNciNfc_e_RfFieldOff) ?
+                        phLibNfc_eSE_EvtRfFieldExit :
+                        phLibNfc_eSE_EvtRfFieldEnter;
+
+                    pCtx->CBInfo.pSeListenerNtfCb(pCtx->CBInfo.pSeListenerCtxt, eventType, NULL, &tSeEvtInfo, NFCSTATUS_SUCCESS);
+                }
+
                 if(pSEInfo->tRfFieldInfo.eRfFieldInfo == phNciNfc_e_RfFieldOff && pCtx->bPcdConnected)
                 {
                     if(NULL != pCtx->CBInfo.pSeListenerNtfCb)
                     {
-                        PH_LOG_LIBNFC_INFO_STR("Invoking pSeListenerNtfCb");
-                        pCtx->CBInfo.pSeListenerNtfCb(pCtx->CBInfo.pSeListenerCtxt,phLibNfc_eSE_EvtFieldOff,NULL,
+                        PH_LOG_LIBNFC_INFO_STR("Invoking pSeListenerNtfCb for reader off.");
+                        pCtx->CBInfo.pSeListenerNtfCb(pCtx->CBInfo.pSeListenerCtxt,phLibNfc_eSE_EvtReaderDeparture,NULL,
                                                       &tSeEvtInfo,NFCSTATUS_SUCCESS);
                     }
 

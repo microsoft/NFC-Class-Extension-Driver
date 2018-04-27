@@ -920,7 +920,7 @@ NFCSTATUS phLibNfc_StateSEListenEntry(void *pContext, void *pParam1, void *pPara
         {
             PH_LOG_LIBNFC_INFO_STR("Invoking pSeListenerNtfCb");
             pLibContext->CBInfo.pSeListenerNtfCb(pLibContext->CBInfo.pSeListenerCtxt,
-                                                 phLibNfc_eSE_EvtFieldOn,
+                                                 phLibNfc_eSE_EvtReaderArrival,
                                                  NULL,
                                                  &tSeEvtInfo,
                                                  NFCSTATUS_SUCCESS);

@@ -91,8 +91,10 @@ typedef enum phLibNfc_eSE_EvtType
     phLibNfc_eSE_EvtConnectivity,              /**<Notifies the host that it shall
                                                    send a connectivity event from UICC as defined in
                                                    ETSI TS 102 622 V7.4.0 */
-    phLibNfc_eSE_EvtFieldOn,                   /**<External RF field is detected by SE */
-    phLibNfc_eSE_EvtFieldOff,                  /**<External RF field is no more detected by SE */
+    phLibNfc_eSE_EvtReaderArrival,                   /**<External reader is detected and initial protocol handshake has occured */
+    phLibNfc_eSE_EvtReaderDeparture,                  /**<External reader is no longer detected */
+    phLibNfc_eSE_EvtRfFieldEnter,                  /**<External RF field is detected */
+    phLibNfc_eSE_EvtRfFieldExit,                 /**<External RF field is no longer detected */
 } phLibNfc_eSE_EvtType_t;
 
 typedef phNfc_sSupProtocol_t    phLibNfc_Registry_Info_t;

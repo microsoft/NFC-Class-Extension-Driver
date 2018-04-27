@@ -851,8 +851,8 @@ VOID
 NfcCxSEInterfaceHandleEvent(
     _In_ PNFCCX_SE_INTERFACE SEInterface,
     _In_ SECURE_ELEMENT_EVENT_TYPE EventType,
-    _In_ phLibNfc_SE_List_t *pSEInfo,
-    _In_ phLibNfc_uSeEvtInfo_t *pSeEvtInfo
+    _In_opt_ phLibNfc_SE_List_t *pSEInfo,
+    _In_opt_ phLibNfc_uSeEvtInfo_t *pSeEvtInfo
     )
 {
     PLIST_ENTRY ple;
@@ -2124,9 +2124,9 @@ NfcCxSEInterfaceMatchesEvent(
 NTSTATUS
 NfcCxSEInterfaceGetEventPayload(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ phLibNfc_SE_List_t *pSEInfo,
+    _In_opt_ phLibNfc_SE_List_t *pSEInfo,
     _In_ SECURE_ELEMENT_EVENT_TYPE EventType,
-    _In_ phLibNfc_uSeEvtInfo_t *pSeEvtInfo,
+    _In_opt_ phLibNfc_uSeEvtInfo_t *pSeEvtInfo,
     _Outptr_ CNFCPayload **EventPayload
     )
 /*++
@@ -2159,8 +2159,17 @@ Return Value:
 
     *EventPayload = NULL;
 
+    GUID guidSecureElementId = {};
+    if (pSEInfo != nullptr)
+    {
+        guidSecureElementId = NfcCxSEInterfaceGetSecureElementId(pSEInfo);
+    }
+
     if (ExternalReaderArrival == EventType ||
-        ExternalReaderDeparture == EventType) {
+        ExternalReaderDeparture == EventType ||
+        ExternalFieldEnter == EventType ||
+        ExternalFieldExit == EventType)
+    {
         //
         // External Reader Arrival and Departure events maps to these events
         // Both the events have empty event data
@@ -2174,7 +2183,7 @@ Return Value:
         }
 
         eventInfo = (PSECURE_ELEMENT_EVENT_INFO)payload->GetPayload();
-        eventInfo->guidSecureElementId = NfcCxSEInterfaceGetSecureElementId(pSEInfo);
+        eventInfo->guidSecureElementId = guidSecureElementId;
         eventInfo->eEventType = EventType;
         eventInfo->cbEventData = 0;
 
@@ -2203,7 +2212,7 @@ Return Value:
         }
 
         eventInfo = (PSECURE_ELEMENT_EVENT_INFO)payload->GetPayload();
-        eventInfo->guidSecureElementId = NfcCxSEInterfaceGetSecureElementId(pSEInfo);
+        eventInfo->guidSecureElementId = guidSecureElementId;
         eventInfo->eEventType = Transaction;
         eventInfo->cbEventData = 0;
 
@@ -2234,7 +2243,7 @@ Return Value:
         }
     
         eventInfo = (PSECURE_ELEMENT_EVENT_INFO)payload->GetPayload();
-        eventInfo->guidSecureElementId = NfcCxSEInterfaceGetSecureElementId(pSEInfo);
+        eventInfo->guidSecureElementId = guidSecureElementId;
         eventInfo->eEventType = EventType;
         eventInfo->cbEventData = sizeof(SECURE_ELEMENT_HCE_ACTIVATION_PAYLOAD);
 

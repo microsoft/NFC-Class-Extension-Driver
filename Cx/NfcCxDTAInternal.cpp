@@ -112,14 +112,20 @@ NfcCxDTAInterfaceGetSEEvent(
     NTSTATUS status = STATUS_SUCCESS;
 
     switch (LibNfcEventType) {
-    case phLibNfc_eSE_EvtFieldOn:
+    case phLibNfc_eSE_EvtReaderArrival:
         *pSEEventType = ExternalReaderArrival;
         break;
-    case phLibNfc_eSE_EvtFieldOff:
+    case phLibNfc_eSE_EvtReaderDeparture:
         *pSEEventType = ExternalReaderDeparture;
         break;
     case phLibNfc_eSE_EvtTypeTransaction:
         *pSEEventType = Transaction;
+        break;
+    case phLibNfc_eSE_EvtRfFieldEnter:
+        *pSEEventType = ExternalFieldEnter;
+        break;
+    case phLibNfc_eSE_EvtRfFieldExit:
+        *pSEEventType = ExternalFieldExit;
         break;
     default:
         status = STATUS_NOT_SUPPORTED;
