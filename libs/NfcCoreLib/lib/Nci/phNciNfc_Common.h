@@ -80,7 +80,7 @@ typedef struct phNciNfc_ResetInfo
 
 typedef struct phNciNfc_InitInfo
 {
-    uint8_t bExtension;                 /**< NCI extension to get Build Number in Init response */
+    uint8_t bExtension[2];               /**< NCI extension to get Build Number in Init response */
 }phNciNfc_InitInfo_t, *pphNciNfc_InitInfo_t; /**< pointer to #phNciNfc_InitInfo_t */
 
 typedef struct phNciNfc_SendPayload

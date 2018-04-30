@@ -378,7 +378,8 @@ phNciNfc_Initialise(
                 {
                     pNciContext->ResetInfo.ResetTypeReq = eResetType;
                     /* Init payload to display the build number in the init response */
-                    pNciContext->tInitInfo.bExtension = 0x00;
+                    pNciContext->tInitInfo.bExtension[0] = 0x00;
+                    pNciContext->tInitInfo.bExtension[1] = 0x00;
                     wStatus = phNciNfc_GenericSequence((void *)pNciContext, NULL, NFCSTATUS_SUCCESS);
                     if (NFCSTATUS_PENDING != wStatus)
                     {
@@ -439,7 +440,8 @@ phNciNfc_ReInitialise(void* pNciHandle,
         pNciContext->IfNtfCtx = pContext;
         pNciContext->ResetInfo.ResetTypeReq = phNciNfc_ResetType_KeepConfig;
         /* Init payload to display the build number in the init response */
-        pNciContext->tInitInfo.bExtension = 0x00;
+        pNciContext->tInitInfo.bExtension[0] = 0x00;
+        pNciContext->tInitInfo.bExtension[1] = 0x00;
         PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_InitSequence);
         wStatus = phNciNfc_GenericSequence((void *)pNciContext, NULL, NFCSTATUS_SUCCESS);
         if(NFCSTATUS_PENDING != wStatus)

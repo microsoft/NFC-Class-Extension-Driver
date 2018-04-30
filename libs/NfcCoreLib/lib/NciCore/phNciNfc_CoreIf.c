@@ -9,9 +9,9 @@
 #include "phNciNfc_CoreIf.tmh"
 
 
-NFCSTATUS phNciNfc_CoreIfTxRx(pphNciNfc_CoreContext_t pCtx,
+NFCSTATUS phNciNfc_CoreIfTxRx(pphNciNfc_CoreContext_t pNciCoreContext,
                                pphNciNfc_CoreTxInfo_t pTxInfo,
-                               pphNciNfc_Buff_t  pRxBuffInfo,
+                               pphNciNfc_Buff_t pRxBuffInfo,
                                uint32_t dwTimeOutMs,
                                pphNciNfc_CoreIfNtf_t NciCb,
                                void *pContext)
@@ -19,12 +19,12 @@ NFCSTATUS phNciNfc_CoreIfTxRx(pphNciNfc_CoreContext_t pCtx,
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if ((NULL != pCtx) &&
+    if ((NULL != pNciCoreContext) &&
         (NULL != pTxInfo) &&
         (NULL != pRxBuffInfo) &&
         (NULL != NciCb))
     {
-        if(pCtx->SendStateContext.CurrState == phNciNfc_StateSendIdle)
+        if(pNciCoreContext->SendStateContext.CurrState == phNciNfc_StateSendIdle)
         {
             /* Either command or data message can be sent */
             if(phNciNfc_e_NciCoreMsgTypeCntrlCmd == pTxInfo->tHeaderInfo.eMsgType)
@@ -39,17 +39,17 @@ NFCSTATUS phNciNfc_CoreIfTxRx(pphNciNfc_CoreContext_t pCtx,
             /* All calling function which use 'phNciNfc_CoreIfTxRx' to send and receive cmd-Rsp or Data
             shall go for Auto deregistration */
             pTxInfo->tHeaderInfo.bEnabled = PHNCINFC_ENABLE_AUTO_DEREG;
-            pCtx->tTemp.pTxInfo = pTxInfo;
-            pCtx->tTemp.dwTimeOutMs = dwTimeOutMs;
-            pCtx->tTemp.NciCb = NciCb;
-            pCtx->tTemp.pContext = pContext;
+            pNciCoreContext->tTemp.pTxInfo = pTxInfo;
+            pNciCoreContext->tTemp.dwTimeOutMs = dwTimeOutMs;
+            pNciCoreContext->tTemp.NciCb = NciCb;
+            pNciCoreContext->tTemp.pContext = pContext;
 
-            pCtx->bCoreTxOnly = 0; /* Notify upper layer after response is received for the command sent or
+            pNciCoreContext->bCoreTxOnly = 0; /* Notify upper layer after response is received for the command sent or
                                       sending command fails*/
-            phOsalNfc_MemCopy(&(pCtx->TxInfo), pTxInfo, sizeof(phNciNfc_CoreTxInfo_t));
+            phOsalNfc_MemCopy(&(pNciCoreContext->TxInfo), pTxInfo, sizeof(phNciNfc_CoreTxInfo_t));
             /* Print the NCI packet details */
-            phNciNfc_PrintPacketDescription(&pTxInfo->tHeaderInfo, pTxInfo->Buff, pTxInfo->wLen, pCtx->bLogDataMessages);
-            wStatus = phNciNfc_StateHandler(pCtx, phNciNfc_EvtSendPacket);
+            phNciNfc_PrintPacketDescription(&pTxInfo->tHeaderInfo, pTxInfo->Buff, pTxInfo->wLen, pNciCoreContext->bLogDataMessages);
+            wStatus = phNciNfc_StateHandler(pNciCoreContext, phNciNfc_EvtSendPacket);
         }
         else
         {
