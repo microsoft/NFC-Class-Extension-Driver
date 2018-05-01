@@ -3667,6 +3667,7 @@ NfcCxRFInterfaceSEEnumerate(
     LibNfcContext.RFInterface = RFInterface;
     LibNfcContext.Sequence = RFInterface->pSeqHandler;
 
+    RFInterface->pLibNfcContext->bIsDefaultRtngConfig = 0;
     nfcStatus = phLibNfc_SE_Enumerate(NfcCxRFInterfaceSEEnumerateCB,
                                       &LibNfcContext);
 
