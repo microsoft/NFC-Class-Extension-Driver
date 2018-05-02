@@ -62,6 +62,7 @@ typedef enum _NFC_CX_DRIVER_FLAGS {
     NFC_CX_DRIVER_ENABLE_EEPROM_WRITE_PROTECTION = 0x000000080, //  Enable opt to over-write only when configs change
     NFC_CX_DRIVER_ISODEP_RNAK_PRESENCE_CHK_SUPPORTED = 0x000000100, //  The R-NAK command for ISO-DEP will be used for presence check
     NFC_CX_DRIVER_RF_ROUTING_POWER_SUB_STATES_SUPPORTED = 0x000000200, //  Indicates support for RF routing switched ON power sub-states
+    NFC_CX_DRIVER_SKIP_DEVICE_STOP_IDLE = 0x000000400, // CX will not call WdfDeviceStopIdle or WdfDeviceResumeIdle
 } NFC_CX_DRIVER_FLAGS, *PNFC_CX_DRIVER_FLAGS;
 
 // 
@@ -217,6 +218,11 @@ typedef struct _NFC_CX_CLIENT_CONFIG {
     //
     ULONG Size;
 
+    //
+    // If set to WdfFalse/WdfDefault, Class extension will call WdfDeviceAssignS0IdleSettings
+    //     with idle settings values of PowerIdleType and PowerIdleTimeout.
+    // If set to WdfTrue, Class extension will skip WdfDeviceAssignS0IdleSettings call.
+    //
     WDF_TRI_STATE IsPowerPolicyOwner;
 
     //

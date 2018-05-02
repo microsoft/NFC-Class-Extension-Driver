@@ -633,7 +633,7 @@ Return Value:
         status = STATUS_SUCCESS;
     } else {
         TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_DISABLE_POWER_MANAGER_STOP_IDLE, tempValue);
-        FdoContext->DisablePowerManagerStopIdle = (tempValue != 0);
+        FdoContext->DisablePowerManagerStopIdle = (FdoContext->DisablePowerManagerStopIdle) || (tempValue != 0);
     }
 
     status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SESSION_IDENTIFIER);

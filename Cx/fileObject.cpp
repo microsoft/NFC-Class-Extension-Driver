@@ -332,8 +332,15 @@ Return Value:
                               fileContext->Tnf);
 #endif
 
+
     if (NFC_CX_DEVICE_MODE_RAW == fdoContext->NfcCxClientGlobal->Config.DeviceMode)
     {
+        if (fdoContext->DisablePowerManagerStopIdle)
+        {
+            TRACE_LINE(LEVEL_VERBOSE, "'DisablePowerManagerStopIdle' is set. Skipping stop idle.");
+            goto Done;
+        }
+
         // In RAW mode, we place the device in D0 and then just leave it there.
         // This is presumably because the hardware is being tested, so it is fine to leave the NFC Controller in
         // a powered up state..

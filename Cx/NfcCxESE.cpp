@@ -428,7 +428,7 @@ Return Value:
     //
     // Take a power reference if the request is power managed
     //
-    if (NfcCxESEIsPowerManagedRequest(IoControlCode)) {
+    if (!fdoContext->DisablePowerManagerStopIdle && NfcCxESEIsPowerManagedRequest(IoControlCode)) {
         status = WdfDeviceStopIdle(fdoContext->Device,
                                    TRUE);
         if (!NT_SUCCESS(status)) {
@@ -656,14 +656,17 @@ Return Value:
 
     WdfWaitLockRelease(ESEInterface->SmartCardLock);
 
-    // Ensure RF has been initialized, by waiting for the device to enter D0, so that we can successfully enable the SE.
-    status = WdfDeviceStopIdle(ESEInterface->FdoContext->Device, /*WaitForD0*/ TRUE);
-    if (!NT_SUCCESS(status))
+    if (!ESEInterface->FdoContext->DisablePowerManagerStopIdle)
     {
-        TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
-        goto Done;
+        // Ensure RF has been initialized, by waiting for the device to enter D0, so that we can successfully enable the SE.
+        status = WdfDeviceStopIdle(ESEInterface->FdoContext->Device, /*WaitForD0*/ TRUE);
+        if (!NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
+            goto Done;
+        }
+        stopIdleCalled = true;
     }
-    stopIdleCalled = true;
 
     // Enable the SE.
     status = NfcCxSEInterfaceSetCardWiredMode(

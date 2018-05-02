@@ -407,10 +407,14 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    //
-    // When in test mode, we prevent the hardware from idle stopping
-    //
-    (void)WdfDeviceStopIdle(DTAInterface->FdoContext->Device, FALSE);
+    if (!DTAInterface->FdoContext->DisablePowerManagerStopIdle)
+    {
+        //
+        // When in test mode, we prevent the hardware from idle stopping
+        //
+        (void)WdfDeviceStopIdle(DTAInterface->FdoContext->Device, FALSE);
+    }
+
 
     WdfWaitLockAcquire(DTAInterface->DeviceLock, NULL);
 
@@ -513,10 +517,14 @@ Return Value:
                                          FALSE);
     }
 
-    //
-    // Resume idling when exiting test mode
-    //
-    WdfDeviceResumeIdle(DTAInterface->FdoContext->Device);
+    if (!DTAInterface->FdoContext->DisablePowerManagerStopIdle)
+    {
+        //
+        // Resume idling when exiting test mode
+        //
+        WdfDeviceResumeIdle(DTAInterface->FdoContext->Device);
+    }
+
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;

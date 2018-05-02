@@ -534,7 +534,7 @@ Return Value:
     //
     // Take a power reference if the request is power managed
     //
-    if (NfcCxSCIsPowerManagedRequest(IoControlCode)) {
+    if (!fdoContext->DisablePowerManagerStopIdle && NfcCxSCIsPowerManagedRequest(IoControlCode)) {
         status = WdfDeviceStopIdle(fdoContext->Device,
                                    TRUE);
         if (!NT_SUCCESS(status)) {

@@ -269,10 +269,19 @@ Return Value:
 
     nfcCxClientGlobals = GetPrivateGlobals(NfcCxGlobals);
 
-    //
-    // The CX is the power policy owner of this stack.
-    //
-    WdfDeviceInitSetPowerPolicyOwnership(DeviceInit, TRUE);
+    if ((Config->DriverFlags & NFC_CX_DRIVER_SKIP_DEVICE_STOP_IDLE) == 0) {
+        //
+        // To call WdfDeviceStopIdle/WdfDeviceResumeIdle we need to make sure
+        // that power policy ownership is set to TRUE.
+        //
+        WdfDeviceInitSetPowerPolicyOwnership(DeviceInit, TRUE);
+    }
+    else {
+        //
+        // The Client is responsible for setting power policy ownership.
+        //
+        TRACE_LINE(LEVEL_INFO, "CX will not explicitly set power policy ownership.");
+    }
 
     //
     // Allocate the CX DeviceInit
@@ -386,6 +395,7 @@ Return Value:
     fdoContext->SERadioInterfaceCreated = FALSE;
     fdoContext->NfcCxClientGlobal = nfcCxClientGlobal;
     fdoContext->LogNciDataMessages = FALSE;
+    fdoContext->DisablePowerManagerStopIdle = (nfcCxClientGlobal->Config.DriverFlags & NFC_CX_DRIVER_SKIP_DEVICE_STOP_IDLE) != 0;
 
     status = NfcCxFdoReadCxDriverRegistrySettings(&fdoContext->LogNciDataMessages);
     if (!NT_SUCCESS(status)) {
