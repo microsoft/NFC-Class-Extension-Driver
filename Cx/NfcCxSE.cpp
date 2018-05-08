@@ -2793,54 +2793,6 @@ Done:
 }
 
 NTSTATUS
-NfcCxSEInterfaceResetCard(
-    _In_ PNFCCX_SE_INTERFACE SEInterface,
-    _In_ const GUID& SecureElementId
-    )
-/*++
-
-Routine Description:
-
-    Resets an SE by power cycling it (or equivalent)
-
-Arguments:
-
-    SEInterface - A pointer to the SEInterface
-    SecureElementId - The GUID of the SE
-
-Return Value:
-
-    NTSTATUS
-
---*/
-{
-    NTSTATUS status = STATUS_SUCCESS;
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    //
-    // Get the SE handle
-    //
-    phLibNfc_Handle hSecureElement;
-    if (!NfcCxSEInterfaceGetSecureElementHandle(
-        SEInterface->FdoContext->RFInterface,
-        SecureElementId,
-        &hSecureElement))
-    {
-        TRACE_LINE(LEVEL_ERROR, "Invalid secure element identifier %!GUID!", &SecureElementId);
-        status = STATUS_INVALID_PARAMETER;
-        goto Done;
-    }
-
-    status = NfcCxRFInterfaceResetCard(
-        SEInterface->FdoContext->RFInterface,
-        hSecureElement);
-
-Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    return status;
-}
-
-NTSTATUS
 NfcCxSEInterfaceGetActivationMode(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ phLibNfc_Handle hSecureElement,

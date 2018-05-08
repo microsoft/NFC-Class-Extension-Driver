@@ -206,3 +206,12 @@ phHciNfc_CreatePipe(
     pphHciNfc_RspCb_t pRspCb,
     void *pContext
     );
+
+extern
+NFCSTATUS
+phHciNfc_eSE_EvtAbort(
+	void  *pHciContext,
+	uint8_t bPipeId,
+	pphHciNfc_UpperLayerSendCb_t    phHciNfcUpperLayerSendCb,
+	void *pContext
+);

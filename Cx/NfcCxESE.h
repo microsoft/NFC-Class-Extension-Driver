@@ -182,13 +182,3 @@ NfcCxESEInterfaceDispatchAttributeIccType(
     _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
     );
-
-//
-// Helper methods below don't have locking constraints
-//
-
-_Requires_lock_not_held_(ESEInterface->SmartCardLock)
-NTSTATUS
-NfcCxESEInterfaceResetCard(
-    _In_ PNFCCX_ESE_INTERFACE ESEInterface
-    );

@@ -335,12 +335,6 @@ NfcCxRFInterfaceSetCardActivationMode(
     );
 
 NTSTATUS
-NfcCxRFInterfaceResetCard(
-    _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ phLibNfc_Handle hSecureElement
-    );
-
-NTSTATUS
 NfcCxRFInterfaceSetRoutingTable(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_reads_(RtngTableCount) phLibNfc_RtngConfig_t* pRtngTable,

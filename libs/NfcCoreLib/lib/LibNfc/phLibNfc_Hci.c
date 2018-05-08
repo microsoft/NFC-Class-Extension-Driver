@@ -35,6 +35,8 @@ static NFCSTATUS phHciNfc_CreateSETransceiveTimer(phHciNfc_HciContext_t  *pHciCo
 static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInfo);
 static NFCSTATUS phHciNfc_CreateSEGetAtrTimer(phHciNfc_HciContext_t  *pHciContext);
 
+static void phLibNfc_eSE_EvtAbortProc(void* pContext, NFCSTATUS status);
+
 //ETSI 12 changes
 static NFCSTATUS phLibNfc_HciSetHostType(void* pContext, NFCSTATUS status, void* pInfo);
 static NFCSTATUS phLibNfc_HciSetHostTypeProc(void* pContext, NFCSTATUS status, void* pInfo);
@@ -1409,6 +1411,45 @@ static void phHciNfc_eSEGetAtrTimeOutCb(uint32_t dwTimerId, void *pContext)
     PH_LOG_LIBNFC_FUNC_EXIT();
 }
 
+static void phLibNfc_eSE_EvtAbortProc(void* pContext, NFCSTATUS status)
+{
+	pphLibNfc_Context_t pLibCtx = phLibNfc_GetContext();
+	phHciNfc_HciContext_t *pHciContext = NULL;
+	NFCSTATUS wStatus = NFCSTATUS_FAILED;
+	PH_LOG_LIBNFC_FUNC_ENTRY();
+	if (NULL != pLibCtx)
+	{
+		if (status == NFCSTATUS_SUCCESS)
+		{
+			if ((NULL != pLibCtx->pHciContext) && (pContext == pLibCtx->pHciContext))
+			{
+				pHciContext = pLibCtx->pHciContext;
+				/*Get the Host Type list on HCI network*/
+				wStatus = phHciNfc_AnyGetParameter(
+					pLibCtx->pHciContext,
+					pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId,
+					PHHCINFC_APDU_GATE_ATR_REG_ID,
+					pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId,
+					&phLibNfc_eSE_GetAtrProc,
+					pContext);
+			}
+			else
+			{
+				PH_LOG_LIBNFC_CRIT_STR("Invalid Hci context received!");
+			}
+		}
+		else
+		{
+			PH_LOG_LIBNFC_CRIT_STR("Received FAILED status or pInfo Invalid");
+		}
+	}
+	else
+	{
+		PH_LOG_LIBNFC_CRIT_STR("LibNfc context invalid");
+	}
+	PH_LOG_LIBNFC_FUNC_EXIT();
+}
+
 static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInfo)
 {
     pphLibNfc_Context_t pLibCtx = phLibNfc_GetContext();
@@ -1566,13 +1607,10 @@ phLibNfc_eSE_GetAtr(
                 }
                 else
                 {
-                    wStatus = phHciNfc_AnyGetParameter(
-                        pLibCtx->pHciContext,
-                        pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId,
-                        PHHCINFC_APDU_GATE_ATR_REG_ID,
-                        pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId,
-                        &phLibNfc_eSE_GetAtrProc,
-                        pLibCtx->pHciContext);
+                    wStatus = phHciNfc_eSE_EvtAbort(pLibCtx->pHciContext,
+                                                    pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId, 
+                                                    &phLibNfc_eSE_EvtAbortProc,
+                                                    pLibCtx->pHciContext);
                 }
 
                 if (NFCSTATUS_PENDING != wStatus)

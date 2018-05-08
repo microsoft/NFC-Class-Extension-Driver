@@ -1464,7 +1464,7 @@ NFCSTATUS
 phHciNfc_eSE_EvtAbort(
     void  *pHciContext,
     uint8_t bPipeId,
-    pphHciNfc_RspCb_t pRspCb,
+    pphHciNfc_UpperLayerSendCb_t    phHciNfcUpperLayerSendCb,
     void *pContext
 )
 {
@@ -1472,7 +1472,6 @@ phHciNfc_eSE_EvtAbort(
     phHciNfc_SendParams_t *pSendParams = NULL;
     pphHciNfc_HciContext_t pHciCtxt = (pphHciNfc_HciContext_t)pHciContext;
     UNUSED(pContext);
-    UNUSED(pRspCb);
     PH_LOG_HCI_FUNC_ENTRY();
 
     if (NULL != pHciContext)
@@ -1493,7 +1492,7 @@ phHciNfc_eSE_EvtAbort(
             /*Pipe id for the command */
             pSendParams->bPipeId = bPipeId;
 
-            wStatus = phHciNfc_CoreSend(pHciCtxt, pSendParams, &phHciNfc_CmdSendCb, pHciCtxt);
+            wStatus = phHciNfc_CoreSend(pHciCtxt, pSendParams, phHciNfcUpperLayerSendCb, pHciCtxt);
             if (NFCSTATUS_PENDING == wStatus)
             {
                 PH_LOG_HCI_INFO_STR("Pending");

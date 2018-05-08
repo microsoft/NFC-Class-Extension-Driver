@@ -1106,12 +1106,11 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_ESE_INTERFACE eseInterface;
+    PNFCCX_FDO_CONTEXT fdoContext;
+    PNFCCX_RF_INTERFACE rfInterface;
     DWORD *pdwPower = (DWORD*)InputBuffer;
 
-    UNREFERENCED_PARAMETER(Request);
     UNREFERENCED_PARAMETER(InputBufferLength);
-    UNREFERENCED_PARAMETER(OutputBuffer);
-    UNREFERENCED_PARAMETER(OutputBufferLength);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -1121,6 +1120,8 @@ Return Value:
     _Analysis_assume_(sizeof(DWORD) <= InputBufferLength);
 
     eseInterface = NfcCxFdoGetContext(Device)->ESEInterface;
+    fdoContext = eseInterface->FdoContext;
+    rfInterface = fdoContext->RFInterface;
 
     WdfWaitLockAcquire(eseInterface->SmartCardLock, NULL);
 
@@ -1136,7 +1137,25 @@ Return Value:
     {
     case SCARD_COLD_RESET:
     case SCARD_WARM_RESET:
-        NfcCxESEInterfaceResetCard(eseInterface);
+        status = NfcCxRFInterfaceESEGetATRString(rfInterface,
+                                                 (PBYTE)OutputBuffer,
+                                                 OutputBufferLength,
+                                                 &OutputBufferLength);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Get ATR String failed, %!STATUS!", status);
+            goto Done;
+        }
+        else if (NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_INFO,
+                "Completing request %p, with %!STATUS!, 0x%I64x", Request, status, OutputBufferLength);
+            WdfRequestCompleteWithInformation(Request, status, OutputBufferLength);
+            //
+            // Since we have completed the request here,
+            // return STATUS_PENDING to avoid double completion of the request
+            //
+            status = STATUS_PENDING;
+        }
         break;
 
     case SCARD_POWER_DOWN:
@@ -1687,34 +1706,3 @@ Done:
 //
 // Other internal methods below
 //
-
-_Requires_lock_not_held_(ESEInterface->SmartCardLock)
-NTSTATUS
-NfcCxESEInterfaceResetCard(
-    _In_ PNFCCX_ESE_INTERFACE ESEInterface
-    )
-/*++
-
-Routine Description:
-
-    This routine warm resets the smart card
-
-Arguments:
-
-    ESEInterface - The eSE Interface
-
-Return Value:
-
-    NTSTATUS
-
---*/
-{
-    NTSTATUS status = STATUS_SUCCESS;
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    status = NfcCxSEInterfaceResetCard(ESEInterface->FdoContext->SEInterface, ESEInterface->SecureElementId);
-
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    return status;
-}
