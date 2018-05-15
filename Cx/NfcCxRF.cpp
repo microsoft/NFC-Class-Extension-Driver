@@ -3838,6 +3838,54 @@ Done:
     return Status;
 }
 
+_Function_class_(EVT_NFC_CX_SEQUENCE_COMPLETION_ROUTINE)
+static VOID
+NfcCxRFInterfaceSESetModeCompleteCB(
+    _In_ WDFDEVICE /*Device*/,
+    _In_ NTSTATUS Status,
+    _In_ ULONG Flags,
+    _In_ WDFCONTEXT Context
+)
+{
+    PNFCCX_RF_INTERFACE rfInterface = (PNFCCX_RF_INTERFACE)Context;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    TRACE_LINE(LEVEL_INFO, "Flags=0x%x", Flags);
+
+    NfcCxRFInterfaceStopWatchdogTimer(rfInterface);
+    NfcCxInternalSequence(rfInterface, rfInterface->pSeqHandler, Status, NULL, NULL);
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+}
+
+NTSTATUS
+NfcCxRFInterfaceSESetModeComplete(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NTSTATUS Status,
+    _In_opt_ VOID* /*Param1*/,
+    _In_opt_ VOID* /*Param2*/
+)
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    WdfWaitLockAcquire(RFInterface->SequenceLock, NULL);
+
+    if (RFInterface->SeqHandlers[SequenceNfceeSetModeComplete] != NULL) {
+        Status = STATUS_PENDING;
+        NfcCxRFInterfaceStartWatchdogTimer(RFInterface);
+        RFInterface->SeqHandlers[SequenceNfceeSetModeComplete](RFInterface->FdoContext->Device,
+            SequenceNfceeSetModeComplete,
+            NfcCxRFInterfaceSESetModeCompleteCB,
+            (WDFCONTEXT)RFInterface);
+    }
+
+    WdfWaitLockRelease(RFInterface->SequenceLock);
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
+    return Status;
+}
+
 static VOID
 NfcCxRFInterfaceRemoteDevSendCB(
     _In_ void* pContext,
