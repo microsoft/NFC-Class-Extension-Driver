@@ -253,8 +253,7 @@ phNciNfc_T3TPollReq(
 
                 if(NFCSTATUS_PENDING == wStatus)
                 {
-                    psNciContext->IfNtf = pNotify;
-                    psNciContext->IfNtfCtx = pContext;
+                    phNciNfc_SetUpperLayerCallback(psNciContext, pNotify, pContext);
                 }
                 else
                 {

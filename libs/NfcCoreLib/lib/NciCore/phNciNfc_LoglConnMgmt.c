@@ -164,6 +164,7 @@ phNciNfc_GetConnId(
             }
         }
     }
+    PH_LOG_NCI_INFO_STR("status = %!NFCSTATUS!", status);
     PH_LOG_NCI_FUNC_EXIT();
 
     return status;

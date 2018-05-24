@@ -39,3 +39,22 @@ void phNciNfc_NciCtxInitialize(pphNciNfc_Context_t pNciCtx)
     PH_LOG_NCI_FUNC_EXIT();
     return ;
 }
+
+void phNciNfc_SetUpperLayerCallback(pphNciNfc_Context_t nciContext, pphNciNfc_IfNotificationCb_t callbackFunction, void* callbackContext)
+{
+    PH_LOG_NCI_FUNC_ENTRY();
+
+    if (nciContext->IfNtf != NULL || nciContext->IfNtfCtx != NULL)
+    {
+        PH_LOG_NCI_CRIT_STR(
+            "Overwriting upper layer callback in nciContext! Lost values: nciContext->IfNtf=%p, nciContext->IfNtfCtx=%p",
+            (void*)nciContext->IfNtf,
+            nciContext->IfNtfCtx);
+    }
+
+    nciContext->IfNtf = callbackFunction;
+    nciContext->IfNtfCtx = callbackContext;
+
+    PH_LOG_NCI_INFO_STR("New values: nciContext->IfNtf=%p, nciContext->IfNtfCtx=%p", (void*)nciContext->IfNtf, nciContext->IfNtfCtx);
+    PH_LOG_NCI_FUNC_EXIT();
+}

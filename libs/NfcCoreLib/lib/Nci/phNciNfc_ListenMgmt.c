@@ -134,8 +134,7 @@ phNciNfc_ReceiveData(void *pNciCtx,
     else
     {
         /* Store upper layer call back function and upper layer context */
-        pNciContext->IfNtf = pReceiveCb;
-        pNciContext->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pNciContext, pReceiveCb, pContext);
 
         /* Check whether data has been received from remote device already */
         if(1 == pNciContext->tLstnModeRecvInfo.bDataBuffEnable)
@@ -250,8 +249,7 @@ phNciNfc_SendData(void *pNciCtx,
         pActivDev = (pphNciNfc_ActiveDeviceInfo_t)&pNciContext->tActvDevIf;
 
         /* Store upper layer call back function and upper layer context */
-        pNciContext->IfNtf = pSendCb;
-        pNciContext->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pNciContext, pSendCb, pContext);
 
         if((0 == pSendData->length) || (NULL == pSendData->buffer))
         {
@@ -388,8 +386,7 @@ phNciNfc_SeSendData(void* pNciCtx,
                     if(NFCSTATUS_PENDING == wStatus)
                     {
                         /* Store upper layer call back function and upper layer context */
-                        pNciContext->IfNtf = pSendCb;
-                        pNciContext->IfNtfCtx = pContext;
+                        phNciNfc_SetUpperLayerCallback(pNciContext, pSendCb, pContext);
                     }
                     else
                     {

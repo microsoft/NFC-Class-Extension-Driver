@@ -64,7 +64,6 @@ phLibNfc_Sequence_t gphLibNfc_NfceeStartDiscSeq[] = {
 
 /* NFCEE discovery complete sequence */
 phLibNfc_Sequence_t gphLibNfc_NfceeDiscCompleteSeq[] = {
-    {&phLibNfc_DelayForSeNtf, &phLibNfc_DelayForSeNtfProc},
     {&phLibNfc_HciSetSessionIdentity, &phLibNfc_HciSetSessionIdentityProc},
     {NULL, &phLibNfc_NfceeDiscSeqComplete}
 };
@@ -1204,27 +1203,35 @@ NFCSTATUS phLibNfc_DelayForSeNtf(void* pContext, NFCSTATUS status, void* pInfo)
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t ) pContext;
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
-    if( (NULL != pCtx) && (NFCSTATUS_SUCCESS == wStatus) )
+    if ((NULL != pCtx) && (NFCSTATUS_SUCCESS == wStatus))
     {
-        PH_LOG_LIBNFC_INFO_U32MSG("Delay to receive UICC ntf", pCtx->dwHciInitDelay);
+        if (0 != pCtx->dwHciTimerId)
+        {
+            PH_LOG_LIBNFC_WARN_STR("Existing dwHciTimerId=%u will be overwritten!", pCtx->dwHciTimerId);
+        }
 
         pCtx->dwHciTimerId = phOsalNfc_Timer_Create();
-        if (PH_OSALNFC_TIMER_ID_INVALID != pCtx->dwHciTimerId)
+
+        PH_LOG_LIBNFC_INFO_STR(
+            "Sequence will wait for NCI notification, timeout: %u, dwHciTimerId: %u",
+            pCtx->dwHciInitDelay,
+            pCtx->dwHciTimerId);
+
+        wStatus = phOsalNfc_Timer_Start(pCtx->dwHciTimerId,
+                                        pCtx->dwHciInitDelay,
+                                        &phLibNfc_NfceeNtfDelayCb,
+                                        (void *)pCtx);
+
+        if (NFCSTATUS_SUCCESS == wStatus)
         {
-            wStatus = phOsalNfc_Timer_Start(pCtx->dwHciTimerId,
-                                            pCtx->dwHciInitDelay,
-                                            &phLibNfc_NfceeNtfDelayCb,
-                                            (void *)pCtx);
-            if(NFCSTATUS_SUCCESS == wStatus)
-            {
-                wStatus = NFCSTATUS_PENDING;
-            }
-            else
-            {
-                (void)phOsalNfc_Timer_Delete(pCtx->dwHciTimerId);
-                pCtx->dwHciTimerId = 0;
-                wStatus = NFCSTATUS_FAILED;
-            }
+            wStatus = NFCSTATUS_PENDING;
+        }
+        else
+        {
+            PH_LOG_LIBNFC_CRIT_STR("Failed to set a timer for NCI notification, status:%!NFCSTATUS!", wStatus);
+            phOsalNfc_Timer_Delete(pCtx->dwHciTimerId);
+            pCtx->dwHciTimerId = 0;
+            wStatus = NFCSTATUS_FAILED;
         }
     }
     PH_LOG_LIBNFC_FUNC_EXIT();

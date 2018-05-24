@@ -226,8 +226,7 @@ phNciNfc_Initialise(
 
     if((NFCSTATUS_SUCCESS == wStatus) && (NULL != pNciContext))
     {
-        pNciContext->IfNtf = pInitNotifyCb;
-        pNciContext->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pNciContext, pInitNotifyCb, pContext);
 
         /*Update default Values*/
         PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_InitSequence);
@@ -291,8 +290,7 @@ phNciNfc_ReInitialise(void* pNciHandle,
     }
     else if(NULL != pReInitNotifyCb)
     {
-        pNciContext->IfNtf = pReInitNotifyCb;
-        pNciContext->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pNciContext, pReInitNotifyCb, pContext);
         pNciContext->ResetInfo.ResetTypeReq = phNciNfc_ResetType_KeepConfig;
         /* Init payload to display the build number in the init response */
         pNciContext->tInitInfo.bExtension = 0x00;
@@ -424,8 +422,7 @@ NFCSTATUS phNciNfc_StartDiscovery(void* pNciHandle,
             if(NFCSTATUS_SUCCESS == wStatus)
             {
                 pNciContext->NciDiscContext.pDiscPayload[0] = bNoofConfigs;
-                pNciContext->IfNtf = pDiscoveryCb;
-                pNciContext->IfNtfCtx = pContext;
+                phNciNfc_SetUpperLayerCallback(pNciContext, pDiscoveryCb, pContext);
                 PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_DiscoverSequence);
                 wStatus = phNciNfc_GenericSequence((void *)pNciContext, NULL, NFCSTATUS_SUCCESS);
             }
@@ -501,8 +498,7 @@ NFCSTATUS phNciNfc_Nfcee_StartDiscovery(void * pNciHandle,
 
         if (wStatus == NFCSTATUS_SUCCESS)
         {
-            pNciContext->IfNtf = pNfceeDisCb;
-            pNciContext->IfNtfCtx = pContext;
+            phNciNfc_SetUpperLayerCallback(pNciContext, pNfceeDisCb, pContext);
             PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_NfceeDiscSequence);
             wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
             if (NFCSTATUS_PENDING != wStatus)
@@ -553,8 +549,7 @@ NFCSTATUS phNciNfc_Nfcee_StopDiscovery(void * pNciHandle,
             pTargetInfo[0] = PH_NCINFC_NFCEE_DISC_DISABLE;
             pNciContext->tSendPayload.pBuff = pTargetInfo;
             pNciContext->tSendPayload.wPayloadSize = PHNCINFC_NFCEEDISC_PAYLOADLEN_1x;
-            pNciContext->IfNtf = pNfceeDisCb;
-            pNciContext->IfNtfCtx = pContext;
+            phNciNfc_SetUpperLayerCallback(pNciContext, pNfceeDisCb, pContext);
             PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_NfceeDiscSequence);
             wStatus = phNciNfc_GenericSequence(pNciContext, NULL, NFCSTATUS_SUCCESS);
             if(NFCSTATUS_PENDING != wStatus)
@@ -649,8 +644,7 @@ NFCSTATUS phNciNfc_Nfcee_ModeSet(void * pNciHandle,
             pTargetInfo[1] = (uint8_t)eNfceeMode;
             pNciContext->tSendPayload.pBuff = pTargetInfo;
             pNciContext->tSendPayload.wPayloadSize = (uint16_t)PHNCINFC_NFCEEMODESET_PAYLOADLEN;
-            pNciContext->IfNtf = pNotifyCb;
-            pNciContext->IfNtfCtx = pContext;
+            phNciNfc_SetUpperLayerCallback(pNciContext, pNotifyCb, pContext);
 
             PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_ModeSetSequence);
             wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
@@ -713,8 +707,7 @@ NFCSTATUS phNciNfc_Nfcee_SePowerAndLinkCtrlSet(void * pNciHandle,
                 pNciContext->tSendPayload.pBuff = pTargetInfo;
                 pNciContext->tSendPayload.wPayloadSize =
                     (uint16_t)PH_NCINFC_NFCEEPOWERLINKCTRL_PAYLOADLEN;
-                pNciContext->IfNtf = pNotifyCb;
-                pNciContext->IfNtfCtx = pContext;
+                phNciNfc_SetUpperLayerCallback(pNciContext, pNotifyCb, pContext);
                 PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_SePowerAndLinkCtrlSequence);
                 wStatus = phNciNfc_GenericSequence(pNciContext, NULL, wStatus);
                 if (NFCSTATUS_PENDING != wStatus)
@@ -887,8 +880,7 @@ NFCSTATUS phNciNfc_Connect(void *pNciHandle,
             pTargetInfo[2] = eRfInterface;
             pNciContext->NciDiscContext.pDiscPayload = pTargetInfo;
             pNciContext->NciDiscContext.bDiscPayloadLen = PHNCINFC_DISCSEL_PAYLOADLEN;
-            pNciContext->IfNtf = pDiscSelCb;
-            pNciContext->IfNtfCtx = pContext;
+            phNciNfc_SetUpperLayerCallback(pNciContext, pDiscSelCb, pContext);
             PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_DiscSelSequence);
             wConnectStatus = phNciNfc_GenericSequence((void *)pNciContext, NULL, NFCSTATUS_SUCCESS);
             if(NFCSTATUS_PENDING != wConnectStatus)
@@ -939,8 +931,7 @@ NFCSTATUS phNciNfc_Deactivate(void *pNciHandle,
         pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_DEACTIVATE_PAYLOADLEN);
         if(NULL != pTargetInfo)
         {
-            pNciContext->IfNtf = pDeActivateCb;
-            pNciContext->IfNtfCtx = pContext;
+            phNciNfc_SetUpperLayerCallback(pNciContext, pDeActivateCb, pContext);
 
             wDeActivateStatus = phNciNfc_ValidateDeActvType(pNciContext, &pNciContext->NciDiscContext,
                                     eDeActivateType,&pNciContext->NciDiscContext.eDeActvType);
@@ -1020,8 +1011,7 @@ phNciNfc_SetConfigRfParameters(
                     phOsalNfc_MemCopy(pNciContext->tSetConfOptInfo.pSetConfParams,
                                       pDiscConfigParams, sizeof(phNciNfc_RfDiscConfigParams_t));
 
-                    pNciContext->IfNtf = pConfigRfNotifyCb;
-                    pNciContext->IfNtfCtx = pContext;
+                    phNciNfc_SetUpperLayerCallback(pNciContext, pConfigRfNotifyCb, pContext);
                     PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_SetConfigOptSequence);
 
                     wStatus = phNciNfc_GenericSequence(pNciContext, NULL, NFCSTATUS_SUCCESS);
@@ -1044,8 +1034,7 @@ phNciNfc_SetConfigRfParameters(
                     wStatus = phNciNfc_BuildSetConfPayload(pDiscConfigParams,pPayloadBuff,wPayloadSize);
                     if(NFCSTATUS_SUCCESS == wStatus)
                     {
-                        pNciContext->IfNtf = pConfigRfNotifyCb;
-                        pNciContext->IfNtfCtx = pContext;
+                        phNciNfc_SetUpperLayerCallback(pNciContext, pConfigRfNotifyCb, pContext);
                         PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_SetConfigSequence);
                         pNciContext->tSendPayload.pBuff = pPayloadBuff;
                         pNciContext->tSendPayload.wPayloadSize = wPayloadSize;
@@ -1105,8 +1094,7 @@ NFCSTATUS phNciNfc_GetConfigRaw(
         pNciContext->tSendPayload.pBuff = (uint8_t *) phOsalNfc_GetMemory((uint32_t)Length);
         phOsalNfc_MemCopy(pNciContext->tSendPayload.pBuff, pBuff,Length);
         /* Input parameters are valid and payload field has been framed successfully */
-        pNciContext->IfNtf = pConfigRfNotifyCb;
-        pNciContext->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pNciContext, pConfigRfNotifyCb, pContext);
         PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_GetConfigRawSequence);
 
         pNciContext->tSendPayload.wPayloadSize = Length;
@@ -1176,8 +1164,7 @@ phNciNfc_ConfigMapping (void*                        pNciHandle,
             {
                 phNciNfc_BuildDiscMapCmdPayload(pPayloadBuff,bNumMapEntries,pProtoIfMapping);
 
-                pNciContext->IfNtf = pConfigMappingNotifyCb;
-                pNciContext->IfNtfCtx = pContext;
+                phNciNfc_SetUpperLayerCallback(pNciContext, pConfigMappingNotifyCb, pContext);
                 PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_ProtoIfMapSequence);
                 pNciContext->tSendPayload.pBuff = pPayloadBuff;
                 pNciContext->tSendPayload.wPayloadSize = wPayloadSize;
@@ -1271,8 +1258,7 @@ phNciNfc_SetRtngTableConfig(void*                     pNciHandle,
 
         if(NFCSTATUS_SUCCESS  == wStatus)
         {
-            pNciContext->IfNtf = pSetRtngTableNotifyCb;
-            pNciContext->IfNtfCtx = pContext;
+            phNciNfc_SetUpperLayerCallback(pNciContext, pSetRtngTableNotifyCb, pContext);
 
             /* Initializing Rtng config structure with default values */
             pNciContext->tRtngConfInfo.bMore = 0;
@@ -1318,8 +1304,7 @@ phNciNfc_GetRtngTableConfig(void*                        pNciHandle,
         {
             wStatus = NFCSTATUS_FAILED;
             {
-                pNciContext->IfNtf = pGetRtngTableNotifyCb;
-                pNciContext->IfNtfCtx = pContext;
+                phNciNfc_SetUpperLayerCallback(pNciContext, pGetRtngTableNotifyCb, pContext);
 
                 PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_GetRtngConfigSequence);
 
@@ -1395,8 +1380,7 @@ phNciNfc_RfParameterUpdate(void*                        pNciHandle,
 
         if(NFCSTATUS_SUCCESS == wStatus)
         {
-            pNciContext->IfNtf = pRfParamUpdateCb;
-            pNciContext->IfNtfCtx = pContext;
+            phNciNfc_SetUpperLayerCallback(pNciContext, pRfParamUpdateCb, pContext);
 
             PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_RfParamUpdateSequence);
             pNciContext->tSendPayload.pBuff = pPayloadBuff;
@@ -1452,8 +1436,7 @@ phNciNfc_GetConfigRfParameters(
                 *pPayloadBuff = bParamCount;
                 phOsalNfc_MemCopy( (pPayloadBuff + 1),aRfConfigParams,bParamLen);
 
-                pNciContext->IfNtf = pConfigRfNotifyCb;
-                pNciContext->IfNtfCtx = pContext;
+                phNciNfc_SetUpperLayerCallback(pNciContext, pConfigRfNotifyCb, pContext);
                 PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_GetConfigSequence);
                 pNciContext->tSendPayload.pBuff = pPayloadBuff;
                 pNciContext->tSendPayload.wPayloadSize = wPayloadLen;
@@ -1601,7 +1584,7 @@ NFCSTATUS phNciNfc_RegisterHciSeEvent(void* pNciCtx,
             wStatus = phNciNfc_GetConnId(pSeHandle,&bConnId);
         }
 
-        if(NFCSTATUS_SUCCESS == wStatus)
+        if (NFCSTATUS_SUCCESS == wStatus)
         {
             /* Get available free slot index */
             wStatus = phLibNfc_GetAvailableSlotIndex(&pNciContext->tSeEventList, &bSlotIndex);
@@ -1618,7 +1601,7 @@ NFCSTATUS phNciNfc_RegisterHciSeEvent(void* pNciCtx,
                                                     &(tHeaderInfo),
                                                     &phNciNfc_SeEventCb,
                                                     pSeHandle);
-                if(NFCSTATUS_SUCCESS == wStatus)
+                if (NFCSTATUS_SUCCESS == wStatus)
                 {
                     /* Register upper layer call back function (Store SE handle also) */
                     pNciContext->tSeEventList.aSeEventList[bSlotIndex].pSeHandle = pSeHandle;
@@ -1829,8 +1812,7 @@ NFCSTATUS phNciNfc_SetConfigRaw(
         pNciContext->tSendPayload.pBuff = (uint8_t *) phOsalNfc_GetMemory((uint32_t)Length);
         phOsalNfc_MemCopy(pNciContext->tSendPayload.pBuff, pBuff,Length);
         /* Input parameters are valid and payload field has been framed successfully */
-        pNciContext->IfNtf = pConfigRfNotifyCb;
-        pNciContext->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pNciContext, pConfigRfNotifyCb, pContext);
         PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_SetConfigSequence);
         pNciContext->tSendPayload.wPayloadSize = Length;
         wStatus = phNciNfc_GenericSequence(pNciContext, NULL, NFCSTATUS_SUCCESS);
@@ -1867,8 +1849,7 @@ phNciNfc_IsoDepPresenceChk(void* pNciHandle,
     }
     else
     {
-        pNciContext->IfNtf = pIsoDepPresChkCb;
-        pNciContext->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pNciContext, pIsoDepPresChkCb, pContext);
         PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_IsoDepPresChkSequence);
 
         wStatus = phNciNfc_GenericSequence((void *)pNciContext, NULL, NFCSTATUS_SUCCESS);
@@ -1906,8 +1887,7 @@ phNciNfc_SetPowerSubState(void* pNciHandle,
         pTargetInfo = (uint8_t *)phOsalNfc_GetMemory(PHNCINFC_SETPOWERSUBSTATE_PAYLOADLEN);
         if(NULL != pTargetInfo)
         {
-            pNciContext->IfNtf = pSetPowerSubStateCb;
-            pNciContext->IfNtfCtx = pContext;
+            phNciNfc_SetUpperLayerCallback(pNciContext, pSetPowerSubStateCb, pContext);
             /* Fill the buffer details */
             pTargetInfo[0] = (uint8_t)bSubState;
             /* Store the payload info in the context */
@@ -1998,8 +1978,7 @@ phNciNfc_Release(
     }
     else
     {
-        pNciContext->IfNtf = pReleaseCb;
-        pNciContext->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pNciContext, pReleaseCb, pContext);
 
         PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_ReleaseSequence);
         pNciContext->ResetInfo.ResetTypeReq = eResetType;
@@ -2040,8 +2019,7 @@ phNciNfc_ResetNfcc(
     }
     else
     {
-        pNciContext->IfNtf = pResetNfccCb;
-        pNciContext->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pNciContext, pResetNfccCb, pContext);
         PHNCINFC_INIT_SEQUENCE(pNciContext,gphNciNfc_NfccResetSequence);
         pNciContext->ResetInfo.ResetTypeReq = eResetType;
         wStatus = phNciNfc_GenericSequence((void *)pNciContext, NULL, NFCSTATUS_SUCCESS);
@@ -2158,19 +2136,26 @@ static NFCSTATUS phNciNfc_SeEventCb(void* pContext, void *pInfo, NFCSTATUS wStat
     void* pUpperLayerCtx;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    if( (NULL != pNciContext) &&
-        (!phNciNfc_IsVersion1x(pNciContext) || (NULL != pSeHandle)) )
+    if (NULL == pNciContext)
     {
-        if(NULL != pInfo)
-        {
-            pTransInfo = pInfo;
-        }
-        else
+        PH_LOG_NCI_CRIT_STR("NciContext is NULL.");
+        status = NFCSTATUS_INVALID_PARAMETER;
+    }
+    else if (phNciNfc_IsVersion1x(pNciContext) && NULL == pSeHandle)
+    {
+        // In NCI1.0 NULL is invalid value for pSeHandle .
+        PH_LOG_NCI_CRIT_STR("pSeHandle is NULL while operating in NCI1x mode.");
+        status = NFCSTATUS_INVALID_PARAMETER;
+    }
+    else
+    {
+        if (NULL == pTransInfo)
         {
             pTransInfo = &tTransInfo;
             pTransInfo->pbuffer = NULL;
             pTransInfo->wLength = 0;
         }
+
         for(bCount = 0; bCount < PHNCINFC_MAX_SE_EVENT_REGS; bCount++)
         {
             if((1 == pNciContext->tSeEventList.aSeEventList[bCount].bEnable) &&
@@ -2183,10 +2168,16 @@ static NFCSTATUS phNciNfc_SeEventCb(void* pContext, void *pInfo, NFCSTATUS wStat
                     pTransInfo->pContext = pSeHandle;
                     pUpperLayerCb(pUpperLayerCtx,(void *)pTransInfo,wStatus);
                 }
+                else
+                {
+                    PH_LOG_NCI_CRIT_STR("Found matching entry in tSeEventList, but pUpperLayerCb is NULL.");
+                    status = NFCSTATUS_FAILED;
+                }
             }
         }
     }
     PH_LOG_NCI_FUNC_EXIT();
+
     return status;
 }
 

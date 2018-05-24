@@ -148,18 +148,18 @@ static NFCSTATUS phNciNfc_CompleteModeSetSequence(void *pContext, NFCSTATUS wSta
 {
     pphNciNfc_Context_t pNciCtx = pContext;
     PH_LOG_NCI_FUNC_ENTRY();
-    if(NULL != pNciCtx)
+    if (NULL != pNciCtx)
     {
-        if(NULL != pNciCtx->tSendPayload.pBuff)
+        if (NULL != pNciCtx->tSendPayload.pBuff)
         {
             phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
             pNciCtx->tSendPayload.pBuff = NULL;
             pNciCtx->tSendPayload.wPayloadSize = 0;
         }
 
-        if (phNciNfc_IsVersion1x(pNciCtx) ||
-             (phNciNfc_IsVersion2x(pNciCtx) &&
-                wStatus != NFCSTATUS_SUCCESS))
+        // If operating in NCI2.0+ and NFCEE_MODE_SET_RSP indicates
+        // no errors then host should wait for NFCEE_MODE_SET_NTF.
+        if (phNciNfc_IsVersion1x(pNciCtx) || wStatus != NFCSTATUS_SUCCESS)
         {
             phNciNfc_Notify(pNciCtx, wStatus, NULL);
         }
@@ -410,8 +410,7 @@ NFCSTATUS phNciNfc_Nfcee_Connect(void * pNciHandle,
         tDestInfo.tDestParams.bDestParamLen = sizeof(tDestInfo.tDestParams.bDestParamVal);
         tDestInfo.tDestParams.bDestParamVal[0] = pSeHandle->tDevInfo.bNfceeID;
         tDestInfo.tDestParams.bDestParamVal[1] = (uint8_t)phNciNfc_e_NfceeHciAccessIf;  /*HCI Access type*/
-        pCtx->IfNtf = pNfceeConnectCb;
-        pCtx->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pCtx, pNfceeConnectCb, pContext);
         wStatus = phNciNfc_LogConnCreate(pCtx,&tDestInfo,
                     &phNciNfc_NfceeConnectCb,
                     pCtx);
@@ -465,8 +464,7 @@ NFCSTATUS phNciNfc_Nfcee_Disconnect(void * pNciHandle,
         (NULL != pNfceeDisconnectCb) )
     {
         pCtx->pUpperLayerInfo = (void *)pNfceeHandle;
-        pCtx->IfNtf = pNfceeDisconnectCb;
-        pCtx->IfNtfCtx = pContext;
+        phNciNfc_SetUpperLayerCallback(pCtx, pNfceeDisconnectCb, pContext);
         wStatus = phNciNfc_LogConnClose(pCtx,
                     pSeHandle->tDevInfo.bNfceeID,
                     phNciNfc_e_NFCEE,
@@ -726,6 +724,7 @@ static NFCSTATUS phNciNfc_NfceeModeSetNtfHandler(void *pContext,
             PH_LOG_NCI_INFO_STR("NFCEE Mode Set process Success");
         }
     }
+
     phNciNfc_Notify(pCtx, wStatus, NULL);
 
     PH_LOG_NCI_FUNC_EXIT();

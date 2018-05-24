@@ -51,3 +51,5 @@ typedef struct phNciNfc_Context
 extern pphNciNfc_Context_t phNciNfc_GetContext();
 
 extern void phNciNfc_NciCtxInitialize(pphNciNfc_Context_t pNciCtx);
+
+extern void phNciNfc_SetUpperLayerCallback(pphNciNfc_Context_t nciContext, pphNciNfc_IfNotificationCb_t callbackFunction, void* callbackContext);
