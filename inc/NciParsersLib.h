@@ -46,7 +46,7 @@ typedef struct _NCI_PACKET_HEADER {
 BOOLEAN
 NciPacketHeaderGetFromBuffer(
     _In_bytecount_(BufferLength) PUCHAR Buffer,
-    _In_ UCHAR BufferLength,
+    _In_ UINT BufferLength,
     _Out_ PNCI_PACKET_HEADER NciPacketHeader
     );
 

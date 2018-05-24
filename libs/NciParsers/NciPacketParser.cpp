@@ -2,7 +2,7 @@
 
 Copyright (c) Microsoft Corporation.  All rights reserved.
 
-Module Name: 
+Module Name:
 
     NciPacketParser.cpp
 
@@ -22,7 +22,7 @@ Abstract:
 BOOLEAN
 NciPacketHeaderGetFromBuffer(
     _In_bytecount_(BufferLength) PUCHAR Buffer,
-    _In_ UCHAR BufferLength,
+    _In_ UINT BufferLength,
     _Out_ PNCI_PACKET_HEADER NciPacketHeader
     )
 /**++
@@ -50,7 +50,12 @@ Return Value:
 
 
     if (NCI_PACKET_HEADER_LENGTH > BufferLength) {
-        TRACE_LINE(LEVEL_ERROR, "Buffer too small");
+        TRACE_LINE(LEVEL_ERROR, "Buffer is too small");
+        retValue = FALSE;
+        goto Done;
+    }
+    else if (BufferLength > NCI_PACKET_HEADER_LENGTH + NCI_PACKET_MAX_SIZE) {
+        TRACE_LINE(LEVEL_ERROR, "Buffer is too large");
         retValue = FALSE;
         goto Done;
     }
@@ -58,6 +63,13 @@ Return Value:
         TRACE_LINE(LEVEL_ERROR, "Buffer is NULL");
         retValue = FALSE;
         goto Done;
+    }
+
+    if (BufferLength > NCI_PACKET_MAX_SIZE) {
+        //
+        // For diagnostics.
+        //
+        TRACE_LINE(LEVEL_INFO, "NCI packet length is over 255: BufferLength=%u", BufferLength);
     }
 
     //
