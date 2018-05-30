@@ -1171,8 +1171,8 @@ phHciNfc_ReceiveOpenPipeNotifyCmd(void *pContext,NFCSTATUS wStatus, void *pInfo)
                 wStatus = phHciNfc_CoreSend (pHciContext,&tSendParams,&phHciNfc_AnyOkCb, pHciContext);
                 if((NFCSTATUS_PENDING == wStatus))
                 {
-                    /* Do not register for events at APDU Gate Pipe */
-                    if(pReceivedParams->bPipeId != pHciContext->aGetHciSessionId[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX])
+                    if(pReceivedParams->bPipeId == pHciContext->aGetHciSessionId[PHHCI_UICC_CONNECTIVITY_PIPE_STORAGE_INDEX] ||
+                       pReceivedParams->bPipeId == pHciContext->aGetHciSessionId[PHHCI_ESE_CONNECTIVITY_PIPE_STORAGE_INDEX])
                     {
                         /* Register for Evt for the opened pipe */
                         tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
@@ -1193,6 +1193,16 @@ phHciNfc_ReceiveOpenPipeNotifyCmd(void *pContext,NFCSTATUS wStatus, void *pInfo)
                         {
                             PH_LOG_HCI_CRIT_STR("No need to launch sequence");
                         }
+                    }
+                    else if (pReceivedParams->bPipeId == pHciContext->aGetHciSessionId[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX])
+                    {
+                        /* Register for Evt for the opened pipe */
+                        tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+                        tHciRegData.bPipeId = pReceivedParams->bPipeId;
+                        (void)phHciNfc_RegisterCmdRspEvt(pHciContext,
+                                               &tHciRegData,
+                                               &phHciNfc_ProcessEventsOnApduPipe,
+                                               pHciContext);
                     }
                 }
             }
