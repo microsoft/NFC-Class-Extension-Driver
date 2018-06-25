@@ -224,7 +224,8 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (fdoContext->Power->NfpRadioState) {
+    if (fdoContext->Power->NfpRadioState &&
+        !fdoContext->DisableRfInterfaces) {
         //
         // Publish the NFC smart card reader interface
         //

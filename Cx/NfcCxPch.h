@@ -99,6 +99,7 @@ DEFINE_GUID(GUID_NULL, 0,0,0,0,0,0,0,0,0,0,0);
 #define NFCCX_REG_SESSION_IDENTIFIER            L"SessionIdentifier"
 #define NFCCX_REG_LOG_DATA_MESSAGES             L"LogNciDataMessages"
 #define NFCCX_REG_DISABLE_POWER_MANAGER_STOP_IDLE L"DisablePowerManagerStopIdle"
+#define NFCCX_REG_DISABLE_RF_INTERFACES         L"DisableRfInterfaces"
 
 //
 // As per spec The maximum length of the

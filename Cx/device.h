@@ -44,6 +44,7 @@ typedef struct _NFCCX_FDO_CONTEXT {
     BOOLEAN SERadioInterfaceCreated;
 
     BOOLEAN DisablePowerManagerStopIdle;
+    BOOLEAN DisableRfInterfaces;
 
     PNFCCX_POWER_MANAGER Power;
 

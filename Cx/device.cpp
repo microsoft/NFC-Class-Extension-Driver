@@ -636,6 +636,24 @@ Return Value:
         FdoContext->DisablePowerManagerStopIdle = (FdoContext->DisablePowerManagerStopIdle) || (tempValue != 0);
     }
 
+    status = RtlUnicodeStringInit(&valueName, NFCCX_REG_DISABLE_RF_INTERFACES);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_DISABLE_RF_INTERFACES, status);
+        goto Done;
+    }
+
+    status = WdfRegistryQueryULong(
+                            hKey,
+                            &valueName,
+                            &tempValue);
+    if (!NT_SUCCESS(status)) {
+        // Value not present, allow continuation
+        status = STATUS_SUCCESS;
+    } else {
+        TRACE_LINE(LEVEL_INFO, "%S = %d", NFCCX_REG_DISABLE_RF_INTERFACES, tempValue);
+        FdoContext->DisableRfInterfaces = (FdoContext->DisableRfInterfaces) || (tempValue != 0);
+    }
+
     status = RtlUnicodeStringInit(&valueName, NFCCX_REG_SESSION_IDENTIFIER);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to initialize string %S: %!STATUS!", NFCCX_REG_SESSION_IDENTIFIER, status);

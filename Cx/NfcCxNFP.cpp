@@ -234,7 +234,8 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (!fdoContext->NfpRadioInterfaceCreated) {
+    if (!fdoContext->NfpRadioInterfaceCreated &&
+        !fdoContext->DisableRfInterfaces) {
         //
         // Create and publish the NFP RM Interface
         //
@@ -254,7 +255,9 @@ Return Value:
         fdoContext->NfpRadioInterfaceCreated = TRUE;
     }
 
-    if (fdoContext->Power->NfpRadioState) {
+    if (fdoContext->Power->NfpRadioState &&
+        !fdoContext->DisableRfInterfaces)
+    {
         //
         // Publish the NFP interface
         //
