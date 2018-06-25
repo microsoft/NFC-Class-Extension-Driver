@@ -323,6 +323,18 @@ NFCSTATUS phLibNfc_Mgt_DeInitialize (
     return wStatus;
 }
 
+extern bool_t
+phLibNfc_IsVersion1x()
+{
+    return phNciNfc_IsVersion1x(phLibNfc_GetContext()->sHwReference.pNciHandle);
+}
+
+bool_t
+phLibNfc_IsVersion2x()
+{
+    return phNciNfc_IsVersion2x(phLibNfc_GetContext()->sHwReference.pNciHandle);
+}
+
 static void phLibNfc_ShutdownCb(void *pContext,NFCSTATUS status,void *pInfo)
 {
     pphLibNfc_RspCb_t           pClientCb=NULL;

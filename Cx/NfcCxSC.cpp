@@ -32,7 +32,7 @@ typedef struct _NFCCX_SC_DISPATCH_ENTRY {
 static const CHAR SCReaderVendorIfd[] = "IFD";
 static const DWORD SCReaderChannelId = SCARD_READER_TYPE_NFC << 16;
 
-NFCCX_SC_DISPATCH_ENTRY 
+NFCCX_SC_DISPATCH_ENTRY
 g_ScDispatch [] = {
     { IOCTL_SMARTCARD_GET_ATTRIBUTE,        TRUE,   FALSE,  sizeof(DWORD),                     sizeof(BYTE),                     NfcCxSCInterfaceDispatchGetAttribute },
     { IOCTL_SMARTCARD_SET_ATTRIBUTE,        FALSE,  FALSE,  sizeof(DWORD),                     0,                                NfcCxSCInterfaceDispatchSetAttribute },
@@ -78,7 +78,7 @@ Return Value:
     WDF_IO_QUEUE_CONFIG queueConfig;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     scInterface = (PNFCCX_SC_INTERFACE)malloc(sizeof((*scInterface)));
     if (NULL == scInterface) {
         TRACE_LINE(LEVEL_ERROR, "Failed to allocate the SC interface");
@@ -301,7 +301,7 @@ Return Value:
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
-BOOLEAN 
+BOOLEAN
 NfcCxSCInterfaceIsIoctlSupported(
     _In_ PNFCCX_FDO_CONTEXT FdoContext,
     _In_ ULONG IoControlCode
@@ -312,7 +312,7 @@ Routine Description:
 
     This routine returns true if the provided IOCTL is supported by the
     module.
-    
+
 Arguments:
 
     FdoContext - The FDO Context
@@ -347,7 +347,7 @@ NfcCxSCIsPowerManagedRequest(
 Routine Description:
 
     This routine returns true if the provided IOCTL is power managed.
-    
+
 Arguments:
 
     FdoContext - The FDO Context
@@ -381,7 +381,7 @@ Routine Description:
 
     This routine returns true if the provided IOCTL requires
     sequential dispatch.
-    
+
 Arguments:
 
     IoControlCode - The IOCTL code to check
@@ -453,7 +453,7 @@ Return Value:
         WdfRequestComplete(Request, status);
     } else {
         //
-        // At this point we know the NT_SUCCESS macro was satisfied, 
+        // At this point we know the NT_SUCCESS macro was satisfied,
         // this means that one of the dispatch should have completed
         // the request already.
         //
@@ -463,7 +463,7 @@ Return Value:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }
 
-NTSTATUS 
+NTSTATUS
 NfcCxSCInterfaceIoDispatch(
     _In_opt_ PNFCCX_FILE_CONTEXT FileContext,
     _In_ WDFREQUEST    Request,
@@ -639,7 +639,7 @@ Return Value:
 
     for (i = 0; i < ARRAYSIZE(g_ScDispatch); i++) {
         if (g_ScDispatch[i].IoControlCode == IoControlCode) {
-            
+
             if (g_ScDispatch[i].MinimumInputBufferLength > InputBufferLength) {
                 TRACE_LINE(LEVEL_ERROR, "Invalid Input buffer.  Expected %I64x, got %I64x",
                     g_ScDispatch[i].MinimumInputBufferLength,
@@ -738,7 +738,7 @@ Arguments:
 
     ScInterface - A pointer to the SCInterface
     FileContext - Client to add
-    
+
 Return Value:
 
     NTSTATUS
@@ -781,7 +781,7 @@ Routine Description:
 Arguments:
 
     ScInterface - A pointer to the SCInterface
-    
+
 Return Value:
 
     VOID
@@ -802,7 +802,7 @@ Return Value:
     if (ScInterface->SessionEstablished &&
         !ScInterface->FdoContext->RFInterface->pLibNfcContext->bIsTagNdefFormatted) {
         //
-        // We need to reset the smart card if the application has established a 
+        // We need to reset the smart card if the application has established a
         // session with the smart card to clear any authentication or state information
         //
         fResetCard = TRUE;
@@ -844,7 +844,7 @@ Arguments:
 
     ScInterface - SCInterface object corresponding to smartcard connection
     RFInterface - RFInterface of ScInterface provided containing data for SCInterface
-    
+
 Return Value:
 
     VOID
@@ -882,7 +882,7 @@ Return Value:
             TRACE_LINE(LEVEL_WARNING, "Unsupported SmartCard type %!phNfc_eRFDevType_t!", pRemoteDeviceInfo->RemDevType);
             status = STATUS_NOT_SUPPORTED;
     }
-    
+
     if (NT_SUCCESS(status))
     {
         status = NfcCxSCInterfaceLoadStorageClassFromAtrLocked(ScInterface);
@@ -1014,7 +1014,7 @@ Return Value:
     _Analysis_assume_(sizeof(BYTE) <= OutputBufferLength);
     _Analysis_assume_(sizeof(BYTE) <= InputBufferLength);
 
-    attributeId = *(DWORD*)InputBuffer;    
+    attributeId = *(DWORD*)InputBuffer;
     fdoContext  = NfcCxFdoGetContext(Device);
     scInterface = fdoContext->SCInterface;
 
@@ -1226,7 +1226,7 @@ Return Value:
             "Completing request %p, with %!STATUS!, 0x%I64x", Request, status, sizeof(DWORD));
         WdfRequestCompleteWithInformation(Request, status, sizeof(DWORD));
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1234,7 +1234,7 @@ Return Value:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1315,7 +1315,7 @@ Return Value:
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1402,7 +1402,7 @@ Done:
             "Completing request %p, with %!STATUS!, 0x%I64x", Request, status, sizeof(DWORD));
         WdfRequestCompleteWithInformation(Request, status, sizeof(DWORD));
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1410,7 +1410,7 @@ Done:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1475,14 +1475,14 @@ Return Value:
     }
 
     WdfWaitLockRelease(scInterface->SmartCardLock);
-    
+
     // Pass request to Present/Absent dispatcher.
     status = NfcCxSCPresentAbsentDispatcherSetRequest(scInterface->FdoContext, &scInterface->AbsentDispatcher, Request);
 
 Done:
     if (NT_SUCCESS(status)) {
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1553,13 +1553,13 @@ Return Value:
     }
 
     WdfWaitLockRelease(scInterface->SmartCardLock);
-    
+
     status = NfcCxSCPresentAbsentDispatcherSetRequest(scInterface->FdoContext, &scInterface->PresentDispatcher, Request);
 
 Done:
     if (NT_SUCCESS(status)) {
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1697,7 +1697,7 @@ Return Value:
             else if (!NT_SUCCESS(reactivateStatus)) {
                 TRACE_LINE(LEVEL_ERROR, "Failed to activate new selected protocol! %!STATUS!", reactivateStatus);
                 status = reactivateStatus;
-            }   
+            }
         }
 
         if (!NT_SUCCESS(status)) {
@@ -1705,7 +1705,7 @@ Return Value:
             RtlCopyMemory(Sw1Sw2, APDU_STATUS_ERROR_COMMAND_ABORTED, DEFAULT_APDU_STATUS_SIZE);
 
             // Actual error is logged above, proceeding with failure APDU and status success
-            status = STATUS_SUCCESS; 
+            status = STATUS_SUCCESS;
         }
 
         NTSTATUS copyRspStatus = NfcCxSCCommonCopyTrasmitResponseData(OutputBuffer,
@@ -1748,7 +1748,7 @@ Done:
             "Completing request %p, with %!STATUS!, output buffer used = %lu", Request, status, cbOutputBufferUsed);
         WdfRequestCompleteWithInformation(Request, status, cbOutputBufferUsed);
         //
-        // Since we have completed the request here, 
+        // Since we have completed the request here,
         // return STATUS_PENDING to avoid double completion of the request
         //
         status = STATUS_PENDING;
@@ -1841,7 +1841,7 @@ Return Value:
         status = STATUS_INVALID_DEVICE_STATE;
         goto Done;
     }
-    
+
     status = NfcCxCopyToBuffer(&SCReaderCurrentProtocolType, sizeof(SCReaderCurrentProtocolType), pbOutputBuffer, pcbOutputBuffer);
 
 Done:
@@ -2550,7 +2550,7 @@ NTSTATUS NfcCxSCInterfaceLoadNewSelectedProtocol(
         status = STATUS_INVALID_PARAMETER;
         goto Done;
     }
-    
+
     TRACE_LINE(LEVEL_INFO, "New selected protocol is at index %d", SelectedProtocol);
 
     ScInterface->FdoContext->RFInterface->pLibNfcContext->SelectedProtocolIndex = SelectedProtocol;
@@ -2595,18 +2595,18 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    status = NfcCxSCInterfaceValidateMifareLoadKeyParameters(InputBuffer, 
-                                                             InputBufferLength, 
-                                                             Sw1Sw2, 
+    status = NfcCxSCInterfaceValidateMifareLoadKeyParameters(InputBuffer,
+                                                             InputBufferLength,
+                                                             Sw1Sw2,
                                                              Sw1Sw2Length);
     if (NT_SUCCESS(status)) {
-       status = NfcCxSCInterfaceKeyDataBaseLocked(ScInterface, 
-                                                  InputBuffer, 
-                                                  InputBufferLength, 
-                                                  Sw1Sw2, 
+       status = NfcCxSCInterfaceKeyDataBaseLocked(ScInterface,
+                                                  InputBuffer,
+                                                  InputBufferLength,
+                                                  Sw1Sw2,
                                                   Sw1Sw2Length);
     }
 
@@ -2647,7 +2647,7 @@ Return Value:
     PPcscCommandApduInfo pCommandApdu = (PPcscCommandApduInfo)InputBuffer;
     BYTE KeyNumber = pCommandApdu->P2;
     DWORD dwKeyIndex;
-    
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     RtlZeroMemory(Sw1Sw2, Sw1Sw2Length);
@@ -2709,7 +2709,7 @@ Routine Description:
     This routine loads the key
 
 Arguments:
-    
+
     InputBuffer - The input buffer
     InputBufferLength - Length of the input buffer.
     Sw1Sw2Length - Length of the SW1 SW2 buffer.
@@ -2722,14 +2722,14 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_INVALID_PARAMETER;
-    
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     if (Sw1Sw2Length < DEFAULT_APDU_STATUS_SIZE) {
         TRACE_LINE(LEVEL_ERROR, "Invalid SW1 SW2 buffer size");
         goto Done;
     }
-   
+
     PPcscCommandApduInfo pCommandApdu = (PPcscCommandApduInfo)InputBuffer;
 
     // For MIFARE APDU expected to be of size 0xB as per APDU definition
@@ -3077,7 +3077,7 @@ Return Value:
             else if (pRemDev->RemoteDevInfo.Iso14443A_Info.Sak == SAK_JCOP_MULTI_PROTOCOL) {
                 //
                 // JCOP-Multi Protocol Tag
-                // Exposing as Mifare Classic 1K 
+                // Exposing as Mifare Classic 1K
                 //
                 Output[index++] = 0x00;
                 Output[index++] = PCSC_NN_MIFARE_STD_1K;
@@ -3347,7 +3347,7 @@ Return Value:
         break;
 
     default:
-        *pIccTypePerAtr = ICC_TYPE_UNKNOWN; 
+        *pIccTypePerAtr = ICC_TYPE_UNKNOWN;
         break;
     }
 

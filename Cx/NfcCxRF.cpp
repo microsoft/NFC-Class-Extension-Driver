@@ -106,6 +106,7 @@ NfcCxRFInterfaceDumpSEList(
         TRACE_LINE(LEVEL_INFO, "    hSecureElement = %p", RFInterface->pLibNfcContext->SEList[i].hSecureElement);
         TRACE_LINE(LEVEL_INFO, "    Type = %!phLibNfc_SE_Type_t!", RFInterface->pLibNfcContext->SEList[i].eSE_Type);
         TRACE_LINE(LEVEL_INFO, "    ActivationMode = %!phLibNfc_eSE_ActivationMode!",  RFInterface->pLibNfcContext->SEList[i].eSE_ActivationMode);
+        TRACE_LINE(LEVEL_INFO, "    PowerAndLinkControl = %!phLibNfc_PowerLinkModes_t!",  RFInterface->pLibNfcContext->SEList[i].eSE_PowerLinkMode);
     }
 }
 
@@ -3758,6 +3759,7 @@ Done:
 void
 NfcCxRFInterfaceSESetPowerAndLinkControlCB(
     _In_ void* pContext,
+    _In_ phLibNfc_Handle hSecureElement,
     _In_ NFCSTATUS NfcStatus)
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
@@ -3766,6 +3768,8 @@ NfcCxRFInterfaceSESetPowerAndLinkControlCB(
     PNFCCX_RF_INTERFACE rfInterface = context->RFInterface;
 
     NfcCxRFInterfaceUpdateSEList(rfInterface);
+
+    phLibNfc_SE_List_t* pSecureElement = NfcCxRFInterfaceGetSecureElementFromHandle(rfInterface, hSecureElement);
 
     // The NFC Controller will return REJECTED if the Power and Link Control command is not supported or
     // the NFC-EE's power is not managed by the NFC Controller.
@@ -3778,7 +3782,7 @@ NfcCxRFInterfaceSESetPowerAndLinkControlCB(
     }
 
     NTSTATUS status = NfcCxNtStatusFromNfcStatus(NfcStatus);
-    NfcCxInternalSequence(context->RFInterface, context->Sequence, status, NULL, NULL);
+    NfcCxInternalSequence(context->RFInterface, context->Sequence, status, pSecureElement, NULL);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }
@@ -3806,6 +3810,12 @@ NfcCxRFInterfaceSESetPowerAndLinkControl(
         // Skip setting Power and Link Control for Host NFC-EE, as it doesn't make any
         // sense.
         TRACE_LINE(LEVEL_INFO, "Can't set Power and Link Control on host NFC-EE.");
+        goto Done;
+    }
+
+    if (phLibNfc_IsVersion1x() && !(RFInterface->FdoContext->NfcCxClientGlobal->Config.DriverFlags & NFC_CX_DRIVER_POWER_AND_LINK_CONTROL_SUPPORTED))
+    {
+        TRACE_LINE(LEVEL_INFO, "Power and Link Control not supported. Skipping.");
         goto Done;
     }
 

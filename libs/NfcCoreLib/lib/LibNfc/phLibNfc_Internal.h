@@ -221,7 +221,7 @@ typedef struct phLibNfc_CB_Info
     phLibNfc_NtfRegister_RspCb_t   pCeHostNtfCb;
     void                           *pCeHostNtfCntx;
 
-    pphLibNfc_RspCb_t               pPowerCtrlLinkCb;
+    pphLibNfc_SE_SetModeRspCb_t     pPowerCtrlLinkCb;
     void                            *pPowerCtrlLinkCntx;
 
     /* Se Get Atr Call back & it's context */

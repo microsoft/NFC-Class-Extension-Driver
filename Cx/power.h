@@ -112,6 +112,25 @@ NfcCxPowerFileRemoveReference(
     _In_ NFC_CX_POWER_REFERENCE_TYPE Type
     );
 
+NTSTATUS
+NfcCxPowerFdoAddRemoveReference(
+    _In_ PNFCCX_POWER_MANAGER PowerManager,
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type,
+    _In_ BOOLEAN AddReference
+    );
+
+NTSTATUS
+NfcCxPowerFdoAddReference(
+    _In_ PNFCCX_POWER_MANAGER PowerManager,
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type
+    );
+
+NTSTATUS
+NfcCxPowerFdoRemoveReference(
+    _In_ PNFCCX_POWER_MANAGER PowerManager,
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type
+    );
+
 NFC_CX_POWER_RF_STATE
 NfcCxPowerGetRfState(
     _In_ PNFCCX_POWER_MANAGER PowerManager

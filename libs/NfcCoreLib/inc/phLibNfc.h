@@ -677,6 +677,20 @@ phLibNfc_Mgt_DeInitialize (_In_ void *                  pDriverHandle,
 
 /**
  * \ingroup grp_lib_nfc
+ * \brief Checks if the NCI protocol is NCI 1.x
+ */
+extern bool_t
+phLibNfc_IsVersion1x();
+
+/**
+ * \ingroup grp_lib_nfc
+ * \brief Checks if the NCI protocol is NCI 2.x
+ */
+extern bool_t
+phLibNfc_IsVersion2x();
+
+/**
+ * \ingroup grp_lib_nfc
  * \brief Function to Get list of available Secure Elements
  *
  * This function retrieves list of secure elements locally connected.
@@ -769,7 +783,7 @@ NFCSTATUS phLibNfc_SE_SetMode ( phLibNfc_Handle              hSE_Handle,
 */
 NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handle,
                                           phLibNfc_PowerLinkModes_t    ePowerAndLinkModes,
-                                          pphLibNfc_RspCb_t            pSE_PowerAndLinkControl_Rsp_cb,
+                                          pphLibNfc_SE_SetModeRspCb_t  pSE_PowerAndLinkControl_Rsp_cb,
                                           void *                       pContext
     );
 

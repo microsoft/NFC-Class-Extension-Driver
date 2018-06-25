@@ -284,7 +284,7 @@ NFCSTATUS phLibNfc_SE_SetMode ( phLibNfc_Handle              hSE_Handle,
 
 NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handle,
                                           phLibNfc_PowerLinkModes_t    powerLinkModes,
-                                          pphLibNfc_RspCb_t            pSE_PowerAndLinkControl_Rsp_cb,
+                                          pphLibNfc_SE_SetModeRspCb_t  pSE_PowerAndLinkControl_Rsp_cb,
                                           void *                       pContext
                                          )
 {
@@ -306,7 +306,7 @@ NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handl
     {
         wStatus = NFCSTATUS_INVALID_PARAMETER;
     }
-    else if (phNciNfc_IsVersion2x(pCtx->sHwReference.pNciHandle))
+    else
     {
         Info.Evt = phLibNfc_DummyEventPowerAndLinkCtrl;
 
@@ -323,11 +323,7 @@ NFCSTATUS phLibNfc_SE_PowerAndLinkControl(phLibNfc_Handle              hSE_Handl
             pCtx->CBInfo.pPowerCtrlLinkCntx = pContext;
         }
     }
-    else
-    {
-        PH_LOG_LIBNFC_CRIT_STR("NFCC is not operating in NCI2.0 mode!");
-        wStatus = NFCSTATUS_FEATURE_NOT_SUPPORTED;
-    }
+
     PH_LOG_LIBNFC_FUNC_EXIT();
     return wStatus;
 }
@@ -1484,13 +1480,15 @@ static NFCSTATUS phLibNfc_SePowerAndLinkCtrlEnd(void *pContext, NFCSTATUS wStatu
 static NFCSTATUS phLibNfc_SePowerAndLinkCtrlCompleteSequence(void* pContext, NFCSTATUS wStatus, void *pInfo)
 {
     pphLibNfc_LibContext_t pCtx = phLibNfc_GetContext();
-    pphLibNfc_RspCb_t clientCb = NULL;
+    pphLibNfc_SE_SetModeRspCb_t clientCb = NULL;
     void *clientContext = NULL;
     UNUSED(pInfo);
     PH_LOG_LIBNFC_FUNC_ENTRY();
     if ((NULL != pCtx) && (pContext == pCtx))
     {
         phLibNfc_Event_t trigEvent;
+        phLibNfc_Handle hSeHandle = NULL;
+
         if (NFCSTATUS_SUCCESS == wStatus)
         {
             pCtx->sSeContext.pActiveSeInfo->eSE_PowerLinkMode = (phLibNfc_PowerLinkModes_t)pCtx->sSeContext.ePowerLinkMode;
@@ -1501,6 +1499,7 @@ static NFCSTATUS phLibNfc_SePowerAndLinkCtrlCompleteSequence(void* pContext, NFC
             trigEvent = phLibNfc_EventFailed;
         }
 
+        hSeHandle = pCtx->sSeContext.pActiveSeInfo->hSecureElement;
         clientCb = pCtx->CBInfo.pPowerCtrlLinkCb;
         clientContext = pCtx->CBInfo.pPowerCtrlLinkCntx;
 
@@ -1509,7 +1508,7 @@ static NFCSTATUS phLibNfc_SePowerAndLinkCtrlCompleteSequence(void* pContext, NFC
 
         if (NULL != clientCb)
         {
-            clientCb(clientContext, wStatus);
+            clientCb(clientContext, hSeHandle, wStatus);
         }
     }
     else

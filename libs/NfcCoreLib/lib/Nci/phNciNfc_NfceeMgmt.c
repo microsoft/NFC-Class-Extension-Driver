@@ -177,26 +177,19 @@ static NFCSTATUS phNciNfc_PowerAndLinkCtrl(void *pContext)
     PH_LOG_NCI_FUNC_ENTRY();
     if (NULL != pNciContext)
     {
-        if (phNciNfc_IsVersion2x(pNciContext))
-        {
-            phOsalNfc_SetMemory(&TxInfo, 0x00, sizeof(phNciNfc_CoreTxInfo_t));
-            /* Build the Discover Command Header */
-            TxInfo.tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlCmd;
-            TxInfo.tHeaderInfo.Group_ID = phNciNfc_e_CoreNfceeMgtGid;
-            TxInfo.tHeaderInfo.Opcode_ID.OidType.NfceeMgtCmdOid = phNciNfc_e_NfceeMgtPowerAndLinkCtrlCmdOid;
-            TxInfo.Buff = (uint8_t *)pNciContext->tSendPayload.pBuff;
-            TxInfo.wLen = pNciContext->tSendPayload.wPayloadSize;
-            wStatus = phNciNfc_CoreIfTxRx(&(pNciContext->NciCoreContext),
-                                          &TxInfo,
-                                          &(pNciContext->RspBuffInfo),
-                                          PHNCINFC_NCI_CMD_RSP_TIMEOUT,
-                                          (pphNciNfc_CoreIfNtf_t)&phNciNfc_GenericSequence,
-                                          pContext);
-        }
-        else
-        {
-            wStatus = NFCSTATUS_FEATURE_NOT_SUPPORTED;
-        }
+        phOsalNfc_SetMemory(&TxInfo, 0x00, sizeof(phNciNfc_CoreTxInfo_t));
+        /* Build the Discover Command Header */
+        TxInfo.tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlCmd;
+        TxInfo.tHeaderInfo.Group_ID = phNciNfc_e_CoreNfceeMgtGid;
+        TxInfo.tHeaderInfo.Opcode_ID.OidType.NfceeMgtCmdOid = phNciNfc_e_NfceeMgtPowerAndLinkCtrlCmdOid;
+        TxInfo.Buff = (uint8_t *)pNciContext->tSendPayload.pBuff;
+        TxInfo.wLen = pNciContext->tSendPayload.wPayloadSize;
+        wStatus = phNciNfc_CoreIfTxRx(&(pNciContext->NciCoreContext),
+                                        &TxInfo,
+                                        &(pNciContext->RspBuffInfo),
+                                        PHNCINFC_NCI_CMD_RSP_TIMEOUT,
+                                        (pphNciNfc_CoreIfNtf_t)&phNciNfc_GenericSequence,
+                                        pContext);
     }
     else
     {

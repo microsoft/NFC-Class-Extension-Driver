@@ -70,9 +70,9 @@ Return Value:
     PNFCCX_SE_INTERFACE seInterface = NULL;
     WDF_OBJECT_ATTRIBUTES objectAttrib;
     WDF_IO_QUEUE_CONFIG queueConfig;
-    
+
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     seInterface = (PNFCCX_SE_INTERFACE)malloc(sizeof(*seInterface));
     if (NULL == seInterface) {
         TRACE_LINE(LEVEL_ERROR, "Failed to allocate the SE interface");
@@ -295,7 +295,7 @@ Return Value:
     return status;
 }
 
-BOOLEAN 
+BOOLEAN
 NfcCxSEInterfaceIsIoctlSupported(
     _In_ PNFCCX_FDO_CONTEXT FdoContext,
     _In_ ULONG IoControlCode
@@ -306,7 +306,7 @@ Routine Description:
 
     This routine returns true if the provided IOCTL is supported by the
     module.
-    
+
 Arguments:
 
     FdoContext - The FDO Context
@@ -341,7 +341,7 @@ NfcCxSEIsPowerManagedRequest(
 Routine Description:
 
     This routine returns true if the provided IOCTL is power managed.
-    
+
 Arguments:
 
     IoControlCode - The IOCTL code to check
@@ -374,7 +374,7 @@ Routine Description:
 
     This routine returns true if the provided IOCTL requires
     sequential dispatch.
-    
+
 Arguments:
 
     IoControlCode - The IOCTL code to check
@@ -446,7 +446,7 @@ Return Value:
         WdfRequestComplete(Request, status);
     } else {
         //
-        // At this point we know the NT_SUCCESS macro was satisfied, 
+        // At this point we know the NT_SUCCESS macro was satisfied,
         // this means that one of the dispatch should have completed
         // the request already.
         //
@@ -456,7 +456,7 @@ Return Value:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }
 
-NTSTATUS 
+NTSTATUS
 NfcCxSEInterfaceIoDispatch(
     _In_opt_ PNFCCX_FILE_CONTEXT FileContext,
     _In_ WDFREQUEST    Request,
@@ -620,7 +620,7 @@ Return Value:
 
     for (i = 0; i < ARRAYSIZE(g_SEDispatch); i++) {
         if (g_SEDispatch[i].IoControlCode == IoControlCode) {
-            
+
             if (g_SEDispatch[i].MinimumInputBufferLength > InputBufferLength) {
                 TRACE_LINE(LEVEL_ERROR, "Invalid Input buffer.  Expected %I64x, got %I64x",
                     g_SEDispatch[i].MinimumInputBufferLength,
@@ -717,7 +717,7 @@ Arguments:
 
     SEInterface - A pointer to the SEInterface
     FileContext - Client to add
-    
+
 Return Value:
 
     NTSTATUS
@@ -741,11 +741,11 @@ Return Value:
         }
 
         WdfWaitLockRelease(SEInterface->SEManagerLock);
-        
+
     } else if (NfcCxFileObjectIsSEEvent(FileContext)) {
 
         WdfWaitLockAcquire(SEInterface->SEEventsLock, NULL);
-        InsertHeadList(&SEInterface->SEEventsList, 
+        InsertHeadList(&SEInterface->SEEventsList,
                        &FileContext->ListEntry);
         WdfWaitLockRelease(SEInterface->SEEventsLock);
     }
@@ -769,7 +769,7 @@ Arguments:
 
     Interface - A pointer to the SEInterface
     FileContext - Client to remove
-    
+
 Return Value:
 
     VOID
@@ -795,7 +795,7 @@ Return Value:
         TRACE_LINE(LEVEL_INFO, "SEManager %p removed", FileContext);
 
         WdfWaitLockRelease(SEInterface->SEManagerLock);
-        
+
         if (!NT_SUCCESS(NfcCxRFInterfaceGetSecureElementList(rfInterface, SEList, &SECount))) {
             TRACE_LINE(LEVEL_WARNING, "Failed NfcCxRFInterfaceGetSecureElementList");
             goto Done;
@@ -903,12 +903,12 @@ NfcCxSEInterfaceHandleEvent(
                 continue;
             }
 
-            InsertTailList(&fileContext->RoleParameters.SEEvent.EventQueue, 
+            InsertTailList(&fileContext->RoleParameters.SEEvent.EventQueue,
                 queuedEvent->GetListEntry());
             fileContext->RoleParameters.SEEvent.EventQueueLength++;
 
             NfcCxFileObjectStartUnresponsiveClientDetectionTimer(fileContext);
-        
+
         } else {
             delete queuedEvent;
         }
@@ -1008,10 +1008,10 @@ NfcCxSEInterfaceHandleHCEPacket(
             goto Done;
         }
 
-        InsertTailList(&fileContext->RoleParameters.SEManager.PacketQueue, 
+        InsertTailList(&fileContext->RoleParameters.SEManager.PacketQueue,
                        queuedPacket->GetListEntry());
         fileContext->RoleParameters.SEManager.PacketQueueLength++;
-       
+
     }
     else {
         delete queuedPacket;
@@ -1110,7 +1110,7 @@ Return Value:
     WdfRequestCompleteWithInformation(Request, status, cbOutputBuffer);
 
     //
-    // Now that the request is completed it return STATUS_PENDING 
+    // Now that the request is completed it return STATUS_PENDING
     // so the request isn't completed by the calling method.
     //
     status = STATUS_PENDING;
@@ -1119,7 +1119,7 @@ Done:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1234,11 +1234,11 @@ Return Value:
         else {
             NT_ASSERT(STATUS_NO_MORE_ENTRIES == status);
         }
-        
+
         //
         // Else, forward the request to the holding queue
         //
-        status = WdfRequestForwardToIoQueue(Request, 
+        status = WdfRequestForwardToIoQueue(Request,
                                             FileContext->RoleParameters.SEEvent.EventRequestQueue);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to forward the request to the SubsMessageRequestQueue, %!STATUS!", status);
@@ -1331,7 +1331,7 @@ Return Value:
     }
 
     TRACE_LINE(LEVEL_INFO,
-        "SubscribeForEvent for client role %!FILE_OBJECT_ROLE! Id=%!GUID!(%p) EventType=%!SECURE_ELEMENT_EVENT_TYPE!",  
+        "SubscribeForEvent for client role %!FILE_OBJECT_ROLE! Id=%!GUID!(%p) EventType=%!SECURE_ELEMENT_EVENT_TYPE!",
         FileContext->Role,
         &eventInfo->guidSecureElementId,
         hSecureElement,
@@ -1340,8 +1340,8 @@ Return Value:
     //
     // Verify and subscribe for event
     //
-    status = NfcCxFileObjectValidateAndSubscribeForEvent(FileContext, 
-                                                         eventInfo->guidSecureElementId, 
+    status = NfcCxFileObjectValidateAndSubscribeForEvent(FileContext,
+                                                         eventInfo->guidSecureElementId,
                                                          eventInfo->eEventType);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to set the payload, %!STATUS!", status);
@@ -1500,7 +1500,7 @@ Return Value:
     WdfRequestCompleteWithInformation(Request, status, sizeof(SECURE_ELEMENT_NFCC_CAPABILITIES));
 
     //
-    // Now that the request is completed it returns STATUS_PENDING 
+    // Now that the request is completed it returns STATUS_PENDING
     // so the request isn't completed by the calling method.
     //
     status = STATUS_PENDING;
@@ -1517,7 +1517,7 @@ Return Value:
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1572,7 +1572,7 @@ Return Value:
     WdfRequestCompleteWithInformation(Request, status, uiRoutingTableSize);
 
     //
-    // Now that the request is completed it returns STATUS_PENDING 
+    // Now that the request is completed it returns STATUS_PENDING
     // so the request isn't completed by the calling method.
     //
     status = STATUS_PENDING;
@@ -1662,7 +1662,7 @@ Return Value:
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-    
+
     return status;
 }
 
@@ -1777,11 +1777,11 @@ Return Value:
         else {
             NT_ASSERT(STATUS_NO_MORE_ENTRIES == status);
         }
-        
+
         //
         // Else, forward the request to the holding queue
         //
-        status = WdfRequestForwardToIoQueue(Request, 
+        status = WdfRequestForwardToIoQueue(Request,
                                             FileContext->RoleParameters.SEManager.PacketRequestQueue);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to forward the request to the PacketRequestQueue, %!STATUS!", status);
@@ -2009,7 +2009,7 @@ Return Value:
     // Add or remove a power reference if neccessary.
     if (oldForcePowerOn != newForcePowerOn)
     {
-        status = NfcCxPowerFileAddRemoveReference(fdoContext->Power, FileContext, NfcCxPowerReferenceType_ESe, /*AddReference*/ newForcePowerOn);
+        status = NfcCxPowerFdoAddRemoveReference(fdoContext->Power, NfcCxPowerReferenceType_ESe, /*AddReference*/ newForcePowerOn);
         if (!NT_SUCCESS(status))
         {
             TRACE_LINE(LEVEL_ERROR, "NfcCxPowerFileAddRemoveReference failed, %!STATUS!", status);
@@ -2241,7 +2241,7 @@ Return Value:
             status = STATUS_INSUFFICIENT_RESOURCES;
             goto Done;
         }
-    
+
         eventInfo = (PSECURE_ELEMENT_EVENT_INFO)payload->GetPayload();
         eventInfo->guidSecureElementId = guidSecureElementId;
         eventInfo->eEventType = EventType;
@@ -2351,7 +2351,7 @@ Return Value:
         // It is possible that the event was completed with STATUS_BUFFER_OVERFLOW
         // to indicate to the client that a bigger buffer is required, in that
         // context, we still enqueue the event for the next request from the client.
-        // 
+        //
         eventProcessed = TRUE;
     }
 
@@ -2640,7 +2640,7 @@ Return Value:
         if (previousPowerReferenceType != EmulationPowerReferenceType::Off)
         {
             auto powerReferenceType = (previousPowerReferenceType == EmulationPowerReferenceType::StealthListen) ? NfcCxPowerReferenceType_StealthListen : NfcCxPowerReferenceType_CardEmulation;
-            status = NfcCxPowerFileRemoveReference(fdoContext->Power, FileContext, powerReferenceType);
+            status = NfcCxPowerFdoRemoveReference(fdoContext->Power, powerReferenceType);
             if (!NT_SUCCESS(status))
             {
                 TRACE_LINE(LEVEL_ERROR, "NfcCxPowerFileRemoveReference failed, %!STATUS!", status);
@@ -2652,7 +2652,7 @@ Return Value:
         if (newPowerReferenceType != EmulationPowerReferenceType::Off)
         {
             auto powerReferenceType = (newPowerReferenceType == EmulationPowerReferenceType::StealthListen) ? NfcCxPowerReferenceType_StealthListen : NfcCxPowerReferenceType_CardEmulation;
-            status = NfcCxPowerFileAddReference(fdoContext->Power, FileContext, powerReferenceType);
+            status = NfcCxPowerFdoAddReference(fdoContext->Power, powerReferenceType);
             if (!NT_SUCCESS(status))
             {
                 TRACE_LINE(LEVEL_ERROR, "NfcCxPowerFileAddReference failed, %!STATUS!", status);
@@ -3060,7 +3060,7 @@ Routine Description:
 Arguments:
 
     RFInterface - The pointer to RF interface
-    pRoutingTable -  The pointer to SE DDI routing table structure 
+    pRoutingTable -  The pointer to SE DDI routing table structure
     pRtngTable - The LIBNFC route table
 
 Return Value:
@@ -3307,7 +3307,7 @@ Return Value:
         }
     }
 
-    uiRoutingTableSize = sizeof(pRoutingTable->NumberOfEntries) + 
+    uiRoutingTableSize = sizeof(pRoutingTable->NumberOfEntries) +
                          pRoutingTable->NumberOfEntries * sizeof(pRoutingTable->TableEntries[0]);
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -3335,7 +3335,7 @@ Arguments:
     RFInterface - The RF Interface
     hSecureElement - The secure element LIBNFC handle
     PowerState - The requested power state of the NFCEE
-    RtngTableCount - The max size of the routing table buffer provided, 
+    RtngTableCount - The max size of the routing table buffer provided,
                       also holds the size of the returned table
     pRtngTable - The pointer to the routing table
     pbIsRoutingTableChanged - true if routing table needs to be updated

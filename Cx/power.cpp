@@ -354,6 +354,103 @@ Done:
     return status;
 }
 
+NTSTATUS
+NfcCxPowerFdoAddRemoveReference(
+    _In_ PNFCCX_POWER_MANAGER PowerManager,
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type,
+    _In_ BOOLEAN AddReference
+    )
+{
+    if (AddReference)
+    {
+        return NfcCxPowerFdoAddReference(PowerManager, Type);
+    }
+    else
+    {
+        return NfcCxPowerFdoRemoveReference(PowerManager, Type);
+    }
+}
+
+NTSTATUS
+NfcCxPowerFdoAddReference(
+    _In_ PNFCCX_POWER_MANAGER PowerManager,
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type
+    )
+/*++
+
+Routine Description:
+
+   Acquires a power reference (that is not tied to a file handle).
+
+Arguments:
+
+    PowerManager - Pointer to the Power Manager
+    Type - The type of power reference being acquired
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NTSTATUS status = STATUS_SUCCESS;
+    WdfWaitLockAcquire(PowerManager->WaitLock, NULL);
+
+    status = NfcCxPowerAcquireFdoContextReferenceLocked(PowerManager, Type);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_VERBOSE, "NfcCxPowerAcquireFdoContextReferenceLocked failed, %!STATUS!", status);
+        goto Done;
+    }
+
+Done:
+    WdfWaitLockRelease(PowerManager->WaitLock);
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+NTSTATUS
+NfcCxPowerFdoRemoveReference(
+    _In_ PNFCCX_POWER_MANAGER PowerManager,
+    _In_ NFC_CX_POWER_REFERENCE_TYPE Type
+    )
+/*++
+
+Routine Description:
+
+   Releases a power reference (that is not tied to a file handle).
+
+Arguments:
+
+    PowerManager - Pointer to the Power Manager
+    Type - The type of power reference being released
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NTSTATUS status = STATUS_SUCCESS;
+    WdfWaitLockAcquire(PowerManager->WaitLock, NULL);
+
+    status = NfcCxPowerReleaseFdoContextReferenceLocked(PowerManager, Type);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_VERBOSE, "NfcCxPowerReleaseFdoContextReferenceLocked failed, %!STATUS!", status);
+        goto Done;
+    }
+
+Done:
+    WdfWaitLockRelease(PowerManager->WaitLock);
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
 NFC_CX_POWER_RF_STATE
 NfcCxPowerGetRfState(
     _In_ PNFCCX_POWER_MANAGER PowerManager
