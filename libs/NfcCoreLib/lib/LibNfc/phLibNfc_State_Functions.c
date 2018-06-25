@@ -1014,10 +1014,8 @@ static NFCSTATUS phLibNfc_RawtoCmd(void *pContext,
 
                     if(NULL != pCtx->psTransceiveInfo1->sSendData.buffer &&
                        NULL != pCtx->psTransceiveInfo1->sRecvData.buffer &&
-                       0 != pCtx->psTransceiveInfo1->sSendData.length &&
-                       0 != pCtx->psTransceiveInfo1->sRecvData.length)
+                       PHLIBNFC_RAWAUTH_BUFFER_LEN <= pCtx->psTransceiveInfo1->sRecvData.length)
                     {
-
                         phOsalNfc_SetMemory(pCtx->psTransceiveInfo1->sSendData.buffer,
                                             0x00,
                                             PHLIBNFC_RAWAUTH_BUFFER_LEN);
@@ -1064,8 +1062,7 @@ static NFCSTATUS phLibNfc_RawtoCmd(void *pContext,
 
                 if(NULL != pCtx->psTransceiveInfo1->sSendData.buffer &&
                    NULL != pCtx->psTransceiveInfo1->sRecvData.buffer &&
-                   0 != pCtx->psTransceiveInfo1->sSendData.length &&
-                   0 != pCtx->psTransceiveInfo1->sRecvData.length)
+                   PHLIBNFC_RAWAUTH_BUFFER_LEN <= pCtx->psTransceiveInfo1->sRecvData.length)
                 {
 
                     phOsalNfc_SetMemory(pCtx->psTransceiveInfo1->sSendData.buffer,
