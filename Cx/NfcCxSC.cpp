@@ -2674,7 +2674,9 @@ Return Value:
     // If present OverWrite the Keys else Validate KeyTable Size and Write the Keys
     if ((dwKeyIndex = ((LoadKey*)ScInterface->StorageCardKey)->ExtractKeyIndex(KeyNumber)) != (DWORD)-1) {
         TRACE_LINE(LEVEL_INFO, "OverWrite the Keys in the Available Index\n");
-        ((LoadKey*)ScInterface->StorageCardKey)->OverWriteKeys(dwKeyIndex, KeyNumber, pCommandApdu->DataIn, MAX_BUFFERSIZE);
+        if (((LoadKey*)ScInterface->StorageCardKey)->OverWriteKeys(dwKeyIndex, KeyNumber, pCommandApdu->DataIn, MAX_BUFFERSIZE)){
+            RtlCopyMemory(Sw1Sw2, APDU_STATUS_SUCCESS, DEFAULT_APDU_STATUS_SIZE);
+        }
     }
     else {
         if(((LoadKey*)ScInterface->StorageCardKey)->KeyTableFull()) {
