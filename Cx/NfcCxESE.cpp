@@ -28,7 +28,7 @@ typedef struct _NFCCX_ESE_DISPATCH_ENTRY {
     PFN_NFCCX_SC_DISPATCH_HANDLER DispatchHandler;
 } NFCCX_ESE_DISPATCH_ENTRY, *PNFCCX_ESE_DISPATCH_ENTRY;
 
-static const DWORD ESeIccType = ICC_TYPE_14443_TYPE_A;
+static const BYTE ESeIccType = ICC_TYPE_14443_TYPE_A;
 static const CHAR ESeVendorIfd[] = "eSE";
 static const DWORD ESeReaderChannelId = SCARD_READER_TYPE_EMBEDDEDSE << 16;
 
