@@ -49,10 +49,6 @@
 #define ISO15693_7TH_BYTE_UID_VALUE                     0xE0U
 #define ISO15693_BYTE_7_INDEX                           0x07U
 
-/* UID 6th byte value shall be 0x04 - NXP manufacturer */
-#define ISO15693_6TH_BYTE_UID_VALUE                     0x04U
-#define ISO15693_BYTE_6_INDEX                           0x06U
-
 #define ISO15693_EXTRA_RESPONSE_FLAG                    0x01U
 
 #define ISO15693_GET_SYS_INFO_RESP_LEN                  0x0EU
@@ -461,33 +457,17 @@ NFCSTATUS
 phFriNfc_ISO15693_Format (
     phFriNfc_sNdefSmtCrdFmt_t *psNdefSmtCrdFmt)
 {
-    NFCSTATUS                       result = NFCSTATUS_SUCCESS;
-    phHal_sIso15693Info_t           *ps_rem_iso_15693_info =
-                        &(psNdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info);
-
-
-    if ((ISO15693_7TH_BYTE_UID_VALUE ==
-        ps_rem_iso_15693_info->Uid[ISO15693_BYTE_7_INDEX])
-        && (ISO15693_6TH_BYTE_UID_VALUE ==
-        ps_rem_iso_15693_info->Uid[ISO15693_BYTE_6_INDEX]))
+    /* The last byte of UID must be 0xE0 if
+       detected card is NDEF compliant */
+    if (psNdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info.Uid[ISO15693_BYTE_7_INDEX] == ISO15693_7TH_BYTE_UID_VALUE)
     {
-        /* Check if the card is manufactured by NXP (6th byte
-        index of UID value = 0x04 and the
-        last byte of UID is 0xE0, only then the card detected
-        is NDEF compliant */
         psNdefSmtCrdFmt->State = ISO15693_FORMAT;
 
         /* GET system information command to get the card size */
-        result = phFriNfc_ISO15693_H_FmtReadWrite (psNdefSmtCrdFmt,
-                            ISO15693_GET_SYSTEM_INFO_CMD, NULL, 0);
-    }
-    else
-    {
-        result = PHNFCSTVAL (CID_FRI_NFC_NDEF_SMTCRDFMT,
-                            NFCSTATUS_INVALID_DEVICE_REQUEST);
+        return phFriNfc_ISO15693_H_FmtReadWrite(psNdefSmtCrdFmt, ISO15693_GET_SYSTEM_INFO_CMD, NULL, 0);
     }
 
-    return result;
+    return PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT, NFCSTATUS_INVALID_DEVICE_REQUEST);
 }
 
 void
