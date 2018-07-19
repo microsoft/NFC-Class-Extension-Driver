@@ -378,7 +378,7 @@ phFriNfc_ISO15693_H_ProFormat (
 
                     default:
                     {
-                        result = PHNFCSTVAL (CID_FRI_NFC_NDEF_SMTCRDFMT, NFCSTATUS_INVALID_DEVICE_REQUEST);
+                        *(a_send_byte + send_index) = 0;
                         break;
                     }
                 }
