@@ -29,6 +29,8 @@
 #define ISO15693_CC_VER_RW                              0x40U
 /* CC BYTE 2 - max size is calaculated using the byte 3 multiplied by 8 */
 #define ISO15693_CC_MULTIPLE_FACTOR                     0x08U
+/* CC BYTE 3 - Additional feature information - no additional features by default (0) */
+#define ISO15693_CC_ADDITIONAL_FEATURES_NONE            0
 
 /* Inventory command support mask for the CC byte 4 */
 #define ISO15693_INVENTORY_CMD_MASK                     0x02U
@@ -378,7 +380,8 @@ phFriNfc_ISO15693_H_ProFormat (
 
                     default:
                     {
-                        result = PHNFCSTVAL (CID_FRI_NFC_NDEF_SMTCRDFMT, NFCSTATUS_INVALID_DEVICE_REQUEST);
+                        /* Generic tag: No additional features if tag type was not recognized  */
+                        *(a_send_byte + send_index) = (uint8_t) ISO15693_CC_ADDITIONAL_FEATURES_NONE;
                         break;
                     }
                 }
