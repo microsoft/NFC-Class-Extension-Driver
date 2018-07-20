@@ -990,6 +990,7 @@ static NFCSTATUS phHciNfc_ProcessClearAllPipeNotifyCmd(phHciNfc_ReceiveParams_t 
                                       pphHciNfc_HciContext_t    pHciContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    phHciNfc_HciRegData_t  tHciRegData;
     uint8_t aSetHciSessionId[8];
     PH_LOG_HCI_FUNC_ENTRY();
 
@@ -1010,8 +1011,14 @@ static NFCSTATUS phHciNfc_ProcessClearAllPipeNotifyCmd(phHciNfc_ReceiveParams_t 
             phOsalNfc_MemCopy(pHciContext->aGetHciSessionId,aSetHciSessionId,PHHCINFC_PIPE_SESSIONID_LEN);
 
             /* Reset the APDU Pipe data present in the List for eSE*/
+            tHciRegData.bPipeId = pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId;
             pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = PHHCINFC_NO_PIPE_DATA;
             pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId = PHHCINFC_NO_PIPE_DATA;
+
+            tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+            (void)phHciNfc_UnRegisterCmdRspEvt(pHciContext,
+                                               &tHciRegData,
+                                               &phHciNfc_ProcessEventsOnApduPipe);
         }
         if(0 == GET_BITS8(pHciContext->aGetHciSessionId[PHHCI_PIPE_PRESENCE_INDEX],
                                 PHHCI_ESE_CONNECTIVITY_PIPE_CREATED_BIT_INDEX,1))
@@ -1028,8 +1035,14 @@ static NFCSTATUS phHciNfc_ProcessClearAllPipeNotifyCmd(phHciNfc_ReceiveParams_t 
             phOsalNfc_MemCopy(pHciContext->aGetHciSessionId,aSetHciSessionId,PHHCINFC_PIPE_SESSIONID_LEN);
 
             /* Reset the Connectivity Pipe data present in the List for eSE*/
+            tHciRegData.bPipeId = pHciContext->aSEPipeList[PHHCI_ESE_CONN_PIPE_LIST_INDEX].bPipeId;
             pHciContext->aSEPipeList[PHHCI_ESE_CONN_PIPE_LIST_INDEX].bPipeId = PHHCINFC_NO_PIPE_DATA;
             pHciContext->aSEPipeList[PHHCI_ESE_CONN_PIPE_LIST_INDEX].bGateId = PHHCINFC_NO_PIPE_DATA;
+
+            tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+            (void)phHciNfc_UnRegisterCmdRspEvt(pHciContext,
+                                               &tHciRegData,
+                                               &phHciNfc_ProcessEventsOnPipe);
         }
     }
     else
@@ -1049,8 +1062,14 @@ static NFCSTATUS phHciNfc_ProcessClearAllPipeNotifyCmd(phHciNfc_ReceiveParams_t 
             phOsalNfc_MemCopy(pHciContext->aGetHciSessionId,aSetHciSessionId,PHHCINFC_PIPE_SESSIONID_LEN);
 
             /* Reset the Pipe data present in th List for UICC*/
+            tHciRegData.bPipeId = pHciContext->aSEPipeList[PHHCI_UICC_CONN_PIPE_LIST_INDEX].bPipeId;
             pHciContext->aUICCPipeList[PHHCI_UICC_CONN_PIPE_LIST_INDEX].bPipeId = PHHCINFC_NO_PIPE_DATA;
             pHciContext->aUICCPipeList[PHHCI_UICC_CONN_PIPE_LIST_INDEX].bGateId = PHHCINFC_NO_PIPE_DATA;
+
+            tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+            (void)phHciNfc_UnRegisterCmdRspEvt(pHciContext,
+                                               &tHciRegData,
+                                               &phHciNfc_ProcessEventsOnPipe);
         }
     }
     pHciContext->bClearpipes = 0x01;
