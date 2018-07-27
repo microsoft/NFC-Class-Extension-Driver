@@ -316,7 +316,7 @@ NfcCxRFInterfaceGetEventType(
         return NfcCxEventConfig;
     case LIBNFC_SE_SET_MODE:
     case LIBNFC_EMEBEDDED_SE_TRANSCEIVE:
-    case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
+    case LIBNFC_EMBEDDED_SE_RESET:
         return NfcCxEventSE;
     default:
         return NfcCxEventInvalid;
@@ -1661,83 +1661,6 @@ Done:
 }
 
 NTSTATUS
-NfcCxRFInterfaceResetCard(
-    _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ phLibNfc_Handle hSecureElement
-    )
-/*++
-
-Routine Description:
-
-    Resets an SE.
-
-Arguments:
-
-    RFInterface - The RF Interface
-    hSecureElement - The handle to the secure element
-
-Return Value:
-
-    STATUS_SUCCESS - If card emulation mode is correctly set
-    STATUS_INVALID_PARAMETER - If handle to secure element is invalid
-
---*/
-{
-    NTSTATUS status = STATUS_SUCCESS;
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
-
-    phLibNfc_SE_List_t* pSecureElement = nullptr;
-    status = NfcCxRFInterfaceGetSecureElementFromHandle(RFInterface, hSecureElement, &pSecureElement);
-    if (!NT_SUCCESS(status))
-    {
-        TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
-        goto Done;
-    }
-
-    phLibNfc_eSE_ActivationMode currentActivationMode = pSecureElement->eSE_ActivationMode;
-    phLibNfc_PowerLinkModes_t currentPowerLinkMode = pSecureElement->eSE_PowerLinkMode;
-
-    //
-    // Turn off SE
-    //
-    RFInterface->SEActivationMode = phLibNfc_SE_ActModeOff;
-    RFInterface->SEPowerAndLinkControl = phLibNfc_PLM_NfccDecides;
-    status = NfcCxRFInterfaceExecute(RFInterface,
-                                     LIBNFC_SE_SET_MODE,
-                                     (UINT_PTR)pSecureElement,
-                                     0);
-    if (!NT_SUCCESS(status))
-    {
-        TRACE_LINE(LEVEL_ERROR, "Failed to turn off SE, %!STATUS!", status);
-        goto Done;
-    }
-
-    //
-    // Restore SE's activation mode
-    //
-    RFInterface->SEActivationMode = currentActivationMode;
-    RFInterface->SEPowerAndLinkControl = currentPowerLinkMode;
-    status = NfcCxRFInterfaceExecute(RFInterface,
-                                     LIBNFC_SE_SET_MODE,
-                                     (UINT_PTR)pSecureElement,
-                                     0);
-    if (!NT_SUCCESS(status))
-    {
-        TRACE_LINE(LEVEL_ERROR, "Failed to restore SE activation mode, %!STATUS!", status);
-        goto Done;
-    }
-
-Done:
-    WdfWaitLockRelease(RFInterface->DeviceLock);
-
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    return status;
-}
-
-NTSTATUS
 NfcCxRFInterfaceSetRoutingTable(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_reads_(RtngTableCount) phLibNfc_RtngConfig_t* pRtngTable,
@@ -1980,7 +1903,7 @@ Return Value:
 
     //
     // Validating the buffer sizes to safeguard the DWORD cast.
-    // 
+    //
     if (DWORD_MAX < InputBufferLength ||
         DWORD_MAX < OutputBufferLength) {
         NT_ASSERTMSG("Buffer size is validated at dispatch time, this should never be larger than DWORD_MAX", FALSE);
@@ -2014,7 +1937,7 @@ Done:
 }
 
 NTSTATUS
-NfcCxRFInterfaceESEGetATRString(
+NfcCxRFInterfaceESEReset(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _Out_writes_bytes_to_(OutputBufferLength, *pOutputBufferUsed) PBYTE OutputBuffer,
     _In_ size_t OutputBufferLength,
@@ -2024,7 +1947,7 @@ NfcCxRFInterfaceESEGetATRString(
 
 Routine Description:
 
-    This routine is called from the EmbeddedSE module to get the SE's ATR (answer to reset).
+    This routine is called from the EmbeddedSE module to reset eSE and get ATR.
 
 Arguments:
 
@@ -2045,7 +1968,7 @@ Return Value:
 
     //
     // Validating the buffer sizes to safeguard the DWORD cast.
-    // 
+    //
     if (DWORD_MAX < OutputBufferLength) {
         NT_ASSERTMSG("Buffer size is validated at dispatch time, this should never be larger than DWORD_MAX", FALSE);
         status = STATUS_INVALID_BUFFER_SIZE;
@@ -2062,7 +1985,7 @@ Return Value:
     RFInterface->SeATRInfo.pBuff = OutputBuffer;
     RFInterface->SeATRInfo.dwLength = (DWORD)OutputBufferLength;
 
-    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_EMBEDDED_SE_GET_ATR_STRING, NULL, NULL);
+    status = NfcCxRFInterfaceExecute(RFInterface, LIBNFC_EMBEDDED_SE_RESET, NULL, NULL);
 
     *pOutputBufferUsed = RFInterface->SeATRInfo.dwLength;
 
@@ -3277,8 +3200,8 @@ NfcCxRFInterfaceTargetTransceiveCB(
         }
         // Note: In most cases, we will receive the data in the buffer we provided.
         else if (rfInterface->sTransceiveBuffer.sRecvData.buffer != pResBuffer->buffer) {
-            RtlCopyMemory(rfInterface->sTransceiveBuffer.sRecvData.buffer, 
-                          pResBuffer->buffer, 
+            RtlCopyMemory(rfInterface->sTransceiveBuffer.sRecvData.buffer,
+                          pResBuffer->buffer,
                           pResBuffer->length);
         }
 
@@ -3510,7 +3433,7 @@ Done:
 }
 
 static VOID
-NfcCxRFInterfaceESEGetATRStringSeqCB(
+NfcCxRFInterfaceESEResetSeqCB(
     _In_ void* pContext,
     _In_ pphNfc_SeAtr_Info_t pResAtrInfo,
     _In_ NFCSTATUS NfcStatus
@@ -3519,7 +3442,7 @@ NfcCxRFInterfaceESEGetATRStringSeqCB(
 
 Routine Description:
 
-    Invoked when the eSE Get ATR operation has completed.
+    Invoked when the eSE reset operation has completed.
 
 */
 {
@@ -3546,7 +3469,7 @@ Routine Description:
 }
 
 NTSTATUS
-NfcCxRFInterfaceESEGetATRStringSeq(
+NfcCxRFInterfaceESEResetSeq(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ NTSTATUS /*Status*/,
     _In_opt_ VOID* /*Param1*/,
@@ -3556,8 +3479,8 @@ NfcCxRFInterfaceESEGetATRStringSeq(
 
 Routine Description:
 
-    Starts an eSE Get ATR operation. Function is triggered on the LibNfc thread in response to the
-    LIBNFC_EMBEDDED_SE_GET_ATR_STRING message.
+    Starts an eSE reset operation. Function is triggered on the LibNfc thread in response to the
+    LIBNFC_EMBEDDED_SE_RESET message.
 
 */
 {
@@ -3585,7 +3508,7 @@ Routine Description:
         goto Done;
     }
 
-    nfcStatus = phLibNfc_eSE_GetAtr(hSE_handle, &RFInterface->SeATRInfo, NfcCxRFInterfaceESEGetATRStringSeqCB, &LibNfcContext);
+    nfcStatus = phLibNfc_eSE_Abort(hSE_handle, &RFInterface->SeATRInfo, NfcCxRFInterfaceESEResetSeqCB, &LibNfcContext);
     status = NfcCxNtStatusFromNfcStatus(nfcStatus);
 
 Done:
@@ -4817,7 +4740,7 @@ NfcCxRFInterfaceLibNfcMessageHandler(
     case LIBNFC_SE_SET_MODE:
     case LIBNFC_SE_SET_ROUTING_TABLE:
     case LIBNFC_EMEBEDDED_SE_TRANSCEIVE:
-    case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
+    case LIBNFC_EMBEDDED_SE_RESET:
     case LIBNFC_SNEP_CLIENT_PUT:
         {
             rfInterface->pLibNfcContext->Status = NfcCxStateInterfaceStateHandler(NfcCxRFInterfaceGetStateInterface(rfInterface),
@@ -6040,7 +5963,7 @@ NfcCxRFInterfaceESETransceiveSeqComplete(
 }
 
 static NTSTATUS
-NfcCxRFInterfaceESEGetATRStringSeqComplete(
+NfcCxRFInterfaceESEResetSeqComplete(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ NTSTATUS Status,
     _In_opt_ VOID* /*Param1*/,
@@ -6649,16 +6572,16 @@ NfcCxRFInterfaceStateSEEvent(
         }
         break;
 
-    case LIBNFC_EMBEDDED_SE_GET_ATR_STRING:
+    case LIBNFC_EMBEDDED_SE_RESET:
         {
-            NFCCX_CX_BEGIN_SEQUENCE_MAP(EmbeddedSEGetATRStringSequence)
-                RF_INTERFACE_EMBEDDEDSE_GET_ATR_STRING_SEQUENCE
+            NFCCX_CX_BEGIN_SEQUENCE_MAP(EmbeddedSEResetSequence)
+                RF_INTERFACE_EMBEDDEDSE_RESET_SEQUENCE
             NFCCX_CX_END_SEQUENCE_MAP()
 
-            EmbeddedSEGetATRStringSequence[ARRAYSIZE(EmbeddedSEGetATRStringSequence) - 1].SequenceProcess =
-                NfcCxRFInterfaceESEGetATRStringSeqComplete;
+            EmbeddedSEResetSequence[ARRAYSIZE(EmbeddedSEResetSequence) - 1].SequenceProcess =
+                NfcCxRFInterfaceESEResetSeqComplete;
 
-            NFCCX_INIT_SEQUENCE(RfInterface, EmbeddedSEGetATRStringSequence);
+            NFCCX_INIT_SEQUENCE(RfInterface, EmbeddedSEResetSequence);
             status = NfcCxSequenceHandler(RfInterface, RfInterface->pSeqHandler, STATUS_SUCCESS, Param2, Param3);
         }
         break;

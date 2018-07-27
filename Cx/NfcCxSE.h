@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     SE Interface declaration
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -83,7 +83,7 @@ typedef struct _NFCCX_SE_INTERFACE {
     WDFWAITLOCK SEManagerLock;
     _Guarded_by_(SEManagerLock)
     PNFCCX_FILE_CONTEXT SEManager;
-    
+
     //
     // Secure Element Events
     //
@@ -124,11 +124,11 @@ NfcCxSEInterfaceStop(
     _In_ PNFCCX_SE_INTERFACE SEInterface
     );
 
-FN_NFCCX_DDI_MODULE_ISIOCTLSUPPORTED 
+FN_NFCCX_DDI_MODULE_ISIOCTLSUPPORTED
 NfcCxSEInterfaceIsIoctlSupported;
 
 
-FN_NFCCX_DDI_MODULE_IODISPATCH 
+FN_NFCCX_DDI_MODULE_IODISPATCH
 NfcCxSEInterfaceIoDispatch;
 
 NTSTATUS
@@ -267,12 +267,6 @@ NfcCxSEInterfaceUpdateSEActivationMode(
     _In_ PNFCCX_SE_INTERFACE SEInterface,
     _In_ const GUID& SecureElementId,
     _In_ const NFCCX_SE_POWER_SETTINGS& PowerSettings
-    );
-
-NTSTATUS
-NfcCxSEInterfaceResetCard(
-    _In_ PNFCCX_SE_INTERFACE SEInterface,
-    _In_ const GUID& SecureElementId
     );
 
 NTSTATUS

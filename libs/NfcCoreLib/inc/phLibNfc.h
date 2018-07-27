@@ -2258,7 +2258,7 @@ typedef void(*pphLibNfc_GetAtrCallback_t)(
 
 /**
 * \ingroup grp_lib_nfc
-* \brief This function shall  retreive the ATR (Answer to Request) from Secure element.
+* \brief This function shall reset SE and retreive ATR (Answer to Reset).
 *
 * \param[in]  hSE_Handle        Handle to secure element
 * \param[in]  pAtrInfo          pointer to #phNfc_SeAtr_Info_t structure
@@ -2275,7 +2275,7 @@ typedef void(*pphLibNfc_GetAtrCallback_t)(
 * \retval #NFCSTATUS_SHUTDOWN             Shutdown in progress.
 * \retval #NFCSTATUS_FAILED               Operation failed.
 */
-extern NFCSTATUS phLibNfc_eSE_GetAtr(phLibNfc_Handle                 hSE_Handle,
+extern NFCSTATUS phLibNfc_eSE_Abort(phLibNfc_Handle                 hSE_Handle,
                                      phNfc_SeAtr_Info_t*             pAtrInfo,
                                      pphLibNfc_GetAtrCallback_t      pGetAtr_RspCb,
                                      void*                           pContext);

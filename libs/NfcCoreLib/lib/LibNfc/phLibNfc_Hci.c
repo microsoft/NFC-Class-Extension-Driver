@@ -32,7 +32,7 @@ static NFCSTATUS phLibNfc_HciDataSendComplete(void* pContext,NFCSTATUS status,vo
 
 static void phHciNfc_eSETransceiveTimeOutCb(uint32_t dwTimerId, void *pContext);
 static NFCSTATUS phHciNfc_CreateSETransceiveTimer(phHciNfc_HciContext_t  *pHciContext);
-static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInfo);
+static void phLibNfc_eSE_ResetProc(void* pContext, NFCSTATUS status, void* pInfo);
 static NFCSTATUS phHciNfc_CreateSEGetAtrTimer(phHciNfc_HciContext_t  *pHciContext);
 
 //ETSI 12 changes
@@ -531,7 +531,7 @@ static NFCSTATUS phLibNfc_HciDataSend(void* pContext,NFCSTATUS status,void* pInf
             {
                 wStatus = phHciNfc_Transceive(pLibCtx->pHciContext,
                                         bPipeId,
-                                        PHHCINFC_PROP_DATA_EVENT,
+                                        PHHCINFC_EVT_C_APDU,
                                         pLibCtx->pSeTransInfo->sSendData.length,
                                         pLibCtx->pSeTransInfo->sSendData.buffer,
                                         &phLibNfc_SeSendCb,
@@ -796,14 +796,14 @@ phHciNfc_ProcessEventsOnApduPipe(void *pContext, NFCSTATUS wStatus, void *pInfo)
         pHciContext = (pphHciNfc_HciContext_t)pContext;
         switch (pReceivedParams->bIns)
         {
-        case PHHCINFC_PROP_DATA_EVENT:
+        case PHHCINFC_EVT_R_APDU:
             (void)phLibNfc_HciDataSendProc(pLibContext, wStatus, pInfo);
             break;
-        case PHHCINFC_PROP_WTX_EVENT:
+        case PHHCINFC_EVT_WTX:
         {
             phLibNfc_sSeWtxEventInfo_t tWtxInfo = { 0 };
 
-            PH_LOG_LIBNFC_INFO_STR("EVENT_WTX_REQ received");
+            PH_LOG_LIBNFC_INFO_STR("EVT_WTX received");
             if (pLibContext->CBInfo.pSeClientEvtWtxCb != NULL)
             {
                 tWtxInfo.dwTime = PHHCINFC_DEFAULT_HCI_TX_RX_TIME_OUT;
@@ -854,8 +854,8 @@ phHciNfc_ProcessEventsOnApduPipe(void *pContext, NFCSTATUS wStatus, void *pInfo)
             }
         }
         break;
-        case PHHCINFC_EVENT_ATR_RECV:
-            (void)phLibNfc_eSE_GetAtrProc(pContext, wStatus, pInfo);
+        case PHHCINFC_EVT_ATR:
+            (void)phLibNfc_eSE_ResetProc(pContext, wStatus, pInfo);
             break;
         default:
             break;
@@ -1374,7 +1374,7 @@ static void phHciNfc_eSEGetAtrTimeOutCb(uint32_t dwTimerId, void *pContext)
         pLibCtx->pAtrInfo->pBuff = NULL;
         pLibCtx->pAtrInfo->dwLength = 0;
 
-        (void)phLibNfc_eSE_GetAtrProc(pLibCtx->pHciContext, NFCSTATUS_RESPONSE_TIMEOUT, NULL);
+        (void)phLibNfc_eSE_ResetProc(pLibCtx->pHciContext, NFCSTATUS_RESPONSE_TIMEOUT, NULL);
     }
     else
     {
@@ -1383,7 +1383,48 @@ static void phHciNfc_eSEGetAtrTimeOutCb(uint32_t dwTimerId, void *pContext)
     PH_LOG_LIBNFC_FUNC_EXIT();
 }
 
-static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInfo)
+static void phLibNfc_eSE_LegacyAbortProc(void* pContext, NFCSTATUS status, void* pInfo)
+{
+    pphLibNfc_Context_t pLibCtx = phLibNfc_GetContext();
+    phHciNfc_HciContext_t *pHciContext = NULL;
+    NFCSTATUS wStatus = NFCSTATUS_FAILED;
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+
+    UNREFERENCED_PARAMETER(pInfo);
+
+    if (NULL == pLibCtx)
+    {
+        PH_LOG_LIBNFC_CRIT_STR("LibNfc context invalid");
+    }
+    else if (status != NFCSTATUS_SUCCESS)
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Received failed status: %!NFCSTATUS!", status);
+    }
+    else if ((NULL == pLibCtx->pHciContext) || (pContext != pLibCtx->pHciContext))
+    {
+        PH_LOG_LIBNFC_CRIT_STR("Invalid Hci context received!");
+    }
+    else
+    {
+        pHciContext = pLibCtx->pHciContext;
+        wStatus = phHciNfc_AnyGetParameter(
+            pHciContext,
+            pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId,
+            PHHCINFC_APDU_GATE_ATR_REG_ID,
+            pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId,
+            &phLibNfc_eSE_ResetProc,
+            pContext);
+
+        if (wStatus != NFCSTATUS_PENDING)
+        {
+            PH_LOG_LIBNFC_CRIT_STR("ANY_GET_PARAMETER(ATR) on APDU gate failed, status:%!NFCSTATUS!", wStatus);
+        }
+    }
+
+    PH_LOG_LIBNFC_FUNC_EXIT();
+}
+
+static void phLibNfc_eSE_ResetProc(void* pContext, NFCSTATUS status, void* pInfo)
 {
     pphLibNfc_Context_t pLibCtx = phLibNfc_GetContext();
     phHciNfc_HciContext_t *pHciContext = NULL;
@@ -1392,6 +1433,7 @@ static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInf
     void *pClientCntx = NULL;
     NFCSTATUS wStatus = NFCSTATUS_FAILED;
     PH_LOG_LIBNFC_FUNC_ENTRY();
+
     if (NULL != pLibCtx)
     {
         if ((status == NFCSTATUS_SUCCESS) && (pInfo != NULL))
@@ -1443,6 +1485,7 @@ static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInf
         {
             PH_LOG_LIBNFC_CRIT_STR("Received FAILED status or pInfo Invalid");
         }
+
         pClientCb = pLibCtx->CBInfo.pSeClientGetAtrCb;
         pClientCntx = pLibCtx->CBInfo.pSeClientGetAtrCntx;
         pLibCtx->CBInfo.pSeClientGetAtrCb = NULL;
@@ -1462,7 +1505,7 @@ static void phLibNfc_eSE_GetAtrProc(void* pContext, NFCSTATUS status, void* pInf
 }
 
 NFCSTATUS
-phLibNfc_eSE_GetAtr(
+phLibNfc_eSE_Abort(
     phLibNfc_Handle hSE_Handle,
     phNfc_SeAtr_Info_t* pAtrInfo,
     pphLibNfc_GetAtrCallback_t pGetAtr_RspCb,
@@ -1493,7 +1536,7 @@ phLibNfc_eSE_GetAtr(
         if (wStatus != NFCSTATUS_SUCCESS)
         {
             /* Returns NFCSTATUS_BUSY to the Application*/
-            PH_LOG_LIBNFC_CRIT_STR("BUSY, eSE Transceive or eSE_GetAtr API is in progress");
+            PH_LOG_LIBNFC_CRIT_STR("BUSY, eSE Transceive or eSE Reset is in progress");
         }
         else if (NULL == pAtrInfo->pBuff || 0 == pAtrInfo->dwLength)
         {
@@ -1525,33 +1568,24 @@ phLibNfc_eSE_GetAtr(
             }
             else
             {
-                phHciNfc_HciVersion_t seHciVersion =
-                    phHciNfc_GetHciVersionForHost(pHciContext, seInfo->hciHostId);
-                if (seHciVersion >= phHciNfc_e_HciVersion12)
-                {
-                    wStatus = phHciNfc_Transceive(
-                        pLibCtx->pHciContext,
-                        pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId,
-                        PHHCINFC_EVENT_ABORT,
-                        0,
-                        NULL,
-                        &phLibNfc_eSE_GetAtrProc,
-                        pLibCtx->pHciContext);
-                }
-                else
-                {
-                    wStatus = phHciNfc_AnyGetParameter(
-                        pLibCtx->pHciContext,
-                        pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId,
-                        PHHCINFC_APDU_GATE_ATR_REG_ID,
-                        pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId,
-                        &phLibNfc_eSE_GetAtrProc,
-                        pLibCtx->pHciContext);
-                }
+                // EVT_ATR exists only on HCI v12+, so:
+                // - for HCI v12.0+: wait for EVT_ATR which must be raised after EVT_ABORT
+                // - for HCI v11 or older: ATR will be retrieved from APDU registry with ANY_GET_PARAMETER command
+                BOOL isEvtAtrSupported =
+                    phHciNfc_GetHciVersionForHost(pHciContext, seInfo->hciHostId) >= phHciNfc_e_HciVersion12;
+
+                wStatus = phHciNfc_Transceive(
+                    pLibCtx->pHciContext,
+                    pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId,
+                    PHHCINFC_EVT_ABORT,
+                    0,
+                    NULL,
+                    isEvtAtrSupported ? NULL : phLibNfc_eSE_LegacyAbortProc,
+                    pLibCtx->pHciContext);
 
                 if (NFCSTATUS_PENDING != wStatus)
                 {
-                    PH_LOG_LIBNFC_CRIT_STR("Get ATR Failed!");
+                    PH_LOG_LIBNFC_CRIT_STR("eSE Reset failure, %!NFCSTATUS!", wStatus);
                     wStatus = NFCSTATUS_FAILED;
                     pLibCtx->CBInfo.pSeClientGetAtrCb = NULL;
                     pLibCtx->CBInfo.pSeClientGetAtrCntx = NULL;
@@ -1564,22 +1598,25 @@ phLibNfc_eSE_GetAtr(
                     pLibCtx->CBInfo.pSeClientGetAtrCntx = pContext;
                     pLibCtx->pAtrInfo = pAtrInfo;
 
-                    NFCSTATUS wSEGetAtrTimerStatus = phHciNfc_CreateSEGetAtrTimer(pHciContext);
-                    if (wSEGetAtrTimerStatus == NFCSTATUS_SUCCESS)
+                    if (isEvtAtrSupported)
                     {
-                        /* Start the SE TxRx Timer*/
-                        pHciContext = (phHciNfc_HciContext_t *)pLibCtx->pHciContext;
-                        pHciContext->tHciSeGetAtrTimerInfo.dwTimeOut = PHHCINFC_DEFAULT_HCI_TX_RX_TIME_OUT;
-                        wSEGetAtrTimerStatus = phOsalNfc_Timer_Start(pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId,
-                            pHciContext->tHciSeGetAtrTimerInfo.dwTimeOut,
-                            &phHciNfc_eSEGetAtrTimeOutCb,
-                            pLibCtx);
-                        if (wSEGetAtrTimerStatus != NFCSTATUS_SUCCESS)
+                        NFCSTATUS wSEGetAtrTimerStatus = phHciNfc_CreateSEGetAtrTimer(pHciContext);
+                        if (wSEGetAtrTimerStatus == NFCSTATUS_SUCCESS)
                         {
-                            phOsalNfc_Timer_Delete(pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId);
+                            // Wait for EVT_ATR
+                            pHciContext->tHciSeGetAtrTimerInfo.dwTimeOut = PHHCINFC_DEFAULT_HCI_TX_RX_TIME_OUT;
+                            wSEGetAtrTimerStatus = phOsalNfc_Timer_Start(
+                                pHciContext->tHciSeGetAtrTimerInfo.dwRspTimerId,
+                                pHciContext->tHciSeGetAtrTimerInfo.dwTimeOut,
+                                &phHciNfc_eSEGetAtrTimeOutCb,
+                                pLibCtx);
+                        }
+                        else
+                        {
                             PH_LOG_LIBNFC_CRIT_STR("SE Get Atr Timer Start Failed");
                         }
                     }
+
                 }
             }
         }
@@ -1598,10 +1635,10 @@ NFCSTATUS phHciNfc_CheckTransactionOnApduPipe(void)
         pLibCtx->CBInfo.pSeClientGetAtrCb != NULL)
     {
         /* Indicates that either eSE Transceive or
-        ** eSE_GetAtr API is in progress
+        ** eSE Reset is in progress
         */
         wStatus = NFCSTATUS_BUSY;
-        PH_LOG_LIBNFC_INFO_STR("eSE Transceive or Get ATR API in progress");
+        PH_LOG_LIBNFC_INFO_STR("eSE Transceive or eSE Reset is in progress");
     }
     else
     {

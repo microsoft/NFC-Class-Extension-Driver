@@ -1107,11 +1107,10 @@ Return Value:
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_ESE_INTERFACE eseInterface;
     DWORD *pdwPower = (DWORD*)InputBuffer;
+    BYTE atrBuffer[PHHAL_MAX_ATR_LENGTH] = {};
+    size_t atrBufferLength = sizeof(atrBuffer);
 
-    UNREFERENCED_PARAMETER(Request);
     UNREFERENCED_PARAMETER(InputBufferLength);
-    UNREFERENCED_PARAMETER(OutputBuffer);
-    UNREFERENCED_PARAMETER(OutputBufferLength);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -1124,19 +1123,22 @@ Return Value:
 
     WdfWaitLockAcquire(eseInterface->SmartCardLock, NULL);
 
-    if (!eseInterface->SmartCardConnected) {
+    if (!eseInterface->SmartCardConnected)
+    {
         status = STATUS_NO_MEDIA;
         WdfWaitLockRelease(eseInterface->SmartCardLock);
         goto Done;
     }
 
-    WdfWaitLockRelease(eseInterface->SmartCardLock);
-
     switch (*pdwPower)
     {
     case SCARD_COLD_RESET:
     case SCARD_WARM_RESET:
-        NfcCxESEInterfaceResetCard(eseInterface);
+        status = NfcCxRFInterfaceESEReset(
+            eseInterface->FdoContext->RFInterface,
+            atrBuffer,
+            atrBufferLength,
+            &atrBufferLength);
         break;
 
     case SCARD_POWER_DOWN:
@@ -1148,10 +1150,35 @@ Return Value:
         break;
     }
 
+    WdfWaitLockRelease(eseInterface->SmartCardLock);
+
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "eSE Reset failed. %!STATUS!", status);
+        goto Done;
+    }
+
+    if (NULL != OutputBuffer)
+    {
+        //
+        // Fill in the ATR value.
+        //
+        status = NfcCxCopyToBuffer(atrBuffer, atrBufferLength, (BYTE*)OutputBuffer, &OutputBufferLength);
+    }
+
 Done:
+    if (NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_INFO, "Completing request %p, with %!STATUS!, 0x%I64x", Request, status, atrBufferLength);
+        WdfRequestCompleteWithInformation(Request, status, atrBufferLength);
+        //
+        // Since we have completed the request here,
+        // return STATUS_PENDING to avoid double completion of the request
+        //
+        status = STATUS_PENDING;
+    }
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1595,7 +1622,7 @@ NfcCxESEInterfaceDispatchAttributeAtr(
 
 Routine Description:
 
-    This routine dispatches to get the present state
+    This routine dispatches to get the ATR value
 
 Arguments:
 
@@ -1619,14 +1646,17 @@ Return Value:
     WdfWaitLockAcquire(ESEInterface->SmartCardLock, NULL);
 
     if (!ESEInterface->SmartCardConnected) {
+        WdfWaitLockRelease(ESEInterface->SmartCardLock);
         TRACE_LINE(LEVEL_ERROR, "SmartCard not connected");
         status = STATUS_INVALID_DEVICE_STATE;
         goto Done;
     }
 
+    WdfWaitLockRelease(ESEInterface->SmartCardLock);
+
     TRACE_LINE(LEVEL_INFO, "Get Attribute to start Output Buffer length is %Iu....", *pcbOutputBuffer);
 
-    status = NfcCxRFInterfaceESEGetATRString(
+    status = NfcCxRFInterfaceESEReset(
         rfInterface,
         (PBYTE)pbOutputBuffer,
         *pcbOutputBuffer,
@@ -1637,7 +1667,6 @@ Return Value:
     }
 
 Done:
-    WdfWaitLockRelease(ESEInterface->SmartCardLock);
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
@@ -1680,41 +1709,6 @@ Return Value:
 
 Done:
     WdfWaitLockRelease(ESEInterface->SmartCardLock);
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    return status;
-}
-
-//
-// Other internal methods below
-//
-
-_Requires_lock_not_held_(ESEInterface->SmartCardLock)
-NTSTATUS
-NfcCxESEInterfaceResetCard(
-    _In_ PNFCCX_ESE_INTERFACE ESEInterface
-    )
-/*++
-
-Routine Description:
-
-    This routine warm resets the smart card
-
-Arguments:
-
-    ESEInterface - The eSE Interface
-
-Return Value:
-
-    NTSTATUS
-
---*/
-{
-    NTSTATUS status = STATUS_SUCCESS;
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    status = NfcCxSEInterfaceResetCard(ESEInterface->FdoContext->SEInterface, ESEInterface->SecureElementId);
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }

@@ -244,16 +244,8 @@ phHciNfc_Transceive(void    *pHciContext,
         wStatus = phHciNfc_CoreSend (pHciCtxt,&tSendParams,&phHciNfc_CmdSendCb, pHciCtxt);
         if(NFCSTATUS_PENDING == wStatus)
         {
-            if (tSendParams.bIns == PHHCINFC_EVENT_ABORT)
-            {
-                pHciCtxt->Cb_Info.pClientInitCb = NULL;
-                pHciCtxt->Cb_Info.pClientCntx = NULL;
-            }
-            else
-            {
-                pHciCtxt->Cb_Info.pClientInitCb = pRspCb;
-                pHciCtxt->Cb_Info.pClientCntx = pContext;
-            }
+            pHciCtxt->Cb_Info.pClientInitCb = pRspCb;
+            pHciCtxt->Cb_Info.pClientCntx = pContext;
             pHciCtxt->SendCb_Info.pClientInitCb = NULL;
             pHciCtxt->SendCb_Info.pClientCntx = NULL;
         }
@@ -271,6 +263,7 @@ phHciNfc_Transceive(void    *pHciContext,
     PH_LOG_HCI_FUNC_EXIT();
     return wStatus;
 }
+
 NFCSTATUS
 phHciNfc_AnyGetParameter(
                         void  *pHciContext,
@@ -1483,7 +1476,7 @@ phHciNfc_eSE_EvtAbort(
             /* Copy send parameters to hci context */
             pHciCtxt->pSendParams = pSendParams;
             /* Ins value is Wired Mode Shutdown */
-            pSendParams->bIns = PHHCINFC_EVENT_ABORT;
+            pSendParams->bIns = PHHCINFC_EVT_ABORT;
             /* Message Type is Event */
             pSendParams->bMsgType = phHciNfc_e_HcpMsgTypeEvent;
             /* Data */

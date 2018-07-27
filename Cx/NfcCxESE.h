@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     eSE Interface declaration
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -84,10 +84,10 @@ NfcCxESEInterfaceStop(
     _In_ PNFCCX_ESE_INTERFACE ESEInterface
     );
 
-FN_NFCCX_DDI_MODULE_ISIOCTLSUPPORTED 
+FN_NFCCX_DDI_MODULE_ISIOCTLSUPPORTED
 NfcCxESEInterfaceIsIoctlSupported;
 
-FN_NFCCX_DDI_MODULE_IODISPATCH 
+FN_NFCCX_DDI_MODULE_IODISPATCH
 NfcCxESEInterfaceIoDispatch;
 
 //
@@ -181,14 +181,4 @@ NfcCxESEInterfaceDispatchAttributeIccType(
     _In_ PNFCCX_ESE_INTERFACE ScInterface,
     _Out_bytecap_(*pcbOutputBuffer) PBYTE pbOutputBuffer,
     _Inout_ size_t* pcbOutputBuffer
-    );
-
-//
-// Helper methods below don't have locking constraints
-//
-
-_Requires_lock_not_held_(ESEInterface->SmartCardLock)
-NTSTATUS
-NfcCxESEInterfaceResetCard(
-    _In_ PNFCCX_ESE_INTERFACE ESEInterface
     );

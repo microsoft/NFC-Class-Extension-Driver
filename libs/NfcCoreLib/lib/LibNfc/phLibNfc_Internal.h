@@ -55,18 +55,23 @@
 #define PH_LIBNFC_INTERNAL_HCI_CONNECTIVITY_EVENT   (0x10)
 #define PH_LIBNFC_INTERNAL_HCI_TRANSACTION_EVENT    (0x12)
 
+// ETSI TS 102 622, v12.1.0, Section 12.2.2
+enum PHHCINFC_APDU_GATE_EVENTS
+{
+    PHHCINFC_EVT_C_APDU = 0x10,                     // EVT_C-APDU
+    PHHCINFC_EVT_ABORT = 0x11,                      // EVT_ABORT
+    PHHCINFC_EVT_END_OF_APDU_TRANSACTION = 0x21,    // EVT_END_OF_APDU_TRANSACTION
+};
+
 // ETSI TS 102 622, v12.1.0, Section 12.3.2
 enum PHHCINFC_APDU_APPLICATION_GATE_EVENTS
 {
-    PHHCINFC_PROP_DATA_EVENT = 0x10, // aka EVT_R-APDU
-    PHHCINFC_PROP_WTX_EVENT = 0x11, // aka EVT_WTX
+    PHHCINFC_EVT_R_APDU = 0x10,                     // EVT_R-APDU
+    PHHCINFC_EVT_WTX = 0x11,                        // EVT_WTX
+    PHHCINFC_EVT_ATR = 0x12,                        // EVT_ATR
 };
 
 #define PHHCINFC_NO_PIPE_DATA                       0xFF
-/* HCI EVT_ABORT and EVT_ATR as per ETSI12*/
-#define PHHCINFC_EVENT_ABORT                        0x11
-
-#define PHHCINFC_EVENT_ATR_RECV                     0x12
 
 #define PHLIBNFC_TRANSACTION_AID                    0x81
 #define PHLIBNFC_TRANSACTION_PARAM                  0x82

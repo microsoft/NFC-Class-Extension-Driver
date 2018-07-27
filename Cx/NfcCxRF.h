@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     RFInterface declarations
-    
+
 Environment:
 
     User-mode Driver Framework
@@ -51,7 +51,7 @@ typedef enum _NFCCX_LIBNFC_MESSAGE {
     LIBNFC_SEQUENCE_HANDLER,
     LIBNFC_DTA_MESSAGE,
     LIBNFC_EMEBEDDED_SE_TRANSCEIVE,
-    LIBNFC_EMBEDDED_SE_GET_ATR_STRING,
+    LIBNFC_EMBEDDED_SE_RESET,
     LIBNFC_MESSAGE_MAX,
 } NFCCX_LIBNFC_MESSAGE, *PNFCCX_LIBNFC_MESSAGE;
 
@@ -132,7 +132,7 @@ typedef struct _NFCCX_RF_INTERFACE {
     UCHAR uiNfcIP_Tgt_Mode;
     UCHAR uiNfcCE_Mode;
     ULONG uiDuration;
-    UCHAR uiBailout; 
+    UCHAR uiBailout;
     // Store timetamp for Kovio last detection time to detect the tag being read again too quickly
     ULONGLONG bKovioDetected;
 
@@ -191,7 +191,7 @@ typedef struct _NFCCX_RF_INTERFACE {
 
 typedef struct _NFCCX_RF_LIBNFC_REQUEST_CONTEXT {
     PNFCCX_RF_INTERFACE RFInterface;
-    PNFCCX_CX_SEQUENCE Sequence; 
+    PNFCCX_CX_SEQUENCE Sequence;
 } NFCCX_RF_LIBNFC_REQUEST_CONTEXT, *PNFCCX_RF_LIBNFC_REQUEST_CONTEXT;
 
 //
@@ -335,12 +335,6 @@ NfcCxRFInterfaceSetCardActivationMode(
     );
 
 NTSTATUS
-NfcCxRFInterfaceResetCard(
-    _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ phLibNfc_Handle hSecureElement
-    );
-
-NTSTATUS
 NfcCxRFInterfaceSetRoutingTable(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_reads_(RtngTableCount) phLibNfc_RtngConfig_t* pRtngTable,
@@ -388,7 +382,7 @@ NfcCxRFInterfaceESETransmit(
     );
 
 NTSTATUS
-NfcCxRFInterfaceESEGetATRString(
+NfcCxRFInterfaceESEReset(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _Out_writes_bytes_to_(OutputBufferLength, *pOutputBufferUsed) PBYTE OutputBuffer,
     _In_ size_t OutputBufferLength,
@@ -516,7 +510,7 @@ FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfacePreRecovery;
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfacePostRecovery;
 
 FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceESETransceiveSeq;
-FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceESEGetATRStringSeq;
+FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceESEResetSeq;
 
 #define RF_INTERFACE_INITIALIZE_SEQUENCE \
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfacePreInitialize) \
@@ -567,8 +561,8 @@ FN_NFCCX_CX_SEQUENCE_ENTRY NfcCxRFInterfaceESEGetATRStringSeq;
 #define RF_INTERFACE_EMBEDDEDSE_TRANSCEIVE_SEQUENCE \
     NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceESETransceiveSeq)
 
-#define RF_INTERFACE_EMBEDDEDSE_GET_ATR_STRING_SEQUENCE \
-    NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceESEGetATRStringSeq)
+#define RF_INTERFACE_EMBEDDEDSE_RESET_SEQUENCE \
+    NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceESEResetSeq)
 
 #define RF_INTERFACE_SE_NTF_REGISTER_SEQUENCE NFCCX_CX_SEQUENCE_ENTRY(NfcCxRFInterfaceSENtfRegister)
 
