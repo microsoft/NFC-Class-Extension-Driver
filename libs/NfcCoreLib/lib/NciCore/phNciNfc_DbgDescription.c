@@ -47,7 +47,7 @@ void phNciNfc_PrintCoreSetConfigCmdDescription(uint8_t *pBuff, uint16_t wLen)
                 PH_LOG_NCI_INFO_X32MSG("Value:", (uint32_t)pBuff[bIndex+2]);
             }
             else if (pBuff[bIndex+1] > 1) {
-                PH_LOG_NCI_INFO_HEXDUMP("Value: %!HEXDUMP!", 
+                PH_LOG_NCI_INFO_HEXDUMP("Value: %!HEXDUMP!",
                                         WppLogHex((void*)&pBuff[bIndex+2], (uint16_t)pBuff[bIndex+1]));
             }
         }
@@ -59,7 +59,7 @@ void phNciNfc_PrintCoreSetConfigCmdDescription(uint8_t *pBuff, uint16_t wLen)
                 PH_LOG_NCI_INFO_X32MSG("Value:", (uint32_t)pBuff[bIndex+3]);
             }
             else if (pBuff[bIndex+2] > 1) {
-                PH_LOG_NCI_INFO_HEXDUMP("Value: %!HEXDUMP!", 
+                PH_LOG_NCI_INFO_HEXDUMP("Value: %!HEXDUMP!",
                                         WppLogHex((void*)&pBuff[bIndex+3], (uint16_t)pBuff[bIndex+2]));
             }
         }
@@ -261,7 +261,7 @@ void phNciNfc_PrintRfParamUpdateCmdDescription(uint8_t *pBuff, uint16_t wLen)
             PH_LOG_NCI_INFO_X32MSG("Value:", (uint32_t)pBuff[bIndex+2]);
         }
         else {
-            PH_LOG_NCI_INFO_HEXDUMP("Value: %!HEXDUMP!", 
+            PH_LOG_NCI_INFO_HEXDUMP("Value: %!HEXDUMP!",
                                     WppLogHex((void*)&pBuff[bIndex+2], (uint16_t)pBuff[bIndex+1]));
         }
 
@@ -331,30 +331,30 @@ void phNciNfc_PrintCoreInitNci1xRspDescription(uint8_t *pBuff, uint16_t wLen)
         PH_LOG_NCI_INFO_STR("Discovery Configuration Mode:");
 
         PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex+4, wLen);
-        tNfccFeatures.DiscConfSuprt = pBuff[bIndex++];
+        tNfccFeatures.DiscoveryConfiguration = pBuff[bIndex++];
         tNfccFeatures.RoutingType = pBuff[bIndex++];
         tNfccFeatures.PwrOffState = pBuff[bIndex++];
         tNfccFeatures.Byte3 = pBuff[bIndex++];
 
-        if (tNfccFeatures.DiscConfSuprt & 0x01) {
+        if (tNfccFeatures.DiscoveryConfiguration & PHNCINFC_DISCOVERY_FREQUENCY_CONFIG_SUPPORTED_MASK) {
             PH_LOG_NCI_INFO_STR("Discovery Frequency supported");
         }
         else {
             PH_LOG_NCI_INFO_STR("Discovery Frequency value is ignored");
         }
 
-        if ((tNfccFeatures.DiscConfSuprt & 0x06) == 0x00) {
+        if ((tNfccFeatures.DiscoveryConfiguration & PHNCINFC_DISCOVERY_CONFIG_MODE_MASK) == 0x00) {
             PH_LOG_NCI_INFO_STR("DH is the only entity that configures the NFCC");
         }
         else {
             PH_LOG_NCI_INFO_STR("NFCC can receive configurations from the DH and other NFCEEs");
         }
 
-        PH_LOG_NCI_INFO_STR("Technology based routing %s", (tNfccFeatures.RoutingType & 0x02) ? "supported" : "not supported");
-        PH_LOG_NCI_INFO_STR("Protocol based routing %s", (tNfccFeatures.RoutingType & 0x04) ? "supported" : "not supported");
-        PH_LOG_NCI_INFO_STR("AID based routing %s", (tNfccFeatures.RoutingType & 0x08) ? "supported" : "not supported");
-        PH_LOG_NCI_INFO_STR("Battery Off state %s", (tNfccFeatures.PwrOffState & 0x01) ? "supported" : "not supported");
-        PH_LOG_NCI_INFO_STR("Switched Off state %s", (tNfccFeatures.PwrOffState & 0x02) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("Technology based routing %s", (tNfccFeatures.RoutingType & PHNCINFC_TECH_BASED_ROUTING_MASK) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("Protocol based routing %s", (tNfccFeatures.RoutingType & PHNCINFC_PROTO_BASED_ROUTING_MASK) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("AID based routing %s", (tNfccFeatures.RoutingType & PHNCINFC_AID_BASED_ROUTING_MASK) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("Battery Off state %s", (tNfccFeatures.PwrOffState & PHNCINFC_BATTERY_OFF_STATE_MASK) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("Switched Off state %s", (tNfccFeatures.PwrOffState & PHNCINFC_SWITCH_OFF_STATE_MASK) ? "supported" : "not supported");
 
         PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex+1, wLen);
         bNumInterfaces = pBuff[bIndex++];
@@ -406,30 +406,37 @@ void phNciNfc_PrintCoreInitNci2xRspDescription(uint8_t *pBuff, uint16_t wLen)
         PH_LOG_NCI_INFO_STR("Discovery Configuration Mode:");
 
         PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 4, wLen);
-        tNfccFeatures.DiscConfSuprt = pBuff[bIndex++];
+        tNfccFeatures.DiscoveryConfiguration = pBuff[bIndex++];
         tNfccFeatures.RoutingType = pBuff[bIndex++];
         tNfccFeatures.PwrOffState = pBuff[bIndex++];
         tNfccFeatures.Byte3 = pBuff[bIndex++];
 
-        if (tNfccFeatures.DiscConfSuprt & 0x01) {
+        if (tNfccFeatures.DiscoveryConfiguration & PHNCINFC_DISCOVERY_FREQUENCY_CONFIG_SUPPORTED_MASK) {
             PH_LOG_NCI_INFO_STR("Discovery Frequency supported");
         }
         else {
             PH_LOG_NCI_INFO_STR("Discovery Frequency value is ignored");
         }
 
-        if ((tNfccFeatures.DiscConfSuprt & 0x06) == 0x00) {
+        if ((tNfccFeatures.DiscoveryConfiguration & PHNCINFC_DISCOVERY_CONFIG_MODE_MASK) == 0x00) {
             PH_LOG_NCI_INFO_STR("DH is the only entity that configures the NFCC");
         }
         else {
             PH_LOG_NCI_INFO_STR("NFCC can receive configurations from the DH and other NFCEEs");
         }
 
-        PH_LOG_NCI_INFO_STR("Technology based routing %s", (tNfccFeatures.RoutingType & 0x02) ? "supported" : "not supported");
-        PH_LOG_NCI_INFO_STR("Protocol based routing %s", (tNfccFeatures.RoutingType & 0x04) ? "supported" : "not supported");
-        PH_LOG_NCI_INFO_STR("AID based routing %s", (tNfccFeatures.RoutingType & 0x08) ? "supported" : "not supported");
-        PH_LOG_NCI_INFO_STR("Battery Off state %s", (tNfccFeatures.PwrOffState & 0x01) ? "supported" : "not supported");
-        PH_LOG_NCI_INFO_STR("Switched Off state %s", (tNfccFeatures.PwrOffState & 0x02) ? "supported" : "not supported");
+        if ((tNfccFeatures.DiscoveryConfiguration & PHNCINFC_HCI_NETWORK_SUPPORTED_MASK) == 0x00) {
+            PH_LOG_NCI_INFO_STR("NFCC does not implement the HCI network");
+        }
+        else {
+            PH_LOG_NCI_INFO_STR("NFCC implements the HCI network as defined in ETSI_102622");
+        }
+
+        PH_LOG_NCI_INFO_STR("Technology based routing %s", (tNfccFeatures.RoutingType & PHNCINFC_TECH_BASED_ROUTING_MASK) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("Protocol based routing %s", (tNfccFeatures.RoutingType & PHNCINFC_PROTO_BASED_ROUTING_MASK) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("AID based routing %s", (tNfccFeatures.RoutingType & PHNCINFC_AID_BASED_ROUTING_MASK) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("Battery Off state %s", (tNfccFeatures.PwrOffState & PHNCINFC_BATTERY_OFF_STATE_MASK) ? "supported" : "not supported");
+        PH_LOG_NCI_INFO_STR("Switched Off state %s", (tNfccFeatures.PwrOffState & PHNCINFC_SWITCH_OFF_STATE_MASK) ? "supported" : "not supported");
 
         PHNCINFC_VALIDATE_PACKET_LENGTH(bIndex + 1, wLen);
         PH_LOG_NCI_INFO_X32MSG("Max Logical Connections:", (uint32_t)pBuff[bIndex++]);
@@ -527,7 +534,7 @@ void phNciNfc_PrintCoreGetConfigRspDescription(uint8_t *pBuff, uint16_t wLen)
                     PH_LOG_NCI_INFO_X32MSG("Value:", (uint32_t)pBuff[bIndex + 2]);
                 }
                 else {
-                    PH_LOG_NCI_INFO_HEXDUMP("Value: %!HEXDUMP!", 
+                    PH_LOG_NCI_INFO_HEXDUMP("Value: %!HEXDUMP!",
                                             WppLogHex((void*)&pBuff[bIndex + 2], (uint16_t)pBuff[bIndex + 1]));
                 }
             }
@@ -540,7 +547,7 @@ void phNciNfc_PrintCoreGetConfigRspDescription(uint8_t *pBuff, uint16_t wLen)
                 PH_LOG_NCI_INFO_X32MSG("Value:", (uint32_t)pBuff[bIndex + 3]);
             }
             else if (pBuff[bIndex + 2] > 0) {
-                PH_LOG_NCI_INFO_HEXDUMP("Value: %!HEXDUMP!", 
+                PH_LOG_NCI_INFO_HEXDUMP("Value: %!HEXDUMP!",
                                         WppLogHex((void*)&pBuff[bIndex + 3], (uint16_t)pBuff[bIndex + 2]));
             }
         }
@@ -1104,7 +1111,7 @@ void phNciNfc_PrintPacketDescription(
         {
             PH_LOG_NCI_INFO_STR("Message type: Response");
             PH_LOG_NCI_INFO_STR("GID: %!phNciNfc_CoreGid!", pHeaderInfo->Group_ID);
-            
+
             switch (pHeaderInfo->Group_ID)
             {
             case phNciNfc_e_CoreNciCoreGid:

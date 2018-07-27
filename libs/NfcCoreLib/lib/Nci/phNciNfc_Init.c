@@ -12,7 +12,6 @@ static NFCSTATUS phNciNfc_Init(void *pContext);
 static NFCSTATUS phNciNfc_ProcessInitRsp(void *pContext, NFCSTATUS wStatus);
 static NFCSTATUS phNciNfc_ProcessInitRspNci1x(void *pContext, NFCSTATUS wStatus);
 static NFCSTATUS phNciNfc_ProcessInitRspNci2x(void *pContext, NFCSTATUS wStatus);
-static void phNciNfc_DelayForCreditNtfCb(void* pContext, uint8_t bCredits, NFCSTATUS status);
 static NFCSTATUS phNciNfc_CompleteInitSequence(void *pContext, NFCSTATUS wStatus);
 
 static NFCSTATUS phNciNfc_DelayForResetNtfProc(void* pContext, NFCSTATUS wStatus);
@@ -166,7 +165,7 @@ static NFCSTATUS phNciNfc_ProcessInitRspNci2x(void *pContext, NFCSTATUS Status)
                 wStatus = NFCSTATUS_SUCCESS;
 
                 /*NFCC Features*/
-                pInitRsp->NfccFeatures.DiscConfSuprt = pNciContext->RspBuffInfo.pBuff[Offset++];
+                pInitRsp->NfccFeatures.DiscoveryConfiguration = pNciContext->RspBuffInfo.pBuff[Offset++];
                 pInitRsp->NfccFeatures.RoutingType = pNciContext->RspBuffInfo.pBuff[Offset++];
                 pInitRsp->NfccFeatures.PwrOffState = pNciContext->RspBuffInfo.pBuff[Offset++];
                 pInitRsp->NfccFeatures.Byte3 = pNciContext->RspBuffInfo.pBuff[Offset++];
@@ -217,25 +216,18 @@ static NFCSTATUS phNciNfc_ProcessInitRspNci2x(void *pContext, NFCSTATUS Status)
                         Offset += bLen + 2;
                     }
 
-                    if (wStatus == NFCSTATUS_SUCCESS && pInitRsp->DataHCIPktPayloadLen > 0)
+                    if (wStatus == NFCSTATUS_SUCCESS && (pInitRsp->NfccFeatures.DiscoveryConfiguration & PHNCINFC_HCI_NETWORK_SUPPORTED_MASK))
                     {
                         /*Note: The HciContext will be created once back in phLibNfc_InitializeProcess*/
                         wStatus = phNciNfc_CreateConn(UNASSIGNED_DESTID, phNciNfc_e_NFCEE);
                         if (wStatus == NFCSTATUS_SUCCESS)
                         {
-                            wStatus = phNciNfc_UpdateConnInfo(UNASSIGNED_DESTID, phNciNfc_e_NFCEE,
+                            wStatus = phNciNfc_UpdateConnInfo(
+                                UNASSIGNED_DESTID,
+                                phNciNfc_e_NFCEE,
                                 CONNHCITYPE_STATIC,
                                 pInitRsp->DataHCINumCredits,
                                 pInitRsp->DataHCIPktPayloadLen);
-
-                            if (wStatus == NFCSTATUS_SUCCESS &&
-                                pInitRsp->DataHCIPktPayloadLen > 0 &&
-                                pInitRsp->DataHCINumCredits == 0)
-                            {
-                                wStatus = phNciNfc_RegForConnCredits(CONNHCITYPE_STATIC,
-                                    &phNciNfc_DelayForCreditNtfCb,
-                                    pNciContext, PHNCINFC_MIN_WAITCREDIT_TO);
-                            }
                         }
                     }
 
@@ -289,7 +281,7 @@ static NFCSTATUS phNciNfc_ProcessInitRspNci1x(void *pContext, NFCSTATUS Status)
                 wStatus = NFCSTATUS_SUCCESS;
 
                 /*NFCC Features*/
-                pInitRsp->NfccFeatures.DiscConfSuprt =  pNciContext->RspBuffInfo.pBuff[Offset++];
+                pInitRsp->NfccFeatures.DiscoveryConfiguration =  pNciContext->RspBuffInfo.pBuff[Offset++];
                 pInitRsp->NfccFeatures.RoutingType =  pNciContext->RspBuffInfo.pBuff[Offset++];
                 pInitRsp->NfccFeatures.PwrOffState =  pNciContext->RspBuffInfo.pBuff[Offset++];
                 pInitRsp->NfccFeatures.Byte3 =  pNciContext->RspBuffInfo.pBuff[Offset++];
@@ -387,40 +379,6 @@ static NFCSTATUS phNciNfc_ProcessInitRspNci1x(void *pContext, NFCSTATUS Status)
     }
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
-}
-
-static void phNciNfc_DelayForCreditNtfCb(void* pContext, uint8_t bCredits, NFCSTATUS status)
-{
-    pphNciNfc_Context_t pNciContext = (pphNciNfc_Context_t)pContext;
-    phNciNfc_TransactInfo_t tTranscInfo;
-    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-
-    PH_LOG_NCI_FUNC_ENTRY();
-
-    if ((NFCSTATUS_SUCCESS != status) || (0 == bCredits))
-    {
-        /* setting generic WaitCreditTimeout event to enable processing of state machine even in failure case */
-        wStatus = NFCSTATUS_CREDIT_TIMEOUT;
-        PH_LOG_NCI_CRIT_STR("Credits Update from NciNfc_Init Module Failed");
-        phNciNfc_Notify(pNciContext, wStatus, NULL);
-    }
-    else
-    {
-        if (NULL != pNciContext && phNciNfc_IsVersion2x(pNciContext))
-        {
-            tTranscInfo.pContext = (void*)pNciContext;
-            tTranscInfo.pbuffer = (void*)&pNciContext->ResetInfo.ResetTypeRsp;
-            tTranscInfo.wLength = sizeof(pNciContext->ResetInfo.ResetTypeRsp);
-            phNciNfc_Notify(pNciContext, wStatus, (void *)&tTranscInfo);
-        }
-        else
-        {
-            wStatus = NFCSTATUS_INVALID_STATE;
-            phNciNfc_Notify(pNciContext, wStatus, NULL);
-        }
-    }
-
-    PH_LOG_NCI_FUNC_EXIT();
 }
 
 static void phNciNfc_ResetNtfDelayCb(uint32_t dwTimerId, void *pContext)

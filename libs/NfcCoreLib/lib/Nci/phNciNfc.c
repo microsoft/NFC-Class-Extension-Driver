@@ -1759,21 +1759,28 @@ NFCSTATUS phNciNfc_GetNfccFeatures(void *pNciCtx,
     }
     else if(NULL != pNfccFeatures)
     {
-        /* Get NFCC features from Init response message */
-        pNfccFeatures->DiscConfigInfo.DiscFreqConfig = (pNciContext->InitRspParams.NfccFeatures.DiscConfSuprt &
-                                                        PHNCINFC_DISCFREQCONFIG_BITMASK);
-        pNfccFeatures->DiscConfigInfo.DiscConfigMode = ((pNciContext->InitRspParams.NfccFeatures.DiscConfSuprt &
-                                                        PHNCINFC_DISCCONFIGMODE_BITMASK) >> 1);
-        pNfccFeatures->RoutingInfo.TechnBasedRouting = ((pNciContext->InitRspParams.NfccFeatures.RoutingType &
-                                                        PHNCINFC_TECHNBASEDRTNG_BITMASK) >> 1);
-        pNfccFeatures->RoutingInfo.ProtocolBasedRouting = ((pNciContext->InitRspParams.NfccFeatures.RoutingType &
-                                                        PHNCINFC_PROTOBASEDRTNG_BITMASK) >> 2);
-        pNfccFeatures->RoutingInfo.AidBasedRouting = ((pNciContext->InitRspParams.NfccFeatures.RoutingType &
-                                                        PHNCINFC_AIDBASEDRTNG_BITMASK) >> 3);
-        pNfccFeatures->PowerStateInfo.BatteryOffState = (pNciContext->InitRspParams.NfccFeatures.PwrOffState &
-                                                        PHNCINFC_BATTOFFSTATE_BITMASK);
-        pNfccFeatures->PowerStateInfo.SwitchOffState = ((pNciContext->InitRspParams.NfccFeatures.PwrOffState &
-                                                        PHNCINFC_SWITCHOFFSTATE_BITMASK) >> 1);
+        phNciNfc_sCoreNfccFeatures_t* nfccFeaturesRaw = &pNciContext->InitRspParams.NfccFeatures;
+
+        //
+        // NCI 2.0, Section 4.2, CORE_INIT_RSP, 'NFCC Features' field
+        //
+        pNfccFeatures->DiscConfigInfo.DiscFreqConfig =
+            (nfccFeaturesRaw->DiscoveryConfiguration & PHNCINFC_DISCOVERY_FREQUENCY_CONFIG_SUPPORTED_MASK) >> PHNCINFC_DISCOVERY_FREQUENCY_CONFIG_SUPPORTED_OFFSET;
+        pNfccFeatures->DiscConfigInfo.DiscConfigMode =
+            (nfccFeaturesRaw->DiscoveryConfiguration & PHNCINFC_DISCOVERY_CONFIG_MODE_MASK) >> PHNCINFC_DISCOVERY_CONFIG_MODE_OFFSET;
+
+        pNfccFeatures->RoutingInfo.TechnBasedRouting =
+            (nfccFeaturesRaw->RoutingType & PHNCINFC_TECH_BASED_ROUTING_MASK) >> PHNCINFC_TECH_BASED_ROUTING_OFFSET;
+        pNfccFeatures->RoutingInfo.ProtocolBasedRouting =
+            (nfccFeaturesRaw->RoutingType & PHNCINFC_PROTO_BASED_ROUTING_MASK) >> PHNCINFC_PROTO_BASED_ROUTING_OFFSET;
+        pNfccFeatures->RoutingInfo.AidBasedRouting =
+            (nfccFeaturesRaw->RoutingType & PHNCINFC_AID_BASED_ROUTING_MASK) >> PHNCINFC_AID_BASED_ROUTING_OFFSET;
+
+        pNfccFeatures->PowerStateInfo.BatteryOffState =
+            (nfccFeaturesRaw->PwrOffState & PHNCINFC_BATTERY_OFF_STATE_MASK) >> PHNCINFC_BATTERY_OFF_STATE_OFFSET;
+        pNfccFeatures->PowerStateInfo.SwitchOffState =
+            (nfccFeaturesRaw->PwrOffState & PHNCINFC_SWITCH_OFF_STATE_MASK) >> PHNCINFC_SWITCH_OFF_STATE_OFFSET;
+
         /* Store the Manufacturer ID */
         pNfccFeatures->ManufacturerId = pNciContext->InitRspParams.ManufacturerId;
         /* Store the Manufacturer specific info */

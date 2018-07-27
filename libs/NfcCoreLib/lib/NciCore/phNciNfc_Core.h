@@ -637,47 +637,71 @@ typedef enum phNciNfc_CoreNfceeProtoInterfaces
 /**
  * \ingroup grp_nci_nfc_core
  *
- * \brief Struct to hold NFCC features supported by NFCC
+ * \brief 'NFCC Features' field in CORE_INIT_RSP, 4 Octets
+ * \brief NCI2.0, Section 4.2, Table 10: NFC Features
   */
 typedef struct phNciNfc_sCoreNfccFeatures
 {
-    uint8_t DiscConfSuprt;                                  /**<Discovery configuration supported */
-#if 0
-    union {
-        uint8_t DiscConfSuprt;
-        struct {
-            uint32_t DiscFreqConf:1; /**<1b Discovery Frequency Configuration is supported by NFCC in RF_DISCOVER_CMD*/
-            uint32_t DiscConfMode:2; /**<00b => Only DH Configures NFCC, 01b: NFCEE and DH both can configure NFCC*/
-            uint32_t RFU:5;          /**<RFU and set to 0*/
-        }DiscConfigInfo;
-    }Byte0
-#endif
-   uint8_t RoutingType;              /**<Listen mode routing types supported by NFCC */
-#if 0
-    union {
-        uint8_t RoutingType;         /**<If no routing type is supported then NFCC does not support listen
-                                         based routing*/
-        struct {
-            uint32_t RFU:1;          /**<RFU and set to 0*/
-            uint32_t TechBased:1;    /**<Technology Based routing, if set to 1*/
-            uint32_t ProtoBased:1;   /**<Protocol Based routing, if set to 1*/
-            uint32_t AidBased:1;     /**<AID Based routing, if set to 1*/
-            uint32_t RFU4:4;         /**<RFU and set to 0*/
-        }RoutingTypeInfo;
-    }Byte1
-#endif
-    uint8_t PwrOffState;             /**<Power states supported by NFCC */
-#if 0
-    union {
-        uint8_t PwrOffState;
-        struct {
-            uint32_t BattOff:1;      /**<Battery Off state supported if set to 1*/
-            uint32_t SwtchOff:1;     /**<Switch Off state supported if set to 1*/
-        }PwrOffStateInfo;
-    }Byte2
-#endif
-    uint8_t Byte3;                   /**< Reserved for proprietary capabilities */
+    uint8_t DiscoveryConfiguration; /**< Octet 0: Discovery configurations supported */
+    uint8_t RoutingType;            /**< Octet 1: Listen mode routing types supported by NFCC */
+    uint8_t PwrOffState;            /**< Octet 2: Power states supported by NFCC */
+    uint8_t Byte3;                  /**< Octet 3: Reserved for proprietary capabilities */
 }phNciNfc_sCoreNfccFeatures_t, *pphNciNfc_sCoreNfccFeatures_t; /**< Pointer to #phNciNfc_sCoreNfccFeatures_t */
+
+/**
+ * \ingroup grp_nci_nfc_core
+ *
+ * \brief NCI2.0, Section 4.2, Table 10: NFC Features
+ * \brief Bit mapping for values in the payload
+  */
+typedef enum phNciNfc_CoreNfccFeatures_Bitmasks
+{
+    // Octet 0
+    PHNCINFC_DISCOVERY_FREQUENCY_CONFIG_SUPPORTED_MASK  = 0b00000001,
+    PHNCINFC_DISCOVERY_CONFIG_MODE_MASK                 = 0b00000110,
+    PHNCINFC_HCI_NETWORK_SUPPORTED_MASK                 = 0b00001000,
+    // RFU                                              = 0b11110000,
+
+    // Octet 1
+    PHNCINFC_TECH_BASED_ROUTING_MASK                    = 0b00000010,
+    PHNCINFC_PROTO_BASED_ROUTING_MASK                   = 0b00000100,
+    PHNCINFC_AID_BASED_ROUTING_MASK                     = 0b00001000,
+    // RFU                                              = 0b11110001,
+
+    // Octet 2
+    PHNCINFC_BATTERY_OFF_STATE_MASK                     = 0b00000001,
+    PHNCINFC_SWITCH_OFF_STATE_MASK                      = 0b00000010,
+    // RFU                                              = 0b11111100,
+
+    // Octet 3
+    // RFU
+} phNciNfc_CoreNfccFeatures_Bitmasks_t;
+
+/**
+ * \ingroup grp_nci_nfc_core
+ *
+ * \brief NCI2.0, Section 4.2, Table 10: NFC Features
+ * \brief Bit offsets for values in the payload
+  */
+typedef enum phNciNfc_CoreNfccFeatures_BitOffsets
+{
+    // Octet 0
+    PHNCINFC_DISCOVERY_FREQUENCY_CONFIG_SUPPORTED_OFFSET= 0,
+    PHNCINFC_DISCOVERY_CONFIG_MODE_OFFSET               = 1,
+    PHNCINFC_HCI_NETWORK_SUPPORTED_OFFSET               = 3,
+
+    // Octet 1
+    PHNCINFC_TECH_BASED_ROUTING_OFFSET                  = 1,
+    PHNCINFC_PROTO_BASED_ROUTING_OFFSET                 = 2,
+    PHNCINFC_AID_BASED_ROUTING_OFFSET                   = 3,
+
+    // Octet 2
+    PHNCINFC_BATTERY_OFF_STATE_OFFSET                   = 0,
+    PHNCINFC_SWITCH_OFF_STATE_OFFSET                    = 1,
+
+    // Octet 3
+    // RFU
+} phNciNfc_CoreNfccFeatures_BitOffsets_t;
 
 
 /**
