@@ -891,6 +891,10 @@ phHciNfc_ProcessPipeCreateNotifyCmd(phHciNfc_ReceiveParams_t *pReceivedParams,
         tPipeCreatedNtfParams.bPipeID     = ((phHciNfc_AdmNotfPipeCrCmdParams_t*)pReceivedParams->pData)->bPipeID;
         tPipeCreatedNtfParams.bSourceGID  = ((phHciNfc_AdmNotfPipeCrCmdParams_t*)pReceivedParams->pData)->bSourceGID;
         tPipeCreatedNtfParams.bSourceHID  = ((phHciNfc_AdmNotfPipeCrCmdParams_t*)pReceivedParams->pData)->bSourceHID;
+        PH_LOG_LIBNFC_INFO_STR(
+            "ADM_NOTIFY_PIPE_CREATED: Host ID = 0x%02X, Pipe ID = 0x%0X",
+            tPipeCreatedNtfParams.bSourceHID,
+            tPipeCreatedNtfParams.bPipeID);
 
         /* Register for Cmd Open pipe for the newly created pipe */
         tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeCmd;
@@ -912,7 +916,6 @@ phHciNfc_ProcessPipeCreateNotifyCmd(phHciNfc_ReceiveParams_t *pReceivedParams,
         /* Update Session ID Based on whether Pipe request received from UICC or eSE*/
         if( tPipeCreatedNtfParams.bSourceHID != phHciNfc_e_UICCHostID )
         {
-            PH_LOG_LIBNFC_INFO_X32MSG("Gate ID = ", tPipeCreatedNtfParams.bDestGID);
             /* Pipe Created Ntf from eSE*/
             /* Check the Gate ID to which Pipe Request is received */
             if((tPipeCreatedNtfParams.bDestGID == phHciNfc_e_ApduGateId) ||
@@ -1145,6 +1148,7 @@ phHciNfc_ReceiveOpenPipeNotifyCmd(void *pContext,NFCSTATUS wStatus, void *pInfo)
             }
             else
             {
+                bSendAnyOk = FALSE;
                 wIntStatus = phHciNfc_e_RspAnyECmdNotSupported;
             }
 
@@ -1161,11 +1165,11 @@ phHciNfc_ReceiveOpenPipeNotifyCmd(void *pContext,NFCSTATUS wStatus, void *pInfo)
                 /* DataLength */
                 tSendParams.dwLen = 0x01;
 
+                /* Send ANY_OK in response to ANY_OPEN_PIPE and register for pipe events */
                 wStatus = phHciNfc_CoreSend (pHciContext,&tSendParams,&phHciNfc_AnyOkCb, pHciContext);
                 if((NFCSTATUS_PENDING == wStatus))
                 {
-                    /* Do not register for events at APDU Gate Pipe */
-                    if(pReceivedParams->bPipeId != pHciContext->aGetHciSessionId[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX])
+                    if (pReceivedParams->bPipeId != pHciContext->aGetHciSessionId[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX])
                     {
                         /* Register for Evt for the opened pipe */
                         tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
@@ -1184,8 +1188,18 @@ phHciNfc_ReceiveOpenPipeNotifyCmd(void *pContext,NFCSTATUS wStatus, void *pInfo)
                         }
                         else
                         {
-                            PH_LOG_HCI_CRIT_STR("No need to launch sequence");
+                            PH_LOG_HCI_INFO_STR("No need to launch sequence");
                         }
+                    }
+                    else
+                    {
+                        PH_LOG_HCI_INFO_STR("Register for APDU pipe events.");
+                        tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+                        tHciRegData.bPipeId = pReceivedParams->bPipeId;
+                        (void)phHciNfc_RegisterCmdRspEvt(pHciContext,
+                                               &tHciRegData,
+                                               &phHciNfc_ProcessEventsOnApduPipe,
+                                               pHciContext);
                     }
                 }
             }
@@ -1214,6 +1228,8 @@ void phHciNfc_ProcessEventsOnPipe( void *pContext,NFCSTATUS wStatus, void *pInfo
             /*Check for Transaction events */
             if(pReceivedParams->bIns == PH_LIBNFC_INTERNAL_HCI_TRANSACTION_EVENT)
             {
+                PH_LOG_HCI_INFO_STR("HCI event of type=EVT_TRANSACTION on pipeID=0x%02X", pReceivedParams->bPipeId);
+
                 while((bIndex+2) < pReceivedParams->wLen)
                 {
                     bTag = pReceivedParams->pData[bIndex++];
@@ -1242,6 +1258,8 @@ void phHciNfc_ProcessEventsOnPipe( void *pContext,NFCSTATUS wStatus, void *pInfo
             /*Check for Connectivity events */
             else if(pReceivedParams->bIns == PH_LIBNFC_INTERNAL_HCI_CONNECTIVITY_EVENT)
             {
+                PH_LOG_HCI_INFO_STR("HCI event of type=EVT_CONNECTIVITY on pipeID=0x%02X", pReceivedParams->bPipeId);
+
                 tSeEvtInfo.UiccEvtInfo.param.buffer = NULL;
                 tSeEvtInfo.UiccEvtInfo.param.length = 0x00;
                 tSeEvtInfo.UiccEvtInfo.aid.length = 0x00;

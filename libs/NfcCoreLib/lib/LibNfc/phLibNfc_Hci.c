@@ -750,14 +750,14 @@ phLibNfc_HciGetSessionIdentity(void* pContext,NFCSTATUS status,void* pInfo)
         if(NULL != pLibCtx->pHciContext)
         {
             /* Open a pipe to ADM (Admin) gate */
-            wStatus=phHciNfc_AnyGetParameter(
+            wStatus = phHciNfc_AnyGetParameter(
                         pLibCtx->pHciContext,
                         (uint8_t)phHciNfc_e_AdminGateId,
                         phHciNfc_e_SessionIdentityRegistryId,
                         (uint8_t)phHciNfc_e_HciAdminPipeId,
                         &phLibNfc_InternalSequence,
-                        pContext
-                     );
+                        pContext);
+
             if(NFCSTATUS_PENDING != wStatus)
             {
                 PH_LOG_LIBNFC_CRIT_X32MSG("Failed to Get SessionIdentity, error",wStatus);
@@ -918,7 +918,8 @@ phLibNfc_HciGetSessionIdentityProc(void* pContext,NFCSTATUS status,void* pInfo)
                 {
                     pHciCtx->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = pReadSessionIdentity->pData[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX];
                     pHciCtx->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bGateId = phHciNfc_e_ApduGateId;
-                    /* Register for Events for the pipe on APDU Gate Pipe*/
+
+                    PH_LOG_HCI_INFO_STR("Register for APDU pipe events.");
                     tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
                     tHciRegData.bPipeId = pReadSessionIdentity->pData[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX];
                     (void)phHciNfc_RegisterCmdRspEvt(pHciCtx,
