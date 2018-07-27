@@ -640,6 +640,7 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
     bool stopIdleCalled = false;
+    bool runReset = false;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -653,6 +654,7 @@ Return Value:
     }
 
     ESEInterface->CurrentClient = FileContext;
+    runReset = !ESEInterface->HasFirstResetRun;
 
     WdfWaitLockRelease(ESEInterface->SmartCardLock);
 
@@ -677,6 +679,17 @@ Return Value:
     {
         TRACE_LINE(LEVEL_ERROR, "%!STATUS!", status);
         goto Done;
+    }
+
+    if (runReset)
+    {
+        // Reset the card so that 'CachedAtr' is populated.
+        status = NfcCxESEInterfaceSetPower(ESEInterface, SCARD_COLD_RESET, nullptr, nullptr);
+        if (!NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_ERROR, "NfcCxESEInterfaceSetPower failed. %!STATUS!", status);
+            goto Done;
+        }
     }
 
     // Signal smartcard connected event.
@@ -1107,8 +1120,7 @@ Return Value:
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_ESE_INTERFACE eseInterface;
     DWORD *pdwPower = (DWORD*)InputBuffer;
-    BYTE atrBuffer[PHHAL_MAX_ATR_LENGTH] = {};
-    size_t atrBufferLength = sizeof(atrBuffer);
+    size_t atrBufferLength = OutputBufferLength;
 
     UNREFERENCED_PARAMETER(InputBufferLength);
 
@@ -1121,49 +1133,24 @@ Return Value:
 
     eseInterface = NfcCxFdoGetContext(Device)->ESEInterface;
 
+    // Ensure smartcard is connected.
     WdfWaitLockAcquire(eseInterface->SmartCardLock, NULL);
 
     if (!eseInterface->SmartCardConnected)
     {
         status = STATUS_NO_MEDIA;
+        TRACE_LINE(LEVEL_ERROR, "Smartcard not connected. %!STATUS!", status);
         WdfWaitLockRelease(eseInterface->SmartCardLock);
         goto Done;
     }
 
-    switch (*pdwPower)
-    {
-    case SCARD_COLD_RESET:
-    case SCARD_WARM_RESET:
-        status = NfcCxRFInterfaceESEReset(
-            eseInterface->FdoContext->RFInterface,
-            atrBuffer,
-            atrBufferLength,
-            &atrBufferLength);
-        break;
-
-    case SCARD_POWER_DOWN:
-        status = STATUS_NOT_SUPPORTED;
-        break;
-
-    default:
-        status = STATUS_INVALID_PARAMETER;
-        break;
-    }
-
     WdfWaitLockRelease(eseInterface->SmartCardLock);
 
+    status = NfcCxESEInterfaceSetPower(eseInterface, *pdwPower, (BYTE*)OutputBuffer, &atrBufferLength);
     if (!NT_SUCCESS(status))
     {
-        TRACE_LINE(LEVEL_ERROR, "eSE Reset failed. %!STATUS!", status);
+        TRACE_LINE(LEVEL_ERROR, "NfcCxESEInterfaceSetPower failed. %!STATUS!", status);
         goto Done;
-    }
-
-    if (NULL != OutputBuffer)
-    {
-        //
-        // Fill in the ATR value.
-        //
-        status = NfcCxCopyToBuffer(atrBuffer, atrBufferLength, (BYTE*)OutputBuffer, &OutputBufferLength);
     }
 
 Done:
@@ -1179,6 +1166,93 @@ Done:
     }
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     TRACE_LOG_NTSTATUS_ON_FAILURE(status);
+    return status;
+}
+
+NTSTATUS
+NfcCxESEInterfaceSetPower(
+    _In_ PNFCCX_ESE_INTERFACE ESEInterface,
+    _In_ DWORD Type,
+    _Out_writes_bytes_to_opt_(*OutputBufferLength, *OutputBufferLength) BYTE* OutputBuffer,
+    _Inout_opt_ size_t* OutputBufferLength
+    )
+/*++
+
+Routine Description:
+
+    This routine dispatches the SmartCard Set Power
+
+Arguments:
+
+    ESEInterface - ESEInterface object corresponding to smartcard connection.
+    Type - The type of reset to perform.
+    OutputBuffer - Optional buffer that will receive the ATR.
+    OutputBufferLength - On input, the capacity of the OutputBuffer. On output, the length of the ATR.
+
+Return Value:
+
+  NTSTATUS.
+
+--*/
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NTSTATUS status = STATUS_SUCCESS;
+    BYTE atrBuffer[MAXIMUM_ATR_LENGTH] = {};
+    size_t atrBufferLength;
+
+    switch (Type)
+    {
+    case SCARD_COLD_RESET:
+    case SCARD_WARM_RESET:
+        status = NfcCxRFInterfaceESEReset(
+            ESEInterface->FdoContext->RFInterface,
+            atrBuffer,
+            sizeof(atrBuffer),
+            &atrBufferLength);
+        if (!NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_ERROR, "NfcCxRFInterfaceESEReset failed. %!STATUS!", status);
+            goto Done;
+        }
+        break;
+
+    case SCARD_POWER_DOWN:
+        status = STATUS_NOT_SUPPORTED;
+        TRACE_LINE(LEVEL_ERROR, "SCARD_POWER_DOWN not supported. %!STATUS!", status);
+        goto Done;
+
+    default:
+        status = STATUS_INVALID_PARAMETER;
+        TRACE_LINE(LEVEL_ERROR, "Unknown power type: %d. %!STATUS!", Type, status);
+        goto Done;
+    }
+
+    // Cache the ATR for IOCTL_SMARTCARD_GET_ATTRIBUTE.
+    WdfWaitLockAcquire(ESEInterface->SmartCardLock, NULL);
+
+    RtlCopyMemory(ESEInterface->CachedAtr, atrBuffer, atrBufferLength);
+    ESEInterface->CachedAtrLength = atrBufferLength;
+
+    ESEInterface->HasFirstResetRun = TRUE;
+
+    WdfWaitLockRelease(ESEInterface->SmartCardLock);
+
+    if (NULL != OutputBuffer)
+    {
+        //
+        // Fill in the ATR value.
+        //
+        status = NfcCxCopyToBuffer(atrBuffer, atrBufferLength, (BYTE*)OutputBuffer, OutputBufferLength);
+        if (!NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_ERROR, "NfcCxCopyToBuffer failed. %!STATUS!", status);
+            goto Done;
+        }
+    }
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -1638,35 +1712,27 @@ Return Value:
 {
     NTSTATUS status = STATUS_SUCCESS;
 
-    PNFCCX_FDO_CONTEXT fdoContext = ESEInterface->FdoContext;
-    PNFCCX_RF_INTERFACE rfInterface = fdoContext->RFInterface;
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     WdfWaitLockAcquire(ESEInterface->SmartCardLock, NULL);
 
     if (!ESEInterface->SmartCardConnected) {
-        WdfWaitLockRelease(ESEInterface->SmartCardLock);
         TRACE_LINE(LEVEL_ERROR, "SmartCard not connected");
         status = STATUS_INVALID_DEVICE_STATE;
         goto Done;
     }
 
-    WdfWaitLockRelease(ESEInterface->SmartCardLock);
-
-    TRACE_LINE(LEVEL_INFO, "Get Attribute to start Output Buffer length is %Iu....", *pcbOutputBuffer);
-
-    status = NfcCxRFInterfaceESEReset(
-        rfInterface,
-        (PBYTE)pbOutputBuffer,
-        *pcbOutputBuffer,
-        pcbOutputBuffer);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Get Attribute failed, %!STATUS!", status);
+    status = NfcCxCopyToBuffer(ESEInterface->CachedAtr, ESEInterface->CachedAtrLength, pbOutputBuffer, pcbOutputBuffer);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "NfcCxCopyToBuffer failed. %!STATUS!", status);
         goto Done;
     }
 
+    TRACE_LINE(LEVEL_INFO, "ATR length is %Iu.", *pcbOutputBuffer);
+
 Done:
+    WdfWaitLockRelease(ESEInterface->SmartCardLock);
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }

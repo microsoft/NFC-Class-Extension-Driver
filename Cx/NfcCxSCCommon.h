@@ -18,6 +18,9 @@ Environment:
 
 #pragma once
 
+// ISO 7816-3 2006, Section 8.1 (TS byte + 32 characters)
+#define MAXIMUM_ATR_LENGTH 33
+
 typedef
 NTSTATUS
 NFCCX_SC_DISPATCH_HANDLER(

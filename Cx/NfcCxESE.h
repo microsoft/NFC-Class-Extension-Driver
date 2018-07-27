@@ -53,6 +53,10 @@ typedef struct _NFCCX_ESE_INTERFACE
     _Guarded_by_(SmartCardLock)
     BOOLEAN SmartCardConnected;
 
+    BOOLEAN HasFirstResetRun;
+    BYTE CachedAtr[PHHAL_MAX_ATR_LENGTH];
+    size_t CachedAtrLength;
+
     //
     // Reference count for exclusive file handle
     //
@@ -137,6 +141,14 @@ NfcCxESEInterfaceDispatchRequest(
     _In_ size_t InputBufferLength,
     _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
     _In_ size_t OutputBufferLength
+    );
+
+NTSTATUS
+NfcCxESEInterfaceSetPower(
+    _In_ PNFCCX_ESE_INTERFACE ESEInterface,
+    _In_ DWORD Type,
+    _Out_writes_bytes_to_opt_(*OutputBufferLength, *OutputBufferLength) BYTE* OutputBuffer,
+    _Inout_opt_ size_t* OutputBufferLength
     );
 
 //
