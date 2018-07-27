@@ -104,17 +104,8 @@ static NFCSTATUS phNciNfc_Init(void *pContext)
     TxInfo.tHeaderInfo.Group_ID = phNciNfc_e_CoreNciCoreGid;
     TxInfo.tHeaderInfo.Opcode_ID.OidType.NciCoreCmdOid = phNciNfc_e_NciCoreInitCmdOid;
 
-    if (phNciNfc_IsVersion2x(pNciContext))
-    {
-        TxInfo.Buff = (uint8_t *)phOsalNfc_GetMemory(2);
-        TxInfo.wLen = 2;
-        phOsalNfc_SetMemory(TxInfo.Buff, 0x00, TxInfo.wLen);
-    }
-    else
-    {
-        TxInfo.Buff = (uint8_t *)&pNciContext->tInitInfo.bExtension;
-        TxInfo.wLen = 0;
-    }
+    TxInfo.Buff = (uint8_t *)pNciContext->tInitInfo.bExtension;
+    TxInfo.wLen = phNciNfc_IsVersion2x(pNciContext) ? 2 : 0;
 
     wStatus = phNciNfc_CoreIfTxRx(&(pNciContext->NciCoreContext),
                                     &TxInfo,
