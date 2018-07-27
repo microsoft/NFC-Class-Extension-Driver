@@ -986,6 +986,7 @@ static NFCSTATUS phHciNfc_ProcessClearAllPipeNotifyCmd(phHciNfc_ReceiveParams_t 
                                       pphHciNfc_HciContext_t    pHciContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    phHciNfc_HciRegData_t tHciRegData;
     uint8_t aSetHciSessionId[8];
     PH_LOG_HCI_FUNC_ENTRY();
 
@@ -1001,9 +1002,16 @@ static NFCSTATUS phHciNfc_ProcessClearAllPipeNotifyCmd(phHciNfc_ReceiveParams_t 
                                                                         PHHCI_ESE_APDU_PIPE_CREATED_BIT_INDEX,
                                                                         1,
                                                                         1);
+
             /* Reset the APDU Pipe data present in Session ID for eSE*/
             aSetHciSessionId[PHHCI_ESE_APDU_PIPE_STORAGE_INDEX] = PHHCINFC_NO_PIPE_DATA;
             phOsalNfc_MemCopy(pHciContext->aGetHciSessionId,aSetHciSessionId,PHHCINFC_PIPE_SESSIONID_LEN);
+
+            /* Unregister notification callbacks on this pipe if there are any */
+            PH_LOG_HCI_INFO_STR("Unregister from APDU pipe events.");
+            tHciRegData.bPipeId = pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId;
+            tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+            (void)phHciNfc_UnRegisterCmdRspEvt(pHciContext, &tHciRegData, &phHciNfc_ProcessEventsOnApduPipe);
 
             /* Reset the APDU Pipe data present in the List for eSE*/
             pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = PHHCINFC_NO_PIPE_DATA;
@@ -1019,9 +1027,15 @@ static NFCSTATUS phHciNfc_ProcessClearAllPipeNotifyCmd(phHciNfc_ReceiveParams_t 
                                                                         PHHCI_ESE_CONNECTIVITY_PIPE_CREATED_BIT_INDEX,
                                                                         1,
                                                                         1);
+
             /* Reset the Connectivity Pipe data present in Session ID for eSE*/
             aSetHciSessionId[PHHCI_ESE_CONNECTIVITY_PIPE_STORAGE_INDEX] = PHHCINFC_NO_PIPE_DATA;
             phOsalNfc_MemCopy(pHciContext->aGetHciSessionId,aSetHciSessionId,PHHCINFC_PIPE_SESSIONID_LEN);
+
+            /* Unregister notification callbacks on this pipe if there are any */
+            tHciRegData.bPipeId = pHciContext->aSEPipeList[PHHCI_ESE_CONN_PIPE_LIST_INDEX].bPipeId;
+            tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+            (void)phHciNfc_UnRegisterCmdRspEvt(pHciContext, &tHciRegData, &phHciNfc_ProcessEventsOnPipe);
 
             /* Reset the Connectivity Pipe data present in the List for eSE*/
             pHciContext->aSEPipeList[PHHCI_ESE_CONN_PIPE_LIST_INDEX].bPipeId = PHHCINFC_NO_PIPE_DATA;
@@ -1040,9 +1054,15 @@ static NFCSTATUS phHciNfc_ProcessClearAllPipeNotifyCmd(phHciNfc_ReceiveParams_t 
                                                                         PHHCI_UICC_CONNECTIVITY_PIPE_CREATED_BIT_INDEX,
                                                                         1,
                                                                         1);
+
             /* Reset the Pipe data present in Session ID for UICC*/
             aSetHciSessionId[PHHCI_UICC_CONNECTIVITY_PIPE_STORAGE_INDEX] = PHHCINFC_NO_PIPE_DATA;
             phOsalNfc_MemCopy(pHciContext->aGetHciSessionId,aSetHciSessionId,PHHCINFC_PIPE_SESSIONID_LEN);
+
+            /* Unregister notification callbacks on this pipe if there are any */
+            tHciRegData.bPipeId = pHciContext->aSEPipeList[PHHCI_UICC_CONN_PIPE_LIST_INDEX].bPipeId;
+            tHciRegData.eMsgType = phHciNfc_e_HciMsgTypeEvent;
+            (void)phHciNfc_UnRegisterCmdRspEvt(pHciContext, &tHciRegData, &phHciNfc_ProcessEventsOnPipe);
 
             /* Reset the Pipe data present in th List for UICC*/
             pHciContext->aUICCPipeList[PHHCI_UICC_CONN_PIPE_LIST_INDEX].bPipeId = PHHCINFC_NO_PIPE_DATA;
