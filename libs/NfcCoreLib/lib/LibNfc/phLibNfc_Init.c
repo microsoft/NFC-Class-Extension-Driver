@@ -765,6 +765,7 @@ static NFCSTATUS phLibNfc_GetT3tMaxValueProc(void* pContext, NFCSTATUS status, v
         {
             PH_LOG_LIBNFC_WARN_X32MSG("Error while reading T3T Max",pConfigParam[1]);
         }
+        phNciNfc_FreeSendPayloadBuff(pCtx->sHwReference.pNciHandle);
     }
     return wStatus;
 }

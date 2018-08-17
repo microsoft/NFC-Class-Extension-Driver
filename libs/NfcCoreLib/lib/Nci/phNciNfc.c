@@ -1249,6 +1249,7 @@ NFCSTATUS phNciNfc_GetConfigRaw(
         if(NFCSTATUS_PENDING != wStatus)
         {
               PH_LOG_NCI_CRIT_STR("Get Config Raw Sequence failed!");
+              phNciNfc_FreeSendPayloadBuff(pNciContext);
         }
     }
     else
