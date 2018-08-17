@@ -152,12 +152,7 @@ static NFCSTATUS phNciNfc_CompleteModeSetSequence(void *pContext, NFCSTATUS wSta
     PH_LOG_NCI_FUNC_ENTRY();
     if (NULL != pNciCtx)
     {
-        if (NULL != pNciCtx->tSendPayload.pBuff)
-        {
-            phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
-            pNciCtx->tSendPayload.pBuff = NULL;
-            pNciCtx->tSendPayload.wPayloadSize = 0;
-        }
+        phNciNfc_FreeSendPayloadBuff(pNciCtx);
 
         // If operating in NCI2.0+ and NFCEE_MODE_SET_RSP indicates
         // no errors then host should wait for NFCEE_MODE_SET_NTF.
@@ -250,13 +245,7 @@ static NFCSTATUS phNciNfc_CompletePowerAndLinkCtrlSequence(void *pContext, NFCST
     PH_LOG_NCI_FUNC_ENTRY();
     if (NULL != pNciCtx)
     {
-        if (NULL != pNciCtx->tSendPayload.pBuff)
-        {
-            phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
-            pNciCtx->tSendPayload.pBuff = NULL;
-            pNciCtx->tSendPayload.wPayloadSize = 0;
-        }
-
+        phNciNfc_FreeSendPayloadBuff(pNciCtx);
         phNciNfc_Notify(pNciCtx, wStatus, NULL);
     }
     PH_LOG_NCI_FUNC_EXIT();
@@ -333,12 +322,7 @@ static NFCSTATUS phNciNfc_CompleteNfceeDiscoverSequence(void *pContext, NFCSTATU
     {
         if(NULL != pNciContext->RspBuffInfo.pBuff)
         {
-            if(NULL != pNciContext->tSendPayload.pBuff)
-            {
-                phOsalNfc_FreeMemory(pNciContext->tSendPayload.pBuff);
-                pNciContext->tSendPayload.pBuff = NULL;
-                pNciContext->tSendPayload.wPayloadSize = 0;
-            }
+            phNciNfc_FreeSendPayloadBuff(pNciContext);
             dwNfceeCount = pNciContext->tNfceeContext.bNfceeCount;
             if(NFCSTATUS_SUCCESS == wStatus)
             {

@@ -316,12 +316,7 @@ static NFCSTATUS phNciNfc_CompleteDeactivate(void *pContext, NFCSTATUS wStatus)
     if(NULL != pNciContext)
     {
         /* Release memory used for constructing payload */
-        if(NULL != pNciContext->tSendPayload.pBuff)
-        {
-            phOsalNfc_FreeMemory(pNciContext->tSendPayload.pBuff);
-            pNciContext->tSendPayload.pBuff = NULL;
-            pNciContext->tSendPayload.wPayloadSize = 0;
-        }
+        phNciNfc_FreeSendPayloadBuff(pNciContext);
         if(NULL != pNciContext->tTranscvCtxt.tSendPld.pBuff)
         {
             pNciContext->tTranscvCtxt.tSendPld.wLen = 0;

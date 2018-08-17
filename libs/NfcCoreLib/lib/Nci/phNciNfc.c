@@ -2248,11 +2248,7 @@ phNciNfc_ReleaseNciHandle(void )
                 pNciCtx->tTranscvCtxt.tRecvPld.wLen = 0;
             }
 
-            if (NULL != pNciCtx->tSendPayload.pBuff) {
-                phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
-                pNciCtx->tSendPayload.pBuff = NULL;
-                pNciCtx->tSendPayload.wPayloadSize = 0;
-            }
+            phNciNfc_FreeSendPayloadBuff(pNciCtx);
 
             if (NULL != pNciCtx->InitRspParams.ManufacturerInfo.Buffer) {
                 phOsalNfc_FreeMemory(pNciCtx->InitRspParams.ManufacturerInfo.Buffer);
@@ -2729,12 +2725,7 @@ static NFCSTATUS phNciNfc_CompleteSetPowerSubStateSequence(void *pContext, NFCST
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL != pNciCtx)
     {
-        if(NULL != pNciCtx->tSendPayload.pBuff)
-        {
-            phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
-            pNciCtx->tSendPayload.pBuff = NULL;
-            pNciCtx->tSendPayload.wPayloadSize = 0;
-        }
+        phNciNfc_FreeSendPayloadBuff(pNciCtx);
         phNciNfc_Notify(pNciCtx, wStatus, NULL);
     }
     PH_LOG_NCI_FUNC_EXIT();
