@@ -26,6 +26,8 @@ void phNciNfc_NciCtxInitialize(pphNciNfc_Context_t pNciCtx)
         pNciCtx->tSendPayload.pBuff = NULL;
         pNciCtx->IfNtf = NULL;
         pNciCtx->IfNtfCtx = NULL;
+        pNciCtx->ModeSetCallback = NULL;
+        pNciCtx->ModeSetCallbackContext = NULL;
         pNciCtx->pSeqHandler = NULL;
         pNciCtx->RspBuffInfo.pBuff = NULL;
         pNciCtx->tTranscvCtxt.pNotify = NULL;
@@ -44,17 +46,14 @@ void phNciNfc_SetUpperLayerCallback(pphNciNfc_Context_t nciContext, pphNciNfc_If
 {
     PH_LOG_NCI_FUNC_ENTRY();
 
-    if (nciContext->IfNtf != NULL || nciContext->IfNtfCtx != NULL)
+    if (nciContext->IfNtf != NULL && nciContext->IfNtf != callbackFunction ||
+        nciContext->IfNtfCtx != NULL && nciContext->IfNtfCtx != callbackContext)
     {
-        PH_LOG_NCI_CRIT_STR(
-            "Overwriting upper layer callback in nciContext! Lost values: nciContext->IfNtf=%p, nciContext->IfNtfCtx=%p",
-            (void*)nciContext->IfNtf,
-            nciContext->IfNtfCtx);
+        PH_LOG_NCI_CRIT_STR("Error: overwriting upper layer callback in nciContext!");
     }
 
     nciContext->IfNtf = callbackFunction;
     nciContext->IfNtfCtx = callbackContext;
 
-    PH_LOG_NCI_INFO_STR("New values: nciContext->IfNtf=%p, nciContext->IfNtfCtx=%p", (void*)nciContext->IfNtf, nciContext->IfNtfCtx);
     PH_LOG_NCI_FUNC_EXIT();
 }
