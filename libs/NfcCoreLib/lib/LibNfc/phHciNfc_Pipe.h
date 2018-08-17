@@ -65,6 +65,15 @@ typedef enum phNciNfc_eHciMsgType
     phHciNfc_e_HciMsgTypeRsp        /**<Hci response message type*/
 }phNciNfc_eHciMsgType_t;
 
+typedef enum phNciNfc_HciHotPlugEvtStatus
+{
+    phHciNfc_e_HciHotPlugEvtRemoved = 0,	/**<The HCI host has been removed*/
+    phHciNfc_e_HciHotPlugEvtSuccessful,    /**<The HCI host has been inserted and
+                                               lower layer idendity check has been successful*/
+    phHciNfc_e_HciHotPlugEvtFailed         /**<The HCI host has been inserted and
+                                               lower layer idendity check has failed*/
+}phNciNfc_eHciHotPlugEvtStatus_t;
+
 typedef struct phHciNfc_HciRegData
 {
     phNciNfc_eHciMsgType_t  eMsgType;
@@ -77,6 +86,12 @@ typedef struct phHciNfc_AdmPipeCreateCmdParams
     uint8_t     bDestHID;
     uint8_t     bDestGID;
 } phHciNfc_AdmPipeCreateCmdParams_t;
+
+typedef struct phHciNfc_AdmPipeHotPlugEvtParams
+{
+    uint8_t     bHostID;
+    uint8_t     bStatus;
+} phHciNfc_AdmPipeHotPlugEvtParams_t;
 
 extern NFCSTATUS
 phHciNfc_Transceive(

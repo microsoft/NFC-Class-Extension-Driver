@@ -736,6 +736,46 @@ static NFCSTATUS phLibNfc_HciDataSendComplete(void* pContext,NFCSTATUS status,vo
     return wStatus;
 }
 
+void phLibNfc_SeEventHotPlugCb(void* pContext, NFCSTATUS wStatus, void *pInfo)
+{
+    pphHciNfc_HciContext_t pHciContext = (pphHciNfc_HciContext_t)pContext;
+    pphLibNfc_LibContext_t pLibContext = phLibNfc_GetContext();
+    phHciNfc_ReceiveParams_t *pReceivedParams = (phHciNfc_ReceiveParams_t *)pInfo;
+    phHciNfc_AdmPipeHotPlugEvtParams_t *pHotPlugParams;
+
+    PH_LOG_LIBNFC_FUNC_ENTRY();
+
+    if (NFCSTATUS_SUCCESS == wStatus)
+    {
+        /* EVT_HOT_PLUG sent by the host controller shall not have parameters when sent to hosts with HCI_VERSION '01'.
+         * If EVT_HOT_PLUG is sent to a host with HCI_VERSION '02' the inclusion of parameters is optional.
+         * EVT_HOT_PLUG sent by the host controller shall have parameters when sent to a host with HCI_VERSION '03' or above.
+         */
+        if (pHciContext->controllerHciVersion >= phHciNfc_e_HciVersion12)
+        {
+            if (pReceivedParams->wLen == sizeof(phHciNfc_AdmPipeHotPlugEvtParams_t))
+            {
+                pHotPlugParams = (phHciNfc_AdmPipeHotPlugEvtParams_t*)pReceivedParams->pData;
+                switch (pHotPlugParams->bStatus)
+                {
+                case phHciNfc_e_HciHotPlugEvtSuccessful:
+                    PH_LOG_LIBNFC_CRIT_STR("Stopping Hci Timer");
+                    if (pLibContext->dwHciTimerId)
+                    {
+                        (void)phOsalNfc_Timer_Stop(pLibContext->dwHciTimerId);
+                        (void)phOsalNfc_Timer_Delete(pLibContext->dwHciTimerId);
+                        pLibContext->dwHciTimerId = 0;
+                        phLibNfc_InternalSequence(pLibContext, wStatus, NULL);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    PH_LOG_LIBNFC_FUNC_EXIT();
+    return;
+}
+
 static NFCSTATUS
 phLibNfc_HciGetSessionIdentity(void* pContext,NFCSTATUS status,void* pInfo)
 {

@@ -194,7 +194,8 @@ typedef enum phHciNfc_HciVersion
 {
     phHciNfc_e_HciVersionUnknown = 0x00U, // Uninitialized
     phHciNfc_e_HciVersion9 = 0x01U, // v9.0.0 - v11.2.0
-    phHciNfc_e_HciVersion12 = 0x02U, // v12.0.0+
+    phHciNfc_e_HciVersion12 = 0x02U, // v12.1.0+
+    phHciNfc_e_HciVersion15 = 0x03U, // v15.0.0+
 } phHciNfc_HciVersion_t;
 
 typedef struct phHciNfc_GateInfo

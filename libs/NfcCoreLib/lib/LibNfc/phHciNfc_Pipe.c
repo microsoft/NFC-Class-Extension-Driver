@@ -856,9 +856,7 @@ static NFCSTATUS phHciNfc_GetPipeIndex(phHciNfc_RegInfo_t *pList,
             /* Check for Event Hot Plug */
             if(phHciNfc_e_EvtHotPlug == (phHciNfc_EvtType_t)pReceivedParams->bIns)
             {
-#if 0 /* Commented as waiting on EVENT_HOTPLUG is not required as of now */
-                (void)phLibNfc_SeEventHotPlugCb(pHciContext,wStatus,pReceivedParams);
-#endif
+                phLibNfc_SeEventHotPlugCb(pHciContext, wStatus, pReceivedParams);
                 wStatus = NFCSTATUS_SUCCESS;
             }
             else
