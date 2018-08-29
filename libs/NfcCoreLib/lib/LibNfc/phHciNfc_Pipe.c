@@ -1387,6 +1387,7 @@ static void phHciNfc_CreatePipeCb(void *pContext, NFCSTATUS wStatus, void *pInfo
             {
                 pHciContext->aSEPipeList[PHHCI_ESE_APDU_PIPE_LIST_INDEX].bPipeId = phHciNfc_e_InvalidPipeId;
                 PH_LOG_LIBNFC_CRIT_U32MSG("Unexpected response INS received, ", pReceivedParams->bIns);
+                wIntStatus = NFCSTATUS_FAILED;
             }
         }
         else
