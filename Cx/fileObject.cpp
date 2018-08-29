@@ -57,6 +57,7 @@ Return Value:
     WDF_IO_QUEUE_CONFIG queueConfig;
     WDFQUEUE queue;
     NFCCX_IMPERSONATION_CONTEXT impersonationContext = {0};
+    BOOLEAN claimFileObject = TRUE;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -123,11 +124,30 @@ Return Value:
     }
 
     fileName = WdfFileObjectGetFileName(FileObject);
-    status = NfcCxFileObjectDetectRole(fileContext,
-                                       fileName);
+    status = NfcCxFileObjectDetectRole(fileContext, fileName);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to detect Role, %!STATUS!", status);
         goto Done;
+    }
+
+    if (ROLE_UNDEFINED == fileContext->Role)
+    {
+        // The file namespace is not recognized.
+        if (fdoContext->NfcCxClientGlobal->Config.EvtNfcCxDeviceIoControl != nullptr)
+        {
+            // The client driver has indicated that it supports custom IOCTLs.
+            // So pass along the file object to the client driver to see if it recognizes the namespace.
+            // Note: In older versions of the NfcCx, a client driver was unable to use its own custom file namespaces.
+            TRACE_LINE(LEVEL_INFO, "Unknown file namespace. Passing along file object to client driver.");
+            claimFileObject = FALSE;
+            goto Done;
+        }
+        else
+        {
+            status = STATUS_OBJECT_NAME_NOT_FOUND;
+            TRACE_LINE(LEVEL_INFO, "Unknown file namespace. %!STATUS!", status);
+            goto Done;
+        }
     }
 
     if ((ROLE_PUBLICATION == fileContext->Role ||
@@ -425,11 +445,14 @@ Done:
         }
     }
 
-    WdfRequestComplete(Request, status);
+    if (claimFileObject)
+    {
+        WdfRequestComplete(Request, status);
+    }
 
     TRACE_FUNCTION_EXIT_DWORD(LEVEL_VERBOSE, NT_SUCCESS(status));
 
-    return TRUE;
+    return claimFileObject;
 }
 
 VOID
@@ -820,7 +843,8 @@ Return Value:
         goto Done;
 
     } else {
-        status = STATUS_OBJECT_NAME_NOT_FOUND;
+        // File namespace not recognized.
+        FileContext->Role = ROLE_UNDEFINED;
         goto Done;
     }
 
