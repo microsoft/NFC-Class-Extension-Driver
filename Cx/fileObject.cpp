@@ -505,6 +505,9 @@ Return Value:
 
 --*/
 {
+    // NOTE: The device can sometimes be deinitialized (NfcCxFdoCleanup) before all the file handle contexts are closed.
+    // So this function should ensure that FdoContext objects haven't been destroyed before trying to use them.
+
     PNFCCX_FDO_CONTEXT   fdoContext;
     PNFCCX_FILE_CONTEXT  fileContext;
 
@@ -634,7 +637,10 @@ Return Value:
     //
     // Cleanup any left over power references from this file object
     //
-    NfcCxPowerCleanupFilePolicyReferences(fdoContext->Power, fileContext);
+    if (fdoContext->Power != NULL)
+    {
+        NfcCxPowerCleanupFilePolicyReferences(fdoContext->Power, fileContext);
+    }
 
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 
