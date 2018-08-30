@@ -81,7 +81,6 @@ typedef struct phNciNfc_ResetInfo
 typedef struct phNciNfc_InitInfo
 {
     uint8_t bExtension[2];              /**< "Feature Enable" NCI2.0, 4.2, Table 8: Control Messages to Initialize the NFCC*/
-    uint8_t bSkipRegisterAllNtfs;       /**< Skip registration of all ntfs as they are already registered */
 }phNciNfc_InitInfo_t, *pphNciNfc_InitInfo_t; /**< pointer to #phNciNfc_InitInfo_t */
 
 typedef struct phNciNfc_SendPayload
