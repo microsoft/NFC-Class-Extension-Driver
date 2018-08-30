@@ -1266,11 +1266,10 @@ Return Value:
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_SC_INTERFACE scInterface;
     DWORD *pdwPower = (DWORD*)InputBuffer;
+    size_t atrBufferLength = OutputBufferLength;
 
     UNREFERENCED_PARAMETER(Request);
     UNREFERENCED_PARAMETER(InputBufferLength);
-    UNREFERENCED_PARAMETER(OutputBuffer);
-    UNREFERENCED_PARAMETER(OutputBufferLength);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -1291,11 +1290,102 @@ Return Value:
 
     WdfWaitLockRelease(scInterface->SmartCardLock);
 
-    switch (*pdwPower)
+    status = NfcCxSCInterfaceSetPower(scInterface, *pdwPower, (BYTE*)OutputBuffer, &atrBufferLength);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "NfcCxESEInterfaceSetPower failed. %!STATUS!", status);
+        goto Done;
+    }
+
+
+Done:
+    if (NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_INFO, "Completing request %p, with %!STATUS!, 0x%I64x", Request, status, atrBufferLength);
+        WdfRequestCompleteWithInformation(Request, status, atrBufferLength);
+        //
+        // Since we have completed the request here,
+        // return STATUS_PENDING to avoid double completion of the request
+        //
+        status = STATUS_PENDING;
+    }
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+
+    return status;
+}
+
+NTSTATUS
+NfcCxSCInterfaceSetPower(
+    _In_ PNFCCX_SC_INTERFACE ScInterface,
+    _In_ DWORD Type,
+    _Out_writes_bytes_to_opt_(*OutputBufferLength, *OutputBufferLength) BYTE* OutputBuffer,
+    _Inout_opt_ size_t* OutputBufferLength
+)
+/*++
+
+Routine Description:
+
+    This routine dispatches the SmartCard Set Power
+
+Arguments:
+
+    ScInterface - ScInterface object corresponding to smartcard connection.
+    Type - The type of reset to perform.
+    OutputBuffer - Optional buffer that will receive the ATR.
+    OutputBufferLength - On input, the capacity of the OutputBuffer. On output, the length of the ATR.
+
+Return Value:
+
+  NTSTATUS.
+
+--*/
+{
+    NTSTATUS status = STATUS_SUCCESS;
+    BOOLEAN isStorageCard = FALSE;
+    BYTE atrBuffer[MAXIMUM_ATR_LENGTH] = {};
+    DWORD atrBufferLength = 0;
+
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    switch (Type)
     {
     case SCARD_COLD_RESET:
     case SCARD_WARM_RESET:
-        NfcCxSCInterfaceResetCard(scInterface);
+        status = NfcCxSCInterfaceResetCard(ScInterface);
+        if (!NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_ERROR, "NfcCxSCInterfaceResetCard failed. %!STATUS!", status);
+            goto Done;
+        }
+
+        isStorageCard = NfcCxSCInterfaceIsStorageCardConnected(ScInterface);
+
+        if (isStorageCard) {
+            NT_ASSERT(ScInterface->StorageCard != NULL);
+            if (ScInterface->StorageCard->AtrCached()) {
+                TRACE_LINE(LEVEL_INFO, "Using cached ATR");
+                status = ScInterface->StorageCard->GetCachedAtr(atrBuffer,
+                                                                (DWORD)MAXIMUM_ATR_LENGTH,
+                                                                &atrBufferLength);
+                if (!NT_SUCCESS(status)) {
+                    goto Done;
+                }
+            }
+        }
+
+        status = NfcCxSCInterfaceGetAtrLocked(ScInterface,
+                                              atrBuffer,
+                                              (DWORD)MAXIMUM_ATR_LENGTH,
+                                              &atrBufferLength);
+        if (!NT_SUCCESS(status)) {
+            TRACE_LINE(LEVEL_ERROR, "Failed to get the ATR string, %!STATUS!", status);
+            goto Done;
+        }
+
+        if (isStorageCard) {
+            ScInterface->StorageCard->CacheAtr(atrBuffer, atrBufferLength);
+        }
         break;
 
     case SCARD_POWER_DOWN:
@@ -1305,6 +1395,27 @@ Return Value:
     default:
         status = STATUS_INVALID_PARAMETER;
         break;
+    }
+
+    // Cache the ATR for IOCTL_SMARTCARD_GET_ATTRIBUTE.
+    WdfWaitLockAcquire(ScInterface->SmartCardLock, NULL);
+
+    RtlCopyMemory(ScInterface->CachedAtr, atrBuffer, atrBufferLength);
+    ScInterface->CachedAtrLength = atrBufferLength;
+
+    WdfWaitLockRelease(ScInterface->SmartCardLock);
+
+    if (NULL != OutputBuffer)
+    {
+        //
+        // Fill in the ATR value.
+        //
+        status = NfcCxCopyToBuffer(atrBuffer, atrBufferLength, (BYTE*)OutputBuffer, OutputBufferLength);
+        if (!NT_SUCCESS(status))
+        {
+            TRACE_LINE(LEVEL_ERROR, "NfcCxCopyToBuffer failed. %!STATUS!", status);
+            goto Done;
+        }
     }
 
 Done:
@@ -1871,11 +1982,7 @@ Return Value:
 
 --*/
 {
-    static const DWORD PositionOfNN = 13;
-
     NTSTATUS status = STATUS_SUCCESS;
-    BOOLEAN isStorageCard = FALSE;
-    DWORD cbOutputBufferUsed = 0;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -1890,37 +1997,14 @@ Return Value:
         goto Done;
     }
 
-    isStorageCard = NfcCxSCInterfaceIsStorageCardConnected(ScInterface);
-
-    if (isStorageCard) {
-        NT_ASSERT(ScInterface->StorageCard != NULL);
-        if (ScInterface->StorageCard->AtrCached()) {
-            TRACE_LINE(LEVEL_INFO, "Using cached ATR");
-            status = ScInterface->StorageCard->GetCachedAtr(pbOutputBuffer,
-                                                            (DWORD)*pcbOutputBuffer,
-                                                            &cbOutputBufferUsed);
-            if (NT_SUCCESS(status)) {
-                *pcbOutputBuffer = cbOutputBufferUsed;
-            }
-
-            goto Done;
-        }
-    }
-
-    status = NfcCxSCInterfaceGetAtrLocked(ScInterface,
-                                          pbOutputBuffer,
-                                          (DWORD)*pcbOutputBuffer,
-                                          &cbOutputBufferUsed);
-    if (!NT_SUCCESS(status)) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to get the ATR string, %!STATUS!", status);
+    status = NfcCxCopyToBuffer(ScInterface->CachedAtr, ScInterface->CachedAtrLength, pbOutputBuffer, pcbOutputBuffer);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "NfcCxCopyToBuffer failed. %!STATUS!", status);
         goto Done;
     }
 
-    if (isStorageCard) {
-        ScInterface->StorageCard->CacheAtr(pbOutputBuffer, cbOutputBufferUsed);
-    }
-
-    *pcbOutputBuffer = cbOutputBufferUsed;
+    TRACE_LINE(LEVEL_INFO, "ATR length is %Iu.", *pcbOutputBuffer);
 
 Done:
     WdfWaitLockRelease(ScInterface->SmartCardLock);

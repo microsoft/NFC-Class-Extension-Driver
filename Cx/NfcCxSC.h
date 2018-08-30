@@ -153,6 +153,9 @@ typedef struct _NFCCX_SC_INTERFACE {
     _Guarded_by_(SmartCardLock)
     BOOLEAN SmartCardConnected;
 
+    BYTE CachedAtr[PHHAL_MAX_ATR_LENGTH];
+    size_t CachedAtrLength;
+
     //
     // Reference count for exclusive file handle
     //
@@ -367,6 +370,16 @@ NfcCxSCInterfaceGetAtrLocked(
     _In_ DWORD OutputBufferLength,
     _Out_ DWORD* BytesCopied
     );
+
+_Requires_lock_held_(ScInterface->SmartCardLock)
+NTSTATUS
+NfcCxSCInterfaceSetPower(
+    _In_ PNFCCX_SC_INTERFACE ScInterface,
+    _In_ DWORD Type,
+    _Out_writes_bytes_to_opt_(*OutputBufferLength, *OutputBufferLength) BYTE* OutputBuffer,
+    _Inout_opt_ size_t* OutputBufferLength
+);
+
 
 _Requires_lock_held_(ScInterface->SmartCardLock)
 NTSTATUS
