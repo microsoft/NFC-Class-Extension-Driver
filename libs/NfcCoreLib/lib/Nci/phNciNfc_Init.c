@@ -14,8 +14,6 @@ static NFCSTATUS phNciNfc_ProcessInitRspNci1x(void *pContext, NFCSTATUS wStatus)
 static NFCSTATUS phNciNfc_ProcessInitRspNci2x(void *pContext, NFCSTATUS wStatus);
 static NFCSTATUS phNciNfc_CompleteInitSequence(void *pContext, NFCSTATUS wStatus);
 
-static NFCSTATUS phNciNfc_DelayForResetNtfProc(void* pContext, NFCSTATUS wStatus);
-static NFCSTATUS phNciNfc_DelayForResetNtfInit(void* pContext);
 static NFCSTATUS phNciNfc_DelayForResetNtf(void* pContext);
 
 static NFCSTATUS phNciNfc_InitReset(void *pContext);
@@ -31,9 +29,8 @@ static NFCSTATUS phNciNfc_CompleteNfccResetSequence(void *pContext, NFCSTATUS wS
 
 /*Global Varibales for Init Sequence Handler*/
 phNciNfc_SequenceP_t gphNciNfc_InitSequence[] = {
-    {&phNciNfc_DelayForResetNtfInit, &phNciNfc_DelayForResetNtfProc},
     {&phNciNfc_InitReset, &phNciNfc_ProcessResetRsp},
-    {&phNciNfc_DelayForResetNtf, &phNciNfc_DelayForResetNtfProc}, // Skipped in NCI1x
+    {&phNciNfc_DelayForResetNtf, NULL}, // Skipped in NCI1x
     {&phNciNfc_Init, &phNciNfc_ProcessInitRsp},
     {NULL, &phNciNfc_CompleteInitSequence}
 };
@@ -41,14 +38,14 @@ phNciNfc_SequenceP_t gphNciNfc_InitSequence[] = {
 /*Global Varibales for Release Sequence Handler*/
 phNciNfc_SequenceP_t gphNciNfc_ReleaseSequence[] = {
     {&phNciNfc_SendReset, &phNciNfc_ProcessResetRsp},
-    {&phNciNfc_DelayForResetNtf, &phNciNfc_DelayForResetNtfProc}, // Skipped in NCI1x
+    {&phNciNfc_DelayForResetNtf, NULL}, // Skipped in NCI1x
     {NULL, &phNciNfc_CompleteReleaseSequence}
 };
 
 /*Global Varibales for Nfcc reset sequence*/
 phNciNfc_SequenceP_t gphNciNfc_NfccResetSequence[] = {
     {&phNciNfc_SendReset, &phNciNfc_ProcessResetRsp},
-    {&phNciNfc_DelayForResetNtf, &phNciNfc_DelayForResetNtfProc}, // Skipped in NCI1x
+    {&phNciNfc_DelayForResetNtf, NULL}, // Skipped in NCI1x
     {NULL, &phNciNfc_CompleteNfccResetSequence}
 };
 
@@ -396,15 +393,6 @@ static void phNciNfc_ResetNtfDelayCb(uint32_t dwTimerId, void *pContext)
     }
     PH_LOG_NCI_FUNC_EXIT();
     return;
-}
-
-static NFCSTATUS phNciNfc_DelayForResetNtfProc(void* pContext, NFCSTATUS status)
-{
-    UNUSED(status);
-    UNUSED(pContext);
-    PH_LOG_NCI_FUNC_ENTRY();
-    PH_LOG_NCI_FUNC_EXIT();
-    return NFCSTATUS_SUCCESS;
 }
 
 static NFCSTATUS phNciNfc_DelayForResetNtfInit(void* pContext)
@@ -768,15 +756,13 @@ phNciNfc_ResetNtfCb(void*     pContext,
 
                 resetTrigger = pTransInfo->pbuffer[0];
                 if (NFCSTATUS_SUCCESS == wStatus
-                    && (resetTrigger == PH_NCINFC_RESETTRIGGER_NFCC_POWER_ON ||
-                        resetTrigger == PH_NCINFC_RESETTRIGGER_CMD_RESET_RECEIVED))
+                    && resetTrigger == PH_NCINFC_RESETTRIGGER_CMD_RESET_RECEIVED)
                 {
                     wStatus = phNciNfc_GenericSequence(pNciCtx, pInfo, status);
                 }
                 else
                 {
                     PH_LOG_NCI_WARN_STR("Unexpected Reset Trigger: %!phNciNfc_ResetTrigger_t!", resetTrigger);
-                    wStatus = NFCSTATUS_FAILED;
                 }
             }
             else
