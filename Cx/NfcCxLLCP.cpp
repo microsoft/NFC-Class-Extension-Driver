@@ -122,7 +122,16 @@ NfcCxLLCPInterfaceLinkStatusCB(
         {
             NfcCxRFInterfaceP2pConnectionLost(RFInterface);
             NfcCxSNEPInterfaceDeinit(NfcCxLLCPInterfaceGetLibNfcContext(LLCPInterface)->SNEPInterface);
-            NfcCxPostLibNfcThreadMessage(RFInterface, LIBNFC_STATE_HANDLER, NfcCxEventDeactivated, NULL, NULL, NULL);
+
+            if (LLCPInterface->IsDeactivatePending)
+            {
+                LLCPInterface->IsDeactivatePending = false;
+                NfcCxInternalSequence(NfcCxLLCPInterfaceGetRFInterface(LLCPInterface), NfcCxLLCPInterfaceGetRFInterface(LLCPInterface)->pSeqHandler, STATUS_SUCCESS, NULL, NULL);
+            }
+            else
+            {
+                NfcCxPostLibNfcThreadMessage(RFInterface, LIBNFC_STATE_HANDLER, NfcCxEventDeactivated, NULL, NULL, NULL);
+            }
         }
         break;
     }
@@ -247,6 +256,10 @@ NfcCxLLCPInterfaceDeactivate(
 
     if (LLCPInterface->eLinkStatus == phFriNfc_LlcpMac_eLinkActivated) {
         nfcStatus = phLibNfc_Llcp_Deactivate(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev);
+        if (nfcStatus == NFCSTATUS_PENDING)
+        {
+            LLCPInterface->IsDeactivatePending = true;
+        }
     }
 
     Status = NfcCxNtStatusFromNfcStatus(nfcStatus);

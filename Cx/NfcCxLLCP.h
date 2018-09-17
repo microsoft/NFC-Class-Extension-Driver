@@ -43,6 +43,7 @@ typedef struct _NFCCX_LLCP_INTERFACE {
     phLibNfc_Llcp_sLinkParameters_t     sLocalLinkInfo;
     phNfc_sData_t                       sServiceName;
     UCHAR                               eRequestState;
+    bool                                IsDeactivatePending;
 } NFCCX_LLCP_INTERFACE, *PNFCCX_LLCP_INTERFACE;
 
 typedef struct _NFCCX_LLCP_LIBNFC_REQUEST_CONTEXT {
