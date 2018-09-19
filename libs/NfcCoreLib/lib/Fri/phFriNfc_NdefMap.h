@@ -128,7 +128,8 @@ typedef struct phFriNfc_ISO15693Cont
     uint8_t     read_capabilities;
     /**< \internal Multiple read card command supported */
     uint8_t     multiple_read_cmd;
-
+    uint8_t     support_extended_cmd;
+    uint16_t    max_frame_size;
 }phFriNfc_ISO15693Cont_t;
 
 typedef struct phFriNfc_Felica

@@ -16,6 +16,8 @@
 
 /* GET SYSTEM INFORMATION COMMAND */
 #define ISO15693_GET_SYSTEM_INFO_CMD                    0x2BU
+/* GET EXTENDED SYSTEM INFORMATION COMMAND */
+#define ISO15693_GET_EXT_SYSTEM_INFO_CMD                0x3BU
 /* READ SINGLE BLOCK COMMAND */
 #define ISO15693_RD_SINGLE_BLK_CMD                      0x20U
 /* WRITE SINGLE BLOCK COMMAND */
@@ -24,7 +26,9 @@
 #define ISO15693_RD_MULTIPLE_BLKS_CMD                   0x23U
 
 /* CC BYTE 0 - Magic Number - 0xE1 */
-#define ISO15693_CC_MAGIC_NUM                           0xE1U
+#define ISO15693_CC_MAGIC_NUM_E1                        0xE1U
+/* CC BYTE 0 - Magic Number - 0xE2 */
+#define ISO15693_CC_MAGIC_NUM_E2                        0xE2U
 /* CC BYTE 1 - Mapping version and READ WRITE settings 0x40 */
 #define ISO15693_CC_VER_RW                              0x40U
 /* CC BYTE 2 - max size is calaculated using the byte 3 multiplied by 8 */
@@ -52,15 +56,21 @@
 #define ISO15693_BYTE_7_INDEX                           0x07U
 
 #define ISO15693_EXTRA_RESPONSE_FLAG                    0x01U
+/* GetExtSystemInfo Request full system info parameter flag */
+#define ISO15693_GET_EXT_SYSTEM_INFO_FULL_PARAM_FLAG    0x7FU
 
 #define ISO15693_GET_SYS_INFO_RESP_LEN                  0x0EU
+#define ISO15693_GET_EXT_SYS_INFO_RESP_LEN              0x13U
 #define ISO15693_DSFID_MASK                             0x01U
 #define ISO15693_AFI_MASK                               0x02U
 #define ISO15693_MAX_SIZE_MASK                          0x04U
 #define ISO15693_ICREF_MASK                             0x08U
+#define ISO15693_CAPABILITY_MASK                        0x20U
 #define ISO15693_SKIP_DFSID                             0x01U
 #define ISO15693_SKIP_AFI                               0x01U
+#define ISO15693_SKIP_ICREF                             0x01U
 #define ISO15693_BLOCK_SIZE_IN_BYTES_MASK               0x1FU
+#define ISO15693_CAPABILITY_MBREAD_MASK                 0x10U
 
 /* MAXimum size of ICODE SLI/X */
 #define ISO15693_SLI_X_MAX_SIZE                         112U
@@ -72,8 +82,10 @@
 typedef enum phFriNfc_ISO15693_FormatSeq
 {
     ISO15693_GET_SYS_INFO,
+    ISO15693_GET_EXT_SYS_INFO,
     ISO15693_RD_SINGLE_BLK_CHECK,
     ISO15693_WRITE_CC_FMT,
+    ISO15693_WRITE_CC_SECOND_BLOCK_FMT,
     ISO15693_WRITE_NDEF_TLV
 }phFriNfc_ISO15693_FormatSeq_t;
 
@@ -88,6 +100,14 @@ phFriNfc_ISO15693_H_GetMaxDataSize (
     phFriNfc_sNdefSmtCrdFmt_t   *psNdefSmtCrdFmt,
     uint8_t                     *p_recv_buf,
     uint8_t                     recv_length);
+
+static
+NFCSTATUS
+phFriNfc_ISO15693_H_GetExtMaxDataSize(
+    phFriNfc_sNdefSmtCrdFmt_t   *psNdefSmtCrdFmt,
+    uint8_t                     *p_recv_buf,
+    uint8_t                     recv_length);
+
 
 static
 NFCSTATUS
@@ -184,6 +204,24 @@ phFriNfc_ISO15693_H_FmtReadWrite (
         case ISO15693_GET_SYSTEM_INFO_CMD:
         {
             /* Dont do anything */
+            break;
+        }
+
+        case ISO15693_GET_EXT_SYSTEM_INFO_CMD:
+        {
+            memmove(psNdefSmtCrdFmt->SendRecvBuf + 3, psNdefSmtCrdFmt->SendRecvBuf + 2,
+                    psNdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info.UidLength);
+            if (data_length == 1)
+            {
+                (void)phOsalNfc_MemCopy((void *)(psNdefSmtCrdFmt->SendRecvBuf + 2),
+                                                 (void *)p_data, data_length);
+                send_index = (uint8_t)(send_index + data_length);
+            }
+            else
+            {
+                result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
+                    NFCSTATUS_INVALID_DEVICE_REQUEST);
+            }
             break;
         }
 
@@ -297,17 +335,99 @@ phFriNfc_ISO15693_H_GetMaxDataSize (
 
 static
 NFCSTATUS
+phFriNfc_ISO15693_H_GetExtMaxDataSize(
+    phFriNfc_sNdefSmtCrdFmt_t   *psNdefSmtCrdFmt,
+    uint8_t                     *p_recv_buf,
+    uint8_t                     recv_length)
+{
+    NFCSTATUS                       result = NFCSTATUS_SUCCESS;
+    phFriNfc_ISO15693_AddInfo_t     *ps_iso15693_info =
+        &(psNdefSmtCrdFmt->AddInfo.s_iso15693_info);
+    phHal_sIso15693Info_t           *ps_rem_iso_15693_info =
+        &(psNdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info);
+    uint8_t                         recv_index = 0;
+
+    if ((ISO15693_GET_EXT_SYS_INFO_RESP_LEN == recv_length)
+        && (ISO15693_MAX_SIZE_MASK == (*p_recv_buf & ISO15693_MAX_SIZE_MASK)))
+    {
+        uint8_t information_flag = *p_recv_buf;
+        /* MAX size is present in the system information and
+        also response length is correct */
+        recv_index = (uint8_t)(recv_index + 1);
+
+        if (!phOsalNfc_MemCompare((void *)ps_rem_iso_15693_info->Uid,
+            (void *)(p_recv_buf + recv_index),
+            ps_rem_iso_15693_info->UidLength))
+        {
+            /* UID comparision successful */
+            uint16_t  no_of_blocks = 0;
+            uint8_t   blk_size_in_bytes = 0;
+
+            /* So skip the UID size compared in the received buffer */
+            recv_index = (uint8_t)(recv_index +
+                ps_rem_iso_15693_info->UidLength);
+
+            if (information_flag & ISO15693_DSFID_MASK) {
+                /* Skip DFSID  */
+                recv_index = (uint8_t)(recv_index + ISO15693_SKIP_DFSID);
+            }
+            if (information_flag & ISO15693_AFI_MASK) {
+                /* Skip AFI  */
+                recv_index = (uint8_t)(recv_index + ISO15693_SKIP_AFI);
+            }
+
+            /* To get the number of blocks in the card */
+            phOsalNfc_MemCopy(&no_of_blocks, p_recv_buf + recv_index, sizeof(uint16_t));
+            no_of_blocks = no_of_blocks + 1;
+            recv_index = (uint8_t)(recv_index + 2);
+
+            /* To get the each block size in bytes */
+            blk_size_in_bytes = (uint8_t)((*(p_recv_buf + recv_index)
+                & ISO15693_BLOCK_SIZE_IN_BYTES_MASK) + 1);
+            recv_index = (uint8_t)(recv_index + 1);
+
+            /* calculate maximum data size in the card */
+            ps_iso15693_info->max_data_size = (uint16_t)
+                (no_of_blocks * blk_size_in_bytes);
+
+            if (information_flag & ISO15693_ICREF_MASK) {
+                /* Skip ICREF  */
+                recv_index = (uint8_t)(recv_index + ISO15693_SKIP_ICREF);
+            }
+
+            if (information_flag & ISO15693_CAPABILITY_MASK) {
+                ps_iso15693_info->card_capability = (uint8_t)(*(p_recv_buf + recv_index));
+            }
+
+        }
+        else
+        {
+            result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
+                NFCSTATUS_INVALID_DEVICE_REQUEST);
+        }
+    }
+    else
+    {
+        result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
+            NFCSTATUS_INVALID_DEVICE_REQUEST);
+    }
+
+    return result;
+}
+
+static
+NFCSTATUS
 phFriNfc_ISO15693_H_ProFormat (
     phFriNfc_sNdefSmtCrdFmt_t *psNdefSmtCrdFmt)
 {
     NFCSTATUS                       result = NFCSTATUS_SUCCESS;
     phFriNfc_ISO15693_AddInfo_t     *ps_iso15693_info =
                                     &(psNdefSmtCrdFmt->AddInfo.s_iso15693_info);
-    phHal_sIso15693Info_t           *ps_rem_iso_15693_info =
-                                    &(psNdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info);
     phFriNfc_ISO15693_FormatSeq_t   e_format_seq =
                                     (phFriNfc_ISO15693_FormatSeq_t)
                                     ps_iso15693_info->format_seq;
+    phHal_sIso15693Info_t           *ps_rem_iso_15693_info =
+                                    &(psNdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info);
     uint8_t                         command_type = 0;
     uint8_t                         a_send_byte[ISO15693_BYTES_PER_BLOCK] = {0};
     uint8_t                         send_length = 0;
@@ -361,9 +481,35 @@ phFriNfc_ISO15693_H_ProFormat (
                 }
                 else
                 {
-                    result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
-                                        NFCSTATUS_INVALID_RECEIVE_LENGTH);
+                    /* GET system information command to get the card size */
+                    command_type = ISO15693_GET_EXT_SYSTEM_INFO_CMD;
+                    e_format_seq = ISO15693_GET_EXT_SYS_INFO;
+                    *a_send_byte = (uint8_t)ISO15693_GET_EXT_SYSTEM_INFO_FULL_PARAM_FLAG;
+                    send_index = (uint8_t)(send_index + 1);
+                    send_length = 1;
                 }
+            }
+            break;
+        }
+
+        case ISO15693_GET_EXT_SYS_INFO:
+        {
+            if (!phFriNfc_ISO15693_H_GetExtMaxDataSize(psNdefSmtCrdFmt,
+                (psNdefSmtCrdFmt->SendRecvBuf + ISO15693_EXTRA_RESPONSE_FLAG),
+                (uint8_t)(*psNdefSmtCrdFmt->SendRecvLength -
+                    ISO15693_EXTRA_RESPONSE_FLAG)))
+            {
+                /* Send the READ SINGLE BLOCK COMMAND */
+                command_type = ISO15693_RD_SINGLE_BLK_CMD;
+                e_format_seq = ISO15693_RD_SINGLE_BLK_CHECK;
+
+                /* Block number 0 to read */
+                psNdefSmtCrdFmt->AddInfo.s_iso15693_info.current_block = 0x00;
+            }
+            else
+            {
+                result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
+                    NFCSTATUS_INVALID_RECEIVE_LENGTH);
             }
             break;
         }
@@ -387,59 +533,71 @@ phFriNfc_ISO15693_H_ProFormat (
             {
                 /* prepare data for writing CC bytes */
 
-                command_type = ISO15693_WR_SINGLE_BLK_CMD;
-                e_format_seq = ISO15693_WRITE_CC_FMT;
-
                 /* CC magic number */
-                *a_send_byte = (uint8_t)ISO15693_CC_MAGIC_NUM;
-                send_index = (uint8_t)(send_index + 1);
-
-                /* CC Version and read/write access */
-                *(a_send_byte + send_index) = (uint8_t) ISO15693_CC_VER_RW;
-                send_index = (uint8_t)(send_index + 1);
-
-                /* CC MAX data size, calculated during GET system information
-                   fix maximum number of block for ISO15693_CC_MAGIC_NUM to UCHAR_MAX
-                   phFriNfc_ISO15693_H_CheckCCBytes is using cc2_byte to use the extended memory of M24LR tags
-                 */
-                if (ps_iso15693_info->max_data_size / ISO15693_CC_MULTIPLE_FACTOR > UCHAR_MAX)
+                command_type = ISO15693_WR_SINGLE_BLK_CMD;
+                if (ps_iso15693_info->max_data_size / ISO15693_BYTES_PER_BLOCK <= UCHAR_MAX + 1)
                 {
-                    *(a_send_byte + send_index) = UCHAR_MAX;
+                    e_format_seq = ISO15693_WRITE_CC_FMT;
+
+                    *a_send_byte = (uint8_t)ISO15693_CC_MAGIC_NUM_E1;
+                    send_index = (uint8_t)(send_index + 1);
+
+                    /* CC Version and read/write access */
+                    *(a_send_byte + send_index) = (uint8_t) ISO15693_CC_VER_RW;
+                    send_index = (uint8_t)(send_index + 1);
+
+                    /* CC MAX data size, calculated during GET system information */
+                    *(a_send_byte + send_index) = (uint8_t)(ps_iso15693_info->max_data_size / ISO15693_CC_MULTIPLE_FACTOR);
+                    send_index = (uint8_t)(send_index + 1);
+
+                    switch (ps_iso15693_info->max_data_size)
+                    {
+                        case ISO15693_SLI_X_MAX_SIZE:
+                        {
+                            /* For SLI tags : Inventory Page read not supported */
+                            *(a_send_byte + send_index) = (uint8_t) ISO15693_RDMULBLKS_CMD_MASK;
+                            break;
+                        }
+
+                        case ISO15693_SLI_X_S_MAX_SIZE:
+                        {
+                            /* For SLI - S tags : Read multiple blocks not supported */
+                            *(a_send_byte + send_index) = (uint8_t) ISO15693_INVENTORY_CMD_MASK;
+                            break;
+                        }
+
+                        case ISO15693_SLI_X_L_MAX_SIZE:
+                        {
+                            /* For SLI - L tags : Read multiple blocks not supported */
+                            *(a_send_byte + send_index) = (uint8_t) ISO15693_INVENTORY_CMD_MASK;
+                            break;
+                        }
+                        default:
+                        {
+                            /* Generic tag: No additional features if tag type was not recognized  */
+                            *(a_send_byte + send_index) = (uint8_t)ISO15693_CC_ADDITIONAL_FEATURES_NONE;
+                            break;
+                        }
+                    }
                 }
                 else
                 {
-                    *(a_send_byte + send_index) = (uint8_t)(ps_iso15693_info->max_data_size / ISO15693_CC_MULTIPLE_FACTOR);
-                }
-                send_index = (uint8_t)(send_index + 1);
+                    e_format_seq = ISO15693_WRITE_CC_SECOND_BLOCK_FMT;
 
-                switch (ps_iso15693_info->max_data_size)
-                {
-                    case ISO15693_SLI_X_MAX_SIZE:
-                    {
-                        /* For SLI tags : Inventory Page read not supported */
-                        *(a_send_byte + send_index) = (uint8_t) ISO15693_RDMULBLKS_CMD_MASK;
-                        break;
-                    }
+                    *a_send_byte = (uint8_t)ISO15693_CC_MAGIC_NUM_E2;
+                    send_index = (uint8_t)(send_index + 1);
 
-                    case ISO15693_SLI_X_S_MAX_SIZE:
-                    {
-                        /* For SLI - S tags : Read multiple blocks not supported */
-                        *(a_send_byte + send_index) = (uint8_t) ISO15693_INVENTORY_CMD_MASK;
-                        break;
-                    }
+                    /* CC Version and read/write access */
+                    *(a_send_byte + send_index) = (uint8_t)ISO15693_CC_VER_RW;
+                    send_index = (uint8_t)(send_index + 1);
 
-                    case ISO15693_SLI_X_L_MAX_SIZE:
-                    {
-                        /* For SLI - L tags : Read multiple blocks not supported */
-                        *(a_send_byte + send_index) = (uint8_t) ISO15693_INVENTORY_CMD_MASK;
-                        break;
-                    }
+                    *(a_send_byte + send_index) = 0x00;
+                    send_index = (uint8_t)(send_index + 1);
 
-                    default:
+                    /* Try best to use the tag capability from Get Extended System Info*/
+                    if (ps_iso15693_info->card_capability & ISO15693_CAPABILITY_MBREAD_MASK)
                     {
-                        /* Generic tag: No additional features if tag type was not recognized  */
-                        *(a_send_byte + send_index) = (uint8_t) ISO15693_CC_ADDITIONAL_FEATURES_NONE;
-                        break;
+                        *(a_send_byte + send_index) = ISO15693_CC_USE_MBR;
                     }
                 }
 
@@ -463,6 +621,30 @@ phFriNfc_ISO15693_H_ProFormat (
             break;
         }
 
+        case ISO15693_WRITE_CC_SECOND_BLOCK_FMT:
+        {
+            command_type = ISO15693_WR_SINGLE_BLK_CMD;
+            e_format_seq = ISO15693_WRITE_CC_FMT;
+
+            ps_iso15693_info->current_block = (uint16_t)
+                (ps_iso15693_info->current_block + 1);
+
+            *(a_send_byte + send_index) = 0x00;
+            send_index = (uint8_t)(send_index + 1);
+
+            *(a_send_byte + send_index) = 0x00;
+            send_index = (uint8_t)(send_index + 1);
+
+            /* CC MAX data size, calculated during GET system information */
+            *(a_send_byte + send_index) = (uint8_t)((ps_iso15693_info->max_data_size / ISO15693_CC_MULTIPLE_FACTOR) >> 8);
+            send_index = (uint8_t)(send_index + 1);
+
+            *(a_send_byte + send_index) = (uint8_t)(ps_iso15693_info->max_data_size / ISO15693_CC_MULTIPLE_FACTOR);
+            send_index = (uint8_t)(send_index + 1);
+
+            send_length = sizeof(a_send_byte);
+            break;
+        }
         case ISO15693_WRITE_CC_FMT:
         {
             /* CC byte write succcessful.
