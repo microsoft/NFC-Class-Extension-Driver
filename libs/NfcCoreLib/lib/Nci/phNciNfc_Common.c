@@ -217,7 +217,7 @@ phNciNfc_ProcessIntfErrNtf(void *pContext, void *pInfo, NFCSTATUS wStatus)
                     wActStatus = NFCSTATUS_RF_ERROR;
                 }
             }
-            if((NFCSTATUS_RF_ERROR == wActStatus) && (1 == pCtx->TimerInfo.TimerStatus))
+            if((NFCSTATUS_RF_ERROR == wActStatus) && (phNciNfc_e_RspTimerIdle != pCtx->TimerInfo.TimerStatus))
             {
                 /* Check if Timer was started after sending data packet */
                 if(phNciNfc_e_NciCoreMsgTypeData == pCtx->TimerInfo.PktHeaderInfo.eMsgType)
@@ -227,8 +227,12 @@ phNciNfc_ProcessIntfErrNtf(void *pContext, void *pInfo, NFCSTATUS wStatus)
                     id received with interface error ntf, stop the timer */
                     if(bConnId == pCtx->TimerInfo.PktHeaderInfo.bConn_ID)
                     {
-                        (void)phOsalNfc_Timer_Stop(pCtx->TimerInfo.dwRspTimerId);
-                        pCtx->TimerInfo.TimerStatus = 0;
+                        if (phNciNfc_e_RspTimerRunning == pCtx->TimerInfo.TimerStatus)
+                        {
+                            (void)phOsalNfc_Timer_Stop(pCtx->TimerInfo.dwRspTimerId);
+                        }
+
+                        pCtx->TimerInfo.TimerStatus = phNciNfc_e_RspTimerIdle;
                     }
                 }
             }

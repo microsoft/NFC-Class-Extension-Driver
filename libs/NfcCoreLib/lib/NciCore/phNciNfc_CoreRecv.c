@@ -521,7 +521,7 @@ static NFCSTATUS phNciNfc_StateDummy2Idle(void *pContext)
     PH_LOG_NCI_FUNC_ENTRY();
     if((NULL != pCtx) && (pCtx == phNciNfc_GetCoreContext()))
     {
-        if (1 == pCtx->TimerInfo.TimerStatus)/*Is Timer Running*/
+        if (phNciNfc_e_RspTimerIdle != pCtx->TimerInfo.TimerStatus)
         {
             if(pCtx->TimerInfo.PktHeaderInfo.eMsgType == pCtx->tReceiveInfo.HeaderInfo.eMsgType)
             {
@@ -552,8 +552,12 @@ static NFCSTATUS phNciNfc_StateDummy2Idle(void *pContext)
                 if(1 == bStopTimer)
                 {
                     /*Stop Timer*/
-                    (void)phOsalNfc_Timer_Stop(pCtx->TimerInfo.dwRspTimerId);
-                    pCtx->TimerInfo.TimerStatus = 0;/*timer stopped*/
+                    if (phNciNfc_e_RspTimerRunning == pCtx->TimerInfo.TimerStatus)
+                    {
+                        (void)phOsalNfc_Timer_Stop(pCtx->TimerInfo.dwRspTimerId);
+                    }
+
+                    pCtx->TimerInfo.TimerStatus = phNciNfc_e_RspTimerIdle; /*timer stopped*/
                 }
             }
         }
@@ -621,7 +625,7 @@ void phNciNfc_RspTimeOutCb(uint32_t TimerId, void *pContext)
     {
         /* No response received and the timer expired */
         (void)phOsalNfc_Timer_Stop(TimerId);
-        pCtx->TimerInfo.TimerStatus = 0;
+        pCtx->TimerInfo.TimerStatus = phNciNfc_e_RspTimerIdle;
 
         /* Abort pending read to prevent the TML layer from using core recv list buffers after
          it's freed. This can happen if we are currently processing a segmented packet */

@@ -935,6 +935,16 @@ typedef struct phNciNfc_CoreDataRegContext
                                                                       data messages*/
 }phNciNfc_CoreDataRegContext_t, *pphNciNfc_CoreDataRegContext_t; /**< Pointer to #phNciNfc_CoreDataRegContext_t */
 
+typedef enum phNciNfc_RspTimerStatus
+{
+    // The response timer is not currently in use.
+    phNciNfc_e_RspTimerIdle = 0,
+    // The response timer will be started once the send message has been succesfully transmitted.
+    phNciNfc_e_RspTimerQueued,
+    // The response timer is running.
+    phNciNfc_e_RspTimerRunning,
+} phNciNfc_RspTimerStatus_t;
+
 /*!
 * \ingroup grp_nci_nfc_core
 *
@@ -944,7 +954,7 @@ typedef struct phNciNfc_RspTimerInfo
 {
     phNciNfc_sCoreHeaderInfo_t PktHeaderInfo;           /**< Packet Header info for which timer used*/
     uint32_t dwRspTimerId;                              /**< Timer for Core to handle response */
-    uint8_t TimerStatus;                                /**< 0 = Timer not running 1 = timer running*/
+    phNciNfc_RspTimerStatus_t TimerStatus;              /**< Status of timer */
 }phNciNfc_RspTimerInfo_t;
 
 /**
