@@ -29,6 +29,16 @@ Environment:
 
 #define BIT_AT_POSITION(x, p)  ((x >> (p - 1)) & 0x01)
 
+enum NFCCX_LIBNFC_DTA : UINT32
+{
+    LIBNFC_DTA_INIT,
+    LIBNFC_DTA_DEINIT,
+    LIBNFC_DTA_MESSAGE,
+    LIBNFC_DTA_MAX,
+};
+
+static_assert(LIBNFC_DTA_MAX < PH_OSALNFC_MESSAGE_BASE, "NFCCX_LIBNFC_DTA has too many values.");
+
 typedef enum _NFCCX_DTA_MESSAGE {
     DTA_SET_MODE,
     DTA_DISCOVER_CONFIG,

@@ -35,6 +35,24 @@ Abstract:
 //      TransitionFunction()
 //
 
+static void
+NfcCxStateInterfaceEventProcess(
+    _In_ PNFCCX_STATE_INTERFACE StateInterface,
+    _In_ NFCCX_CX_EVENT Event,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2,
+    _In_opt_ void* Param3
+    );
+
+static NTSTATUS
+NfcCxStateInterfaceStateHandler(
+    _In_ PNFCCX_STATE_INTERFACE StateInterface,
+    _In_ NFCCX_CX_EVENT Event,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2,
+    _In_opt_ void* Param3
+    );
+
 //
 // State Connector
 //
@@ -142,15 +160,12 @@ Return Value:
 
     (*PPStateInterface)->FdoContext = FdoContext;
     (*PPStateInterface)->CurrentState = NfcCxStateIdle;
-    (*PPStateInterface)->TransitionFlag = NfcCxTransitionIdle;
-    (*PPStateInterface)->CurrentUserEvent = NfcCxEventInvalid;
 
-    InitializeListHead(&(*PPStateInterface)->DeferredEventList);
+    InitializeListHead(&(*PPStateInterface)->PendingStateEvents);
 
-    (*PPStateInterface)->hUserEventCompleted = CreateEvent(NULL, FALSE, TRUE, NULL);
-    if (NULL == (*PPStateInterface)->hUserEventCompleted) {
-        status = NTSTATUS_FROM_WIN32(GetLastError());
-        TRACE_LINE(LEVEL_ERROR, "Failed to create the user completion event, %!STATUS!", status);
+    status = WdfWaitLockCreate(WDF_NO_OBJECT_ATTRIBUTES, &(*PPStateInterface)->PendingStateEventsLock);
+    if (!NT_SUCCESS(status)) {
+        TRACE_LINE(LEVEL_ERROR, "Failed to create PendingStateEventsLock. %!STATUS!", status);
         goto Done;
     }
 
@@ -187,9 +202,9 @@ Return Value:
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (NULL != StateInterface->hUserEventCompleted) {
-        CloseHandle(StateInterface->hUserEventCompleted);
-        StateInterface->hUserEventCompleted = NULL;
+    if (NULL != StateInterface->PendingStateEventsLock) {
+        WdfObjectDelete(StateInterface->PendingStateEventsLock);
+        StateInterface->PendingStateEventsLock = NULL;
     }
 
     free(StateInterface);
@@ -219,116 +234,205 @@ NfcCxStateInterfaceFindTargetState(
 }
 
 NTSTATUS
-NfcCxStateInterfaceAddDeferredEvent(
+NfcCxStateInterfaceQueueEvent(
     _In_ PNFCCX_STATE_INTERFACE StateInterface,
     _In_ NFCCX_CX_EVENT Event,
-    _In_opt_ VOID * Param1,
-    _In_opt_ VOID * Param2,
-    _In_opt_ VOID * Param3
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2,
+    _In_opt_ void* Param3
     )
 /*++
 
 Routine Description:
 
-    This routine is used to add a deferred user event
+    Adds a new state event to the list of pending events.
 
 Arguments:
 
     StateInterface - A pointer to the State interface
-    Event - The event that is triggered
+    Event - The event type
     Param - Parameters for the event
-
-Return Value:
-
-    NTSTATUS
 
 --*/
 {
-    NTSTATUS status = STATUS_PENDING;
-    PNFCCX_CX_EVENT_ENTRY pEventEntry = NULL;
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    pEventEntry = (PNFCCX_CX_EVENT_ENTRY)malloc(sizeof(*pEventEntry));
-    if (NULL == pEventEntry) {
-        TRACE_LINE(LEVEL_ERROR, "Failed to allocate the event entry");
+    NTSTATUS status = STATUS_SUCCESS;
+
+    NFCCX_STATE_PENDING_EVENT* pendingStateEvent = new NFCCX_STATE_PENDING_EVENT{ {}, Event, Param1, Param2, Param3 };
+    if (!pendingStateEvent)
+    {
         status = STATUS_INSUFFICIENT_RESOURCES;
+        TRACE_LINE(LEVEL_ERROR, "Failed to allocate NFCCX_STATE_PENDING_EVENT. %!STATUS!", status);
         goto Done;
     }
 
-    InitializeListHead(&pEventEntry->ListEntry);
+    // Insert event onto list.
+    WdfWaitLockAcquire(StateInterface->PendingStateEventsLock, NULL);
+    InsertTailList(&StateInterface->PendingStateEvents, &pendingStateEvent->ListNodeHeader);
+    WdfWaitLockRelease(StateInterface->PendingStateEventsLock);
 
-    pEventEntry->Event = Event;
-    pEventEntry->Param1 = Param1;
-    pEventEntry->Param2 = Param2;
-    pEventEntry->Param3 = Param3;
-
-    InsertTailList(&StateInterface->DeferredEventList, 
-                   &pEventEntry->ListEntry);
-
-    TRACE_LINE(LEVEL_INFO, "Event=%!NFCCX_CX_EVENT! added", Event);
+    // Signal the LibNfc thread to process the event.
+    NfcCxPostLibNfcThreadMessage(StateInterface->FdoContext->RFInterface, LIBNFC_STATE_PROCESS_NEXT_QUEUED_EVENT, 0, 0, 0, 0);
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
-_Success_(return != FALSE)
-BOOLEAN
-NfcCxStateInterfaceRemoveDeferredEvent(
-    _In_ PNFCCX_STATE_INTERFACE StateInterface,
-    _Out_ NFCCX_CX_EVENT *Event,
-    _Out_ VOID ** Param1,
-    _Out_ VOID ** Param2,
-    _Out_ VOID ** Param3
+void
+NfcCxStateInterfaceProcessNextQueuedEvent(
+    _In_ PNFCCX_STATE_INTERFACE StateInterface
     )
 /*++
 
 Routine Description:
 
-    This routine is used to remove a deferred user event
+    Checks to see if there are pending state events and no currently executing state transition. If there is, starts a new
+    state transition.
 
 Arguments:
 
     StateInterface - A pointer to the State interface
-    Event - The event that is triggered
-    Param - Parameters for the event
-
-Return Value:
-
-    NTSTATUS
 
 --*/
 {
-    PNFCCX_CX_EVENT_ENTRY pEventEntry = NULL;
-
-    if (!IsListEmpty(&StateInterface->DeferredEventList)) {
-
-        pEventEntry = (PNFCCX_CX_EVENT_ENTRY)
-            RemoveHeadList(&StateInterface->DeferredEventList);
-
-        *Event = pEventEntry->Event;
-        *Param1 = pEventEntry->Param1;
-        *Param2 = pEventEntry->Param2;
-        *Param3 = pEventEntry->Param3;
-
-        TRACE_LINE(LEVEL_INFO, "Event=%!NFCCX_CX_EVENT! removed", *Event);
-
-        free(pEventEntry);
-
-        return TRUE;
+    // Check if there is a state transition already in progress.
+    // Note: 'TransitionState' is only accessed on the LibNfc thread.
+    if (StateInterface->TransitionState != NFCCX_STATE_TRANSITION_STATE::Idle)
+    {
+        return;
     }
 
-    return FALSE;
+    // Check if there is pending event.
+    WdfWaitLockAcquire(StateInterface->PendingStateEventsLock, NULL);
+    LIST_ENTRY* pendingStateEventItr = RemoveHeadList(&StateInterface->PendingStateEvents);
+    WdfWaitLockRelease(StateInterface->PendingStateEventsLock);
+
+    if (pendingStateEventItr == &StateInterface->PendingStateEvents)
+    {
+        // No pending events. So nothing to do.
+        return;
+    }
+
+    NFCCX_STATE_PENDING_EVENT* pendingEvent = CONTAINING_RECORD(pendingStateEventItr, NFCCX_STATE_PENDING_EVENT, ListNodeHeader);
+
+    // Mark that a state transition is now in progress.
+    StateInterface->TransitionState = NFCCX_IS_USER_EVENT(pendingEvent->Event) ?
+        NFCCX_STATE_TRANSITION_STATE::UserEventRunning :
+        NFCCX_STATE_TRANSITION_STATE::InternalEventRunning;
+
+    // Process the state transition.
+    NfcCxStateInterfaceEventProcess(
+        StateInterface,
+        pendingEvent->Event,
+        pendingEvent->Param1,
+        pendingEvent->Param2,
+        pendingEvent->Param3
+        );
+
+    delete pendingEvent;
 }
 
-NTSTATUS
+void
+NfcCxStateInterfaceChainEvent(
+    _In_ PNFCCX_STATE_INTERFACE StateInterface,
+    _In_ NFCCX_CX_EVENT Event,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2,
+    _In_opt_ void* Param3
+    )
+/*++
+
+Routine Description:
+
+    Chains a new state transition onto the currently executing state transition.
+
+Arguments:
+
+    StateInterface - A pointer to the State interface
+    Event - The event type
+    Param - Parameters for the event
+
+--*/
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    // Sanity check that a state transition is already is progress.
+    if (StateInterface->TransitionState == NFCCX_STATE_TRANSITION_STATE::Idle)
+    {
+        TRACE_LINE(LEVEL_ERROR, "No preexisting state transition.");
+        goto Done;
+    }
+
+    // Ensure that the state handler is not called recursively to prevent reentrancy issues.
+    if (StateInterface->InStateHandler)
+    {
+        // Queue the event to be processed.
+        NfcCxPostLibNfcThreadMessage(StateInterface->FdoContext->RFInterface, LIBNFC_STATE_CHAIN_EVENT, (UINT_PTR)Event, (UINT_PTR)Param1, (UINT_PTR)Param2, (UINT_PTR)Param3);
+        goto Done;
+    }
+
+    // Process the new state transition.
+    NfcCxStateInterfaceEventProcess(StateInterface, Event, Param1, Param2, Param3);
+
+Done:
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+}
+
+static void
+NfcCxStateInterfaceEventProcess(
+    _In_ PNFCCX_STATE_INTERFACE StateInterface,
+    _In_ NFCCX_CX_EVENT Event,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2,
+    _In_opt_ void* Param3
+    )
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    // Start the state transition.
+    StateInterface->InStateHandler = true;
+    NTSTATUS status = NfcCxStateInterfaceStateHandler(StateInterface, Event, Param1, Param2, Param3);
+    StateInterface->InStateHandler = false;
+
+    if (status == STATUS_PENDING)
+    {
+        // State transition has an asynchronous operation pending.
+        goto Done;
+    }
+
+    // State transition has completed.
+    // Check if this state transition was a user operation.
+    if (StateInterface->TransitionState == NFCCX_STATE_TRANSITION_STATE::UserEventRunning)
+    {
+        NfcCxRFInterfaceUserEventComplete(StateInterface->FdoContext->RFInterface, status);
+    }
+
+    StateInterface->TransitionState = NFCCX_STATE_TRANSITION_STATE::Idle;
+
+    // Check if there are any more pending events.
+    WdfWaitLockAcquire(StateInterface->PendingStateEventsLock, NULL);
+    bool morePendingEventsExist = !IsListEmpty(&StateInterface->PendingStateEvents);
+    WdfWaitLockRelease(StateInterface->PendingStateEventsLock);
+
+    if (morePendingEventsExist)
+    {
+        // Signal the LibNfc thread to process the next event.
+        NfcCxPostLibNfcThreadMessage(StateInterface->FdoContext->RFInterface, LIBNFC_STATE_PROCESS_NEXT_QUEUED_EVENT, 0, 0, 0, 0);
+    }
+
+Done:
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+}
+
+static NTSTATUS
 NfcCxStateInterfaceStateHandler(
     _In_ PNFCCX_STATE_INTERFACE StateInterface,
     _In_ NFCCX_CX_EVENT Event,
-    _In_opt_ VOID * Param1,
-    _In_opt_ VOID * Param2,
-    _In_opt_ VOID * Param3
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2,
+    _In_opt_ void* Param3
     )
 /*++
 
@@ -349,139 +453,87 @@ Return Value:
 
 --*/
 {
-    NTSTATUS status = STATUS_SUCCESS;
-    NFCCX_CX_STATE targetState;
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (!StateInterface->bStateHandler) {
+    NTSTATUS status = STATUS_SUCCESS;
 
-        StateInterface->bStateHandler = TRUE;
-        TRACE_LINE(LEVEL_INFO, "CurrentState=%!NFCCX_CX_STATE! Event=%!NFCCX_CX_EVENT! TransitionFlag=%!NFCCX_CX_TRANSITION_FLAG!",
-                                StateInterface->CurrentState, Event, StateInterface->TransitionFlag);
+    if (NFCCX_IS_USER_EVENT(Event))
+    {
+        // Get the target state given the current state and the type of event.
+        NFCCX_CX_STATE targetState = NfcCxStateInterfaceFindTargetState(
+            StateInterface,
+            g_NfcCxUsrEvent2StateMap[StateInterface->CurrentState][Event]);
 
-        if (NFCCX_IS_USER_EVENT(Event)) {
-            TRACE_LINE(LEVEL_VERBOSE, "ResetEvent, handle %p", StateInterface->hUserEventCompleted);
-            if (!ResetEvent(StateInterface->hUserEventCompleted))
+        TRACE_LINE(LEVEL_INFO, "CurrentState=%!NFCCX_CX_STATE! Event=%!NFCCX_CX_EVENT! TargetState=%!NFCCX_CX_STATE!",
+            StateInterface->CurrentState, Event, targetState);
+
+        if (targetState == NfcCxStateNone)
+        {
+            // Not a valid state transition.
+            status = STATUS_INVALID_DEVICE_STATE;
+            TRACE_LINE(LEVEL_ERROR, "Invalid state transition. %!STATUS!", status);
+        }
+        else
+        {
+            // Run the user event even if the state is already correct, as some user operations don't change the state of the state machine
+            // but still must be processed (e.g. eSE transmit).
+
+            // Get the state transition handler.
+            PFN_NFCCX_STATE_HANDLER stateHandler = g_NfcCxStateHandlers[StateInterface->CurrentState][targetState];
+
+            if (stateHandler)
             {
-                NTSTATUS eventStatus = NTSTATUS_FROM_WIN32(GetLastError());
-                TRACE_LINE(LEVEL_ERROR, "ResetEvent with handle %p failed, %!STATUS!", StateInterface->hUserEventCompleted, eventStatus);
+                // Run the state transition handler.
+                status = stateHandler(StateInterface, Event, Param1, Param2, Param3);
             }
 
-            if (StateInterface->TransitionFlag == NfcCxTransitionIdle) {
-                StateInterface->CurrentUserEvent = Event;
-
-                targetState = NfcCxStateInterfaceFindTargetState(StateInterface,
-                                                                 g_NfcCxUsrEvent2StateMap[StateInterface->CurrentState][Event]);
-                if (targetState == NfcCxStateNone) {
-                    status = STATUS_INVALID_DEVICE_STATE;
-                }
-                else {
-                    if (g_NfcCxStateHandlers[StateInterface->CurrentState][targetState] != NULL) {
-                        StateInterface->TransitionFlag = NfcCxTransitionBusy;
-                        status = g_NfcCxStateHandlers[StateInterface->CurrentState][targetState](StateInterface, Event, Param1, Param2, Param3);
-                    }
-
-                    StateInterface->CurrentState = targetState;
-                }
-
-                if (status != STATUS_PENDING) {
-                    StateInterface->TransitionFlag = NfcCxTransitionIdle;
-                    
-                    if (NfcCxStateInterfaceRemoveDeferredEvent(StateInterface, &Event, &Param1, &Param2, &Param3)) {
-                        NfcCxPostLibNfcThreadMessage(StateInterface->FdoContext->RFInterface, LIBNFC_STATE_HANDLER, (UINT_PTR)Event, (UINT_PTR)Param1, (UINT_PTR)Param2, (UINT_PTR)Param3);
-                    }
-                    else if (StateInterface->CurrentUserEvent != NfcCxEventInvalid) {
-                        StateInterface->CurrentUserEvent = NfcCxEventInvalid;
-                        
-                        TRACE_LINE(LEVEL_VERBOSE, "SetEvent, handle %p", StateInterface->hUserEventCompleted);
-                        if (!SetEvent(StateInterface->hUserEventCompleted))
-                        {
-                            NTSTATUS eventStatus = NTSTATUS_FROM_WIN32(GetLastError());
-                            TRACE_LINE(LEVEL_ERROR, "SetEvent with handle %p failed, %!STATUS!", StateInterface->hUserEventCompleted, eventStatus);
-                        }
-                    }
-                }
-            }
-            else {
-                status = NfcCxStateInterfaceAddDeferredEvent(StateInterface, Event, Param1, Param2, Param3);
-            }
+            StateInterface->CurrentState = targetState;
         }
-        else if (NFCCX_IS_INTERNAL_EVENT(Event)) {
-            targetState = NfcCxStateInterfaceFindTargetState(StateInterface,
-                                                             g_NfcCxIntEvent2StateMap[StateInterface->CurrentState][Event - NfcCxEventUserMax -1]);
-            if (targetState == NfcCxStateNone) {
-                status = STATUS_INVALID_DEVICE_STATE;
-            }
-            else if (targetState != StateInterface->CurrentState) {
-                if (g_NfcCxStateHandlers[StateInterface->CurrentState][targetState] != NULL) {
-                    StateInterface->TransitionFlag = NfcCxTransitionBusy;
-                    status = g_NfcCxStateHandlers[StateInterface->CurrentState][targetState](StateInterface, Event, Param1, Param2, Param3);
-                }
-
-                StateInterface->CurrentState = targetState;
-            }
-
-            if (status != STATUS_PENDING) {
-                StateInterface->TransitionFlag = NfcCxTransitionIdle;
-
-                if (NfcCxStateInterfaceRemoveDeferredEvent(StateInterface, &Event, &Param1, &Param2, &Param3)) {
-                    NfcCxPostLibNfcThreadMessage(StateInterface->FdoContext->RFInterface, LIBNFC_STATE_HANDLER, (UINT_PTR)Event, (UINT_PTR)Param1, (UINT_PTR)Param2, (UINT_PTR)Param3);
-                }
-                else if (StateInterface->CurrentUserEvent != NfcCxEventInvalid) {
-                    StateInterface->CurrentUserEvent = NfcCxEventInvalid;
-
-                    TRACE_LINE(LEVEL_VERBOSE, "SetEvent, handle %p", StateInterface->hUserEventCompleted);
-                    if (!SetEvent(StateInterface->hUserEventCompleted))
-                    {
-                        NTSTATUS eventStatus = NTSTATUS_FROM_WIN32(GetLastError());
-                        TRACE_LINE(LEVEL_ERROR, "SetEvent with handle %p failed, %!STATUS!", StateInterface->hUserEventCompleted, eventStatus);
-                    }
-                }
-            }
-        }
-        else {
-            NT_ASSERTMSG("Invalid Event", FALSE);
-            status = STATUS_INVALID_PARAMETER;
-        }
-
-        StateInterface->bStateHandler = FALSE;
-        TRACE_LINE(LEVEL_INFO, "CurrentState=%!NFCCX_CX_STATE! TransitionFlag=%!NFCCX_CX_TRANSITION_FLAG!",
-                                StateInterface->CurrentState, StateInterface->TransitionFlag);
     }
-    else {
-        TRACE_LINE(LEVEL_INFO, "State handling in progress");
-        NfcCxPostLibNfcThreadMessage(StateInterface->FdoContext->RFInterface, LIBNFC_STATE_HANDLER, (UINT_PTR)Event, (UINT_PTR)Param1, (UINT_PTR)Param2, (UINT_PTR)Param3);
-        status = STATUS_PENDING;
+    else if (NFCCX_IS_INTERNAL_EVENT(Event))
+    {
+        // In the `NFCCX_CX_EVENT` enum, the internal events are placed after the user events. But in the `g_NfcCxIntEvent2StateMap`
+        // array, the first internal event starts at index 0. So the value of the internal events must be offset to match the
+        // `g_NfcCxIntEvent2StateMap` array.
+        ULONG internalEventIndex = Event - NfcCxEventUserMax - 1;
+
+        // Get the target state given the current state and the type of event.
+        NFCCX_CX_STATE targetState = NfcCxStateInterfaceFindTargetState(
+            StateInterface,
+            g_NfcCxIntEvent2StateMap[StateInterface->CurrentState][internalEventIndex]);
+
+        TRACE_LINE(LEVEL_INFO, "CurrentState=%!NFCCX_CX_STATE! Event=%!NFCCX_CX_EVENT! TargetState=%!NFCCX_CX_STATE!",
+            StateInterface->CurrentState, Event, targetState);
+
+        if (targetState == NfcCxStateNone)
+        {
+            // Not a valid state transition.
+            status = STATUS_INVALID_DEVICE_STATE;
+            TRACE_LINE(LEVEL_ERROR, "Invalid state transition. %!STATUS!", status);
+        }
+        // Don't bother with the transition if the state is already correct.
+        else if (targetState != StateInterface->CurrentState)
+        {
+            // Get the state transition handler.
+            PFN_NFCCX_STATE_HANDLER stateHandler = g_NfcCxStateHandlers[StateInterface->CurrentState][targetState];
+
+            if (stateHandler)
+            {
+                // Run the state transition handler.
+                status = stateHandler(StateInterface, Event, Param1, Param2, Param3);
+            }
+
+            StateInterface->CurrentState = targetState;
+        }
+    }
+    else
+    {
+        status = STATUS_INVALID_PARAMETER;
+        TRACE_LINE(LEVEL_ERROR, "Invalid event type. %!STATUS!", status);
+        goto Done;
     }
 
+Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
-}
-
-DWORD
-NfcCxStateInterfaceWaitForUserEventToComplete(
-    _In_ PNFCCX_STATE_INTERFACE StateInterface,
-    _In_ DWORD Timeout
-    )
-/*++
-
-Routine Description:
-
-    This routine is used to wait for the user event
-    to complete
-
-Arguments:
-
-    StateInterface - A pointer to the State interface
-    Timeout - The timeout for the user event to complete
-
-Return Value:
-
-    DWORD indicating the wait status
-
---*/
-{
-    TRACE_LINE(LEVEL_VERBOSE, "Wait on user event, handle %p", StateInterface->hUserEventCompleted);
-    return WaitForSingleObject(StateInterface->hUserEventCompleted, Timeout);
 }

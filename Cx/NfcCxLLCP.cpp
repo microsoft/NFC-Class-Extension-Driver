@@ -114,7 +114,7 @@ NfcCxLLCPInterfaceLinkStatusCB(
     case phFriNfc_LlcpMac_eLinkActivated:
         {
             NfcCxSNEPInterfaceServerInit(RFInterface->pLibNfcContext->SNEPInterface);
-            NfcCxPostLibNfcThreadMessage(RFInterface, LIBNFC_STATE_HANDLER, NfcCxEventActivated, NULL, NULL, NULL);
+            NfcCxStateInterfaceQueueEvent(RFInterface->pLibNfcContext->StateInterface, NfcCxEventActivated, NULL, NULL, NULL);
         }
         break;
 
@@ -126,11 +126,11 @@ NfcCxLLCPInterfaceLinkStatusCB(
             if (LLCPInterface->IsDeactivatePending)
             {
                 LLCPInterface->IsDeactivatePending = false;
-                NfcCxInternalSequence(NfcCxLLCPInterfaceGetRFInterface(LLCPInterface), NfcCxLLCPInterfaceGetRFInterface(LLCPInterface)->pSeqHandler, STATUS_SUCCESS, NULL, NULL);
+                NfcCxInternalSequence(RFInterface, RFInterface->pSeqHandler, STATUS_SUCCESS, NULL, NULL);
             }
             else
             {
-                NfcCxPostLibNfcThreadMessage(RFInterface, LIBNFC_STATE_HANDLER, NfcCxEventDeactivated, NULL, NULL, NULL);
+                NfcCxStateInterfaceQueueEvent(RFInterface->pLibNfcContext->StateInterface, NfcCxEventDeactivated, NULL, NULL, NULL);
             }
         }
         break;

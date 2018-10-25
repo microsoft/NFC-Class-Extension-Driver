@@ -57,13 +57,17 @@ typedef enum _NFCCX_CX_EVENT : ULONG {
 #define NFCCX_IS_USER_EVENT(Event) ((Event) < NfcCxEventUserMax)
 #define NFCCX_IS_INTERNAL_EVENT(Event) ((Event) > NfcCxEventUserMax && (Event) < NfcCxEventInternalMax)
 
-typedef enum _NFCCX_CX_TRANSITION_FLAG {
-    NfcCxTransitionIdle,
-    NfcCxTransitionBusy,
-} NFCCX_CX_TRANSITION_FLAG, *PNFCCX_CX_TRANSITION_FLAG;
-
-#define NFCCX_IS_STATE_TRANSITION_IDLE(Flag) ((Flag) == NfcCxTransitionIdle)
-#define NFCCX_IS_STATE_TRANSITION_BUSY(Flag) ((Flag) == NfcCxTransitionBusy)
+enum class NFCCX_STATE_TRANSITION_STATE
+{
+    // There is no active state transition (or user operation) pending.
+    Idle,
+    // A user operation is running. (See, NFCCX_RF_OPERATION.)
+    // These are always started by a call to NfcCxRFInterfaceExecute.
+    UserEventRunning,
+    // An internal operation is running.
+    // These are usually started in response to a hardware event. (e.g. tag arrived.)
+    InternalEventRunning,
+};
 
 typedef
 BOOLEAN
@@ -76,30 +80,32 @@ NTSTATUS
 (FN_NFCCX_STATE_HANDLER)(
     _In_ PNFCCX_STATE_INTERFACE StateInterface,
     _In_ NFCCX_CX_EVENT Event,
-    _In_opt_ VOID* Param1,
-    _In_opt_ VOID* Param2,
-    _In_opt_ VOID* Param3
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2,
+    _In_opt_ void* Param3
     );
 
 typedef FN_NFCCX_STATE_CONNECTOR *PFN_NFCCX_STATE_CONNECTOR;
 typedef FN_NFCCX_STATE_HANDLER *PFN_NFCCX_STATE_HANDLER;
 
-typedef struct _NFCCX_CX_EVENT_ENTRY {
-    LIST_ENTRY                  ListEntry;
-    NFCCX_CX_EVENT              Event;
-    VOID*                       Param1;
-    VOID*                       Param2;
-    VOID*                       Param3;
-} NFCCX_CX_EVENT_ENTRY, *PNFCCX_CX_EVENT_ENTRY;
+struct NFCCX_STATE_PENDING_EVENT
+{
+    LIST_ENTRY ListNodeHeader;
+    NFCCX_CX_EVENT Event;
+    void* Param1;
+    void* Param2;
+    void* Param3;
+};
 
 typedef struct _NFCCX_STATE_INTERFACE {
-    PNFCCX_FDO_CONTEXT          FdoContext;
-    NFCCX_CX_STATE              CurrentState;
-    NFCCX_CX_TRANSITION_FLAG    TransitionFlag;
-    LIST_ENTRY                  DeferredEventList;
-    NFCCX_CX_EVENT              CurrentUserEvent;
-    HANDLE                      hUserEventCompleted;
-    BOOLEAN                     bStateHandler;
+    PNFCCX_FDO_CONTEXT FdoContext;
+    NFCCX_CX_STATE CurrentState;
+    NFCCX_STATE_TRANSITION_STATE TransitionState;
+    // Stores deferred events, which are waiting for the current operation to complete.
+    LIST_ENTRY PendingStateEvents;
+    WDFWAITLOCK PendingStateEventsLock;
+    // Used to detect when the state handler is called recursively.
+    bool InStateHandler;
 } NFCCX_STATE_INTERFACE, *PNFCCX_STATE_INTERFACE;
 
 NTSTATUS
@@ -114,30 +120,24 @@ NfcCxStateInterfaceDestroy(
     );
 
 NTSTATUS
-NfcCxStateInterfaceStateHandler(
+NfcCxStateInterfaceQueueEvent(
     _In_ PNFCCX_STATE_INTERFACE StateInterface,
     _In_ NFCCX_CX_EVENT Event,
-    _In_opt_ VOID * Param1,
-    _In_opt_ VOID * Param2,
-    _In_opt_ VOID * Param3
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2,
+    _In_opt_ void* Param3
     );
 
-NTSTATUS
-NfcCxStateInterfaceAddDeferredEvent(
-    _In_ PNFCCX_STATE_INTERFACE StateInterface,
-    _In_ NFCCX_CX_EVENT Event,
-    _In_opt_ VOID * Param1,
-    _In_opt_ VOID * Param2,
-    _In_opt_ VOID * Param3
-    );
-
-NTSTATUS
-NfcCxStateInterfaceClearAllDeferredEvents(
+void
+NfcCxStateInterfaceProcessNextQueuedEvent(
     _In_ PNFCCX_STATE_INTERFACE StateInterface
     );
 
-DWORD
-NfcCxStateInterfaceWaitForUserEventToComplete(
+void
+NfcCxStateInterfaceChainEvent(
     _In_ PNFCCX_STATE_INTERFACE StateInterface,
-    _In_ DWORD Timeout
+    _In_ NFCCX_CX_EVENT Event,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2,
+    _In_opt_ void* Param3
     );

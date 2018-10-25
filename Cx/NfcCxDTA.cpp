@@ -418,7 +418,7 @@ Return Value:
 
     WdfWaitLockAcquire(DTAInterface->DeviceLock, NULL);
 
-    status = NfcCxDTAInterfaceExecute(DTAInterface, LIBNFC_INIT, NULL, NULL, NULL, NULL);
+    status = NfcCxDTAInterfaceExecute(DTAInterface, LIBNFC_DTA_INIT, NULL, NULL, NULL, NULL);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to initialize LIBNFC, %!STATUS!", status);
         WdfWaitLockRelease(DTAInterface->DeviceLock);
@@ -506,7 +506,7 @@ Return Value:
     WdfWaitLockAcquire(DTAInterface->DeviceLock, NULL);
 
     (void)NfcCxDTAInterfaceExecute(DTAInterface, LIBNFC_DTA_MESSAGE, DTA_SET_MODE, FALSE, NULL, NULL);
-    (void)NfcCxDTAInterfaceExecute(DTAInterface, LIBNFC_DEINIT, NULL, NULL, NULL, NULL);
+    (void)NfcCxDTAInterfaceExecute(DTAInterface, LIBNFC_DTA_DEINIT, NULL, NULL, NULL, NULL);
 
     WdfWaitLockRelease(DTAInterface->DeviceLock);
 

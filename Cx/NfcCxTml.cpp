@@ -1213,7 +1213,7 @@ phTmlNfc_IoCtl(void *pHwRef, phTmlNfc_ControlCode_t eControlCode)
     switch(eControlCode)
     {
     case phTmlNfc_e_ResetDevice:
-        NfcCxPostLibNfcThreadMessage(fdoContext->RFInterface, LIBNFC_STATE_HANDLER, NfcCxEventRecovery, NULL, NULL, NULL);
+        NfcCxStateInterfaceQueueEvent(fdoContext->RFInterface->pLibNfcContext->StateInterface, NfcCxEventRecovery, NULL, NULL, NULL);
         break;
 
     default:

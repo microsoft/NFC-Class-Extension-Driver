@@ -582,11 +582,11 @@ NfcCxDTAInterfaceLibNfcMessageHandler(
 
     switch (Message)
     {
-    case LIBNFC_INIT:
+    case LIBNFC_DTA_INIT:
         NfcCxDTAInterfaceInitialize(dtaInterface);
         break;
 
-    case LIBNFC_DEINIT:
+    case LIBNFC_DTA_DEINIT:
         NfcCxDTAInterfaceDeinitialize(dtaInterface);
         break;
 
