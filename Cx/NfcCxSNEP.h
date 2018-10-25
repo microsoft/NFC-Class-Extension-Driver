@@ -8,8 +8,11 @@ Module Name:
 
 Abstract:
 
-    SNEP Interface declarations
-    
+    SNEP interface declarations
+
+    SNEP (Simple NDEF Exchange Protocol) implements NDEF publications and subscriptions over
+    NFC peer-to-peer (P2P) connections.
+
 Environment:
 
     User-mode Driver Framework
@@ -27,11 +30,6 @@ typedef struct _NFCCX_SNEP_INTERFACE {
     phLibNfc_Data_t         sDataInbox;
     phLibNfc_Data_t         sSendDataBuff;
 } NFCCX_SNEP_INTERFACE, *PNFCCX_SNEP_INTERFACE;
-
-typedef struct _NFCCX_SNEP_LIBNFC_REQUEST_CONTEXT {
-    PNFCCX_SNEP_INTERFACE   SNEPInterface;
-    PNFCCX_CX_SEQUENCE      Sequence;
-} NFCCX_SNEP_LIBNFC_REQUEST_CONTEXT, *PNFCCX_SNEP_LIBNFC_REQUEST_CONTEXT;
 
 NTSTATUS
 NfcCxSNEPInterfaceCreate(
@@ -57,7 +55,6 @@ NfcCxSNEPInterfaceDeinit(
 NTSTATUS
 NfcCxSNEPInterfaceClientConnect(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* Param1,
     _In_opt_ VOID* Param2
     );
@@ -68,7 +65,6 @@ NfcCxSNEPInterfaceClientConnect(
 NTSTATUS
 NfcCxSNEPInterfaceClientPut(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* Param1,
     _In_opt_ VOID* Param2
     );

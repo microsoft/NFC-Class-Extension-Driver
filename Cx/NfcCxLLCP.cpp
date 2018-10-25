@@ -89,7 +89,7 @@ NfcCxLLCPInterfaceCheckCB(
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     LLCPInterface->eRequestState = NFCCX_LLCP_REQUEST_COMPLETE;
-    NfcCxInternalSequence(NfcCxLLCPInterfaceGetRFInterface(LLCPInterface), NfcCxLLCPInterfaceGetRFInterface(LLCPInterface)->pSeqHandler, status, NULL, NULL);
+    NfcCxSequenceDispatchResume(NfcCxLLCPInterfaceGetRFInterface(LLCPInterface), NfcCxLLCPInterfaceGetRFInterface(LLCPInterface)->CurrentSequence, status, NULL, NULL);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }
@@ -126,7 +126,7 @@ NfcCxLLCPInterfaceLinkStatusCB(
             if (LLCPInterface->IsDeactivatePending)
             {
                 LLCPInterface->IsDeactivatePending = false;
-                NfcCxInternalSequence(RFInterface, RFInterface->pSeqHandler, STATUS_SUCCESS, NULL, NULL);
+                NfcCxSequenceDispatchResume(RFInterface, RFInterface->CurrentSequence, STATUS_SUCCESS, NULL, NULL);
             }
             else
             {
@@ -142,32 +142,31 @@ NfcCxLLCPInterfaceLinkStatusCB(
 NTSTATUS
 NfcCxLLCPInterfaceCheck(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* /*Param1*/,
     _In_opt_ VOID* /*Param2*/
     )
 {
-    NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
     PNFCCX_LLCP_INTERFACE LLCPInterface = NfcCxRFInterfaceGetLLCPInterface(RFInterface);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     LLCPInterface->eRequestState = NFCCX_LLCP_REQUEST_PENDING;
 
-    nfcStatus = phLibNfc_Llcp_CheckLlcp(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev,
+    NFCSTATUS nfcStatus = phLibNfc_Llcp_CheckLlcp(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev,
                                         NfcCxLLCPInterfaceCheckCB,
                                         NfcCxLLCPInterfaceLinkStatusCB,
                                         (VOID *)LLCPInterface);
 
+    NTSTATUS status;
     if (LLCPInterface->eRequestState == NFCCX_LLCP_REQUEST_COMPLETE) {
-        Status = STATUS_PENDING;
+        status = STATUS_PENDING;
     }
     else {
-        Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+        status = NfcCxNtStatusFromNfcStatus(nfcStatus);
     }
 
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
-    return Status;
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
 }
 
 static VOID
@@ -177,11 +176,11 @@ NfcCxLLCPInterfaceConfigureCB(
     )
 {
     NTSTATUS status = NfcCxNtStatusFromNfcStatus(NfcStatus);
-    PNFCCX_LLCP_INTERFACE LLCPInterface = ((PNFCCX_LLCP_LIBNFC_REQUEST_CONTEXT)pContext)->LLCPInterface;
+    auto sequence = reinterpret_cast<NFCCX_CX_SEQUENCE*>(pContext);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    NfcCxInternalSequence(NfcCxLLCPInterfaceGetRFInterface(LLCPInterface), NfcCxLLCPInterfaceGetRFInterface(LLCPInterface)->pSeqHandler, status, NULL, NULL);
+    NfcCxSequenceDispatchResume(sequence->RFInterface, sequence, status, NULL, NULL);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }
@@ -189,7 +188,6 @@ NfcCxLLCPInterfaceConfigureCB(
 NTSTATUS
 NfcCxLLCPInterfaceConfigure(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* /*Param1*/,
     _In_opt_ VOID* /*Param2*/
     )
@@ -197,7 +195,6 @@ NfcCxLLCPInterfaceConfigure(
     NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
     PNFCCX_LLCP_INTERFACE LLCPInterface = NfcCxRFInterfaceGetLLCPInterface(RFInterface);
     uint8_t ServiceName[] = "NFC Application";
-    static NFCCX_LLCP_LIBNFC_REQUEST_CONTEXT LibNfcContext;
     
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -209,23 +206,19 @@ NfcCxLLCPInterfaceConfigure(
     LLCPInterface->sLocalLinkInfo.wks = PHFRINFC_LLCP_WKS_DEFAULT;
     LLCPInterface->sLocalLinkInfo.option = PHFRINFC_LLCP_OPTION_DEFAULT;
 
-    LibNfcContext.LLCPInterface = LLCPInterface;
-    LibNfcContext.Sequence = RFInterface->pSeqHandler;
-
     nfcStatus = phLibNfc_Mgt_SetLlcp_ConfigParams(&LLCPInterface->sLocalLinkInfo,
                                                   NfcCxLLCPInterfaceConfigureCB,
-                                                  &LibNfcContext);
+                                                  RFInterface->CurrentSequence);
 
-    Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+    NTSTATUS status = NfcCxNtStatusFromNfcStatus(nfcStatus);
 
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
-    return Status;
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
 }
 
 NTSTATUS
 NfcCxLLCPInterfaceActivate(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* /*Param1*/,
     _In_opt_ VOID* /*Param2*/
     )
@@ -235,16 +228,15 @@ NfcCxLLCPInterfaceActivate(
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
     nfcStatus = phLibNfc_Llcp_Activate(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev);
-    Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+    NTSTATUS status = NfcCxNtStatusFromNfcStatus(nfcStatus);
 
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
-    return Status;
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
 }
 
 NTSTATUS
 NfcCxLLCPInterfaceDeactivate(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* /*Param1*/,
     _In_opt_ VOID* /*Param2*/
     )
@@ -262,8 +254,8 @@ NfcCxLLCPInterfaceDeactivate(
         }
     }
 
-    Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+    NTSTATUS status = NfcCxNtStatusFromNfcStatus(nfcStatus);
 
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
-    return Status;
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
 }

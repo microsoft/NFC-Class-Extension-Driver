@@ -18,79 +18,87 @@ typedef
 NTSTATUS
 (FN_NFCCX_CX_SEQUENCE_ENTRY)(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
-    _In_opt_ VOID* Param1,
-    _In_opt_ VOID* Param2
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
     );
 
 typedef
-NTSTATUS
+void
 (FN_NFCCX_CX_SEQUENCE_EXIT)(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
     _In_ NTSTATUS Status,
-    _In_opt_ VOID* Param1,
-    _In_opt_ VOID* Param2
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
     );
 
-typedef FN_NFCCX_CX_SEQUENCE_ENTRY *PFN_NFCCX_CX_SEQUENCE_ENTRY;
-typedef FN_NFCCX_CX_SEQUENCE_EXIT *PFN_NFCCX_CX_SEQUENCE_EXIT;
+typedef FN_NFCCX_CX_SEQUENCE_ENTRY* PFN_NFCCX_CX_SEQUENCE_ENTRY;
+typedef FN_NFCCX_CX_SEQUENCE_EXIT* PFN_NFCCX_CX_SEQUENCE_EXIT;
 
-typedef struct _NFCCX_CX_SEQUENCE {
-    PFN_NFCCX_CX_SEQUENCE_ENTRY SequenceInitiate;
-    PFN_NFCCX_CX_SEQUENCE_EXIT  SequenceProcess;
-} NFCCX_CX_SEQUENCE, *PNFCCX_CX_SEQUENCE;
+#define NFCCX_CX_BEGIN_SEQUENCE_MAP(Sequence) static constexpr PFN_NFCCX_CX_SEQUENCE_ENTRY Sequence[] = {
+#define NFCCX_CX_SEQUENCE_ENTRY(SequenceInitiate) SequenceInitiate,
+#define NFCCX_CX_END_SEQUENCE_MAP() };
 
-typedef const NFCCX_CX_SEQUENCE* PCNFCCX_CX_SEQUENCE;
-
-#define NFCCX_CX_BEGIN_SEQUENCE_MAP(Sequence) static NFCCX_CX_SEQUENCE Sequence[] = {
-#define NFCCX_CX_SEQUENCE_ENTRY(SequenceInitiate) { SequenceInitiate, NULL },
-#define NFCCX_CX_END_SEQUENCE_MAP() { NULL, NULL } };
-
-typedef struct _NFCCX_CX_SEQUENCE_REQUEST {
-    PNFCCX_RF_INTERFACE     RFInterface;
-    NTSTATUS                Status;
-    VOID*                   Param1;
-    VOID*                   Param2;
-} NFCCX_CX_SEQUENCE_REQUEST, *PNFCCX_CX_SEQUENCE_REQUEST;
+struct NFCCX_CX_SEQUENCE
+{
+    PNFCCX_RF_INTERFACE RFInterface;
+    const PFN_NFCCX_CX_SEQUENCE_ENTRY* SequenceSteps;
+    UCHAR SequenceStepsNext;
+    UCHAR SequenceStepsSize;
+    PFN_NFCCX_CX_SEQUENCE_EXIT SequenceCompleteStep;
+    bool IsSequenceRunning;
+};
 
 NTSTATUS
-NfcCxSequenceHandler(
+NfcCxSequenceStart(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ PNFCCX_CX_SEQUENCE Sequence,
-    _In_ NTSTATUS Status,
-    _In_opt_ VOID* Param1,
-    _In_opt_ VOID* Param2
+    _In_reads_(SequenceStepsSize) const PFN_NFCCX_CX_SEQUENCE_ENTRY* SequenceSteps,
+    _In_ UCHAR SequenceStepsSize,
+    _In_ PFN_NFCCX_CX_SEQUENCE_EXIT SequenceCompleteStep,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
     );
 
-VOID
-NfcCxInternalSequence(
+template <UCHAR SequenceStepsSize>
+NTSTATUS
+NfcCxSequenceStart(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ PNFCCX_CX_SEQUENCE Sequence,
-    _In_ NTSTATUS Status,
-    _In_opt_ VOID* Param1,
-    _In_opt_ VOID* Param2
+    _In_ const PFN_NFCCX_CX_SEQUENCE_ENTRY (&SequenceSteps)[SequenceStepsSize],
+    _In_ PFN_NFCCX_CX_SEQUENCE_EXIT SeqComplete,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
+    )
+{
+    return NfcCxSequenceStart(RFInterface, SequenceSteps, SequenceStepsSize, SeqComplete, Param1, Param2);
+}
+
+void
+NfcCxSequenceResume(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NFCCX_CX_SEQUENCE* Sequence,
+    _In_ NTSTATUS SequenceStatus,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
     );
 
-UCHAR
-NfcCxGetSequenceLength(
-    PCNFCCX_CX_SEQUENCE Sequence
+void
+NfcCxSequenceDispatchResume(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NFCCX_CX_SEQUENCE* Sequence,
+    _In_ NTSTATUS Status,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
     );
 
 NTSTATUS
 NfcCxSkipSequence(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ PNFCCX_CX_SEQUENCE Sequence,
+    _In_ NFCCX_CX_SEQUENCE* Sequence,
     _In_ UCHAR Value
     );
 
 NTSTATUS
 NfcCxRepeatSequence(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ PNFCCX_CX_SEQUENCE Sequence,
+    _In_ NFCCX_CX_SEQUENCE* Sequence,
     _In_ UCHAR Value
     );
-
-#define NFCCX_INIT_SEQUENCE(RFInterface, Sequence) \
-    (RFInterface)->pSeqHandler = (Sequence); \
-    (RFInterface)->SeqNext = 0; \
-    (RFInterface)->SeqMax = NfcCxGetSequenceLength((Sequence))

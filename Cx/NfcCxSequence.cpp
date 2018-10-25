@@ -16,25 +16,35 @@ Abstract:
 
 #include "NFcCxSequence.tmh"
 
-NTSTATUS
-NfcCxSequenceHandler(
+static NTSTATUS
+NfcCxSequenceRun(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ PNFCCX_CX_SEQUENCE Sequence,
-    _In_ NTSTATUS Status,
-    _In_opt_ VOID* Param1,
-    _In_opt_ VOID* Param2
+    _In_ NFCCX_CX_SEQUENCE* Sequence,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
+    );
+
+NTSTATUS
+NfcCxSequenceStart(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_reads_(SequenceStepsSize) const PFN_NFCCX_CX_SEQUENCE_ENTRY* SequenceSteps,
+    _In_ UCHAR SequenceStepsSize,
+    _In_ PFN_NFCCX_CX_SEQUENCE_EXIT SequenceCompleteStep,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
     )
 /*++
 
 Routine Description:
 
-    This routine for initiating and processing sequences
+    This routine for initiating sequences.
 
 Arguments:
 
     RFInterface - A pointer to the RF interface
-    Sequence - A pointer to sequence
-    Status - The status of the sequence
+    SequenceSteps - A pointer to a sequence handler list
+    SequenceStepsSize - The size of the sequence handler list
+    SequenceCompleteStep - The handler called when the sequence has completed
     Param - The parameters for the sequence
 
 Return Value:
@@ -45,91 +55,209 @@ Return Value:
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (RFInterface->pSeqHandler != Sequence) {
-        TRACE_LINE(LEVEL_WARNING, "Sequence mismatch");
-        Status = STATUS_INVALID_PARAMETER;
-    }
-    else if (!RFInterface->bSeqHandler) {
-        NT_ASSERT(RFInterface->SeqMax > 0);
-        RFInterface->bSeqHandler = TRUE;
+    NTSTATUS status = STATUS_SUCCESS;
 
-        if ((STATUS_SUCCESS == Status) && (NULL != RFInterface->pSeqHandler)) {
-            if (RFInterface->SeqNext <= RFInterface->SeqMax) {
-                if (0 == RFInterface->SeqNext) {
-                    if (NULL != RFInterface->pSeqHandler[RFInterface->SeqNext].SequenceInitiate) {
-                        Status = RFInterface->pSeqHandler[RFInterface->SeqNext].SequenceInitiate(RFInterface, Status, Param1, Param2);
-                    }
-
-                    while ((STATUS_SUCCESS == Status) && (RFInterface->SeqMax > RFInterface->SeqNext)) {
-                        RFInterface->SeqNext++;
-
-                        if (NULL != RFInterface->pSeqHandler[RFInterface->SeqNext-1].SequenceProcess) {
-                             Status = RFInterface->pSeqHandler[RFInterface->SeqNext-1].SequenceProcess(RFInterface, Status, Param1, Param2);
-                        }
-
-                        if ((STATUS_SUCCESS == Status) && (NULL != RFInterface->pSeqHandler[RFInterface->SeqNext].SequenceInitiate)) {
-                            Status = RFInterface->pSeqHandler[RFInterface->SeqNext].SequenceInitiate(RFInterface, Status, Param1, Param2);
-                        }
-                    }
-                }
-                else {
-                    while ((STATUS_SUCCESS == Status) && (RFInterface->SeqMax > RFInterface->SeqNext)) {
-                        if (NULL != RFInterface->pSeqHandler[RFInterface->SeqNext-1].SequenceProcess) {
-                             Status = RFInterface->pSeqHandler[RFInterface->SeqNext-1].SequenceProcess(RFInterface, Status, Param1, Param2);
-                        }
-
-                        if ((STATUS_SUCCESS == Status) && (NULL != RFInterface->pSeqHandler[RFInterface->SeqNext].SequenceInitiate)) {
-                            Status = RFInterface->pSeqHandler[RFInterface->SeqNext].SequenceInitiate(RFInterface, Status, Param1, Param2);
-                        }
-
-                        RFInterface->SeqNext = (STATUS_SUCCESS == Status) ? RFInterface->SeqNext+1 : RFInterface->SeqNext;
-                    }
-                }
-            }
-        }
-        else {
-            RFInterface->SeqNext = RFInterface->SeqMax;
+    // Check if there is an existing sequence.
+    if (RFInterface->CurrentSequence)
+    {
+        // Check if the sequence handling is being called recursively.
+        if (RFInterface->CurrentSequence->IsSequenceRunning)
+        {
+            status = STATUS_INVALID_DEVICE_STATE;
+            TRACE_LINE(LEVEL_ERROR, "Failed to start a new sequence. An existing sequence is currently executing. %!STATUS!", status);
+            goto Done;
         }
 
-        if ((STATUS_SUCCESS != Status) && (STATUS_PENDING != Status)) {
-            RFInterface->SeqNext = RFInterface->SeqMax;
-        }
+        TRACE_LINE(LEVEL_WARNING, "WARNING: Overriding existing sequence.");
 
-        if (RFInterface->SeqNext == RFInterface->SeqMax) {
-            if (NULL != RFInterface->pSeqHandler &&
-                NULL != RFInterface->pSeqHandler[RFInterface->SeqNext].SequenceProcess) {
-                RFInterface->pSeqHandler[RFInterface->SeqNext].SequenceProcess(RFInterface, Status, Param1, Param2);
-            }
-        }
-        else {
-            RFInterface->SeqNext++;
-        }
-
-        RFInterface->bSeqHandler = FALSE;
-    }
-    else {
-        TRACE_LINE(LEVEL_INFO, "Sequence handling in progress");
-        NfcCxPostLibNfcThreadMessage(RFInterface, LIBNFC_SEQUENCE_HANDLER, (UINT_PTR)Sequence, (UINT_PTR)Status, (UINT_PTR)Param1, (UINT_PTR)Param2);
-        Status =  STATUS_PENDING;
+        // Cleanup existing sequence.
+        NFCCX_CX_SEQUENCE* existingSequence = RFInterface->CurrentSequence;
+        RFInterface->CurrentSequence = nullptr;
+        delete existingSequence;
     }
 
-    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
-    return Status;
+    // Allocate the data context for the sequence.
+    auto sequence = new NFCCX_CX_SEQUENCE{ RFInterface, SequenceSteps, 0, SequenceStepsSize, SequenceCompleteStep, false };
+    if (!sequence)
+    {
+        status = STATUS_INSUFFICIENT_RESOURCES;
+        TRACE_LINE(LEVEL_ERROR, "Failed to allocate NFCCX_CX_SEQUENCE. %!STATUS!", status);
+        goto Done;
+    }
+
+    // Set the sequence.
+    RFInterface->CurrentSequence = sequence;
+
+    // Run the first handler within the sequence.
+    NTSTATUS sequenceStatus = NfcCxSequenceRun(RFInterface, sequence, Param1, Param2);
+    if (sequenceStatus != STATUS_PENDING)
+    {
+        // The sequence handler completed synchronously (success or failure).
+        TRACE_LINE(LEVEL_INFO, "Sequence handler completed synchronously. Deferring complete function. %!STATUS!", sequenceStatus);
+
+        // Ensure that the complete function is called when the sequence is next resumed.
+        sequence->SequenceStepsNext = sequence->SequenceStepsSize;
+
+        // Queue the sequence handler.
+        NfcCxSequenceDispatchResume(RFInterface, sequence, sequenceStatus, Param1, Param2);
+
+        goto Done;
+    }
+
+    // Sequence will complete asynchronously.
+    status = STATUS_PENDING;
+
+Done:
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
 }
 
-VOID
-NfcCxInternalSequence(
+void
+NfcCxSequenceResume(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ PNFCCX_CX_SEQUENCE Sequence,
-    _In_ NTSTATUS Status,
-    _In_opt_ VOID* Param1,
-    _In_opt_ VOID* Param2
+    _In_ NFCCX_CX_SEQUENCE* Sequence,
+    _In_ NTSTATUS SequenceStatus,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
     )
 /*++
 
 Routine Description:
 
-    This routine is invoked by completing the sequence
+    Resumes a sequence that was suspended. This is usually called when an asynchronous operation has completed.
+
+Arguments:
+
+    RFInterface - A pointer to the RF interface
+    Sequence - A pointer to sequence
+    SequenceStatus - The status of the sequence
+    Param - The parameters for the sequence
+
+Return Value:
+
+    void
+
+--*/
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    if (RFInterface->CurrentSequence != Sequence)
+    {
+        TRACE_LINE(LEVEL_WARNING, "Sequence mismatch.");
+        goto Done;
+    }
+
+    if (!Sequence)
+    {
+        TRACE_LINE(LEVEL_WARNING, "Empty sequence.");
+        goto Done;
+    }
+
+    // Check if the sequence handling is being called recursively.
+    if (Sequence->IsSequenceRunning)
+    {
+        TRACE_LINE(LEVEL_INFO, "Sequence handling already in progress. Deferring.");
+        NfcCxSequenceDispatchResume(RFInterface, Sequence, SequenceStatus, Param1, Param2);
+        goto Done;
+    }
+
+    if (SequenceStatus == STATUS_PENDING)
+    {
+        SequenceStatus = STATUS_CANCELLED;
+        TRACE_LINE(LEVEL_WARNING, "Sequence result has an unexpected value of STATUS_PENDING. Converting to STATUS_CANCELLED.");
+    }
+
+    if (SequenceStatus == STATUS_SUCCESS)
+    {
+        // Call the next sequence handler.
+        SequenceStatus = NfcCxSequenceRun(RFInterface, Sequence, Param1, Param2);
+    }
+
+    if (SequenceStatus != STATUS_PENDING)
+    {
+        // The sequence has completed (success or failure).
+
+        // Allow another sequence to start during the complete handler.
+        RFInterface->CurrentSequence = nullptr;
+
+        // Call the complete handler.
+        Sequence->SequenceCompleteStep(RFInterface, SequenceStatus, Param1, Param2);
+
+        // Cleanup sequence's memory.
+        delete Sequence;
+    }
+
+Done:
+    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
+}
+
+static NTSTATUS
+NfcCxSequenceRun(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NFCCX_CX_SEQUENCE* Sequence,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
+    )
+/*++
+
+Routine Description:
+
+    Processes the next handler in the sequence
+
+Arguments:
+
+    RFInterface - A pointer to the RF interface
+    Sequence - A pointer to sequence
+    SequenceStatus - The status of the sequence
+    Param - The parameters for the sequence
+
+Return Value:
+
+    NTSTATUS
+
+--*/
+{
+    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
+
+    NTSTATUS status = STATUS_SUCCESS;
+    Sequence->IsSequenceRunning = true;
+
+    while (Sequence->SequenceStepsNext < Sequence->SequenceStepsSize)
+    {
+        // Invoke the next sequence handler.
+        PFN_NFCCX_CX_SEQUENCE_ENTRY handler = Sequence->SequenceSteps[Sequence->SequenceStepsNext];
+        Sequence->SequenceStepsNext++;
+
+        status = handler(RFInterface, Param1, Param2);
+        if (status == STATUS_SUCCESS)
+        {
+            // The sequence handler completed its work synchronously. Continue on to the next handler.
+            continue;
+        }
+
+        // Either an error occured or an asynchronous operation is pending.
+        break;
+    }
+
+    Sequence->IsSequenceRunning = false;
+
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
+}
+
+void
+NfcCxSequenceDispatchResume(
+    _In_ PNFCCX_RF_INTERFACE RFInterface,
+    _In_ NFCCX_CX_SEQUENCE* Sequence,
+    _In_ NTSTATUS Status,
+    _In_opt_ void* Param1,
+    _In_opt_ void* Param2
+    )
+/*++
+
+Routine Description:
+
+    Queues a message on the LibNfc thread that will call NfcCxSequenceResume. This helps prevent reentrancy issues.
 
 Arguments:
 
@@ -144,48 +272,13 @@ Return Value:
 
 --*/
 {
-    NfcCxPostLibNfcThreadMessage(RFInterface, LIBNFC_SEQUENCE_HANDLER, (UINT_PTR)Sequence, (UINT_PTR)Status, (UINT_PTR)Param1, (UINT_PTR)Param2);
-}
-
-UCHAR
-NfcCxGetSequenceLength(
-    PCNFCCX_CX_SEQUENCE Sequence
-    )
-/*++
-
-Routine Description:
-
-    This routine is used to calculate the length of the sequence
-
-Arguments:
-
-    Sequence - A pointer to sequence
-
-Return Value:
-
-    The length of the sequence
-
---*/
-{
-    UCHAR length = 0;
-
-    if (Sequence == NULL) {
-        goto Done;
-    }
-
-    while (NULL != Sequence->SequenceInitiate) {
-        length++;
-        Sequence++;
-    }
-
-Done:
-    return length;
+    NfcCxPostLibNfcThreadMessage(RFInterface, LIBNFC_SEQUENCE_RESUME, (UINT_PTR)Sequence, (UINT_PTR)Status, (UINT_PTR)Param1, (UINT_PTR)Param2);
 }
 
 NTSTATUS
 NfcCxSkipSequence(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ PNFCCX_CX_SEQUENCE Sequence,
+    _In_ NFCCX_CX_SEQUENCE* Sequence,
     _In_ UCHAR Value
     )
 /*++
@@ -206,31 +299,25 @@ Return Value:
 
 --*/
 {
-    NTSTATUS status = STATUS_SUCCESS;
-
-    NT_ASSERT(RFInterface);
-    NT_ASSERT(Sequence);
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (0 == Value) {
+    NTSTATUS status = STATUS_SUCCESS;
+
+    if (RFInterface->CurrentSequence != Sequence)
+    {
         status = STATUS_INVALID_PARAMETER;
+        TRACE_LINE(LEVEL_ERROR, "Sequence mismatch. %!STATUS!", status);
         goto Done;
     }
 
-    if (Sequence != RFInterface->pSeqHandler) {
+    if (Sequence->SequenceStepsNext + Value > Sequence->SequenceStepsSize)
+    {
         status = STATUS_INVALID_PARAMETER;
-        TRACE_LINE(LEVEL_ERROR, "Sequence mismatch, can not decrement the current sequence");
+        TRACE_LINE(LEVEL_ERROR, "Value to increment is invalid. %!STATUS!", status);
         goto Done;
     }
 
-    if ((RFInterface->SeqNext + Value) > RFInterface->SeqMax) {
-        status = STATUS_INVALID_PARAMETER;
-        TRACE_LINE(LEVEL_ERROR, "Value to increment is invalid");
-        goto Done;
-    }
-
-    RFInterface->SeqNext += Value;
+    Sequence->SequenceStepsNext += Value;
 
 Done:
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
@@ -240,7 +327,7 @@ Done:
 NTSTATUS
 NfcCxRepeatSequence(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ PNFCCX_CX_SEQUENCE Sequence,
+    _In_ NFCCX_CX_SEQUENCE* Sequence,
     _In_ UCHAR Value
     )
 /*++
@@ -261,31 +348,25 @@ Return Value:
 
 --*/
 {
-    NTSTATUS status = STATUS_SUCCESS;
-
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    NT_ASSERT(RFInterface);
-    NT_ASSERT(Sequence);
+    NTSTATUS status = STATUS_SUCCESS;
 
-    if (0 == Value) {
+    if (RFInterface->CurrentSequence != Sequence)
+    {
         status = STATUS_INVALID_PARAMETER;
+        TRACE_LINE(LEVEL_ERROR, "Sequence mismatch. %!STATUS!", status);
         goto Done;
     }
 
-    if (Sequence != RFInterface->pSeqHandler) {
+    if (Sequence->SequenceStepsNext < Value)
+    {
         status = STATUS_INVALID_PARAMETER;
-        TRACE_LINE(LEVEL_ERROR, "Sequence mismatch, can not decrement the current sequence");
+        TRACE_LINE(LEVEL_ERROR, "Value to decrement is invalid. %!STATUS!", status);
         goto Done;
     }
 
-    if (RFInterface->SeqNext < Value) {
-        status = STATUS_INVALID_PARAMETER;
-        TRACE_LINE(LEVEL_ERROR, "Value to decrement is invalid");
-        goto Done;
-    }
-
-    RFInterface->SeqNext -= Value;
+    Sequence->SequenceStepsNext -= Value;
 
 Done:
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);

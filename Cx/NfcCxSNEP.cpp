@@ -8,7 +8,7 @@ Module Name:
 
 Abstract:
 
-    SNEP Interface implementation
+    SNEP interface implementation
 
 Environment:
 
@@ -237,7 +237,8 @@ NfcCxSNEPInterfaceClientConnCB(
     )
 {
     NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_SNEP_INTERFACE snepInterface = ((PNFCCX_SNEP_LIBNFC_REQUEST_CONTEXT)pContext)->SNEPInterface;
+    auto sequence = reinterpret_cast<NFCCX_CX_SEQUENCE*>(pContext);
+    PNFCCX_SNEP_INTERFACE snepInterface = NfcCxRFInterfaceGetSNEPInterface(sequence->RFInterface);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -252,7 +253,7 @@ NfcCxSNEPInterfaceClientConnCB(
         status = STATUS_UNSUCCESSFUL;
     }
 
-    NfcCxInternalSequence(NfcCxSNEPInterfaceGetRFInterface(snepInterface), ((PNFCCX_SNEP_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, NULL, NULL);
+    NfcCxSequenceDispatchResume(sequence->RFInterface, sequence, status, NULL, NULL);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }
@@ -260,29 +261,23 @@ NfcCxSNEPInterfaceClientConnCB(
 NTSTATUS
 NfcCxSNEPInterfaceClientConnect(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* /*Param1*/,
     _In_opt_ VOID* /*Param2*/
     )
 {
-    NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
     PNFCCX_SNEP_INTERFACE snepInterface = NfcCxRFInterfaceGetSNEPInterface(RFInterface);
-    static NFCCX_SNEP_LIBNFC_REQUEST_CONTEXT LibNfcContext;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    LibNfcContext.SNEPInterface = snepInterface;
-    LibNfcContext.Sequence = RFInterface->pSeqHandler;
-
-    nfcStatus = phLibNfc_SnepClient_Init(&snepInterface->sConfigInfo,
+    NFCSTATUS nfcStatus = phLibNfc_SnepClient_Init(&snepInterface->sConfigInfo,
                                          RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev,
                                          NfcCxSNEPInterfaceClientConnCB,
-                                         &LibNfcContext);
+                                         RFInterface->CurrentSequence);
 
-    Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+    NTSTATUS status = NfcCxNtStatusFromNfcStatus(nfcStatus);
 
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
-    return Status;
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
 }
 
 static VOID
@@ -294,7 +289,7 @@ NfcCxSNEPInterfaceClientPutReqCB(
     )
 {
     NTSTATUS status = STATUS_SUCCESS;
-    PNFCCX_SNEP_INTERFACE snepInterface = ((PNFCCX_SNEP_LIBNFC_REQUEST_CONTEXT)pContext)->SNEPInterface;
+    auto sequence = reinterpret_cast<NFCCX_CX_SEQUENCE*>(pContext);
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -302,7 +297,7 @@ NfcCxSNEPInterfaceClientPutReqCB(
     UNREFERENCED_PARAMETER(ConnHandle);
 
     status = NfcCxNtStatusFromNfcStatus(NfcStatus);
-    NfcCxInternalSequence(NfcCxSNEPInterfaceGetRFInterface(snepInterface), ((PNFCCX_SNEP_LIBNFC_REQUEST_CONTEXT)pContext)->Sequence, status, NULL, NULL);
+    NfcCxSequenceDispatchResume(sequence->RFInterface, sequence, status, NULL, NULL);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
 }
@@ -310,27 +305,21 @@ NfcCxSNEPInterfaceClientPutReqCB(
 NTSTATUS
 NfcCxSNEPInterfaceClientPut(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* /*Param1*/,
     _In_opt_ VOID* /*Param2*/
     )
 {
-    NFCSTATUS nfcStatus = NFCSTATUS_SUCCESS;
     PNFCCX_SNEP_INTERFACE snepInterface = NfcCxRFInterfaceGetSNEPInterface(RFInterface);
-    static NFCCX_SNEP_LIBNFC_REQUEST_CONTEXT LibNfcContext;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    LibNfcContext.SNEPInterface = snepInterface;
-    LibNfcContext.Sequence = RFInterface->pSeqHandler;
-
-    nfcStatus = phLibNfc_SnepProtocolCliReqPut(snepInterface->pClientHandleDef,
+    NFCSTATUS nfcStatus = phLibNfc_SnepProtocolCliReqPut(snepInterface->pClientHandleDef,
                                                &snepInterface->sSendDataBuff,
                                                NfcCxSNEPInterfaceClientPutReqCB,
-                                               &LibNfcContext);
+                                               RFInterface->CurrentSequence);
 
-    Status = NfcCxNtStatusFromNfcStatus(nfcStatus);
+    NTSTATUS status = NfcCxNtStatusFromNfcStatus(nfcStatus);
 
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, Status);
-    return Status;
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    return status;
 }

@@ -46,11 +46,6 @@ typedef struct _NFCCX_LLCP_INTERFACE {
     bool                                IsDeactivatePending;
 } NFCCX_LLCP_INTERFACE, *PNFCCX_LLCP_INTERFACE;
 
-typedef struct _NFCCX_LLCP_LIBNFC_REQUEST_CONTEXT {
-    PNFCCX_LLCP_INTERFACE   LLCPInterface;
-    PNFCCX_CX_SEQUENCE      Sequence;
-} NFCCX_LLCP_LIBNFC_REQUEST_CONTEXT, *PNFCCX_LLCP_LIBNFC_REQUEST_CONTEXT;
-
 NTSTATUS
 NfcCxLLCPInterfaceCreate(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
@@ -65,18 +60,16 @@ NfcCxLLCPInterfaceDestroy(
 NTSTATUS
 NfcCxLLCPInterfaceConfigure(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* Param1,
     _In_opt_ VOID* Param2
     );
 
 #define LLCP_INTERFACE_CONFIG_SEQUENCE \
-    { NfcCxLLCPInterfaceConfigure, NULL },
+    NFCCX_CX_SEQUENCE_ENTRY(NfcCxLLCPInterfaceConfigure)
 
 NTSTATUS
 NfcCxLLCPInterfaceCheck(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* Param1,
     _In_opt_ VOID* Param2
     );
@@ -87,7 +80,6 @@ NfcCxLLCPInterfaceCheck(
 NTSTATUS
 NfcCxLLCPInterfaceActivate(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* Param1,
     _In_opt_ VOID* Param2
     );
@@ -98,7 +90,6 @@ NfcCxLLCPInterfaceActivate(
 NTSTATUS
 NfcCxLLCPInterfaceDeactivate(
     _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
     _In_opt_ VOID* Param1,
     _In_opt_ VOID* Param2
     );
