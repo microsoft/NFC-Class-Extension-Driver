@@ -885,8 +885,6 @@ typedef struct phNciNfc_PowerState
  */
 typedef struct phNciNfc_TechBasedRtngValue
 {
-    uint8_t bRoute;                             /**< An Nfcee Id(Nfcee id: 1-254) or Dh-Nfcee Id(Nfcee id: 0) */
-    phNciNfc_PowerState_t tPowerState;          /**< Power state */
     phNciNfc_RfTechnologies_t tRfTechnology;    /**< A valid RF Technology */
 }phNciNfc_TechnBasedRtngValue_t, *pphNciNfc_TechnBasedRtngValue_t;/**< pointer to
                                                                              #phNciNfc_TechnBasedRtngValue_t */
@@ -897,8 +895,6 @@ typedef struct phNciNfc_TechBasedRtngValue
  */
 typedef struct phNciNfc_ProtoBasedRtngValue
 {
-    uint8_t bRoute;                          /**< An Nfcee Id(Nfcee id: 1-15) or Dh-Nfcee Id(Nfcee id: 0) */
-    phNciNfc_PowerState_t tPowerState;       /**< Power state */
     phNciNfc_RfProtocols_t tRfProtocol;      /**< A valid RF Protocol */
 }phNciNfc_ProtoBasedRtngValue_t, *pphNciNfc_ProtoBasedRtngValue_t;/**< pointer to
                                                                              #phNciNfc_ProtoBasedRtngValue_t */
@@ -909,8 +905,6 @@ typedef struct phNciNfc_ProtoBasedRtngValue
  */
 typedef struct phNciNfc_AidBasedRtngValue
 {
-    uint8_t bRoute;                          /**< An Nfcee Id(Nfcee id: 1-15) or Dh-Nfcee Id(Nfcee id: 0) */
-    phNciNfc_PowerState_t tPowerState;       /**< Power state */
     uint8_t aAid[PH_NCINFC_MAX_AID_LEN];      /**< A buffer containing AID (5-16 bytes) */
     uint8_t bAidSize;                        /**< Size of AID stored in 'aAid' */
 }phNciNfc_AidBasedRtngValue_t, *pphNciNfc_AidBasedRtngValue_t;/**< pointer to #phNciNfc_AidBasedRtngValue_t */
@@ -921,13 +915,15 @@ typedef struct phNciNfc_AidBasedRtngValue
  */
 typedef struct phNciNfc_RtngConfig
 {
-    phNciNfc_LstnModeRtngType_t Type;   /**< The type filed of 'TLV' coding for Listen Mode Routing */
+    phNciNfc_LstnModeRtngType_t Type;                                   /**< The type filed of 'TLV' coding for Listen Mode Routing */
+    uint8_t Route;                                                      /**< An Nfcee Id(Nfcee id: 1-15) or Dh-Nfcee Id(Nfcee id: 0) */
+    phNciNfc_PowerState_t PowerState;                                   /**< Power state */
     union
     {
-        phNciNfc_TechnBasedRtngValue_t tTechBasedRtngValue;  /**< Technology based routing value */
-        phNciNfc_ProtoBasedRtngValue_t tProtoBasedRtngValue; /**< Protocol based routing value */
-        phNciNfc_AidBasedRtngValue_t   tAidBasedRtngValue;   /**< Aid based routing value */
-    }LstnModeRtngValue;                                           /**< Value filed of Listen mode routing entry */
+        phNciNfc_TechnBasedRtngValue_t tTechBasedRtngValue;             /**< Technology based routing value */
+        phNciNfc_ProtoBasedRtngValue_t tProtoBasedRtngValue;            /**< Protocol based routing value */
+        phNciNfc_AidBasedRtngValue_t tAidBasedRtngValue;                /**< Aid based routing value */
+    }LstnModeRtngValue;                                                 /**< Value filed of Listen mode routing entry */
 }phNciNfc_RtngConfig_t, *pphNciNfc_RtngConfig_t;/**< pointer to #phNciNfc_RtngConfig_t */
 
 /**

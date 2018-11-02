@@ -376,13 +376,13 @@ NFCSTATUS phLibNfc_Mgt_ConfigRoutingTable(uint8_t               bNumRtngConfigs,
                 if(NFCSTATUS_SUCCESS == wStatus)
                 {
                     pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].Type = phNciNfc_e_LstnModeRtngProtocolBased;
-                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].LstnModeRtngValue.tProtoBasedRtngValue.bRoute = 0;
-                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOff = 0x00;
-                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bBatteryOff = 0x00;
-                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn = 0x01;
-                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub1 = 0x00;
-                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub2 = 0x00;
-                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub3 = 0x00;
+                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].Route = 0;
+                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].PowerState.bSwitchedOff = 0x00;
+                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].PowerState.bBatteryOff = 0x00;
+                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].PowerState.bSwitchedOn = 0x01;
+                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].PowerState.bSwitchedOnSub1 = 0x00;
+                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].PowerState.bSwitchedOnSub2 = 0x00;
+                    pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].PowerState.bSwitchedOnSub3 = 0x00;
                     pLibCtx->sSeContext.pRoutingCfgBuffer[bNumRtngAdded].LstnModeRtngValue.tProtoBasedRtngValue.tRfProtocol = phNciNfc_e_RfProtocolsNfcDepProtocol;
                     bNumRtngAdded++;
                 }
@@ -952,56 +952,53 @@ static NFCSTATUS phLibNfc_UpdateRtngInfo(pphNciNfc_RtngConfig_t pNciRtngCfg,
         {
             case phNfc_LstnModeRtngTechBased:
                 pNciRtngCfg->Type = phNciNfc_e_LstnModeRtngTechBased;
-                pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.bRoute = bNfceeId;
-                pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bBatteryOff =
-                    pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bBatteryOff;
-                pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOff =
-                    pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOff;
-                pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn =
-                    pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn;
-                pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOnSub1 = 0;
-                pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOnSub2 = 0;
-                pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOnSub3 =
-                    (0 == pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn) ? 0 : pLibCtx->Config.bSwitchedOnSubState;
+                pNciRtngCfg->Route = bNfceeId;
+                pNciRtngCfg->PowerState.bBatteryOff = pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bBatteryOff;
+                pNciRtngCfg->PowerState.bSwitchedOff = pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOff;
+                pNciRtngCfg->PowerState.bSwitchedOn = pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn;
+                pNciRtngCfg->PowerState.bSwitchedOnSub1 = 0;
+                pNciRtngCfg->PowerState.bSwitchedOnSub2 = 0;
+                pNciRtngCfg->PowerState.bSwitchedOnSub3 = (0 == pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn)
+                                                          ? 0
+                                                          : pLibCtx->Config.bSwitchedOnSubState;
+
                 pNciRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tRfTechnology = (phNciNfc_RfTechnologies_t)
                     pLibNfcRtngCfg->LstnModeRtngValue.tTechBasedRtngValue.tRfTechnology;
                 break;
             case phNfc_LstnModeRtngProtocolBased:
                 pNciRtngCfg->Type = phNciNfc_e_LstnModeRtngProtocolBased;
-                pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.bRoute = bNfceeId;
-                pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bBatteryOff =
-                    pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bBatteryOff;
-                pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOff =
-                    pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOff;
-                pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn =
-                    pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn;
-                pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub1 = 0;
-                pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub2 = 0;
-                pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub3 =
-                    (0 == pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn) ? 0 : pLibCtx->Config.bSwitchedOnSubState;
+                pNciRtngCfg->Route = bNfceeId;
+                pNciRtngCfg->PowerState.bBatteryOff = pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bBatteryOff;
+                pNciRtngCfg->PowerState.bSwitchedOff = pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOff;
+                pNciRtngCfg->PowerState.bSwitchedOn = pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn;
+                pNciRtngCfg->PowerState.bSwitchedOnSub1 = 0;
+                pNciRtngCfg->PowerState.bSwitchedOnSub2 = 0;
+                pNciRtngCfg->PowerState.bSwitchedOnSub3 = (0 == pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn)
+                                                          ? 0
+                                                          : pLibCtx->Config.bSwitchedOnSubState;
+
                 pNciRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tRfProtocol = (phNciNfc_RfProtocols_t)
                     pLibNfcRtngCfg->LstnModeRtngValue.tProtoBasedRtngValue.tRfProtocol;
                 break;
             case phNfc_LstnModeRtngAidBased:
                 pNciRtngCfg->Type = phNciNfc_e_LstnModeRtngAidBased;
-                pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.bRoute = bNfceeId;
-                pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bBatteryOff =
-                    pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bBatteryOff;
-                pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOff =
-                    pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOff;
-                pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOn =
-                    pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOn;
-                pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOnSub1 = 0;
-                pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOnSub2 = 0;
-                pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOnSub3 =
-                    (0 == pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOn) ? 0 : pLibCtx->Config.bSwitchedOnSubState;
+                pNciRtngCfg->Route = bNfceeId;
+                pNciRtngCfg->PowerState.bBatteryOff = pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bBatteryOff;
+                pNciRtngCfg->PowerState.bSwitchedOff = pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOff;
+                pNciRtngCfg->PowerState.bSwitchedOn = pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOn;
+                pNciRtngCfg->PowerState.bSwitchedOnSub1 = 0;
+                pNciRtngCfg->PowerState.bSwitchedOnSub2 = 0;
+                pNciRtngCfg->PowerState.bSwitchedOnSub3 = (0 == pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOn)
+                                                          ? 0
+                                                          : pLibCtx->Config.bSwitchedOnSubState;
+
                 if(pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.bAidSize <= PH_NCINFC_MAX_AID_LEN)
                 {
                     phOsalNfc_MemCopy( pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.aAid,
                         pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.aAid,
                         pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.bAidSize);
                     pNciRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.bAidSize =
-                    pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.bAidSize;
+                        pLibNfcRtngCfg->LstnModeRtngValue.tAidBasedRtngValue.bAidSize;
                 }
                 else
                 {

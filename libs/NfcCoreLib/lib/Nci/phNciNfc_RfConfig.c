@@ -58,13 +58,10 @@ static NFCSTATUS phNciNfc_CompleteProtoIfMap(void *pContext, NFCSTATUS Status);
 static uint8_t phNciNfc_CheckRfIntfs(uint8_t *pSupportedRfIntfs, uint8_t bNoOfRfIfSuprt, phNciNfc_RfInterfaces_t tRequestedRfIntf);
 static uint8_t phNciNfc_ValidateMode(phNciNfc_MapMode_t Mode);
 
-static NFCSTATUS phNciNfc_ValidateProtoBasedParams(pphNciNfc_RtngConfig_t pProtoBasedRtngEntry, uint16_t *pSize);
-static NFCSTATUS phNciNfc_ValidateTechBasedParams(pphNciNfc_RtngConfig_t pTechBasedRtngEntry, uint16_t *pSize);
-static NFCSTATUS phNciNfc_ValidateAidBasedParams(pphNciNfc_RtngConfig_t pAidBasedRtngEntry, uint16_t *pSize);
+static NFCSTATUS phNciNfc_ValidateRoutingEntryParams(pphNciNfc_RtngConfig_t pRoutingEntry, uint16_t *pSize);
 
-static uint8_t phNciNfc_UpdateTechRtngParams(uint8_t *pBuffer, pphNciNfc_RtngConfig_t pLstnRtngEntry);
-static uint8_t phNciNfc_UpdateProtoRtngParams(uint8_t *pBuffer, pphNciNfc_RtngConfig_t pLstnRtngEntry);
-static uint8_t phNciNfc_UpdateAidRtngParams(uint8_t *pBuffer, pphNciNfc_RtngConfig_t pLstnRtngEntry);
+static uint8_t phNciNfc_WriteRoutingEntryToPayload(uint8_t *buffer, phNciNfc_RtngConfig_t *routingEntry);
+
 static uint8_t phNciNfc_VerifyRfProtocols(uint8_t bNumMapEntries, pphNciNfc_MappingConfig_t pProtoIfMapping);
 
 static NFCSTATUS phNciNfc_ValidateCommonParams(pphNciNfc_CommonDiscParams_t pDiscCommConfig, uint16_t *wSize, uint8_t *pNumParams);
@@ -100,7 +97,9 @@ static uint8_t phNciNfc_BuildLstnNfcDepParams(pphNciNfc_TlvUtilInfo_t pTlvInfo, 
 static uint8_t phNciNfc_GetT3tTagId(uint8_t bCount);
 static uint8_t phNciNfc_CalNumEntries(pphNciNfc_Context_t pNciContext, uint8_t *pMore, uint16_t *pSize);
 static NFCSTATUS phNciNfc_SetConfEntryCheck(pphNciNfc_RfDiscConfigParams_t pDiscConfParams);
+
 static uint8_t phNciNfc_EntrySize(pphNciNfc_RtngConfig_t pRtngEntry);
+static uint8_t phNciNfc_EntryValueSize(pphNciNfc_RtngConfig_t pRtngEntry);
 
 /*Global Variables for Set config */
 
@@ -451,32 +450,7 @@ phNciNfc_ValidateSetRtngParams(uint8_t                 bNumRtngEntries,
     {
         for(bEntry = 0; bEntry < bNumRtngEntries; bEntry++)
         {
-            switch(pRtngConfig[bEntry].Type)
-            {
-                case phNciNfc_e_LstnModeRtngTechBased:
-                {
-                    /* Validate Protocol based routing parameters */
-                    wStatus = phNciNfc_ValidateTechBasedParams(&(pRtngConfig[bEntry]),pSize);
-                    break;
-                }
-                case phNciNfc_e_LstnModeRtngProtocolBased:
-                {
-                    /* Validate Technology based routing parameters */
-                    wStatus = phNciNfc_ValidateProtoBasedParams(&(pRtngConfig[bEntry]),pSize);
-                    break;
-                }
-                case phNciNfc_e_LstnModeRtngAidBased:
-                {
-                    /* Validate Aid based routing parameters */
-                    wStatus = phNciNfc_ValidateAidBasedParams(&(pRtngConfig[bEntry]),pSize);
-                    break;
-                }
-                default:
-                    /* Invalid Type */
-                    wStatus = NFCSTATUS_INVALID_PARAMETER;
-                    PH_LOG_NCI_WARN_STR("Invalid routing type");
-                    break;
-            }
+            wStatus = phNciNfc_ValidateRoutingEntryParams(&(pRtngConfig[bEntry]), pSize);
 
             if(NFCSTATUS_SUCCESS != wStatus)
             {
@@ -558,7 +532,6 @@ phNciNfc_VerifySupportedRouting(pphNciNfc_NfccFeatures_t pNfccFeatures,
                                 pphNciNfc_RtngConfig_t pRtngConfig)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
-    pphNciNfc_PowerState_t pPowerState = NULL;
     uint8_t bEntries = 0;
 
     PH_LOG_NCI_FUNC_ENTRY();
@@ -575,11 +548,6 @@ phNciNfc_VerifySupportedRouting(pphNciNfc_NfccFeatures_t pNfccFeatures,
                         PH_LOG_NCI_WARN_STR("Techn based routing request but not supported by NFCC");
                         wStatus = NFCSTATUS_FAILED;
                     }
-                    else
-                    {
-                        /* Get the requested power state states */
-                        pPowerState = &pRtngConfig[bEntries].LstnModeRtngValue.tTechBasedRtngValue.tPowerState;
-                    }
                     break;
 
                 case phNciNfc_e_LstnModeRtngProtocolBased:
@@ -587,11 +555,6 @@ phNciNfc_VerifySupportedRouting(pphNciNfc_NfccFeatures_t pNfccFeatures,
                     {
                         PH_LOG_NCI_WARN_STR("Protocol based routing request but not supported by NFCC");
                         wStatus = NFCSTATUS_FAILED;
-                    }
-                    else
-                    {
-                        /* Get the requested power state states */
-                        pPowerState = &pRtngConfig[bEntries].LstnModeRtngValue.tProtoBasedRtngValue.tPowerState;
                     }
                     break;
 
@@ -601,18 +564,17 @@ phNciNfc_VerifySupportedRouting(pphNciNfc_NfccFeatures_t pNfccFeatures,
                         PH_LOG_NCI_WARN_STR("Aid based routing request but not supported by NFCC");
                         wStatus = NFCSTATUS_FAILED;
                     }
-                    else
-                    {
-                        /* Get the requested power state states */
-                        pPowerState = &pRtngConfig[bEntries].LstnModeRtngValue.tAidBasedRtngValue.tPowerState;
-                    }
                     break;
                 default:
+                    wStatus = NFCSTATUS_INVALID_PARAMETER;
                     break;
             }
+
             /* Check if requested power state is supported by NFCC */
-            if((NFCSTATUS_SUCCESS == wStatus) && (NULL != pPowerState))
+            if (NFCSTATUS_SUCCESS == wStatus)
             {
+                pphNciNfc_PowerState_t pPowerState = &pRtngConfig[bEntries].PowerState;
+
                 if((1 == pPowerState->bBatteryOff) &&
                    (1 != pNfccFeatures->PowerStateInfo.BatteryOffState))
                 {
@@ -626,7 +588,8 @@ phNciNfc_VerifySupportedRouting(pphNciNfc_NfccFeatures_t pNfccFeatures,
                     wStatus = NFCSTATUS_FAILED;
                 }
             }
-            if(NFCSTATUS_FAILED == wStatus)
+
+            if (NFCSTATUS_SUCCESS != wStatus)
             {
                 PH_LOG_NCI_WARN_STR("Input Routing type not supported by NFCC");
                 break;
@@ -709,53 +672,42 @@ phNciNfc_BuildSetLstnRtngCmdPayload(uint8_t                *pBuffer,
                                     pphNciNfc_RtngConfig_t pRtngConfig,
                                     uint8_t                bMore)
 {
-    uint8_t bNoOfEntries = 0;
-    uint8_t bOffset = 0;
-    uint8_t bBytesUpdated = 0;
-    pphNciNfc_RtngConfig_t pLstnRtngEntry = NULL;
+    uint8_t offset = 0;
 
     PH_LOG_NCI_FUNC_ENTRY();
 
+    /* As per NCI 2.0, Section 6.3.2 'Configure Listen Mode Routing'
+       routing entries must be in the following order */
+    const uint8_t s_requiredEntryTypeOrdering[] = {phNciNfc_e_LstnModeRtngAidBased,
+                                                   phNciNfc_e_LstnModeRtngProtocolBased,
+                                                   phNciNfc_e_LstnModeRtngTechBased};
+
     /* Update more field into the payload buffer */
-    pBuffer[bOffset++] = bMore;
+    pBuffer[offset++] = bMore;
 
     /* Update number of routing configuration entries */
-    pBuffer[bOffset++] = bNumRtngEntries;
+    pBuffer[offset++] = bNumRtngEntries;
 
-    for(bNoOfEntries = 0; bNoOfEntries < bNumRtngEntries; bNoOfEntries++)
+    /* Write routing entries to the payload ordered by type */
+    for (uint8_t i = 0; i < ARRAYSIZE(s_requiredEntryTypeOrdering); i++)
     {
-        pLstnRtngEntry = &(pRtngConfig[bNoOfEntries]);
+        uint8_t currentType = s_requiredEntryTypeOrdering[i];
 
-        switch(pLstnRtngEntry->Type)
+        for (uint8_t entryIndex = 0; entryIndex < bNumRtngEntries; entryIndex++)
         {
-            case phNciNfc_e_LstnModeRtngTechBased:
+            if (pRtngConfig[entryIndex].Type == currentType)
             {
-                bBytesUpdated = phNciNfc_UpdateTechRtngParams(&pBuffer[bOffset],pLstnRtngEntry);
-
-                bOffset += bBytesUpdated;
-                break;
+                offset += phNciNfc_WriteRoutingEntryToPayload(&pBuffer[offset], &pRtngConfig[entryIndex]);
             }
-            case phNciNfc_e_LstnModeRtngProtocolBased:
+            else
             {
-                bBytesUpdated = phNciNfc_UpdateProtoRtngParams(&pBuffer[bOffset],pLstnRtngEntry);
-
-                bOffset += bBytesUpdated;
-                break;
-            }
-            case phNciNfc_e_LstnModeRtngAidBased:
-            {
-                bBytesUpdated = phNciNfc_UpdateAidRtngParams(&pBuffer[bOffset],pLstnRtngEntry);
-
-                bOffset += bBytesUpdated;
-                break;
-            }
-
-            default:
                 /* Should never enter here since all input parameters are already validated */
                 PH_LOG_NCI_WARN_STR("Unknown routing type");
                 break;
+            }
         }
     }
+
     PH_LOG_NCI_FUNC_EXIT();
     return ;
 }
@@ -832,24 +784,29 @@ phNciNfc_CalNumEntries(pphNciNfc_Context_t pNciContext, uint8_t *pMore, uint16_t
 static uint8_t
 phNciNfc_EntrySize(pphNciNfc_RtngConfig_t pRtngEntry)
 {
+    return phNciNfc_EntryValueSize(pRtngEntry) + PHNCINFC_RFCONFIG_TLV_HEADER_LEN;
+}
+
+static uint8_t
+phNciNfc_EntryValueSize(pphNciNfc_RtngConfig_t pRtngEntry)
+{
     uint8_t bSize = 0;
 
     PH_LOG_NCI_FUNC_ENTRY();
     switch(pRtngEntry->Type)
     {
         case phNciNfc_e_LstnModeRtngTechBased:
-            bSize = PHNCINFC_RFCONFIG_TLV_HEADER_LEN + PHNCINFC_RFCONFIG_TECH_RTNG_VALUE_LEN;
+            bSize = PHNCINFC_RFCONFIG_TECH_RTNG_VALUE_LEN;
             break;
 
         case phNciNfc_e_LstnModeRtngProtocolBased:
-            bSize = PHNCINFC_RFCONFIG_TLV_HEADER_LEN + PHNCINFC_RFCONFIG_PROTO_RTNG_VALUE_LEN;
+            bSize = PHNCINFC_RFCONFIG_PROTO_RTNG_VALUE_LEN;
             break;
 
         case phNciNfc_e_LstnModeRtngAidBased:
-            bSize = PHNCINFC_RFCONFIG_TLV_HEADER_LEN + PHNCINFC_RFCONFIG_AID_VALUE_DEFAULT_LEN +
+            bSize = PHNCINFC_RFCONFIG_AID_VALUE_DEFAULT_LEN +
                     pRtngEntry->LstnModeRtngValue.tAidBasedRtngValue.bAidSize;
             break;
-
         default:
             break;
     }
@@ -2379,40 +2336,40 @@ phNciNfc_ProcessRtngEntry(uint8_t bType,
     {
         case phNciNfc_e_LstnModeRtngTechBased:
             pRtngConf->Type = phNciNfc_e_LstnModeRtngTechBased;
-            pRtngConf->LstnModeRtngValue.tTechBasedRtngValue.bRoute = pValue[0];
+            pRtngConf->Route = pValue[0];
 
-            pRtngConf->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOn = PHNCINFC_RFCONFIG_GET_SW_ON(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOff = PHNCINFC_RFCONFIG_GET_SW_OFF(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bBatteryOff = PHNCINFC_RFCONFIG_GET_BATT_OFF(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOnSub1 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB1(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOnSub2 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB2(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tTechBasedRtngValue.tPowerState.bSwitchedOnSub3 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB3(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOn = PHNCINFC_RFCONFIG_GET_SW_ON(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOff = PHNCINFC_RFCONFIG_GET_SW_OFF(pValue[1]);
+            pRtngConf->PowerState.bBatteryOff = PHNCINFC_RFCONFIG_GET_BATT_OFF(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOnSub1 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB1(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOnSub2 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB2(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOnSub3 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB3(pValue[1]);
 
             pRtngConf->LstnModeRtngValue.tTechBasedRtngValue.tRfTechnology = (phNciNfc_RfTechnologies_t)pValue[2];
             break;
         case phNciNfc_e_LstnModeRtngProtocolBased:
             pRtngConf->Type = phNciNfc_e_LstnModeRtngProtocolBased;
-            pRtngConf->LstnModeRtngValue.tProtoBasedRtngValue.bRoute = pValue[0];
+            pRtngConf->Route = pValue[0];
 
-            pRtngConf->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOn = PHNCINFC_RFCONFIG_GET_SW_ON(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOff = PHNCINFC_RFCONFIG_GET_SW_OFF(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bBatteryOff = PHNCINFC_RFCONFIG_GET_BATT_OFF(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub1 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB1(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub2 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB2(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tProtoBasedRtngValue.tPowerState.bSwitchedOnSub3 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB3(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOn = PHNCINFC_RFCONFIG_GET_SW_ON(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOff = PHNCINFC_RFCONFIG_GET_SW_OFF(pValue[1]);
+            pRtngConf->PowerState.bBatteryOff = PHNCINFC_RFCONFIG_GET_BATT_OFF(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOnSub1 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB1(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOnSub2 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB2(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOnSub3 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB3(pValue[1]);
 
             pRtngConf->LstnModeRtngValue.tProtoBasedRtngValue.tRfProtocol = (phNciNfc_RfProtocols_t)pValue[2];
             break;
         case phNciNfc_e_LstnModeRtngAidBased:
             pRtngConf->Type = phNciNfc_e_LstnModeRtngAidBased;
-            pRtngConf->LstnModeRtngValue.tAidBasedRtngValue.bRoute = pValue[0];
+            pRtngConf->Route = pValue[0];
 
-            pRtngConf->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOn = PHNCINFC_RFCONFIG_GET_SW_ON(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOff = PHNCINFC_RFCONFIG_GET_SW_OFF(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bBatteryOff = PHNCINFC_RFCONFIG_GET_BATT_OFF(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOnSub1 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB1(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOnSub2 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB2(pValue[1]);
-            pRtngConf->LstnModeRtngValue.tAidBasedRtngValue.tPowerState.bSwitchedOnSub3 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB3(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOn = PHNCINFC_RFCONFIG_GET_SW_ON(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOff = PHNCINFC_RFCONFIG_GET_SW_OFF(pValue[1]);
+            pRtngConf->PowerState.bBatteryOff = PHNCINFC_RFCONFIG_GET_BATT_OFF(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOnSub1 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB1(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOnSub2 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB2(pValue[1]);
+            pRtngConf->PowerState.bSwitchedOnSub3 = PHNCINFC_RFCONFIG_GET_SW_ON_SUB3(pValue[1]);
 
             bAidLen = (bLen - PHNCINFC_RFCONFIG_AID_VALUE_DEFAULT_LEN);
             if(bAidLen > PH_NCINFC_MAX_AID_LEN)
@@ -3700,153 +3657,99 @@ phNciNfc_ValidatePollNfcDepParams(pphNciNfc_PollNfcDepDiscParams_t pPollNfcDepCo
 }
 
 static uint8_t
-phNciNfc_UpdateTechRtngParams(uint8_t *pBuffer,
-                               pphNciNfc_RtngConfig_t pLstnRtngEntry)
+phNciNfc_WriteRoutingEntryToPayload(uint8_t *buffer,
+                                    phNciNfc_RtngConfig_t *routingEntry)
 {
-    uint8_t bOffset = 0;
-    pphNciNfc_TechnBasedRtngValue_t pTechBasedRtng = NULL;
+    uint8_t offset = 0;
 
     PH_LOG_NCI_FUNC_ENTRY();
-    pTechBasedRtng = &(pLstnRtngEntry->LstnModeRtngValue.tTechBasedRtngValue);
 
-    /* Type of routing entry (Technology based routing in this case) */
-    pBuffer[bOffset++] = pLstnRtngEntry->Type;
-    /* Length of the value field (Shall be 3 bytes in this case) */
-    pBuffer[bOffset++] = PHNCINFC_RFCONFIG_TECH_RTNG_VALUE_LEN;
-    /* Value field */
-    pBuffer[bOffset++] = pTechBasedRtng->bRoute;
-    /* Clear the power state byte */
-    pBuffer[bOffset] = 0;
-
-    PHNCINFC_RFCONFIG_SW_ON(&pBuffer[bOffset],pTechBasedRtng->tPowerState.bSwitchedOn);
-    PHNCINFC_RFCONFIG_SW_OFF(&pBuffer[bOffset],pTechBasedRtng->tPowerState.bSwitchedOff);
-    PHNCINFC_RFCONFIG_BATT_OFF(&pBuffer[bOffset],pTechBasedRtng->tPowerState.bBatteryOff);
-    PHNCINFC_RFCONFIG_SW_ON_SUB1(&pBuffer[bOffset],pTechBasedRtng->tPowerState.bSwitchedOnSub1);
-    PHNCINFC_RFCONFIG_SW_ON_SUB2(&pBuffer[bOffset],pTechBasedRtng->tPowerState.bSwitchedOnSub2);
-    PHNCINFC_RFCONFIG_SW_ON_SUB3(&pBuffer[bOffset],pTechBasedRtng->tPowerState.bSwitchedOnSub3);
-
-    bOffset++;
-    pBuffer[bOffset++] = pTechBasedRtng->tRfTechnology;
-
-    PH_LOG_NCI_FUNC_EXIT();
-    return bOffset;
-}
-
-static uint8_t
-phNciNfc_UpdateProtoRtngParams(uint8_t *pBuffer,
-                               pphNciNfc_RtngConfig_t pLstnRtngEntry)
-{
-    uint8_t bOffset = 0;
-    pphNciNfc_ProtoBasedRtngValue_t pProtoBasedRtng = NULL;
-
-    PH_LOG_NCI_FUNC_ENTRY();
-    pProtoBasedRtng = &(pLstnRtngEntry->LstnModeRtngValue.tProtoBasedRtngValue);
-
-    /* Type of routing entry (Protocol based routing in this case) */
-    pBuffer[bOffset++] = pLstnRtngEntry->Type;
-    /* Length of the value field (Shall be 3 bytes in this case) */
-    pBuffer[bOffset++] = PHNCINFC_RFCONFIG_PROTO_RTNG_VALUE_LEN;
-    /* Value field */
-    pBuffer[bOffset++] = pProtoBasedRtng->bRoute;
-    /* Clear the power state byte */
-    pBuffer[bOffset] = 0;
-    PHNCINFC_RFCONFIG_SW_ON(&pBuffer[bOffset],pProtoBasedRtng->tPowerState.bSwitchedOn);
-    PHNCINFC_RFCONFIG_SW_OFF(&pBuffer[bOffset],pProtoBasedRtng->tPowerState.bSwitchedOff);
-    PHNCINFC_RFCONFIG_BATT_OFF(&pBuffer[bOffset],pProtoBasedRtng->tPowerState.bBatteryOff);
-    PHNCINFC_RFCONFIG_SW_ON_SUB1(&pBuffer[bOffset],pProtoBasedRtng->tPowerState.bSwitchedOnSub1);
-    PHNCINFC_RFCONFIG_SW_ON_SUB2(&pBuffer[bOffset],pProtoBasedRtng->tPowerState.bSwitchedOnSub2);
-    PHNCINFC_RFCONFIG_SW_ON_SUB3(&pBuffer[bOffset],pProtoBasedRtng->tPowerState.bSwitchedOnSub3);
-    bOffset++;
-    pBuffer[bOffset++] = pProtoBasedRtng->tRfProtocol;
-
-    PH_LOG_NCI_FUNC_EXIT();
-    return bOffset;
-}
-
-static uint8_t
-phNciNfc_UpdateAidRtngParams(uint8_t *pBuffer,
-                             pphNciNfc_RtngConfig_t pLstnRtngEntry)
-{
-    uint8_t bOffset = 0;
-    pphNciNfc_AidBasedRtngValue_t pAidBasedRtng = NULL;
-
-    PH_LOG_NCI_FUNC_ENTRY();
-    pAidBasedRtng = &(pLstnRtngEntry->LstnModeRtngValue.tAidBasedRtngValue);
-
-    /* Type of routing entry (AID based routing in this case) */
-    pBuffer[bOffset++] = pLstnRtngEntry->Type;
+    /* Type of routing entry (System Code based routing in this case) */
+    buffer[offset++] = routingEntry->Type;
     /* Length of the value field (Length shall be in the range of 7-18 bytes) */
-    pBuffer[bOffset++] = PHNCINFC_RFCONFIG_AID_VALUE_DEFAULT_LEN +
-                    pLstnRtngEntry->LstnModeRtngValue.tAidBasedRtngValue.bAidSize;
+    buffer[offset++] = phNciNfc_EntryValueSize(routingEntry);
     /* Value field */
-    pBuffer[bOffset++] = pAidBasedRtng->bRoute;
+    buffer[offset++] = routingEntry->Route;
     /* Clear the power state byte */
-    pBuffer[bOffset] = 0;
-    PHNCINFC_RFCONFIG_SW_ON(&pBuffer[bOffset],pAidBasedRtng->tPowerState.bSwitchedOn);
-    PHNCINFC_RFCONFIG_SW_OFF(&pBuffer[bOffset],pAidBasedRtng->tPowerState.bSwitchedOff);
-    PHNCINFC_RFCONFIG_BATT_OFF(&pBuffer[bOffset],pAidBasedRtng->tPowerState.bBatteryOff);
-    PHNCINFC_RFCONFIG_SW_ON_SUB1(&pBuffer[bOffset],pAidBasedRtng->tPowerState.bSwitchedOnSub1);
-    PHNCINFC_RFCONFIG_SW_ON_SUB2(&pBuffer[bOffset],pAidBasedRtng->tPowerState.bSwitchedOnSub2);
-    PHNCINFC_RFCONFIG_SW_ON_SUB3(&pBuffer[bOffset],pAidBasedRtng->tPowerState.bSwitchedOnSub3);
-    bOffset++;
-    phOsalNfc_MemCopy(&pBuffer[bOffset],pAidBasedRtng->aAid,pAidBasedRtng->bAidSize);
-    bOffset += pAidBasedRtng->bAidSize;
+    buffer[offset] = 0;
+    PHNCINFC_RFCONFIG_SW_ON(&buffer[offset], routingEntry->PowerState.bSwitchedOn);
+    PHNCINFC_RFCONFIG_SW_OFF(&buffer[offset], routingEntry->PowerState.bSwitchedOff);
+    PHNCINFC_RFCONFIG_BATT_OFF(&buffer[offset], routingEntry->PowerState.bBatteryOff);
+    PHNCINFC_RFCONFIG_SW_ON_SUB1(&buffer[offset], routingEntry->PowerState.bSwitchedOnSub1);
+    PHNCINFC_RFCONFIG_SW_ON_SUB2(&buffer[offset], routingEntry->PowerState.bSwitchedOnSub2);
+    PHNCINFC_RFCONFIG_SW_ON_SUB3(&buffer[offset], routingEntry->PowerState.bSwitchedOnSub3);
+    offset++;
 
-    PH_LOG_NCI_FUNC_EXIT();
-    return bOffset;
-}
-
-static NFCSTATUS
-phNciNfc_ValidateTechBasedParams(pphNciNfc_RtngConfig_t pTechBasedRtngEntry, uint16_t *pSize)
-{
-    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
-    pphNciNfc_TechnBasedRtngValue_t pTechBasedRtngVal = &(pTechBasedRtngEntry->LstnModeRtngValue.tTechBasedRtngValue);
-
-    PH_LOG_NCI_FUNC_ENTRY();
-    /* 'Route' (NFCEE ID or DH-NFCEE ID) should be in the range of 0-254 */
-    if(PHNCINFC_RFCONFIG_NFCEE_ID_RFU != pTechBasedRtngVal->bRoute)
+    switch (routingEntry->Type)
     {
-        *pSize = (*pSize) + (PHNCINFC_RFCONFIG_TLV_HEADER_LEN) + (PHNCINFC_RFCONFIG_TECH_RTNG_VALUE_LEN);
-        wStatus = NFCSTATUS_SUCCESS;
+    case phNciNfc_e_LstnModeRtngTechBased:
+        buffer[offset++] = routingEntry->LstnModeRtngValue.tTechBasedRtngValue.tRfTechnology;
+        break;
+
+    case phNciNfc_e_LstnModeRtngProtocolBased:
+        buffer[offset++] = routingEntry->LstnModeRtngValue.tProtoBasedRtngValue.tRfProtocol;
+        break;
+
+    case phNciNfc_e_LstnModeRtngAidBased:
+        phOsalNfc_MemCopy(&buffer[offset],
+                          routingEntry->LstnModeRtngValue.tAidBasedRtngValue.aAid,
+                          routingEntry->LstnModeRtngValue.tAidBasedRtngValue.bAidSize);
+
+        offset += routingEntry->LstnModeRtngValue.tAidBasedRtngValue.bAidSize;
+        break;
+
+    default:
+        PH_LOG_NCI_WARN_STR("Routing type is not supported!");
+        break;
     }
+
     PH_LOG_NCI_FUNC_EXIT();
-    return wStatus;
+    return offset;
 }
 
 static NFCSTATUS
-phNciNfc_ValidateProtoBasedParams(pphNciNfc_RtngConfig_t pProtoBasedRtngEntry, uint16_t *pSize)
+phNciNfc_ValidateRoutingEntryParams(pphNciNfc_RtngConfig_t pRoutingEntry, uint16_t *pSize)
 {
     NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
-    pphNciNfc_ProtoBasedRtngValue_t pProtoBasedRtngVal = &(pProtoBasedRtngEntry->LstnModeRtngValue.tProtoBasedRtngValue);
 
     PH_LOG_NCI_FUNC_ENTRY();
     /* 'Route' (NFCEE ID or DH-NFCEE ID) should be in the range of 0-254 */
-    if(PHNCINFC_RFCONFIG_NFCEE_ID_RFU != pProtoBasedRtngVal->bRoute)
+    if(PHNCINFC_RFCONFIG_NFCEE_ID_RFU != pRoutingEntry->Route)
     {
-        *pSize = (*pSize) + (PHNCINFC_RFCONFIG_TLV_HEADER_LEN) + (PHNCINFC_RFCONFIG_PROTO_RTNG_VALUE_LEN);
-        wStatus = NFCSTATUS_SUCCESS;
-    }
-    PH_LOG_NCI_FUNC_EXIT();
-    return wStatus;
-}
-
-static NFCSTATUS
-phNciNfc_ValidateAidBasedParams(pphNciNfc_RtngConfig_t pAidBasedRtngEntry, uint16_t *pSize)
-{
-    NFCSTATUS wStatus = NFCSTATUS_INVALID_PARAMETER;
-    pphNciNfc_AidBasedRtngValue_t pAidBasedRtngVal = &(pAidBasedRtngEntry->LstnModeRtngValue.tAidBasedRtngValue);
-
-    PH_LOG_NCI_FUNC_ENTRY();
-    /* 'Route' (NFCEE ID or DH-NFCEE ID) should be in the range of 0-254 */
-    if(PHNCINFC_RFCONFIG_NFCEE_ID_RFU != pAidBasedRtngVal->bRoute)
-    {
-        /* Length of AID should be in the range of 5-16 bytes */
-        if((PHNCINFC_RFCONFIG_AID_MINLEN <= pAidBasedRtngVal->bAidSize) &&
-            (PHNCINFC_RFCONFIG_AID_MAXLEN >= pAidBasedRtngVal->bAidSize))
+        switch(pRoutingEntry->Type)
         {
-            *pSize = (*pSize) + (PHNCINFC_RFCONFIG_TLV_HEADER_LEN) +
-                      (PHNCINFC_RFCONFIG_AID_VALUE_DEFAULT_LEN) + pAidBasedRtngVal->bAidSize;
+        case phNciNfc_e_LstnModeRtngTechBased:
+        {
+            /* Validate Technology based routing parameters */
+            *pSize = (*pSize) + (PHNCINFC_RFCONFIG_TLV_HEADER_LEN) + (PHNCINFC_RFCONFIG_TECH_RTNG_VALUE_LEN);
             wStatus = NFCSTATUS_SUCCESS;
+            break;
+        }
+        case phNciNfc_e_LstnModeRtngProtocolBased:
+        {
+            /* Validate Protocol based routing parameters */
+            *pSize = (*pSize) + (PHNCINFC_RFCONFIG_TLV_HEADER_LEN) + (PHNCINFC_RFCONFIG_PROTO_RTNG_VALUE_LEN);
+            wStatus = NFCSTATUS_SUCCESS;
+            break;
+        }
+        case phNciNfc_e_LstnModeRtngAidBased:
+        {
+            /* Validate Aid based routing parameters */
+            pphNciNfc_AidBasedRtngValue_t pAidBasedRtngVal = &(pRoutingEntry->LstnModeRtngValue.tAidBasedRtngValue);
+            if((PHNCINFC_RFCONFIG_AID_MINLEN <= pAidBasedRtngVal->bAidSize) &&
+                (PHNCINFC_RFCONFIG_AID_MAXLEN >= pAidBasedRtngVal->bAidSize))
+            {
+                *pSize = (*pSize) + (PHNCINFC_RFCONFIG_TLV_HEADER_LEN) +
+                        (PHNCINFC_RFCONFIG_AID_VALUE_DEFAULT_LEN) + pAidBasedRtngVal->bAidSize;
+                wStatus = NFCSTATUS_SUCCESS;
+            }
+            break;
+        }
+        default:
+            /* Invalid Type */
+            wStatus = NFCSTATUS_INVALID_PARAMETER;
+            PH_LOG_NCI_WARN_STR("Unsupported routing type");
+            break;
         }
     }
     PH_LOG_NCI_FUNC_EXIT();
