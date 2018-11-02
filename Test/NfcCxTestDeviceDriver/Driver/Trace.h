@@ -1,0 +1,56 @@
+//
+// Copyright (c) Microsoft Corporation.  All Rights Reserved
+//
+
+#pragma once
+
+//
+// Define shorter versions of the ETW trace levels
+//
+#define LEVEL_CRITICAL  TRACE_LEVEL_CRITICAL
+#define LEVEL_ERROR     TRACE_LEVEL_ERROR
+#define LEVEL_WARNING   TRACE_LEVEL_WARNING
+#define LEVEL_INFO      TRACE_LEVEL_INFORMATION
+#define LEVEL_VERBOSE   TRACE_LEVEL_VERBOSE
+#define LEVEL_FATAL     TRACE_LEVEL_FATAL
+
+// {05151F65-5035-4259-BA5C-A0FA698441A8}
+#define WPP_CONTROL_GUIDS \
+    WPP_DEFINE_CONTROL_GUID( \
+        NfcNciSimulatorDriverTraceGuid, \
+        (05151F65,5035,4259,BA5C,A0FA698441A8), \
+        WPP_DEFINE_BIT(DUMMY) \
+        )
+
+#define WPP_LEVEL_LOGGER(LEVEL) (WPP_CONTROL(WPP_BIT_ ## DUMMY).Logger),
+#define WPP_LEVEL_ENABLED(LEVEL) (WPP_CONTROL(WPP_BIT_ ## DUMMY).Level >= LEVEL)
+
+#define WPP_TRACE_LEVEL_EXP_ENABLED(LEVEL) WPP_LEVEL_ENABLED(LEVEL)
+#define WPP_TRACE_LEVEL_EXP_LOGGER(LEVEL) WPP_LEVEL_LOGGER(LEVEL)
+
+//
+// TRACE_FUNCTION_ENTRY
+//
+// begin_wpp config
+// USEPREFIX (TRACE_FUNCTION_ENTRY, "[NfcNciSimulator][%!LEVEL!]%!FUNC!:%s", " ");
+// FUNC TRACE_FUNCTION_ENTRY(TRACE_LEVEL_EXP);
+// USESUFFIX (TRACE_FUNCTION_ENTRY, "Enter");
+// end_wpp
+//
+//
+// TRACE_FUNCTION_SUCCESS
+//
+// begin_wpp config
+// USEPREFIX (TRACE_FUNCTION_SUCCESS, "[NfcNciSimulator][%!LEVEL!]%!FUNC!:%s", " ");
+// FUNC TRACE_FUNCTION_SUCCESS(TRACE_LEVEL_EXP);
+// USESUFFIX (TRACE_FUNCTION_SUCCESS, "Success");
+// end_wpp
+//
+//
+// TRACE_LINE
+//
+// begin_wpp config
+// USEPREFIX (TRACE_LINE, "[NfcNciSimulator][%!LEVEL!]%!FUNC!:%s", " ");
+// FUNC TRACE_LINE(TRACE_LEVEL_EXP, MSG, ...);
+// end_wpp
+//

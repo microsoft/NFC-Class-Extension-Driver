@@ -1,0 +1,150 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="IOHelpers">
+      <UniqueIdentifier>{b0287703-58d3-4183-89d4-95f08f518bc9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests">
+      <UniqueIdentifier>{c4991810-137b-4887-b6fd-a3cf0b6e353a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Simulation">
+      <UniqueIdentifier>{571d29fb-fd44-41ce-bb43-cd8ebbe23d00}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SimulationSequences">
+      <UniqueIdentifier>{1475f8dd-111d-4946-b44e-eca373103d71}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="IOHelpers\DeviceQuery.h">
+      <Filter>IOHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="IOHelpers\IoOperation.h">
+      <Filter>IOHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="IOHelpers\Precomp.h">
+      <Filter>IOHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="IOHelpers\ProximityHandleFactory.h">
+      <Filter>IOHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="IOHelpers\RadioManager.h">
+      <Filter>IOHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="IOHelpers\UniqueHandle.h">
+      <Filter>IOHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\NciDataPacket.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\NciPacket.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\NciSimConnector.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\Precomp.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\SimSequenceRunner.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\SimSequenceStep.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\TagPayloads.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\VerifyHelpers.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\NciControlPacket.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="SimulationSequences\RfDiscoverySequences.h">
+      <Filter>SimulationSequences</Filter>
+    </ClInclude>
+    <ClInclude Include="SimulationSequences\TagSequences.h">
+      <Filter>SimulationSequences</Filter>
+    </ClInclude>
+    <ClInclude Include="SimulationSequences\InitSequences.h">
+      <Filter>SimulationSequences</Filter>
+    </ClInclude>
+    <ClInclude Include="SimulationSequences\Precomp.h">
+      <Filter>SimulationSequences</Filter>
+    </ClInclude>
+    <ClInclude Include="Tests\Module.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="Tests\Precomp.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="Tests\TestLogging.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="IOHelpers\DeviceQuery.cpp">
+      <Filter>IOHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="IOHelpers\IoOperation.cpp">
+      <Filter>IOHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="IOHelpers\ProximityHandleFactory.cpp">
+      <Filter>IOHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="IOHelpers\RadioManager.cpp">
+      <Filter>IOHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="IOHelpers\UniqueHandle.cpp">
+      <Filter>IOHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\NciControlPacket.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\NciDataPacket.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\NciPacket.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\NciSimConnector.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\SimSequenceRunner.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\SimSequenceStep.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\TagPayloads.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\VerifyHelpers.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="SimulationSequences\InitSequences.cpp">
+      <Filter>SimulationSequences</Filter>
+    </ClCompile>
+    <ClCompile Include="SimulationSequences\RfDiscoverySequences.cpp">
+      <Filter>SimulationSequences</Filter>
+    </ClCompile>
+    <ClCompile Include="SimulationSequences\TagSequences.cpp">
+      <Filter>SimulationSequences</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\AirplaneModeTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\InitTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Module.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\TagTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\TestLogging.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

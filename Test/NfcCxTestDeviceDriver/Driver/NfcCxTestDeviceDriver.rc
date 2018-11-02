@@ -1,0 +1,16 @@
+//---------------------------------------------------------------------------
+// NfcCx.rc
+//
+// Copyright (c) Microsoft Corporation, All Rights Reserved
+//---------------------------------------------------------------------------
+
+#include <windows.h>
+#include <ntverp.h>
+
+#define VER_FILETYPE                VFT_DLL
+#define VER_FILESUBTYPE             VFT_UNKNOWN
+#define VER_FILEDESCRIPTION_STR     "NFC CX Test Device Driver"
+#define VER_INTERNALNAME_STR        "NfcCxTestDeviceDriver"
+#define VER_ORIGINALFILENAME_STR    "NfcCxTestDeviceDriver.dll"
+
+#include "common.ver"
