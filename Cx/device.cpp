@@ -271,8 +271,6 @@ Return Value:
 --*/
 {
     NTSTATUS status = STATUS_SUCCESS;
-    char* interfaceFailure = NULL;
-    NFC_CX_DEVICE_MODE nfcCxDeviceMode = NFC_CX_DEVICE_MODE_NCI;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
@@ -283,7 +281,6 @@ Return Value:
         status = NfcCxTmlInterfaceStart(FdoContext->TmlInterface);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to start the Tml Interface, %!STATUS!", status);
-            interfaceFailure = "TML";
             goto Done;
         }
 
@@ -293,7 +290,6 @@ Return Value:
         status = NfcCxRFInterfaceStart(FdoContext->RFInterface);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to start the RF Interface, %!STATUS!", status);
-            interfaceFailure = "RF";
             goto Done;
         }
 
@@ -303,7 +299,6 @@ Return Value:
         status = NfcCxNfpInterfaceStart(FdoContext->NfpInterface);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to start the Nfp Interface, %!STATUS!", status);
-            interfaceFailure = "NFP";
             goto Done;
         }
 
@@ -313,7 +308,6 @@ Return Value:
         status = NfcCxSCInterfaceStart(FdoContext->SCInterface);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to start the SC Interface, %!STATUS!", status);
-            interfaceFailure = "SC";
             goto Done;
         }
 
@@ -323,7 +317,6 @@ Return Value:
         status = NfcCxSEInterfaceStart(FdoContext->SEInterface);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to start the SE Interface, %!STATUS!", status);
-            interfaceFailure = "SE";
             goto Done;
         }
 
@@ -333,7 +326,6 @@ Return Value:
         status = NfcCxESEInterfaceStart(FdoContext->ESEInterface);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to start the eSE Interface, %!STATUS!", status);
-            interfaceFailure = "ESE";
             goto Done;
         }
 
@@ -344,8 +336,6 @@ Return Value:
         status = NfcCxTmlInterfaceStart(FdoContext->TmlInterface);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to start the Tml Interface, %!STATUS!", status);
-            interfaceFailure = "TML";
-            nfcCxDeviceMode = NFC_CX_DEVICE_MODE_DTA;
             goto Done;
         }
 
@@ -355,8 +345,6 @@ Return Value:
         status = NfcCxDTAInterfaceStart(FdoContext->DTAInterface);
         if (!NT_SUCCESS(status)) {
             TRACE_LINE(LEVEL_ERROR, "Failed to start the DTA Interface, %!STATUS!", status);
-            interfaceFailure = "DTA";
-            nfcCxDeviceMode = NFC_CX_DEVICE_MODE_DTA;
             goto Done;
         }
     }
@@ -367,28 +355,21 @@ Return Value:
     status = NfcCxPowerStart(FdoContext->Power);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to start power manager, %!STATUS!", status);
-        interfaceFailure = "POWER";
         goto Done;
     }
 
 Done:
+    TlgAggregateWrite(
+        g_hNfcCxProvider,
+        "FdoInitialize",
+        TraceLoggingInt64AggregateSum(1, "Count"),
+        TraceLoggingNTStatus(status, "Status"),
+        TelemetryPrivacyDataTag(PDT_ProductAndServicePerformance),
+        TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
 
-    if(!NT_SUCCESS(status)) {
-        TraceLoggingWrite(
-            g_hNfcCxProvider,
-            "NfcCxFdoInitialize",
-            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
-            TraceLoggingString(interfaceFailure, "Interface"),
-            TraceLoggingUInt32(nfcCxDeviceMode, "NFCCxDeviceMode"),
-            TraceLoggingHexInt32(status, "NTStatus")
-        );
-    }
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
     return status;
 }
-
-
 
 NTSTATUS
 NfcCxFdoDeInitialize(

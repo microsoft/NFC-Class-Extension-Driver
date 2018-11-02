@@ -524,9 +524,10 @@ Done:
     return status;
 }
 
-BOOLEAN
+static BOOLEAN
 NfpCxNfpInterfaceCompleteSubscriptionRequestLocked(
     _In_ WDFQUEUE SubQueue,
+    _In_ TRANSLATION_TYPE_PROTOCOL TranslationType,
     _In_bytecount_(DataLength) PVOID Data,
     _In_ USHORT DataLength
     )
@@ -603,6 +604,8 @@ Return Value:
 
     WdfRequestCompleteWithInformation(wdfRequest, status, actualSize);
     wdfRequest = NULL;
+
+    NfcCxNfpInterfaceSubscriptionTelemetry(status, TranslationType);
 
     if (NT_SUCCESS(status)) {
         //
@@ -719,6 +722,7 @@ Return Value:
         //
         if (!NfpCxNfpInterfaceCompleteSubscriptionRequestLocked(
               client->RoleParameters.Sub.SubsMessageRequestQueue,
+              client->TranslationType,
               &EventData,
               sizeof(EventData))) {
             CNFCPayload* pEntry = NULL;
@@ -1127,6 +1131,7 @@ Return Value:
 
         if (!NfpCxNfpInterfaceCompleteSubscriptionRequestLocked(
                             fileContext->RoleParameters.Sub.SubsMessageRequestQueue,
+                            fileContext->TranslationType,
                             eventData,
                             eventDataLength)) {
 
@@ -2196,6 +2201,7 @@ Return Value:
 #endif
 
         WdfRequestCompleteWithInformation(Request, status, usedBufferSize);
+        NfcCxNfpInterfaceSubscriptionTelemetry(status, FileContext->TranslationType);
 
     } else {
 
@@ -2439,6 +2445,7 @@ Return Value:
 #endif
 
         WdfRequestComplete(Request, STATUS_SUCCESS);
+        NfcCxNfpInterfacePublicationTelemetry(STATUS_SUCCESS, FileContext->TranslationType);
 
     } else {
 
@@ -2552,9 +2559,6 @@ Return Value:
     status = STATUS_PENDING;
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -2617,9 +2621,43 @@ Return Value:
     status = STATUS_PENDING;
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
+void
+NfcCxNfpInterfaceSubscriptionTelemetry(
+    _In_ NTSTATUS Status,
+    _In_ TRANSLATION_TYPE_PROTOCOL Type
+    )
+{
+    UNREFERENCED_PARAMETER(Status);
+    UNREFERENCED_PARAMETER(Type);
+
+    TlgAggregateWrite(
+        g_hNfcCxProvider,
+        "NfpSubscriptionFulfilled",
+        TraceLoggingInt64AggregateSum(1, "Count"),
+        TraceLoggingInt32(Type, "Type"),
+        TraceLoggingNTStatus(Status, "Status"),
+        TelemetryPrivacyDataTag(PDT_ProductAndServiceUsage),
+        TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+}
+
+void
+NfcCxNfpInterfacePublicationTelemetry(
+    _In_ NTSTATUS Status,
+    _In_ TRANSLATION_TYPE_PROTOCOL Type
+    )
+{
+    UNREFERENCED_PARAMETER(Status);
+    UNREFERENCED_PARAMETER(Type);
+
+    TlgAggregateWrite(
+        g_hNfcCxProvider,
+        "NfpPublicationFulfilled",
+        TraceLoggingInt64AggregateSum(1, "Count"),
+        TraceLoggingInt32(Type, "Type"),
+        TraceLoggingNTStatus(Status, "Status"),
+        TelemetryPrivacyDataTag(PDT_ProductAndServiceUsage),
+        TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+}

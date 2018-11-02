@@ -48,7 +48,7 @@ DllMain(
 #endif
 
 #ifdef TELEMETRY
-        TraceLoggingRegister(g_hNfcCxProvider);
+        TlgRegisterAggregateProvider(g_hNfcCxProvider);
 #endif
     }
     else if (DLL_PROCESS_DETACH == Reason) {
@@ -61,7 +61,7 @@ DllMain(
 #endif
 
 #ifdef TELEMETRY
-        TraceLoggingUnregister(g_hNfcCxProvider);
+        TlgUnregisterAggregateProvider(g_hNfcCxProvider);
 #endif
     }
 
@@ -136,8 +136,14 @@ Return Value:
     }
 
 Done:
-    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
+    TraceLoggingWrite(
+        g_hNfcCxProvider,
+        "DriverEntry",
+        TraceLoggingNTStatus(status, "Status"),
+        TelemetryPrivacyDataTag(PDT_ProductAndServicePerformance),
+        TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
 
+    TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
 
@@ -313,25 +319,13 @@ Return Value:
     TRACE_LINE(LEVEL_INFO, "DriverFlags=0x%x PowerIdleType=%d PowerIdleTimeout=%d",
                             Config->DriverFlags, Config->PowerIdleType, Config->PowerIdleTimeout);
 
-    TraceLoggingWrite(
-        g_hNfcCxProvider,
-        "NfcCxClientConfig",
-        TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
-        TraceLoggingHexInt32(Config->DriverFlags, "DriverFlags"),
-        TraceLoggingValue((INT32)(Config->PowerIdleType), "PowerIdleType"),
-        TraceLoggingValue(Config->PowerIdleTimeout, "PowerIdleTimeout"));
-
     //
     // Save the client driver configs
     //
     RtlCopyMemory(&nfcCxClientGlobals->Config, Config, Config->Size);
 
 Done:
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -533,11 +527,7 @@ Return Value:
     }
 
 Done:
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -584,11 +574,7 @@ Return Value:
     }
 
 Done:
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -662,11 +648,7 @@ Return Value:
     }
 
 Done:
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -903,16 +885,9 @@ Return Value:
         goto Done;
     }
 
-    TraceLoggingWrite(
-        g_hNfcCxProvider,
-        "NfcCxEvtRegisterSequence",
-        TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
-        TraceLoggingValue((DWORD)Sequence, "Sequence"));
-
     status = NfcCxRFInterfaceRegisterSequenceHandler(fdoContext->RFInterface, Sequence, EvtNfcCxSequenceHandler);
 
 Done:
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
@@ -966,12 +941,6 @@ Return Value:
         status = STATUS_INVALID_DEVICE_STATE;
         goto Done;
     }
-
-    TraceLoggingWrite(
-        g_hNfcCxProvider,
-        "NfcCxEvtUnregisterSequence",
-        TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
-        TraceLoggingValue((DWORD)Sequence, "sequence"));
 
     status = NfcCxRFInterfaceUnregisterSequenceHandler(fdoContext->RFInterface, Sequence);
 

@@ -322,13 +322,7 @@ Return Value:
 
         status = STATUS_INTEGER_OVERFLOW;
         TRACE_LINE(LEVEL_ERROR, "File power policy references underflow (%d), %!STATUS!", Type, status);
-
-        TraceLoggingWrite(
-            g_hNfcCxProvider,
-            "FileHandlePowerRefCountUnderflow",
-            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
-            TraceLoggingInt32(Type, "powerReferenceType"),
-            TraceLoggingInt32(FileContext->Role, "powerHandleRole"));
+        MICROSOFT_TELEMETRY_ASSERT_MSG(false, "FileHandlePowerRefCountUnderflow");
 
         NfcCxDeviceSetFailed(PowerManager->FdoContext->Device);
         goto Done;
@@ -653,12 +647,7 @@ Return Value:
 
         status = STATUS_INTEGER_OVERFLOW;
         TRACE_LINE(LEVEL_ERROR, "Power policy references underflow (%d), %!STATUS!", Type, status);
-
-        TraceLoggingWrite(
-            g_hNfcCxProvider,
-            "PowerRefCountUnderflow",
-            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
-            TraceLoggingInt32(Type, "powerReferenceType"));
+        MICROSOFT_TELEMETRY_ASSERT_MSG(false, "PowerRefCountUnderflow");
 
         NfcCxDeviceSetFailed(PowerManager->FdoContext->Device);
         goto Done;
@@ -905,12 +894,7 @@ Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     if (!NT_SUCCESS(status))
     {
-        TraceLoggingWrite(
-            g_hNfcCxProvider,
-            "UpdateRfPollingStateFailed",
-            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
-            TraceLoggingNTStatus(status, "status"));
-
+        MICROSOFT_TELEMETRY_ASSERT_MSG(false, "UpdateRfPollingStateFailed");
         NfcCxDeviceSetFailed(fdoContext->Device);
     }
 }

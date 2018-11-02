@@ -918,11 +918,13 @@ NfcCxSEInterfaceHandleEvent(
 
     WdfWaitLockRelease(SEInterface->SEEventsLock);
 
-    TraceLoggingWrite(
+    TlgAggregateWrite(
         g_hNfcCxProvider,
-        "NfcCxSEInterfaceHandleEvent",
-        TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
-        TraceLoggingValue((DWORD)EventType, "EventType"));
+        "SEEvent",
+        TraceLoggingInt64AggregateSum(1, "Count"),
+        TraceLoggingInt32(EventType, "EventType"),
+        TelemetryPrivacyDataTag(PDT_ProductAndServiceUsage),
+        TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
 
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
@@ -1118,8 +1120,6 @@ Return Value:
 Done:
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1427,7 +1427,6 @@ Return Value:
     status = NfcCxSEInterfaceSetCardEmulationMode(FileContext, pMode);
     if (!NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to set card emulation mode, %!STATUS!", status);
-        TRACE_LOG_NTSTATUS_ON_FAILURE(status);
         goto Done;
     }
 
@@ -1505,19 +1504,8 @@ Return Value:
     //
     status = STATUS_PENDING;
 
-    TraceLoggingWrite(
-        g_hNfcCxProvider,
-        "NfcCxSEInterfaceDispatchGetNfccCapabilities",
-        TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
-        TraceLoggingValue(pCapabilities->cbMaxRoutingTableSize, "cbMaxRoutingTableSize"),
-        TraceLoggingValue(pCapabilities->IsAidRoutingSupported, "IsAidRoutingSupported"),
-        TraceLoggingValue(pCapabilities->IsProtocolRoutingSupported, "IsProtocolRoutingSupported"),
-        TraceLoggingValue(pCapabilities->IsTechRoutingSupported, "IsTechRoutingSupported"));
-
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1579,7 +1567,6 @@ Return Value:
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
     return status;
 }
 
@@ -1661,8 +1648,6 @@ Return Value:
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1799,8 +1784,6 @@ Done:
     WdfWaitLockRelease(FileContext->StateLock);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1879,8 +1862,6 @@ Return Value:
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 

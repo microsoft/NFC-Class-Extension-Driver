@@ -19,8 +19,10 @@ Environment:
 
 #ifdef TELEMETRY
 
-#include <TraceLoggingProvider.h>
+#include <TlgAggregate.h>
 #include <Telemetry\MicrosoftTelemetry.h>
+#include <Telemetry\MicrosoftTelemetryAssert.h>
+#include <Telemetry\MicrosoftTelemetryPrivacy.h>
 #include <TraceLoggingActivity.h>
 
 #define LOG_BUFFER_LENGTH 1024
@@ -28,18 +30,11 @@ Environment:
 // Declare provider
 TRACELOGGING_DECLARE_PROVIDER(g_hNfcCxProvider);
 
-#define TRACE_LOG_NTSTATUS_ON_FAILURE(status) \
-    if (!NT_SUCCESS(status)) { \
-        TraceLoggingWrite(g_hNfcCxProvider, \
-            __FUNCTION__, \
-            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES), \
-            TraceLoggingHexInt32(status, "NTStatus")); \
-    }
-
 #else
 
 #define TraceLoggingWrite(hProvider, eventName, ...)
-
-#define TRACE_LOG_NTSTATUS_ON_FAILURE(status)
+#define TlgAggregateWrite(hProvider, eventName, ...)
+#define MICROSOFT_TELEMETRY_ASSERT(_exp)
+#define MICROSOFT_TELEMETRY_ASSERT_MSG(_exp, _msg)
 
 #endif // TELEMETRY

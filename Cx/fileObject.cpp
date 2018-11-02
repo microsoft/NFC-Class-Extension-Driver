@@ -1309,6 +1309,8 @@ Return Value:
 
         WdfRequestCompleteWithInformation(wdfRequest, status, 0);
         wdfRequest = NULL;
+
+        NfcCxNfpInterfacePublicationTelemetry(status, FileContext->TranslationType);
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);

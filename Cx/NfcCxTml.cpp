@@ -348,11 +348,7 @@ NfcCxTml_PostWriteCompletion(
             
             if (!IsListEmpty(&TmlInterface->ReadNotificationQueue)) {
                 TRACE_LINE(LEVEL_ERROR, "ReadQueue and ReadNotificationQueue both have data, which is unexpected. Calling NfcCxDeviceSetFailed");
-
-                TraceLoggingWrite(
-                    g_hNfcCxProvider,
-                    "NfcCxTmlInvalidQueueState",
-                    TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+                MICROSOFT_TELEMETRY_ASSERT_MSG(false, "NfcCxTmlInvalidQueueState");
 
                 NfcCxDeviceSetFailed(TmlInterface->FdoContext->Device);
 
@@ -516,12 +512,7 @@ Return Value:
             }
 
             TRACE_LINE(LEVEL_ERROR, "Timer for write completion callback timed out. Error: 0x%08X", dwWait);
-
-            TraceLoggingWrite(
-                g_hNfcCxProvider,
-                "NfcCxTmlPostWriteCallbackTimeout",
-                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
-                TraceLoggingHexUInt32(dwWait, "WaitError"));
+            MICROSOFT_TELEMETRY_ASSERT_MSG(false, "NfcCxTmlPostWriteCallbackTimeout");
 
             NfcCxDeviceSetFailed(fdoContext->Device);
         }
@@ -1010,12 +1001,7 @@ Return Value:
             }
 
             TRACE_LINE(LEVEL_ERROR, "Timer for read completion callback timed out. Error: 0x%08X", dwWait);
-
-            TraceLoggingWrite(
-                g_hNfcCxProvider,
-                "NfcCxTmlPostReadCallbackTimeout",
-                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
-                TraceLoggingHexUInt32(dwWait, "WaitError"));
+            MICROSOFT_TELEMETRY_ASSERT_MSG(false, "NfcCxTmlPostReadCallbackTimeout");
 
             status = STATUS_UNSUCCESSFUL;
             NfcCxDeviceSetFailed(TmlInterface->FdoContext->Device);

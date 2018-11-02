@@ -1084,8 +1084,6 @@ Return Value:
     }
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1159,8 +1157,6 @@ Return Value:
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1234,8 +1230,6 @@ Return Value:
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1315,8 +1309,6 @@ Return Value:
 
 Done:
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1410,8 +1402,6 @@ Done:
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1744,6 +1734,14 @@ Return Value:
     }
 
 Done:
+    TlgAggregateWrite(
+        g_hNfcCxProvider,
+        "NfcSmartcardTransmit",
+        TraceLoggingInt64AggregateSum(1, "Count"),
+        TraceLoggingNTStatus(status, "Status"),
+        TelemetryPrivacyDataTag(PDT_ProductAndServiceUsage),
+        TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
     if (NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_INFO,
             "Completing request %p, with %!STATUS!, output buffer used = %lu", Request, status, cbOutputBufferUsed);
@@ -1756,8 +1754,6 @@ Done:
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -2561,7 +2557,6 @@ NTSTATUS NfcCxSCInterfaceLoadNewSelectedProtocol(
     status = NfcCxSCInterfaceLoadStorageClassFromAtrLocked(ScInterface);
 
 Done:
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }

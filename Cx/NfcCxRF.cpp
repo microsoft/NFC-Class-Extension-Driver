@@ -335,11 +335,7 @@ NfcCxRFInterfaceWatchdogTimerCallback(
 
     TRACE_LINE(LEVEL_ERROR, "Watchdog timer timed out");
 
-    TraceLoggingWrite(
-        g_hNfcCxProvider,
-        "NfcCxRfInterfaceWatchdogTimeout",
-        TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
-
+    MICROSOFT_TELEMETRY_ASSERT_MSG(false, "NfcCxRfInterfaceWatchdogTimeout");
     NfcCxDeviceSetFailed(rfInterface->FdoContext->Device);
 }
 
@@ -402,15 +398,7 @@ NfcCxRFInterfaceExecute(
         status = STATUS_UNSUCCESSFUL;
         TRACE_LINE(LEVEL_ERROR, "%!NFCCX_RF_OPERATION! timed out. Error: 0x%08X. %!STATUS!", Operation, dwWait, status);
 
-        TraceLoggingWrite(
-            g_hNfcCxProvider,
-            "NfcCxRfExecutionTimeout",
-            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
-            TraceLoggingUInt32(Operation, "Operation"),
-            TraceLoggingUIntPtr(Param1, "Param1"),
-            TraceLoggingUIntPtr(Param2, "Param2"),
-            TraceLoggingHexUInt32(dwWait, "WaitError"));
-
+        MICROSOFT_TELEMETRY_ASSERT_MSG(false, "NfcCxRfExecutionTimeout");
         NfcCxDeviceSetFailed(RFInterface->FdoContext->Device);
         goto Done;
     }
@@ -852,16 +840,6 @@ Return Value:
     TRACE_LINE(LEVEL_INFO, "TotalDuration=%d PollConfig=0x%08x NfcIPMode=0x%02x NfcIPTgtMode=0x%02x NfcCEMode=0x%02x BailoutConfig=0x%02x",
                             Config->TotalDuration, Config->PollConfig, Config->NfcIPMode, Config->NfcIPTgtMode, Config->NfcCEMode, Config->BailoutConfig);
 
-    TraceLoggingWrite(
-        g_hNfcCxProvider,
-        "NfcCxRFInterfaceSetDiscoveryConfig",
-        TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
-        TraceLoggingValue(Config->TotalDuration, "TotalDuration"),
-        TraceLoggingHexInt32(Config->PollConfig, "PollConfig"),
-        TraceLoggingHexInt32(Config->NfcIPMode, "NfcIPMode"),
-        TraceLoggingHexInt32(Config->NfcIPTgtMode, "NfcIPTgtMode"),
-        TraceLoggingHexInt32(Config->NfcCEMode, "NfcCEMode"));
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
@@ -901,14 +879,6 @@ Return Value:
     WdfWaitLockRelease(RFInterface->DeviceLock);
 
     TRACE_LINE(LEVEL_INFO, "Miu=%d LinkTimeout=%d RecvWindowSize=%d", Config->Miu, Config->LinkTimeout, Config->RecvWindowSize);
-
-    TraceLoggingWrite(
-        g_hNfcCxProvider,
-        "NfcCxRFInterfaceSetLLCPConfig",
-        TraceLoggingKeyword(MICROSOFT_KEYWORD_TELEMETRY),
-        TraceLoggingValue(Config->Miu, "Miu"),
-        TraceLoggingValue(Config->LinkTimeout, "LinkTimeout"),
-        TraceLoggingValue(Config->RecvWindowSize, "RecvWindowSize"));
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
@@ -2183,15 +2153,6 @@ NfcCxRFInterfaceHandleReceivedNdefMessage(
             //
             NfcCxNfpInterfaceHandleReceivedNdefMessage(NfcCxRFInterfaceGetNfpInterface(RFInterface),
                                                         proxBuffer);
-
-            TraceLoggingWrite(
-                g_hNfcCxProvider,
-                "NfcCxProximityMessageReceived",
-                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
-                TraceLoggingValue(proxBuffer->GetTnf(), "Tnf"),
-                TraceLoggingCharArray((LPCSTR)proxBuffer->GetSubTypeExt(), proxBuffer->GetSubTypeExtSize(), "MessageType"),
-                TraceLoggingValue(proxBuffer->GetSubTypeExtSize(), "TypeLength"),
-                TraceLoggingValue(proxBuffer->GetPayloadSize(), "PayloadSize"));
         }
 
         delete proxBuffer;
@@ -2218,12 +2179,6 @@ NfcCxRFInterfaceHandleReceivedBarcodeMessage(
             //
             NfcCxNfpInterfaceHandleReceivedNdefMessage(NfcCxRFInterfaceGetNfpInterface(RFInterface),
                 proxBuffer);
-
-            TraceLoggingWrite(
-                g_hNfcCxProvider,
-                "NfcCxRFInterfaceHandleReceivedBarcodeMessage",
-                TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
-                TraceLoggingValue(proxBuffer->GetPayloadSize(), "PayloadSize"));
         }
 
         delete proxBuffer;
@@ -2471,6 +2426,22 @@ NfcCxRFInterfaceInitializeCB(
     }
 
     status = NfcCxNtStatusFromNfcStatus(NfcStatus);
+    if (NT_SUCCESS(status))
+    {
+        const phNfc_sDeviceCapabilities_t& deviceInfo = rfInterface->pLibNfcContext->sStackCapabilities.psDevCapabilities;
+        UNREFERENCED_PARAMETER(deviceInfo);
+
+        TlgAggregateWrite(
+            g_hNfcCxProvider,
+            "NciDeviceInfo",
+            TraceLoggingInt64AggregateSum(1, "Count"),
+            TraceLoggingUInt8(deviceInfo.NciVersion, "NciVersion"),
+            TraceLoggingUInt8(deviceInfo.ManufacturerId, "ManufacturerId"),
+            TraceLoggingUInt8Array(deviceInfo.ManufactureInfo.Buffer, deviceInfo.ManufactureInfo.Length, "ManufacturerInfo"),
+            TelemetryPrivacyDataTag(PDT_DeviceConnectivityAndConfiguration),
+            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+    }
+
     NfcCxSequenceDispatchResume(rfInterface, sequence, status, NULL, NULL);
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
@@ -3938,11 +3909,13 @@ NfcCxRFInterfaceRemoteDevNtfCB(
 
         TRACE_LINE(LEVEL_INFO, "RemDevType=%!phNfc_eRFDevType_t!", psRemoteDev->psRemoteDevInfo->RemDevType);
 
-        TraceLoggingWrite(
+        TlgAggregateWrite(
             g_hNfcCxProvider,
-            "NfcCxDeviceType",
-            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES),
-            TraceLoggingValue((DWORD)(psRemoteDev->psRemoteDevInfo->RemDevType), "DeviceType"));
+            "RemoteDeviceConnected",
+            TraceLoggingInt64AggregateSum(1, "Count"),
+            TraceLoggingInt32(psRemoteDev->psRemoteDevInfo->RemDevType, "DeviceType"),
+            TelemetryPrivacyDataTag(PDT_ProductAndServiceUsage),
+            TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
 
         status = NfcCxRFInterfaceSetRemoteDevList(rfInterface, psRemoteDev, uNofRemoteDev);
 

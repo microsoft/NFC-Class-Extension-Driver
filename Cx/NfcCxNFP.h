@@ -320,3 +320,15 @@ NfcCxNfpInterfaceDispatchGetKbps(
     _Out_opt_bytecap_(OutputBufferLength) PVOID OutputBuffer,
     _In_ size_t OutputBufferLength
     );
+
+void
+NfcCxNfpInterfaceSubscriptionTelemetry(
+    _In_ NTSTATUS Status,
+    _In_ TRANSLATION_TYPE_PROTOCOL Type
+    );
+
+void
+NfcCxNfpInterfacePublicationTelemetry(
+    _In_ NTSTATUS Status,
+    _In_ TRANSLATION_TYPE_PROTOCOL Type
+    );

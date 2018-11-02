@@ -948,8 +948,6 @@ Return Value:
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1007,8 +1005,6 @@ Return Value:
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1082,8 +1078,6 @@ Return Value:
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1164,8 +1158,8 @@ Done:
         //
         status = STATUS_PENDING;
     }
+
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
     return status;
 }
 
@@ -1346,8 +1340,6 @@ Done:
     }
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
-    TRACE_LOG_NTSTATUS_ON_FAILURE(status);
-
     return status;
 }
 
@@ -1581,6 +1573,14 @@ Return Value:
     TRACE_LINE(LEVEL_INFO, "Output Buffer length after adding header is %Iu", OutputBufferUsed);
 
 Done:
+    TlgAggregateWrite(
+        g_hNfcCxProvider,
+        "EseSmartcardTransmit",
+        TraceLoggingInt64AggregateSum(1, "Count"),
+        TraceLoggingNTStatus(status, "Status"),
+        TelemetryPrivacyDataTag(PDT_ProductAndServiceUsage),
+        TraceLoggingKeyword(MICROSOFT_KEYWORD_MEASURES));
+
     if (NT_SUCCESS(status)) {
         TRACE_LINE(LEVEL_INFO,
             "Completing request %p, with %!STATUS!, Output buffer length = %Iu", Request, status, OutputBufferUsed);
