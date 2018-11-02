@@ -16,8 +16,9 @@ Abstract:
 
 #include <windows.h>
 #include <ntstatus.h>
-#include <ntassert.h>
 #include <ntintsafe.h>
+
+#include <wudfwdm.h>
 
 //
 // LibNfc Headers

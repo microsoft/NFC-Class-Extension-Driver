@@ -4,7 +4,7 @@ Copyright (c) 2012  Microsoft Corporation
 
 Module Name:
     phNciNfc_CorePch.h
-    
+
 Abstract:
     This module contains the precompiled headers for the NCI CORE component
 
@@ -45,7 +45,6 @@ Environment:
 #include <time.h>
 #include <windows.h>
 #include <memory.h>
-#include <ntassert.h>
 #include <intsafe.h>
 
 #include "NfcCoreLibTracing.h"

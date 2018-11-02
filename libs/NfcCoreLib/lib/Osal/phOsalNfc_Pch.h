@@ -31,10 +31,10 @@ Environment:
 #include <time.h>
 #include <windows.h>
 #include <memory.h>
-#include <ntassert.h>
 #include <intsafe.h>
 
 #include <wdf.h>
+#include <wudfwdm.h>
 
 #include "NfcCoreLibTracing.h"
 

@@ -24,7 +24,6 @@ Environment:
 #include <stddef.h>
 
 #include <devioctl.h>
-#include <ntassert.h>
 #include <objbase.h>
 #include <ncidef.h>
 
@@ -40,6 +39,7 @@ Environment:
 #include <nfcradiodev.h>
 
 #include <wdf.h>
+#include <wudfwdm.h>
 
 #include <ntintsafe.h>
 
@@ -61,7 +61,6 @@ WDF_EXTERN_C_START
 WDF_EXTERN_C_END
 
 #include <NfcCx.h>
-#include <WdmLinkedList.h>
 #include <WdfCxProxy.h>
 
 //

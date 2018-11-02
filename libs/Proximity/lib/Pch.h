@@ -16,11 +16,10 @@ Abstract:
 
 #include <windows.h>
 #include <ntstatus.h>
-#include <ntassert.h>
 #include <ntintsafe.h>
 #include <strsafe.h>
 
-#include <WdmLinkedList.h>
+#include <wudfwdm.h>
 
 //
 // LibNfc Headers

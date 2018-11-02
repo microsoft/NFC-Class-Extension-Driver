@@ -54,6 +54,7 @@
     <TargetVersion>Windows10</TargetVersion>
     <UseDebugLibraries>true</UseDebugLibraries>
     <UMDF_VERSION_MAJOR>2</UMDF_VERSION_MAJOR>
+    <UMDF_VERSION_MINOR>23</UMDF_VERSION_MINOR>
     <CharacterSet>Unicode</CharacterSet>
     <NfcDriver>true</NfcDriver>
     <NFC_VERSION_MAJOR>1</NFC_VERSION_MAJOR>

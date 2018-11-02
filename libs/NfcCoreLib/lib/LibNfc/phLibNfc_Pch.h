@@ -4,7 +4,7 @@ Copyright (c) 2012  Microsoft Corporation
 
 Module Name:
     phLibNfc_Pch.h
-    
+
 Abstract:
     This module contains the precompiled headers for the NfcCoreLib component
 
@@ -97,7 +97,6 @@ Environment:
 #include <time.h>
 #include <windows.h>
 #include <memory.h>
-#include <ntassert.h>
 #include <intsafe.h>
 #include <math.h>
 
