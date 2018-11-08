@@ -188,6 +188,9 @@ phFriNfc_ISO15693_H_FmtReadWrite (
             send_index = (uint8_t)(send_index + 1);
             if (ISO15693_PROTOEXT_FLAG_REQUIRED(ps_iso_15693_info->Uid))
             {
+                /* We are dealing with ISO15693 tags using an extended ISO15693 commands format
+                 * where the first block number is coded on 2 bytes.
+                 */
                 *(psNdefSmtCrdFmt->SendRecvBuf + send_index) = (uint8_t)
                             ((psNdefSmtCrdFmt->AddInfo.s_iso15693_info.current_block & 0xFF00) >> 8);
                 send_index = (uint8_t)(send_index + 1);
