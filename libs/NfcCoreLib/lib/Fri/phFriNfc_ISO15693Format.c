@@ -519,6 +519,18 @@ phFriNfc_ISO15693_H_ProFormat (
 
                 /* CC magic number */
                 command_type = ISO15693_WR_SINGLE_BLK_CMD;
+
+                /* Depending of the tag capacity, the NDEF container is having a different format.
+                 * For instance,
+                 *	we are setting magic word to E1h if only 1-byte address mode is supported (up to 256 blocks, i.e: UCHAR_MAX + 1).
+                 *  we are setting magic word to E2h if 1-byte and 2-byte address mode is supported (above 256 blocks).
+                 * See NFCForum-TS-T5T-1.0:
+                 * - Table 3: Four Byte Capability Container Field
+                 * - Table 4: Eight Byte Capability Container Field
+                 * for further details.
+                 * When magic word = E2h, the CC is written in 2 times;
+                 * through ISO15693_RD_SINGLE_BLK_CHECK(current) and ISO15693_WRITE_CC_SECOND_BLOCK_FMT.
+                 */
                 if (ps_iso15693_info->max_data_size / ISO15693_BYTES_PER_BLOCK <= UCHAR_MAX + 1)
                 {
                     e_format_seq = ISO15693_WRITE_CC_FMT;
