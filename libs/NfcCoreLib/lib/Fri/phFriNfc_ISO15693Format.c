@@ -74,25 +74,29 @@ typedef enum phFriNfc_ISO15693_Command
 
 (*) - in case of EXTENDED_GET_SYSTEM_INFO command */
 #define ISO15693_GET_SYS_INFO_RESP_MIN_LEN              9
-#define ISO15693_VICC_MEMORY_SIZE_FIELD_LEN             2
-#define ISO15693_VICC_MEMORY_SIZE_FIELD_LEN_EXTENDED    3
-#define ISO15693_BLOCK_SIZE_IN_BYTES_FIELD_LEN          1
 
 /* GetExtSystemInfo Request full system info parameter flag */
-#define ISO15693_GET_EXT_SYSTEM_INFO_FULL_PARAM_FLAG    0x7FU
+#define ISO15693_EXT_GET_SYSTEM_INFO_ALL_INFO_FLAGS     0x7FU
 
+/* Masks for Info Flags byte */
 #define ISO15693_DSFID_MASK                             0x01U
 #define ISO15693_AFI_MASK                               0x02U
-#define ISO15693_MAX_SIZE_MASK                          0x04U
+#define ISO15693_VICC_MEMORY_SIZE_MASK                  0x04U
 #define ISO15693_ICREF_MASK                             0x08U
 #define ISO15693_CAPABILITY_MASK                        0x20U
 
-#define ISO15693_SKIP_DFSID                             0x01U
-#define ISO15693_SKIP_AFI                               0x01U
-#define ISO15693_SKIP_ICREF                             0x01U
-#define ISO15693_SKIP_CAPABILITY                        0x04U
+/* Field lengths in bytes */
+#define ISO15693_DFSID_FIELD_LEN                        1
+#define ISO15693_AFI_FIELD_LEN                          1
+#define ISO15693_VICC_MEMORY_SIZE_FIELD_LEN             2
+#define ISO15693_ICREF_FIELD_LEN                        1
+#define ISO15693_CAPABILITY_FIELD_LEN                   4
 
-#define ISO15693_BLOCK_SIZE_IN_BYTES_MASK               0x1FU
+/* VICC Memory Size field format */
+#define ISO15693_VICC_MEMORY_SIZE_FIELD_LEN_EXTENDED    3
+#define ISO15693_BLOCK_SIZE_IN_BYTES_FIELD_LEN          1
+#define ISO15693_BLOCK_SIZE_IN_BYTES_VALUE_MASK         0x1FU
+
 #define ISO15693_CAPABILITY_MBREAD_MASK                 0x10U
 
 /* MAXimum size of ICODE SLI/X */
@@ -296,27 +300,27 @@ phFriNfc_ISO15693_H_ProcessSystemInfo(
     /* Calculate response length per Information flags */
     if (information_flag & ISO15693_DSFID_MASK)
     {
-        min_expected_resp_len += ISO15693_SKIP_DFSID;
+        min_expected_resp_len += ISO15693_DFSID_FIELD_LEN;
     }
 
     if (information_flag & ISO15693_AFI_MASK)
     {
-        min_expected_resp_len += ISO15693_SKIP_AFI;
+        min_expected_resp_len += ISO15693_AFI_FIELD_LEN;
     }
 
-    if (information_flag & ISO15693_MAX_SIZE_MASK)
+    if (information_flag & ISO15693_VICC_MEMORY_SIZE_MASK)
     {
         min_expected_resp_len += no_of_blocks_field_len + ISO15693_BLOCK_SIZE_IN_BYTES_FIELD_LEN;
     }
 
     if (information_flag & ISO15693_ICREF_MASK)
     {
-        min_expected_resp_len += ISO15693_SKIP_ICREF;
+        min_expected_resp_len += ISO15693_ICREF_FIELD_LEN;
     }
 
     if (information_flag & ISO15693_CAPABILITY_MASK)
     {
-        min_expected_resp_len += ISO15693_SKIP_CAPABILITY;
+        min_expected_resp_len += ISO15693_CAPABILITY_FIELD_LEN;
     }
 
     /* Verify that buffer length is sufficient */
@@ -334,16 +338,16 @@ phFriNfc_ISO15693_H_ProcessSystemInfo(
     if (information_flag & ISO15693_DSFID_MASK)
     {
         /* Skip DFSID  */
-        recv_index += ISO15693_SKIP_DFSID;
+        recv_index += ISO15693_DFSID_FIELD_LEN;
     }
 
     if (information_flag & ISO15693_AFI_MASK)
     {
         /* Skip AFI  */
-        recv_index += ISO15693_SKIP_AFI;
+        recv_index += ISO15693_AFI_FIELD_LEN;
     }
 
-    if (information_flag & ISO15693_MAX_SIZE_MASK)
+    if (information_flag & ISO15693_VICC_MEMORY_SIZE_MASK)
     {
         /* get total number of blocks on the card */
         phOsalNfc_MemCopy(&no_of_blocks,
@@ -353,31 +357,30 @@ phFriNfc_ISO15693_H_ProcessSystemInfo(
         recv_index += no_of_blocks_field_len;
 
         /* get block size in bytes */
-        blk_size_in_bytes = (p_recv_buf[recv_index] & ISO15693_BLOCK_SIZE_IN_BYTES_MASK) + 1;
+        blk_size_in_bytes = (p_recv_buf[recv_index] & ISO15693_BLOCK_SIZE_IN_BYTES_VALUE_MASK) + 1;
         recv_index += 1;
     }
 
     if (information_flag & ISO15693_ICREF_MASK)
     {
         ic_reference = p_recv_buf[recv_index];
-        recv_index += 1;
+        recv_index += ISO15693_ICREF_FIELD_LEN;
     }
 
     if (information_flag & ISO15693_CAPABILITY_MASK)
     {
         // TODO: fix according to field size
         ps_iso15693_info->card_capability = (uint8_t)(*(p_recv_buf + recv_index));
-        recv_index += 1;
+        recv_index += ISO15693_CAPABILITY_FIELD_LEN;
     }
 
     /* calculate maximum data size in the card */
-    ps_iso15693_info->max_data_size = no_of_blocks * blk_size_in_bytes;
+    uint16_t detected_max_data_size = no_of_blocks * blk_size_in_bytes;
 
     /* If data about VICC Memory Size isn't available,
        try to detect it for known tags using IC Manufacturer data */
-    if (0 == ps_iso15693_info->max_data_size)
+    if (0 == detected_max_data_size)
     {
-        uint16_t detected_max_data_size = 0;
         switch (ps_rem_iso_15693_info->Uid[ISO15693_UID_BYTE_6])
         {
         case ISO15693_MANUFACTURER_NXP:
@@ -407,20 +410,19 @@ phFriNfc_ISO15693_H_ProcessSystemInfo(
                 /* couldn't identify max size */
                 break;
             }
+            break;
         }
         default:
             break;
         }
-
-        if (0 == detected_max_data_size)
-        {
-            return PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT, NFCSTATUS_INVALID_DEVICE_REQUEST);
-        }
-
-        ps_iso15693_info->max_data_size = detected_max_data_size;
     }
 
-    return NFCSTATUS_SUCCESS;
+    ps_iso15693_info->max_data_size = detected_max_data_size;
+
+    return
+        (detected_max_data_size > 0)
+        ? NFCSTATUS_SUCCESS
+        : PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT, NFCSTATUS_INVALID_DEVICE_REQUEST);
 }
 
 static
@@ -465,7 +467,7 @@ phFriNfc_ISO15693_H_ProFormat (
                    Send the EXTENDED GET SYSTEM INFO command */
                 command_type = ISO15693_EXT_GET_SYSTEM_INFO_CMD;
                 e_format_seq = ISO15693_EXT_GET_SYS_INFO;
-                *a_send_byte = (uint8_t)ISO15693_GET_EXT_SYSTEM_INFO_FULL_PARAM_FLAG;
+                *a_send_byte = (uint8_t)ISO15693_EXT_GET_SYSTEM_INFO_ALL_INFO_FLAGS;
                 send_index = (uint8_t)(send_index + 1);
                 send_length = 1;
             }
@@ -488,8 +490,7 @@ phFriNfc_ISO15693_H_ProFormat (
             }
             else
             {
-                result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
-                    NFCSTATUS_INVALID_RECEIVE_LENGTH);
+                result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT, NFCSTATUS_INVALID_RECEIVE_LENGTH);
             }
             break;
         }
@@ -555,7 +556,7 @@ phFriNfc_ISO15693_H_ProFormat (
                         default:
                         {
                             /* Generic tag: No additional features if tag type was not recognized  */
-                            *(a_send_byte + send_index) = (uint8_t)ISO15693_CC_ADDITIONAL_FEATURES_NONE;
+                            *(a_send_byte + send_index) = (uint8_t) ISO15693_CC_ADDITIONAL_FEATURES_NONE;
                             break;
                         }
                     }

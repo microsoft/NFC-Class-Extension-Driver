@@ -106,7 +106,7 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                                 pLibContext);
                     }
 
-                    if (phNciNfc_IsVersion2x(pNciContext))
+                    if (!phNciNfc_IsVersion1x(pNciContext))
                     {
                         /*The Static HCI Connection exists after NFCC initialization without needing to be
                         *created using the connection Control Messages defined in Section 4.4.2 and is never closed
@@ -134,7 +134,7 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                         }
 
                         /* MaxNFCVFrame size - 4 bytes (1 byte RES_FLAG + 1 byte Parameter + 2 bytes CRC */
-                        pLibContext->ndef_cntx.psNdefMap->ISO15693Container.max_frame_size = pNciContext->InitRspParams.MaxNFCVFrameSize - 4;
+                        pLibContext->ndef_cntx.psNdefMap->MaxNFCVFrameSize = pNciContext->InitRspParams.MaxNFCVFrameSize - 4;
                     }
                 }else
                 {

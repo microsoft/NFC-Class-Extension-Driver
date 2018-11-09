@@ -1647,8 +1647,8 @@ phFriNfc_ReadRemainingInMultiple (
         uint32_t nb_blocks = 0;
 
         /* Compute how many block can be read at a time.
-           If we are in NCI2.0 mode, max_frame_size is set and we need to split paquet to max_frame_size - 1.
-           If we are read M24LR tags, we can read 32 blocks maximum if they are all located in the same sector.
+           If we are in NCI2.0 mode, MaxNFCVFrameSize is set and we need to split the packet to MaxNFCVFrameSize - 1.
+           In case of M24LR tag, we can read 32 blocks maximum if they are all located in the same sector.
          */
         nb_blocks = ((remaining_size / ISO15693_BYTES_PER_BLOCK) - 1);
         if (ISO15693_PROTOEXT_FLAG_REQUIRED(ps_iso_15693_info->Uid))
@@ -1662,10 +1662,10 @@ phFriNfc_ReadRemainingInMultiple (
         else
         {
             nb_blocks = (remaining_size / ISO15693_BYTES_PER_BLOCK) - 1;
-            if (ps_iso_15693_con->max_frame_size > 0 &&
-                nb_blocks > ((ps_iso_15693_con->max_frame_size / ISO15693_BYTES_PER_BLOCK) - 1))
+            if (psNdefMap->MaxNFCVFrameSize > 0 &&
+                nb_blocks > ((psNdefMap->MaxNFCVFrameSize / ISO15693_BYTES_PER_BLOCK) - 1))
             {
-                nb_blocks = (ps_iso_15693_con->max_frame_size / ISO15693_BYTES_PER_BLOCK) - 1;
+                nb_blocks = (psNdefMap->MaxNFCVFrameSize / ISO15693_BYTES_PER_BLOCK) - 1;
             }
 
             if (ps_iso_15693_con->support_extended_cmd == TRUE)

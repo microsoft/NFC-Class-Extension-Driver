@@ -129,7 +129,6 @@ typedef struct phFriNfc_ISO15693Cont
     /**< \internal Multiple read card command supported */
     uint8_t     multiple_read_cmd;
     uint8_t     support_extended_cmd;
-    uint16_t    max_frame_size;
 }phFriNfc_ISO15693Cont_t;
 
 typedef struct phFriNfc_Felica
@@ -721,6 +720,8 @@ typedef struct phFriNfc_NdefMap
     /** \internal ISO15693 capability container structure. */
     phFriNfc_ISO15693Cont_t         ISO15693Container;
 
+    /** \internal Maximum payload data size of ISO15693 standard frame supported by NFCC */
+    uint16_t MaxNFCVFrameSize;
 } phFriNfc_NdefMap_t;
 
 /**
