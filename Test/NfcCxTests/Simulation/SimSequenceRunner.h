@@ -6,6 +6,7 @@
 
 #include "NciControlPacket.h"
 #include "NciSimConnector.h"
+#include "SimSequenceView.h"
 #include "SimSequenceStep.h"
 
 class SimSequenceRunner
@@ -13,12 +14,12 @@ class SimSequenceRunner
 public:
     static void Run(
         _In_ NciSimConnector& simConnector,
-        _In_reads_(stepListSize) const SimSequenceStep* stepList,
-        _In_ size_t stepListSize);
+        _In_ const SimSequenceStep& step);
 
     static void Run(
         _In_ NciSimConnector& simConnector,
-        _In_ const SimSequenceStep& step);
+        _In_reads_(stepListSize) const SimSequenceStep* stepList,
+        _In_ size_t stepListSize);
 
     template <size_t ArraySize>
     static void Run(
@@ -27,4 +28,8 @@ public:
     {
         Run(simConnector, stepList, ArraySize);
     }
+
+    static void Run(
+        NciSimConnector& simConnector,
+        SimSequenceView sequence);
 };

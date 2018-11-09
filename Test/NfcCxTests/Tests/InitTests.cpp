@@ -14,6 +14,7 @@
 #include <SimulationSequences\RfDiscoverySequences.h>
 #include <Simulation\SimSequenceRunner.h>
 #include "TestLogging.h"
+#include <IOHelpers\DriverHandleFactory.h>
 #include <IOHelpers\UniqueHandle.h>
 #include <Simulation\VerifyHelpers.h>
 
@@ -23,22 +24,33 @@ class InitTests
 {
     TEST_CLASS(InitTests);
 
-    BEGIN_TEST_METHOD(InitAndDeinitTest)
+    BEGIN_TEST_METHOD(InitAndDeinitNci1Test)
         TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
     END_TEST_METHOD()
 
-    BEGIN_TEST_METHOD(InitAndDeinitWithSlowIoTest)
+    BEGIN_TEST_METHOD(InitAndDeinitNci2Test)
+        TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
+    END_TEST_METHOD()
+
+    BEGIN_TEST_METHOD(InitAndDeinitNci1WithSlowIoTest)
         TEST_METHOD_PROPERTY(L"Category", L"Reliability")
     END_TEST_METHOD()
 
-    BEGIN_TEST_METHOD(DiscoveryInitAndDeinitTest)
+    BEGIN_TEST_METHOD(DiscoveryInitAndDeinitNci1Test)
         TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
     END_TEST_METHOD()
+
+    BEGIN_TEST_METHOD(DiscoveryInitAndDeinitNci2Test)
+        TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
+    END_TEST_METHOD()
+
+private:
+    void InitAndDeinitTest(bool isNci2);
+    void DiscoveryInitAndDeinitTest(bool isNci2);
 };
 
-// Tests NFC controller initialization and deinitialization.
 void
-InitTests::InitAndDeinitTest()
+InitTests::InitAndDeinitTest(bool isNci2)
 {
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
@@ -46,17 +58,31 @@ InitTests::InitAndDeinitTest()
     LOG_COMMENT(L"# Pull device into D0.");
     simConnector.AddD0PowerReference();
 
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence(isNci2));
 
     LOG_COMMENT(L"# Allow device to drop out of D0.");
     simConnector.RemoveD0PowerReference();
 
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence(isNci2));
+}
+
+// Tests NFC controller initialization and deinitialization for NCI 1.1.
+void
+InitTests::InitAndDeinitNci1Test()
+{
+    InitAndDeinitTest(false);
+}
+
+// Tests NFC controller initialization and deinitialization for NCI 2.0
+void
+InitTests::InitAndDeinitNci2Test()
+{
+    InitAndDeinitTest(true);
 }
 
 // Ensures driver can properly handle when the NCI write I/O request takes a long time to complete.
 void
-InitTests::InitAndDeinitWithSlowIoTest()
+InitTests::InitAndDeinitNci1WithSlowIoTest()
 {
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
@@ -66,7 +92,7 @@ InitTests::InitAndDeinitWithSlowIoTest()
     simConnector.AddD0PowerReference();
 
     // Run through the first half of the initialization sequence, stopping just before the GetConfigCommand step.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence, 6);
+    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1, 6);
 
     // Manually process the GetConfigCommand step.
     LOG_COMMENT(L"# Manually processing GetConfigCommand step.");
@@ -78,19 +104,18 @@ InitTests::InitAndDeinitWithSlowIoTest()
     simConnector.SendNciWriteCompleted();
 
     // Process the remainder of the initialization sequence.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence + 7, std::size(InitSequences::InitializeNoSEs::Sequence) - 7);
+    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1 + 7, std::size(InitSequences::InitializeNoSEs::Sequence_Nci1) - 7);
 
     // Allow device to drop out of D0, so that NCI is deinitialized.
     LOG_COMMENT(L"# Allow device to drop out of D0.");
     simConnector.RemoveD0PowerReference();
 
     // Run through the deinitialization sequence.
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
 }
 
-// Tests entering and exiting RF discovery mode.
 void
-InitTests::DiscoveryInitAndDeinitTest()
+InitTests::DiscoveryInitAndDeinitTest(bool isNci2)
 {
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
@@ -99,23 +124,10 @@ InitTests::DiscoveryInitAndDeinitTest()
     simConnector.AddD0PowerReference();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence(isNci2));
 
     // Try to find the smartcard (NFC) interface and open it.
-    std::vector<std::wstring> nfcScInterfaces = DeviceQuery::GetSmartcardInterfacesOfType(simConnector.DeviceId().c_str(), SmartCardReaderKind_Nfc);
-    VERIFY_ARE_NOT_EQUAL(static_cast<size_t>(0), nfcScInterfaces.size());
-
-    const std::wstring& nfcScInterfaceId = nfcScInterfaces[0];
-
-    UniqueHandle nfcScInterface(CreateFile(
-        nfcScInterfaceId.c_str(),
-        GENERIC_READ,
-        0,
-        nullptr,
-        OPEN_EXISTING,
-        FILE_FLAG_OVERLAPPED,
-        nullptr));
-    VERIFY_WIN32_BOOL_SUCCEEDED(INVALID_HANDLE_VALUE != nfcScInterface.Get());
+    UniqueHandle nfcScInterface = DriverHandleFactory::OpenSmartcardHandle(simConnector.DeviceId().c_str(), SmartCardReaderKind_Nfc);
 
     // Start an IOCTL_SMARTCARD_IS_PRESENT request, so that the driver considers the smartcard reader handle to be in use.
     // This should result in the radio being initialized.
@@ -125,7 +137,7 @@ InitTests::DiscoveryInitAndDeinitTest()
     simConnector.RemoveD0PowerReference();
 
     // Verify discovery mode is started.
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence(isNci2));
 
     // Cancel the IOCTL_SMARTCARD_IS_PRESENT I/O, so that the smartcard reader handle is no longer considered active.
     ioIsPresent->Cancel();
@@ -134,5 +146,19 @@ InitTests::DiscoveryInitAndDeinitTest()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
 
     // Verify NCI is uninitialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence(isNci2));
+}
+
+// Tests entering and exiting RF discovery mode for NCI 1.1.
+void
+InitTests::DiscoveryInitAndDeinitNci1Test()
+{
+    DiscoveryInitAndDeinitTest(false);
+}
+
+// Tests entering and exiting RF discovery mode for NCI 2.0.
+void
+InitTests::DiscoveryInitAndDeinitNci2Test()
+{
+    DiscoveryInitAndDeinitTest(true);
 }

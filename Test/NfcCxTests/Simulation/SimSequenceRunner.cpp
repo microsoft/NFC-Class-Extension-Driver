@@ -11,48 +11,54 @@
 void
 SimSequenceRunner::Run(
     _In_ NciSimConnector& simConnector,
-    _In_reads_(stepListSize) const SimSequenceStep* stepList,
-    _In_ size_t stepListSize)
+    _In_ const SimSequenceStep& step)
 {
-    for (const SimSequenceStep* itr = stepList; itr != stepList + stepListSize; ++itr)
+    LOG_COMMENT(L"# Step: %s.", step.StepName.c_str());
+
+    switch (step.Type)
     {
-        const SimSequenceStep& step = *itr;
+    case SimSequenceStepType::NciWrite:
+    {
+        NciSimCallbackView message = simConnector.ReceiveCallback();
+        VerifyNciPacket(step.NciPacketData, message);
 
-        LOG_COMMENT(L"# Step: %s.", step.StepName.c_str());
+        simConnector.SendNciWriteCompleted();
 
-        switch (step.Type)
-        {
-        case SimSequenceStepType::NciWrite:
-        {
-            NciSimCallbackView message = simConnector.ReceiveCallback();
-            VerifyNciPacket(step.NciPacketData, message);
+        break;
+    }
+    case SimSequenceStepType::NciRead:
+    {
+        LogByteBuffer(L"Packet", step.NciPacketData.PacketBytes(), step.NciPacketData.PacketBytesLength());
+        simConnector.SendNciRead(step.NciPacketData);
+        break;
+    }
+    case SimSequenceStepType::SequenceHandler:
+    {
+        NciSimCallbackView message = simConnector.ReceiveCallback();
+        VerifySequenceHandler(step.SequenceHandlerType, message);
 
-            simConnector.SendNciWriteCompleted();
-
-            break;
-        }
-        case SimSequenceStepType::NciRead:
-        {
-            LogByteBuffer(L"Packet", step.NciPacketData.PacketBytes(), step.NciPacketData.PacketBytesLength());
-            simConnector.SendNciRead(step.NciPacketData);
-            break;
-        }
-        case SimSequenceStepType::SequenceHandler:
-        {
-            NciSimCallbackView message = simConnector.ReceiveCallback();
-            VerifySequenceHandler(step.SequenceHandlerType, message);
-
-            simConnector.SendSequenceCompleted(step.SequenceHandlerStatus, step.SequenceHandlerFlags);
-            break;
-        }
-        }
+        simConnector.SendSequenceCompleted(step.SequenceHandlerStatus, step.SequenceHandlerFlags);
+        break;
+    }
     }
 }
 
 void
 SimSequenceRunner::Run(
     _In_ NciSimConnector& simConnector,
-    _In_ const SimSequenceStep& step)
+    _In_reads_(stepListSize) const SimSequenceStep* stepList,
+    _In_ size_t stepListSize)
 {
-    Run(simConnector, &step, 1);
+    for (const SimSequenceStep* itr = stepList; itr != stepList + stepListSize; ++itr)
+    {
+        Run(simConnector, *itr);
+    }
+}
+
+void
+SimSequenceRunner::Run(
+    NciSimConnector& simConnector,
+    SimSequenceView sequence)
+{
+    Run(simConnector, sequence.GetList(), sequence.GetListSize());
 }

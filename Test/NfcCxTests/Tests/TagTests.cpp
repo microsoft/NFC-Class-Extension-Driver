@@ -10,7 +10,7 @@
 #include <SimulationSequences\InitSequences.h>
 #include <IOHelpers\IoOperation.h>
 #include <Simulation\NciSimConnector.h>
-#include <IOHelpers\ProximityHandleFactory.h>
+#include <IOHelpers\DriverHandleFactory.h>
 #include <SimulationSequences\RfDiscoverySequences.h>
 #include <Simulation\SimSequenceRunner.h>
 #include <Simulation\TagPayloads.h>
@@ -50,10 +50,10 @@ TagTests::SimpleNdefSubscriptionTest()
     simConnector.AddD0PowerReference();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
 
     // Open handle for NDEF subscription.
-    UniqueHandle nfpSubInterface = ProximityHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
+    UniqueHandle nfpSubInterface = DriverHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
 
     // Start an I/O request for the next message,
     constexpr DWORD messageBufferSize = 2048;
@@ -63,7 +63,7 @@ TagTests::SimpleNdefSubscriptionTest()
     simConnector.RemoveD0PowerReference();
 
     // Verify discovery mode is started.
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Provide a tag for the subscription to read.
     SimSequenceRunner::Run(simConnector, TagSequences::Ntag216Activated::Sequence);
@@ -71,7 +71,7 @@ TagTests::SimpleNdefSubscriptionTest()
 
     // The driver has finished with the tag. So it will restart discovery to look for new tags.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Ensure subscription receives the tag's message.
     VERIFY_WIN32_SUCCEEDED(ioGetMessage->WaitForResult(/*wait (ms)*/ 1'000));
@@ -87,7 +87,7 @@ TagTests::SimpleNdefSubscriptionTest()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
 
     // Verify NCI is uninitialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
 }
 
 void
@@ -101,10 +101,10 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
     simConnector.AddD0PowerReference();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
 
     // Open handle for NDEF subscription.
-    UniqueHandle nfpSubInterface = ProximityHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
+    UniqueHandle nfpSubInterface = DriverHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
 
     // Start an I/O request for the next message,
     constexpr DWORD messageBufferSize = 2048;
@@ -114,7 +114,7 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
     simConnector.RemoveD0PowerReference();
 
     // Verify discovery mode is started. But don't complete the SequenceRfDiscStartComplete sequence handler yet.
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence, 5);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1, 5);
 
     NciSimCallbackView simCallback = simConnector.ReceiveCallback();
     VerifySequenceHandler(SequenceRfDiscStartComplete, simCallback);
@@ -131,7 +131,7 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
 
     // The driver has finished with the tag. So it will restart discovery to look for new tags.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Ensure subscription receives the tag's message.
     VERIFY_WIN32_SUCCEEDED(ioGetMessage->WaitForResult(/*wait (ms)*/ 1'000));
@@ -147,7 +147,7 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
 
     // Verify NCI is uninitialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
 }
 
 void
@@ -161,10 +161,10 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     simConnector.AddD0PowerReference();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
 
     // Open handle for NDEF subscription.
-    UniqueHandle nfpSubInterface = ProximityHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
+    UniqueHandle nfpSubInterface = DriverHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
 
     // Start an I/O request for the next message,
     constexpr DWORD messageBufferSize = 2048;
@@ -174,7 +174,7 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     simConnector.RemoveD0PowerReference();
 
     // Verify discovery mode is started.
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Provide a tag for the subscription to read.
     SimSequenceRunner::Run(simConnector, TagSequences::Ntag216Activated::Sequence);
@@ -193,7 +193,7 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
 
     // The driver has finished with the tag. So it will restart discovery to look for new tags.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Ensure subscription receives the tag's message.
     VERIFY_WIN32_SUCCEEDED(ioGetMessage->WaitForResult(/*wait (ms)*/ 1'000));
@@ -209,5 +209,5 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
 
     // Verify NCI is uninitialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
 }

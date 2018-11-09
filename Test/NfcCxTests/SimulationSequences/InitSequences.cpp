@@ -24,7 +24,7 @@ const SimSequenceStep InitSequences::NciResetCommand = SimSequenceStep::NciContr
     }
 );
 
-const SimSequenceStep InitSequences::NciResetResponse = SimSequenceStep::NciControlRead(
+const SimSequenceStep InitSequences::NciResetResponse_Nci1 = SimSequenceStep::NciControlRead(
     L"CORE_RESET_RSP",
     {
         // NFC Controller Interface (NCI), Version 1.1, Section 4.1, CORE_RESET_RSP
@@ -39,6 +39,36 @@ const SimSequenceStep InitSequences::NciResetResponse = SimSequenceStep::NciCont
     }
 );
 
+const SimSequenceStep InitSequences::NciResetResponse_Nci2 = SimSequenceStep::NciControlRead(
+    L"CORE_RESET_RSP",
+    {
+        // NFC Controller Interface (NCI), Version 2.0, Section 4.1, CORE_RESET_RSP
+        phNciNfc_e_NciCoreMsgTypeCntrlRsp,
+        phNciNfc_e_CoreNciCoreGid,
+        phNciNfc_e_NciCoreResetCmdOid,
+        {
+            PH_NCINFC_STATUS_OK, // Status
+        },
+    }
+);
+
+const SimSequenceStep InitSequences::NciResetNotification_Nci2 = SimSequenceStep::NciControlRead(
+    L"CORE_RESET_NTF",
+    {
+        // NFC Controller Interface (NCI), Version 2.0, Section 4.1, CORE_RESET_NTF
+        phNciNfc_e_NciCoreMsgTypeCntrlNtf,
+        phNciNfc_e_CoreNciCoreGid,
+        phNciNfc_e_NciCoreResetCmdOid,
+        {
+            0x02, // Reset trigger
+            0x00, // Configuration status (configuration kept)
+            0x20, // Nci version
+            0x00, // Manufacturer ID
+            0x00, // Manufacturer info length
+        },
+    }
+);
+
 const SimSequenceStep InitSequences::InitializeNoSEs::PreInitialize = SimSequenceStep::SequenceHandler(
     L"SequencePreInit",
     SequencePreInit,
@@ -46,7 +76,7 @@ const SimSequenceStep InitSequences::InitializeNoSEs::PreInitialize = SimSequenc
     NFC_CX_SEQUENCE_PRE_INIT_FLAG_SKIP_CONFIG
 );
 
-const SimSequenceStep InitSequences::InitializeNoSEs::InitializeCommand = SimSequenceStep::NciControlWrite(
+const SimSequenceStep InitSequences::InitializeNoSEs::InitializeCommand_Nci1 = SimSequenceStep::NciControlWrite(
     L"CORE_INIT_CMD",
     {
         // NFC Controller Interface (NCI), Version 1.1, Section 4.2, CORE_INIT_CMD
@@ -56,7 +86,20 @@ const SimSequenceStep InitSequences::InitializeNoSEs::InitializeCommand = SimSeq
     }
 );
 
-const SimSequenceStep InitSequences::InitializeNoSEs::InitializeResponse = SimSequenceStep::NciControlRead(
+const SimSequenceStep InitSequences::InitializeNoSEs::InitializeCommand_Nci2 = SimSequenceStep::NciControlWrite(
+    L"CORE_INIT_CMD",
+    {
+        // NFC Controller Interface (NCI), Version 2.0, Section 4.2, CORE_INIT_CMD
+        phNciNfc_e_NciCoreMsgTypeCntrlCmd,
+        phNciNfc_e_CoreNciCoreGid,
+        phNciNfc_e_NciCoreInitCmdOid,
+        {
+            0x00, 0x00, // Feature enable (disable all post NCI 2.0 features)
+        }
+    }
+);
+
+const SimSequenceStep InitSequences::InitializeNoSEs::InitializeResponse_Nci1 = SimSequenceStep::NciControlRead(
     L"CORE_INIT_RSP",
     {
         // NFC Controller Interface (NCI), Version 1.1, Section 4.2, CORE_INIT_RSP
@@ -65,9 +108,9 @@ const SimSequenceStep InitSequences::InitializeNoSEs::InitializeResponse = SimSe
         phNciNfc_e_NciCoreInitCmdOid,
         {
             PH_NCINFC_STATUS_OK, // Status
-            0b00000011, // Supported discovery config
-            0b00011110, // Supported routing types
-            0b00000011, // Supported routing power modes
+            0b00000011, // Supported discovery config (Merges RF config, Frequency config supported)
+            0b00011110, // Supported routing types (Technology, Protocol, AID, NFCID2)
+            0b00000011, // Supported routing power modes (Switched off, Battery off)
             0b00000000, // Proprietary capabilities
             5, // Number of supported interfaces, that follow.
                 phNciNfc_e_RfInterfacesNfceeDirect_RF,
@@ -82,6 +125,45 @@ const SimSequenceStep InitSequences::InitializeNoSEs::InitializeResponse = SimSe
             0x0, // Manufacturer ID
             0x0, 0x0, 0x0, 0x0, // Manufacturer specific info
         },
+    }
+);
+
+
+
+const SimSequenceStep InitSequences::InitializeNoSEs::InitializeResponse_Nci2 = SimSequenceStep::NciControlRead(
+    L"CORE_INIT_RSP",
+    {
+        // NFC Controller Interface (NCI), Version 2.0, Section 4.2, CORE_INIT_RSP
+        phNciNfc_e_NciCoreMsgTypeCntrlRsp,
+        phNciNfc_e_CoreNciCoreGid,
+        phNciNfc_e_NciCoreInitCmdOid,
+        {
+            PH_NCINFC_STATUS_OK,
+            0b00000011, // Supported discovery config (Merges RF config, Frequency config supported)
+            0b00011110, // Supported routing types (Technology, Protocol, AID, System code)
+            0b00000011, // Supported routing power modes (Switched off, Battery off)
+            0b00000000, // Proprietary capabilities
+            0xFF, 0xFF, // Max routing table size
+            0xFF, // Max control packet payload size
+            0xFF, // Max static HCI packet size
+            0xFF, // Number of static HCI credits (no flow control)
+            0xFF, 0xFF, // Max NFC-V RF frame size
+            5, // Number of supported interfaces, that follow.
+                phNciNfc_e_RfInterfacesNfceeDirect_RF, // Interface
+                0, // Number of extensions
+
+                phNciNfc_e_RfInterfacesFrame_RF, // Interface
+                0, // Number of extensions
+
+                phNciNfc_e_RfInterfacesISODEP_RF, // Interface
+                0, // Number of extensions
+
+                phNciNfc_e_RfInterfacesNFCDEP_RF, // Interface
+                0, // Number of extensions
+
+                phNciNfc_e_RfInterfacesTagCmd_RF, // Interface
+                0, // Number of extensions
+        }
     }
 );
 
@@ -146,7 +228,7 @@ const SimSequenceStep InitSequences::InitializeNoSEs::PreNfceeDiscovery = SimSeq
     0
 );
 
-const SimSequenceStep InitSequences::InitializeNoSEs::NfceeDiscoverCommand = SimSequenceStep::NciControlWrite(
+const SimSequenceStep InitSequences::InitializeNoSEs::NfceeDiscoverCommand_Nci1 = SimSequenceStep::NciControlWrite(
     L"NFCEE_DISCOVER_CMD",
     {
         // NFC Controller Interface (NCI), Version 1.1, Section 9.2, NFCEE_DISCOVER_CMD
@@ -156,6 +238,16 @@ const SimSequenceStep InitSequences::InitializeNoSEs::NfceeDiscoverCommand = Sim
         {
             0x01, // Enable NFCEE discovery
         },
+    }
+);
+
+const SimSequenceStep InitSequences::InitializeNoSEs::NfceeDiscoverCommand_Nci2 = SimSequenceStep::NciControlWrite(
+    L"NFCEE_DISCOVER_CMD",
+    {
+        // NFC Controller Interface (NCI), Version 1.1, Section 9.2, NFCEE_DISCOVER_CMD
+        phNciNfc_e_NciCoreMsgTypeCntrlCmd,
+        phNciNfc_e_CoreNfceeMgtGid,
+        phNciNfc_e_NfceeMgtNfceeDiscCmdOid,
     }
 );
 
@@ -194,29 +286,80 @@ const SimSequenceStep InitSequences::Uninitialize::ShutdownComplete = SimSequenc
     0
 );
 
-// Error-free NCI initialize.
+// Error-free NCI 1.1 initialize.
 // Reports 0 attached SEs.
-const SimSequenceStep InitSequences::InitializeNoSEs::Sequence[12] =
+const SimSequenceStep InitSequences::InitializeNoSEs::Sequence_Nci1[12] =
 {
     PreInitialize,
     NciResetCommand,
-    NciResetResponse,
-    InitializeCommand,
-    InitializeResponse,
+    NciResetResponse_Nci1,
+    InitializeCommand_Nci1,
+    InitializeResponse_Nci1,
     InitializeComplete,
     GetConfigCommand,
     GetConfigResponse,
     PreNfceeDiscovery,
-    NfceeDiscoverCommand,
+    NfceeDiscoverCommand_Nci1,
     NfceeDiscoverResponse,
     NfceeDiscoveryComplete,
 };
 
-// Error-free NCI uninitialize.
-const SimSequenceStep InitSequences::Uninitialize::Sequence[4] =
+// Error-free NCI 2.0 initialize.
+// Reports 0 attached SEs.
+const SimSequenceStep InitSequences::InitializeNoSEs::Sequence_Nci2[13] =
+{
+    PreInitialize,
+    NciResetCommand,
+    NciResetResponse_Nci2,
+    NciResetNotification_Nci2,
+    InitializeCommand_Nci2,
+    InitializeResponse_Nci2,
+    InitializeComplete,
+    GetConfigCommand,
+    GetConfigResponse,
+    PreNfceeDiscovery,
+    NfceeDiscoverCommand_Nci2,
+    NfceeDiscoverResponse,
+    NfceeDiscoveryComplete,
+};
+
+const SimSequenceView
+InitSequences::InitializeNoSEs::Sequence(bool isNci2)
+{
+    if (isNci2)
+    {
+        return Sequence_Nci2;
+    }
+
+    return Sequence_Nci1;
+}
+
+// Error-free NCI 1.1 uninitialize.
+const SimSequenceStep InitSequences::Uninitialize::Sequence_Nci1[4] =
 {
     PreShutdown,
     NciResetCommand,
-    NciResetResponse,
+    NciResetResponse_Nci1,
     ShutdownComplete,
 };
+
+// Error-free NCI 2.0 uninitialize.
+const SimSequenceStep InitSequences::Uninitialize::Sequence_Nci2[5] =
+{
+    PreShutdown,
+    NciResetCommand,
+    NciResetResponse_Nci2,
+    NciResetNotification_Nci2,
+    ShutdownComplete,
+};
+
+const SimSequenceView
+InitSequences::Uninitialize::Sequence(bool isNci2)
+{
+    if (isNci2)
+    {
+        return Sequence_Nci2;
+    }
+
+    return Sequence_Nci1;
+}

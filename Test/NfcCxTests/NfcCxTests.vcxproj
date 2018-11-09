@@ -79,9 +79,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="IOHelpers\DeviceQuery.h" />
+    <ClInclude Include="IOHelpers\DriverHandleFactory.h" />
     <ClInclude Include="IOHelpers\IoOperation.h" />
     <ClInclude Include="IOHelpers\Precomp.h" />
-    <ClInclude Include="IOHelpers\ProximityHandleFactory.h" />
     <ClInclude Include="IOHelpers\RadioManager.h" />
     <ClInclude Include="IOHelpers\UniqueHandle.h" />
     <ClInclude Include="SimulationSequences\InitSequences.h" />
@@ -95,6 +95,7 @@
     <ClInclude Include="Simulation\Precomp.h" />
     <ClInclude Include="Simulation\SimSequenceRunner.h" />
     <ClInclude Include="Simulation\SimSequenceStep.h" />
+    <ClInclude Include="Simulation\SimSequenceView.h" />
     <ClInclude Include="Simulation\TagPayloads.h" />
     <ClInclude Include="Simulation\VerifyHelpers.h" />
     <ClInclude Include="Tests\Module.h" />
@@ -103,8 +104,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IOHelpers\DeviceQuery.cpp" />
+    <ClCompile Include="IOHelpers\DriverHandleFactory.cpp" />
     <ClCompile Include="IOHelpers\IoOperation.cpp" />
-    <ClCompile Include="IOHelpers\ProximityHandleFactory.cpp" />
     <ClCompile Include="IOHelpers\RadioManager.cpp" />
     <ClCompile Include="IOHelpers\UniqueHandle.cpp" />
     <ClCompile Include="SimulationSequences\InitSequences.cpp" />
@@ -116,6 +117,7 @@
     <ClCompile Include="Simulation\NciSimConnector.cpp" />
     <ClCompile Include="Simulation\SimSequenceRunner.cpp" />
     <ClCompile Include="Simulation\SimSequenceStep.cpp" />
+    <ClCompile Include="Simulation\SimSequenceView.cpp" />
     <ClCompile Include="Simulation\TagPayloads.cpp" />
     <ClCompile Include="Simulation\VerifyHelpers.cpp" />
     <ClCompile Include="Tests\AirplaneModeTests.cpp" />

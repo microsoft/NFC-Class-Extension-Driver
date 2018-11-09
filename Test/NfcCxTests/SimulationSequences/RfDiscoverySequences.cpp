@@ -64,7 +64,7 @@ const SimSequenceStep RfDiscoverySequences::DiscoveryStart::GetConfigResponse = 
     }
 );
 
-const SimSequenceStep RfDiscoverySequences::DiscoveryStart::DiscoverCommand = SimSequenceStep::NciControlWrite(
+const SimSequenceStep RfDiscoverySequences::DiscoveryStart::DiscoverCommand_Nci1 = SimSequenceStep::NciControlWrite(
     L"RF_DISCOVER_CMD",
     {
         // NFC Controller Interface (NCI), Version 1.1, Section 7.1, RF_DISCOVER_CMD
@@ -104,6 +104,45 @@ const SimSequenceStep RfDiscoverySequences::DiscoveryStart::DiscoverCommand = Si
                 1, // Poll every discovery loop
 
                 phNciNfc_NFCF_Active_Listen,
+                1, // Poll every discovery loop
+        }
+    }
+);
+
+const SimSequenceStep RfDiscoverySequences::DiscoveryStart::DiscoverCommand_Nci2 = SimSequenceStep::NciControlWrite(
+    L"RF_DISCOVER_CMD",
+    {
+        // NFC Controller Interface (NCI), Version 1.1, Section 7.1, RF_DISCOVER_CMD
+        phNciNfc_e_NciCoreMsgTypeCntrlCmd,
+        phNciNfc_e_CoreRfMgtGid,
+        phNciNfc_e_RfMgtRfDiscoverCmdOid,
+        {
+            9, // Number of parameters, that follow.
+                phNciNfc_NFCA_Active_Poll,
+                1, // Poll every discovery loop
+
+                phNciNfc_NFCA_Poll,
+                1, // Poll every discovery loop
+
+                phNciNfc_NFCB_Poll,
+                1, // Poll every discovery loop
+
+                phNciNfc_NFCF_Poll,
+                1, // Poll every discovery loop
+
+                phNciNfc_NFCISO15693_Poll,
+                1, // Poll every discovery loop
+
+                phNciNfc_NFCA_Kovio_Poll,
+                1, // Poll every discovery loop
+
+                phNciNfc_NFCA_Listen,
+                1, // Poll every discovery loop
+
+                phNciNfc_NFCA_Active_Listen,
+                1, // Poll every discovery loop
+
+                phNciNfc_NFCF_Listen,
                 1, // Poll every discovery loop
         }
     }
@@ -169,12 +208,33 @@ const SimSequenceStep RfDiscoverySequences::DiscoveryStop::DiscoverStopComplete 
     0
 );
 
-const SimSequenceStep RfDiscoverySequences::DiscoveryStart::Sequence[6] =
+const SimSequenceStep RfDiscoverySequences::DiscoveryStart::Sequence_Nci1[6] =
 {
     PreDiscoveryStart,
     GetConfigCommand,
     GetConfigResponse,
-    DiscoverCommand,
+    DiscoverCommand_Nci1,
+    DiscoverResponse,
+    DiscoverStartComplete,
+};
+
+const SimSequenceView
+RfDiscoverySequences::DiscoveryStart::Sequence(bool isNci2)
+{
+    if (isNci2)
+    {
+        return Sequence_Nci2;
+    }
+
+    return Sequence_Nci1;
+}
+
+const SimSequenceStep RfDiscoverySequences::DiscoveryStart::Sequence_Nci2[6] =
+{
+    PreDiscoveryStart,
+    GetConfigCommand,
+    GetConfigResponse,
+    DiscoverCommand_Nci2,
     DiscoverResponse,
     DiscoverStartComplete,
 };
