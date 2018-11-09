@@ -83,6 +83,8 @@ typedef enum phFriNfc_ISO15693_Command
 #define ISO15693_AFI_MASK                               0x02U
 #define ISO15693_VICC_MEMORY_SIZE_MASK                  0x04U
 #define ISO15693_ICREF_MASK                             0x08U
+
+/* Extented get system information */
 #define ISO15693_CAPABILITY_MASK                        0x20U
 
 /* Field lengths in bytes */
