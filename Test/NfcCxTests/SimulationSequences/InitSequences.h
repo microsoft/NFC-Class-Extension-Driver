@@ -10,10 +10,16 @@
 // Common NCI command/response sequences relating to NCI initialize and uninitialize.
 struct InitSequences
 {
-    static const SimSequenceStep NciResetCommand;
-    static const SimSequenceStep NciResetResponse_Nci1;
-    static const SimSequenceStep NciResetResponse_Nci2;
-    static const SimSequenceStep NciResetNotification_Nci2;
+    struct Reset
+    {
+        static const SimSequenceStep NciResetCommand;
+        static const SimSequenceStep NciResetResponse_Nci1;
+        static const SimSequenceStep NciResetResponse_Nci2;
+        static const SimSequenceStep NciResetNotification_Nci2;
+
+        static const SimSequenceStep Sequence_Nci1[2];
+        static const SimSequenceStep Sequence_Nci2[3];
+    };
 
     struct InitializeNoSEs
     {
@@ -31,8 +37,8 @@ struct InitSequences
         static const SimSequenceStep NfceeDiscoverResponse;
         static const SimSequenceStep NfceeDiscoveryComplete;
 
-        static const SimSequenceStep Sequence_Nci1[12];
-        static const SimSequenceStep Sequence_Nci2[13];
+        static const SimSequenceView Sequence_Nci1[11];
+        static const SimSequenceView Sequence_Nci2[11];
         static const SimSequenceView Sequence(bool isNci2);
     };
 
@@ -41,8 +47,8 @@ struct InitSequences
         static const SimSequenceStep PreShutdown;
         static const SimSequenceStep ShutdownComplete;
 
-        static const SimSequenceStep Sequence_Nci1[4];
-        static const SimSequenceStep Sequence_Nci2[5];
+        static const SimSequenceView Sequence_Nci1[3];
+        static const SimSequenceView Sequence_Nci2[3];
         static const SimSequenceView Sequence(bool isNci2);
     };
 };

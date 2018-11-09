@@ -11,7 +11,7 @@
 
 #include "InitSequences.h"
 
-const SimSequenceStep InitSequences::NciResetCommand = SimSequenceStep::NciControlWrite(
+const SimSequenceStep InitSequences::Reset::NciResetCommand = SimSequenceStep::NciControlWrite(
     L"CORE_RESET_CMD",
     {
         // NFC Controller Interface (NCI), Version 1.1, Section 4.1, CORE_RESET_CMD
@@ -24,7 +24,7 @@ const SimSequenceStep InitSequences::NciResetCommand = SimSequenceStep::NciContr
     }
 );
 
-const SimSequenceStep InitSequences::NciResetResponse_Nci1 = SimSequenceStep::NciControlRead(
+const SimSequenceStep InitSequences::Reset::NciResetResponse_Nci1 = SimSequenceStep::NciControlRead(
     L"CORE_RESET_RSP",
     {
         // NFC Controller Interface (NCI), Version 1.1, Section 4.1, CORE_RESET_RSP
@@ -39,7 +39,7 @@ const SimSequenceStep InitSequences::NciResetResponse_Nci1 = SimSequenceStep::Nc
     }
 );
 
-const SimSequenceStep InitSequences::NciResetResponse_Nci2 = SimSequenceStep::NciControlRead(
+const SimSequenceStep InitSequences::Reset::NciResetResponse_Nci2 = SimSequenceStep::NciControlRead(
     L"CORE_RESET_RSP",
     {
         // NFC Controller Interface (NCI), Version 2.0, Section 4.1, CORE_RESET_RSP
@@ -52,7 +52,7 @@ const SimSequenceStep InitSequences::NciResetResponse_Nci2 = SimSequenceStep::Nc
     }
 );
 
-const SimSequenceStep InitSequences::NciResetNotification_Nci2 = SimSequenceStep::NciControlRead(
+const SimSequenceStep InitSequences::Reset::NciResetNotification_Nci2 = SimSequenceStep::NciControlRead(
     L"CORE_RESET_NTF",
     {
         // NFC Controller Interface (NCI), Version 2.0, Section 4.1, CORE_RESET_NTF
@@ -286,13 +286,25 @@ const SimSequenceStep InitSequences::Uninitialize::ShutdownComplete = SimSequenc
     0
 );
 
-// Error-free NCI 1.1 initialize.
-// Reports 0 attached SEs.
-const SimSequenceStep InitSequences::InitializeNoSEs::Sequence_Nci1[12] =
+const SimSequenceStep InitSequences::Reset::Sequence_Nci1[2] =
 {
-    PreInitialize,
     NciResetCommand,
     NciResetResponse_Nci1,
+};
+
+const SimSequenceStep InitSequences::Reset::Sequence_Nci2[3] =
+{
+    NciResetCommand,
+    NciResetResponse_Nci2,
+    NciResetNotification_Nci2,
+};
+
+// Error-free NCI 1.1 initialize.
+// Reports 0 attached SEs.
+const SimSequenceView InitSequences::InitializeNoSEs::Sequence_Nci1[11] =
+{
+    PreInitialize,
+    Reset::Sequence_Nci1,
     InitializeCommand_Nci1,
     InitializeResponse_Nci1,
     InitializeComplete,
@@ -306,12 +318,10 @@ const SimSequenceStep InitSequences::InitializeNoSEs::Sequence_Nci1[12] =
 
 // Error-free NCI 2.0 initialize.
 // Reports 0 attached SEs.
-const SimSequenceStep InitSequences::InitializeNoSEs::Sequence_Nci2[13] =
+const SimSequenceView InitSequences::InitializeNoSEs::Sequence_Nci2[11] =
 {
     PreInitialize,
-    NciResetCommand,
-    NciResetResponse_Nci2,
-    NciResetNotification_Nci2,
+    Reset::Sequence_Nci2,
     InitializeCommand_Nci2,
     InitializeResponse_Nci2,
     InitializeComplete,
@@ -335,21 +345,18 @@ InitSequences::InitializeNoSEs::Sequence(bool isNci2)
 }
 
 // Error-free NCI 1.1 uninitialize.
-const SimSequenceStep InitSequences::Uninitialize::Sequence_Nci1[4] =
+const SimSequenceView InitSequences::Uninitialize::Sequence_Nci1[3] =
 {
     PreShutdown,
-    NciResetCommand,
-    NciResetResponse_Nci1,
+    Reset::Sequence_Nci1,
     ShutdownComplete,
 };
 
 // Error-free NCI 2.0 uninitialize.
-const SimSequenceStep InitSequences::Uninitialize::Sequence_Nci2[5] =
+const SimSequenceView InitSequences::Uninitialize::Sequence_Nci2[3] =
 {
     PreShutdown,
-    NciResetCommand,
-    NciResetResponse_Nci2,
-    NciResetNotification_Nci2,
+    Reset::Sequence_Nci2,
     ShutdownComplete,
 };
 

@@ -92,7 +92,7 @@ InitTests::InitAndDeinitNci1WithSlowIoTest()
     simConnector.AddD0PowerReference();
 
     // Run through the first half of the initialization sequence, stopping just before the GetConfigCommand step.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1, 6);
+    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1, 5);
 
     // Manually process the GetConfigCommand step.
     LOG_COMMENT(L"# Manually processing GetConfigCommand step.");
@@ -104,7 +104,7 @@ InitTests::InitAndDeinitNci1WithSlowIoTest()
     simConnector.SendNciWriteCompleted();
 
     // Process the remainder of the initialization sequence.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1 + 7, std::size(InitSequences::InitializeNoSEs::Sequence_Nci1) - 7);
+    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1 + 6, std::size(InitSequences::InitializeNoSEs::Sequence_Nci1) - 6);
 
     // Allow device to drop out of D0, so that NCI is deinitialized.
     LOG_COMMENT(L"# Allow device to drop out of D0.");

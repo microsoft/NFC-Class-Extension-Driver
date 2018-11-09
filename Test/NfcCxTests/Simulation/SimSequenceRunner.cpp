@@ -60,5 +60,26 @@ SimSequenceRunner::Run(
     NciSimConnector& simConnector,
     SimSequenceView sequence)
 {
-    Run(simConnector, sequence.GetList(), sequence.GetListSize());
+    switch (sequence.GetType())
+    {
+    case SimSequenceView::Type::SequenceList:
+        Run(simConnector, sequence.GetSequenceList(), sequence.GetSequenceListSize());
+        break;
+
+    case SimSequenceView::Type::StepList:
+        Run(simConnector, sequence.GetStepList(), sequence.GetStepListSize());
+        break;
+    }
+}
+
+void
+SimSequenceRunner::Run(
+    _In_ NciSimConnector& simConnector,
+    _In_reads_(sequenceListSize) const SimSequenceView* sequenceList,
+    _In_ size_t sequenceListSize)
+{
+    for (const SimSequenceView* itr = sequenceList; itr != sequenceList + sequenceListSize; ++itr)
+    {
+        Run(simConnector, *itr);
+    }
 }

@@ -32,4 +32,17 @@ public:
     static void Run(
         NciSimConnector& simConnector,
         SimSequenceView sequence);
+
+    static void Run(
+        _In_ NciSimConnector& simConnector,
+        _In_reads_(sequenceListSize) const SimSequenceView* sequenceList,
+        _In_ size_t sequenceListSize);
+
+    template <size_t ArraySize>
+    static void Run(
+        _In_ NciSimConnector& simConnector,
+        const SimSequenceView (&sequenceList)[ArraySize])
+    {
+        Run(simConnector, sequenceList, ArraySize);
+    }
 };
