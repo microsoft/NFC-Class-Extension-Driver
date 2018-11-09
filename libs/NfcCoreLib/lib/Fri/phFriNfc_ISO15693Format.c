@@ -174,6 +174,20 @@ phFriNfc_ISO15693_H_FmtReadWrite (
     *(psNdefSmtCrdFmt->SendRecvBuf + send_index) = (uint8_t)command;
     send_index = (uint8_t)(send_index + 1);
 
+    if (command == ISO15693_EXT_GET_SYSTEM_INFO_CMD)
+    {
+        if (data_length == 1)
+        {
+            *(psNdefSmtCrdFmt->SendRecvBuf + send_index) = *p_data;
+            send_index = (uint8_t)(send_index + 1);
+        }
+        else
+        {
+            result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
+                                NFCSTATUS_INVALID_DEVICE_REQUEST);
+        }
+    }
+
     (void)phOsalNfc_MemCopy ((void *)(psNdefSmtCrdFmt->SendRecvBuf + send_index),
                              (void *)ps_iso_15693_info->Uid, ps_iso_15693_info->UidLength);
     send_index = (uint8_t)(send_index + ps_iso_15693_info->UidLength);
@@ -232,19 +246,7 @@ phFriNfc_ISO15693_H_FmtReadWrite (
 
         case ISO15693_EXT_GET_SYSTEM_INFO_CMD:
         {
-            memmove(psNdefSmtCrdFmt->SendRecvBuf + 3, psNdefSmtCrdFmt->SendRecvBuf + 2,
-                    psNdefSmtCrdFmt->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info.UidLength);
-            if (data_length == 1)
-            {
-                (void)phOsalNfc_MemCopy((void *)(psNdefSmtCrdFmt->SendRecvBuf + 2),
-                                                 (void *)p_data, data_length);
-                send_index = (uint8_t)(send_index + data_length);
-            }
-            else
-            {
-                result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT,
-                    NFCSTATUS_INVALID_DEVICE_REQUEST);
-            }
+            /* Dont do anything */
             break;
         }
 
