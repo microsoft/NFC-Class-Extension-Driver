@@ -369,12 +369,6 @@ phFriNfc_ISO15693_H_ReadWrite (
         command |= ISO15693_EXTENDED_CMD_MASK;
     }
 
-    if (ISO15693_READ_MULTIPLE_COMMAND == command)
-    {
-        /* Force data_length to 1 as we are using ISO15693_READ_MULTIPLE_COMMAND */
-        data_length = 1;
-    }
-
     *(psNdefMap->SendRecvBuf + send_index) = (uint8_t)request_flags;
     send_index = (uint8_t)(send_index + 1);
 
@@ -1645,6 +1639,7 @@ phFriNfc_ReadRemainingInMultiple (
         uint8_t mbread[2];
         uint8_t mbread_len = 1;
         uint32_t nb_blocks = 0;
+        uint8_t command = ISO15693_READ_MULTIPLE_COMMAND;
 
         /* Compute how many block can be read at a time.
            If we are in NCI2.0 mode, MaxNFCVFrameSize is set and we need to split the packet to MaxNFCVFrameSize - 1.
@@ -1671,13 +1666,14 @@ phFriNfc_ReadRemainingInMultiple (
             if (ps_iso_15693_con->support_extended_cmd == TRUE)
             {
                 mbread_len = 2;
+                command = ISO15693_EXT_READ_MULTIPLE_COMMAND;
             }
         }
 
         mbread[0] = (uint8_t)nb_blocks;
         mbread[1] = (uint8_t)(nb_blocks >> 8);
 
-        result = phFriNfc_ISO15693_H_ReadWrite(psNdefMap, ISO15693_READ_MULTIPLE_COMMAND,
+        result = phFriNfc_ISO15693_H_ReadWrite(psNdefMap, command,
                                                mbread, mbread_len);
     } else if (ps_iso_15693_con->read_capabilities & ISO15693_CC_USE_IPR) {
         uint32_t page = 0;
