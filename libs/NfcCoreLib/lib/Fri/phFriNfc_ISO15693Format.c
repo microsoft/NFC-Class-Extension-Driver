@@ -379,8 +379,9 @@ phFriNfc_ISO15693_H_ProcessSystemInfo(
 
         if (information_flag & ISO15693_CAPABILITY_MASK)
         {
-            // TODO: fix according to field size
-            ps_iso15693_info->card_capability = (uint8_t)(*(p_recv_buf + recv_index));
+            phOsalNfc_MemCopy(&ps_iso15693_info->card_capability,
+                              p_recv_buf + recv_index,
+                              ISO15693_CAPABILITY_FIELD_LEN);
             recv_index += ISO15693_CAPABILITY_FIELD_LEN;
         }
 
