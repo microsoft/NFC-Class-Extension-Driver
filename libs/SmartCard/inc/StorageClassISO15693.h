@@ -77,13 +77,6 @@ Environment:
 #define ISO15693_UIDBYTE_5_STM_MASK         0xFC
 
 #define ISO15693_FLAG_PROTOEXT              0x08U
-/* Check if protocol extension bit is needed in the request flag */
-#define ISO15693_PROTOEXT(pUid) \
-    ((ISO15693_MANUFACTURER_STM == pUid[ISO15693_UID_BYTE_6]) && \
-        ((pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_LRIS64K || \
-         (pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR64R || \
-         (pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR64ER || \
-         (pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR16ER))
 
 class StorageClassISO15693 : public IStorageClass
 {
@@ -233,4 +226,5 @@ protected:
     BYTE                m_Uid[PHHAL_MAX_UID_LENGTH];
     BYTE                m_UidLength;
     BOOL                m_IsLesserLeLc;
+    BOOL                m_IsProtocolExtensionFlagNeeded;
 };

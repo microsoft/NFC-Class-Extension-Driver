@@ -106,6 +106,7 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                                 pLibContext);
                     }
 
+                    /* Handle post-NCI1.x data fields */
                     if (!phNciNfc_IsVersion1x(pNciContext))
                     {
                         /*The Static HCI Connection exists after NFCC initialization without needing to be

@@ -145,7 +145,7 @@ static
 NFCSTATUS
 phFriNfc_ReadRemainingInMultiple (
     phFriNfc_NdefMap_t  *psNdefMap,
-    uint32_t            startBlock);
+    uint16_t            startBlock);
 
 static
 NFCSTATUS
@@ -287,7 +287,7 @@ phFriNfc_ISO15693_H_ProcessWriteNdef (
                                 (psNdefMap->ApduBuffer +
                                 psNdefMap->ApduBuffIndex), remaining_size);
 
-                psNdefMap->ApduBuffIndex = (psNdefMap->ApduBuffIndex + remaining_size);
+                psNdefMap->ApduBuffIndex += remaining_size;
                 write_flag = TRUE;
             }
             break;
@@ -338,7 +338,7 @@ phFriNfc_ISO15693_H_ReadWrite (
     NFCSTATUS                   result = NFCSTATUS_SUCCESS;
     uint8_t                     send_index = 0;
     uint8_t                     request_flags = 0;
-    phHal_sIso15693Info_t       *ps_iso_15693_info = 
+    phHal_sIso15693Info_t       *ps_iso_15693_info =
                                 &(psNdefMap->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info);
     phFriNfc_ISO15693Cont_t     *ps_iso_15693_con = &(psNdefMap->ISO15693Container);
 
@@ -363,17 +363,17 @@ phFriNfc_ISO15693_H_ReadWrite (
     {
         request_flags |= ISO15693_FLAG_PROTOEXT;
     }
-    else if (ps_iso_15693_con->support_extended_cmd == TRUE)
+    else if (ps_iso_15693_con->is_2byte_address_mode)
     {
         /* Force extended command */
         command |= ISO15693_EXTENDED_CMD_MASK;
     }
 
-    *(psNdefMap->SendRecvBuf + send_index) = (uint8_t)request_flags;
-    send_index = (uint8_t)(send_index + 1);
+    psNdefMap->SendRecvBuf[send_index] = request_flags;
+    send_index += 1;
 
-    *(psNdefMap->SendRecvBuf + send_index) = (uint8_t)command;
-    send_index = (uint8_t)(send_index + 1);
+    psNdefMap->SendRecvBuf[send_index] = command;
+    send_index += 1;
 
     if ((request_flags & ISO15693_FLAG_UID) != 0)
     {
@@ -384,17 +384,15 @@ phFriNfc_ISO15693_H_ReadWrite (
                     psNdefMap->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info.UidLength);
     }
 
-    *(psNdefMap->SendRecvBuf + send_index) = (uint8_t)
-                                psNdefMap->ISO15693Container.current_block;
-    send_index = (uint8_t)(send_index + 1);
+    psNdefMap->SendRecvBuf[send_index] = (uint8_t)psNdefMap->ISO15693Container.current_block;
+    send_index += 1;
     if ((request_flags & ISO15693_FLAG_PROTOEXT) != 0 ||
         (ISO15693_EXT_READ_MULTIPLE_COMMAND == command) ||
         (ISO15693_EXT_WRITE_COMMAND == command) ||
         (ISO15693_EXT_READ_COMMAND == command))
     {
-        *(psNdefMap->SendRecvBuf + send_index) = (uint8_t)
-                                ((psNdefMap->ISO15693Container.current_block & 0xFF00) >> 8);
-        send_index = (uint8_t)(send_index + 1);
+        psNdefMap->SendRecvBuf[send_index] = (uint8_t)(psNdefMap->ISO15693Container.current_block >> 8);
+        send_index += 1;
     }
 
     if ((ISO15693_WRITE_COMMAND == command) ||
@@ -404,7 +402,7 @@ phFriNfc_ISO15693_H_ReadWrite (
     {
         (void)phOsalNfc_MemCopy ((void *)(psNdefMap->SendRecvBuf + send_index),
                     (void *)p_data, data_length);
-        send_index = (uint8_t)(send_index + data_length);
+        send_index =+ data_length;
     }
 
     psNdefMap->SendLength = send_index;
@@ -454,34 +452,31 @@ phFriNfc_ISO15693_H_Inventory_Page_Read (
 
     request_flags |= ISO15693_FLAG_IPR;
 
-    *(psNdefMap->SendRecvBuf + send_index) = request_flags;
-    send_index = (uint8_t)(send_index + 1);
+    psNdefMap->SendRecvBuf[send_index] = request_flags;
+    send_index += 1;
 
-    *(psNdefMap->SendRecvBuf + send_index) = (uint8_t)command;
-    send_index = (uint8_t)(send_index + 1);
+    psNdefMap->SendRecvBuf[send_index] = command;
+    send_index += 1;
 
-    *(psNdefMap->SendRecvBuf + send_index) = ISO15693_MANUFACTURER_NXP;
-    send_index = (uint8_t)(send_index + 1);
+    psNdefMap->SendRecvBuf[send_index] = ISO15693_MANUFACTURER_NXP;
+    send_index += 1;
 
-    *(psNdefMap->SendRecvBuf + send_index) = 0x40;
-    send_index = (uint8_t)(send_index + 1);
+    psNdefMap->SendRecvBuf[send_index] = 0x40;
+    send_index += 1;
 
     if ((request_flags & ISO15693_FLAG_UID) != 0)
     {
         (void)phOsalNfc_MemCopy ((void *)(psNdefMap->SendRecvBuf + send_index),
             (void *)psNdefMap->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info.Uid,
             psNdefMap->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info.UidLength);
-        send_index = (uint8_t)(send_index +
-                    psNdefMap->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info.UidLength);
+        send_index += psNdefMap->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info.UidLength;
     }
 
-    *(psNdefMap->SendRecvBuf + send_index) = (uint8_t)
-                                page;
-    send_index = (uint8_t)(send_index + 1);
+    psNdefMap->SendRecvBuf[send_index] = (uint8_t)page;
+    send_index += 1;
 
-    *(psNdefMap->SendRecvBuf + send_index) = (uint8_t)
-                                numPages;
-    send_index = (uint8_t)(send_index + 1);
+    psNdefMap->SendRecvBuf[send_index] = (uint8_t)numPages;
+    send_index += 1;
 
     psNdefMap->SendLength = send_index;
 
@@ -661,9 +656,9 @@ phFriNfc_ISO15693_H_ProcessReadNdef (
         else
         {
             /* user data required is equal or greater than the data read */
-            if (remaining_data_size > (recv_length - byte_index))
+            if (remaining_data_size > recv_length - byte_index)
             {
-                remaining_data_size = (recv_length - byte_index);
+                remaining_data_size = recv_length - byte_index;
             }
         }
 
@@ -674,14 +669,12 @@ phFriNfc_ISO15693_H_ProcessReadNdef (
                         remaining_data_size);
 
         /* Update the read index */
-        psNdefMap->ApduBuffIndex = (uint16_t)(psNdefMap->ApduBuffIndex +
-                                    remaining_data_size);
+        psNdefMap->ApduBuffIndex += remaining_data_size;
 
     } /* else part of if (ps_iso_15693_con->store_length) */
 
     /* Remaining size is decremented */
-    ps_iso_15693_con->remaining_size_to_read = (ps_iso_15693_con->remaining_size_to_read -
-                                                remaining_data_size);
+    ps_iso_15693_con->remaining_size_to_read -= remaining_data_size;
 
     if ((psNdefMap->ApduBuffIndex != psNdefMap->ApduBufferSize)
         && (0 != ps_iso_15693_con->remaining_size_to_read))
@@ -722,7 +715,7 @@ phFriNfc_ISO15693_H_CheckCCBytesFirstBlock (
                             &(psNdefMap->ISO15693Container);
     uint8_t                 recv_index = 0;
     uint8_t                 *p_recv_buf = (psNdefMap->SendRecvBuf + 1);
-    phHal_sIso15693Info_t   *ps_iso_15693_info = 
+    phHal_sIso15693Info_t   *ps_iso_15693_info =
                             &(psNdefMap->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info);
     uint8_t                  tag_major_version = 0;
 
@@ -730,7 +723,7 @@ phFriNfc_ISO15693_H_CheckCCBytesFirstBlock (
     if (ISO15693_CC_MAGIC_BYTE_E1 == *p_recv_buf || ISO15693_CC_MAGIC_BYTE_E2 == *p_recv_buf)
     {
         /*  magic byte found*/
-        recv_index = (uint8_t)(recv_index + 1);
+        recv_index += 1;
         tag_major_version = (*(p_recv_buf + recv_index) & ISO15693_MAJOR_VERSION_MASK) >> 6;
         if (ISO15693_MAPPING_VERSION >= tag_major_version)
         {
@@ -758,20 +751,21 @@ phFriNfc_ISO15693_H_CheckCCBytesFirstBlock (
                     break;
                 }
             }
-            recv_index = (uint8_t)(recv_index + 1);
+            recv_index += 1;
 
             if (!result)
             {
                 /* Update MAX SIZE */
                 uint8_t cc2_value = *(p_recv_buf + recv_index);
-                recv_index = (uint8_t)(recv_index + 1);
-                ps_iso_15693_con->read_capabilities = (*(p_recv_buf + recv_index));
+                recv_index += 1;
+                ps_iso_15693_con->read_capabilities = p_recv_buf[recv_index];
 
                 if (cc2_value == 0)
                 {
                     /* CC is 8 bytes long */
                     /* MLEN is stored in byte 6 and 7 of the CC */
-                    ps_iso_15693_con->current_block = ps_iso_15693_con->current_block + 1;
+                    ps_iso_15693_con->current_block =+ 1;
+
                     /* State update - Read the next block for the T5T_Area */
                     psNdefMap->State = ISO15693_CHECK_NDEF_SECOND_BLOCK;
 
@@ -780,7 +774,7 @@ phFriNfc_ISO15693_H_CheckCCBytesFirstBlock (
                                                            NULL, 0);
                     return result;
                 }
-                ps_iso_15693_con->support_extended_cmd = FALSE;
+                ps_iso_15693_con->is_2byte_address_mode = FALSE;
 
                 uint16_t max_data_size = (uint16_t)(cc2_value * ISO15693_MULT_FACTOR);
 
@@ -798,7 +792,7 @@ phFriNfc_ISO15693_H_CheckCCBytesFirstBlock (
                             max_data_size = ISO15693_STM_LRIS64K_MAX_SIZE;
                         else if ((ps_iso_15693_info->Uid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR64R ||
                                  (ps_iso_15693_info->Uid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR64ER) /*M24LR64-X*/
-                            max_data_size = ISO15693_STM_M24LR64X_MAX_SIZE; 
+                            max_data_size = ISO15693_STM_M24LR64X_MAX_SIZE;
                         else if ((ps_iso_15693_info->Uid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR16ER) /*M24LR16E-R*/
                             max_data_size = ISO15693_STM_M24LR16ER_MAX_SIZE;
                     }
@@ -826,21 +820,12 @@ NFCSTATUS
 phFriNfc_ISO15693_H_CheckCCBytesSecondBlock(
     phFriNfc_NdefMap_t      *psNdefMap)
 {
-    NFCSTATUS               result = NFCSTATUS_SUCCESS;
-    phFriNfc_ISO15693Cont_t *ps_iso_15693_con = &(psNdefMap->ISO15693Container);
-    uint8_t                 recv_index = 0;
-    uint8_t                 *p_recv_buf = (psNdefMap->SendRecvBuf + 1);
+    psNdefMap->ISO15693Container.max_data_size = psNdefMap->SendRecvBuf[3] << 8;
+    psNdefMap->ISO15693Container.max_data_size |= psNdefMap->SendRecvBuf[4];
+    psNdefMap->ISO15693Container.max_data_size *= ISO15693_MULT_FACTOR;
+    psNdefMap->ISO15693Container.is_2byte_address_mode = TRUE;
 
-    /* Update MAX SIZE coded on 2 bytes */
-    recv_index = (uint8_t)(recv_index + 2);
-    uint16_t cc2_value = ((uint16_t)*(p_recv_buf + recv_index)) << 8;
-    recv_index = (uint8_t)(recv_index + 1);
-    cc2_value |= *(p_recv_buf + recv_index);
-    uint16_t max_data_size = (uint16_t)(cc2_value * ISO15693_MULT_FACTOR);
-    ps_iso_15693_con->max_data_size = max_data_size;
-    ps_iso_15693_con->support_extended_cmd = TRUE;
-
-    return result;
+    return NFCSTATUS_SUCCESS;
 }
 
 
@@ -1403,7 +1388,7 @@ phFriNfc_ISO15693_ChkNdef (
     psNdefMap->ISO15693Container.store_length = 0;
     psNdefMap->ISO15693Container.remaining_size_to_read = 0;
     psNdefMap->ISO15693Container.read_capabilities = 0;
-    psNdefMap->ISO15693Container.support_extended_cmd = FALSE;
+    psNdefMap->ISO15693Container.is_2byte_address_mode = FALSE;
 
     if (ISO15693_UIDBYTE_7_VALUE ==
             ps_iso_15693_info->Uid[ISO15693_UID_BYTE_7])
@@ -1625,66 +1610,73 @@ static
 NFCSTATUS
 phFriNfc_ReadRemainingInMultiple (
     phFriNfc_NdefMap_t  *psNdefMap,
-    uint32_t            startBlock)
+    uint16_t            startBlock)
 {
     NFCSTATUS result = NFCSTATUS_FAILED;
     phFriNfc_ISO15693Cont_t *ps_iso_15693_con = &(psNdefMap->ISO15693Container);
     phHal_sIso15693Info_t   *ps_iso_15693_info =
                             &(psNdefMap->psRemoteDevInfo->RemoteDevInfo.Iso15693_Info);
-    uint32_t remaining_size = ISO15693_GET_REMAINING_SIZE(ps_iso_15693_con->max_data_size,
+    uint16_t remaining_size = ISO15693_GET_REMAINING_SIZE(ps_iso_15693_con->max_data_size,
                                            startBlock, 0);
     // Check capabilities
-    if (ps_iso_15693_con->read_capabilities & ISO15693_CC_USE_MBR) {
+    if (ps_iso_15693_con->read_capabilities & ISO15693_CC_USE_MBR)
+    {
+        uint16_t nb_blocks = 0;
+
         // Multi-page read command
         uint8_t mbread[2];
-        uint8_t mbread_len = 1;
-        uint32_t nb_blocks = 0;
-        uint8_t command = ISO15693_READ_MULTIPLE_COMMAND;
+        uint8_t mbread_len = (ps_iso_15693_con->is_2byte_address_mode) ? 2 : 1;
+        uint8_t command = (ps_iso_15693_con->is_2byte_address_mode) ? ISO15693_EXT_READ_MULTIPLE_COMMAND
+                                                                    : ISO15693_READ_MULTIPLE_COMMAND;
 
         /* Compute how many block can be read at a time.
            If we are in NCI2.0 mode, MaxNFCVFrameSize is set and we need to split the packet to MaxNFCVFrameSize - 1.
            In case of M24LR tag, we can read 32 blocks maximum if they are all located in the same sector.
          */
-        nb_blocks = ((remaining_size / ISO15693_BYTES_PER_BLOCK) - 1);
+        nb_blocks = (remaining_size / ISO15693_BYTES_PER_BLOCK) - 1;
         if (ISO15693_PROTOEXT_FLAG_REQUIRED(ps_iso_15693_info->Uid))
         {
+            /* This tag supports 2-byte address mode regardless of
+             * 'ISO15693, Amd. 3' compliancy
+             */
             if ((nb_blocks + (ps_iso_15693_con->current_block % ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR)) >= ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR - 1)
             {
                 nb_blocks = ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR - (ps_iso_15693_con->current_block % ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR) - 1;
             }
+
             mbread_len = 2;
         }
-        else
+        else if (psNdefMap->MaxNFCVFrameSize > 0)
         {
-            nb_blocks = (remaining_size / ISO15693_BYTES_PER_BLOCK) - 1;
-            if (psNdefMap->MaxNFCVFrameSize > 0 &&
-                nb_blocks > ((psNdefMap->MaxNFCVFrameSize / ISO15693_BYTES_PER_BLOCK) - 1))
+            uint16_t maxNFCCSupportedFrameCount = (psNdefMap->MaxNFCVFrameSize / ISO15693_BYTES_PER_BLOCK) - 1;
+            if (nb_blocks > maxNFCCSupportedFrameCount)
             {
-                nb_blocks = (psNdefMap->MaxNFCVFrameSize / ISO15693_BYTES_PER_BLOCK) - 1;
-            }
-
-            if (ps_iso_15693_con->support_extended_cmd == TRUE)
-            {
-                mbread_len = 2;
-                command = ISO15693_EXT_READ_MULTIPLE_COMMAND;
+                nb_blocks = maxNFCCSupportedFrameCount;
             }
         }
 
         mbread[0] = (uint8_t)nb_blocks;
         mbread[1] = (uint8_t)(nb_blocks >> 8);
 
-        result = phFriNfc_ISO15693_H_ReadWrite(psNdefMap, command,
-                                               mbread, mbread_len);
-    } else if (ps_iso_15693_con->read_capabilities & ISO15693_CC_USE_IPR) {
+        result = phFriNfc_ISO15693_H_ReadWrite(psNdefMap,
+                                               command,
+                                               mbread,
+                                               mbread_len);
+    }
+    else if (ps_iso_15693_con->read_capabilities & ISO15693_CC_USE_IPR)
+    {
         uint32_t page = 0;
         uint32_t pagesToRead = (remaining_size / ISO15693_BYTES_PER_BLOCK / 4) - 1;
-        if ((remaining_size % (ISO15693_BYTES_PER_BLOCK * ISO15693_BLOCKS_PER_PAGE)) != 0) {
+        if ((remaining_size % (ISO15693_BYTES_PER_BLOCK * ISO15693_BLOCKS_PER_PAGE)) != 0)
+        {
             pagesToRead++;
         }
         result = phFriNfc_ISO15693_H_Inventory_Page_Read (psNdefMap, ICODE_INVENTORY_PAGEREAD_COMMAND,
                                                           page, pagesToRead);
         // Inventory
-    } else  {
+    }
+    else
+    {
         result = NFCSTATUS_FAILED;
     }
     return result;
