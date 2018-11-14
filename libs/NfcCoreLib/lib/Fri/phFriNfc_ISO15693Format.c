@@ -431,13 +431,11 @@ phFriNfc_ISO15693_H_ProcessSystemInfo(
         }
     }
 
+    ps_iso15693_info->max_data_size = detected_max_data_size;
     if (0 == detected_max_data_size)
     {
         result = PHNFCSTVAL(CID_FRI_NFC_NDEF_SMTCRDFMT, NFCSTATUS_INVALID_DEVICE_REQUEST);
-        goto Done;
     }
-
-    ps_iso15693_info->max_data_size = detected_max_data_size;
 
 Done:
     return result;
