@@ -1645,6 +1645,7 @@ phFriNfc_ReadRemainingInMultiple (
             }
 
             mbread_len = 2;
+            command = ISO15693_READ_MULTIPLE_COMMAND;
         }
         else if (psNdefMap->MaxNFCVFrameSize > 0)
         {
