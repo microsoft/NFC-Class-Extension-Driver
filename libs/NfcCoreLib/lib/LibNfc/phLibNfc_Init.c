@@ -106,30 +106,36 @@ static NFCSTATUS phLibNfc_InitCb(void* pContext,NFCSTATUS wStatus,void* pInfo)
                                 pLibContext);
                     }
 
-                    /*The Static HCI Connection exists after NFCC initialization without needing to be
-                    *created using the connection Control Messages defined in Section 4.4.2 and is never closed
-                    */
-                    if (pLibContext->pHciContext == NULL &&
-                        !phNciNfc_IsVersion1x(pNciContext) &&
-                        pNciContext->InitRspParams.DataHCIPktPayloadLen > 0)
+                    /* Handle post-NCI1.x data fields */
+                    if (!phNciNfc_IsVersion1x(pNciContext))
                     {
-                        pHciContext = (phHciNfc_HciContext_t*)phOsalNfc_GetMemory(sizeof(phHciNfc_HciContext_t));
-                        if (pHciContext == NULL)
+                        /*The Static HCI Connection exists after NFCC initialization without needing to be
+                        *created using the connection Control Messages defined in Section 4.4.2 and is never closed
+                        */
+                        if (pLibContext->pHciContext == NULL &&
+                            pNciContext->InitRspParams.DataHCIPktPayloadLen > 0)
                         {
-                            /* Failed to allocate memory for HCI packet */
-                            wStatus = NFCSTATUS_FAILED;
-                        }
-                        else
-                        {
-                            pLibContext->pHciContext = pHciContext;
-                            phOsalNfc_SetMemory(pHciContext, 0, sizeof(phHciNfc_HciContext_t));
-                            pHciContext->pNciContext = pNciContext;
-                            pHciContext->bLogDataMessages = !!pLibContext->Config.bLogNciDataMessages;
+                            pHciContext = (phHciNfc_HciContext_t*)phOsalNfc_GetMemory(sizeof(phHciNfc_HciContext_t));
+                            if (pHciContext == NULL)
+                            {
+                                /* Failed to allocate memory for HCI packet */
+                                wStatus = NFCSTATUS_FAILED;
+                            }
+                            else
+                            {
+                                pLibContext->pHciContext = pHciContext;
+                                phOsalNfc_SetMemory(pHciContext, 0, sizeof(phHciNfc_HciContext_t));
+                                pHciContext->pNciContext = pNciContext;
+                                pHciContext->bLogDataMessages = !!pLibContext->Config.bLogNciDataMessages;
 
-                            pLibContext->tSeInfo.bSeState[phLibNfc_SE_Index_HciNwk] = phLibNfc_SeStateInitializing;
-                            pLibContext->sSeContext.pActiveSeInfo = (pphLibNfc_SE_List_t)(&pLibContext->tSeInfo.tSeList[phLibNfc_SE_Index_HciNwk]);
-                            wStatus = phNciNfc_UpdateConnDestInfo(UNASSIGNED_DESTID, phNciNfc_e_NFCEE, NULL);
+                                pLibContext->tSeInfo.bSeState[phLibNfc_SE_Index_HciNwk] = phLibNfc_SeStateInitializing;
+                                pLibContext->sSeContext.pActiveSeInfo = (pphLibNfc_SE_List_t)(&pLibContext->tSeInfo.tSeList[phLibNfc_SE_Index_HciNwk]);
+                                wStatus = phNciNfc_UpdateConnDestInfo(UNASSIGNED_DESTID, phNciNfc_e_NFCEE, NULL);
+                            }
                         }
+
+                        /* MaxNFCVFrame size - 4 bytes (1 byte RES_FLAG + 1 byte Parameter + 2 bytes CRC */
+                        pLibContext->ndef_cntx.psNdefMap->MaxNFCVFrameSize = pNciContext->InitRspParams.MaxNFCVFrameSize - 4;
                     }
                 }else
                 {

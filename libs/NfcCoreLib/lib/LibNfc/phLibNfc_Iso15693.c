@@ -12,6 +12,13 @@
 /** Min length of Get system info response */
 #define PHLIBNFC_GETSYSINFO_RESP_MINLEN         (0x02)
 
+
+/* This function shall send Get system information command to ISO15693 tag */
+static NFCSTATUS phLibNfc_GetSysInfoCmd(void *pContext, NFCSTATUS status, void *pInfo);
+
+/* This function shall Process system information received from ISO15693 tag */
+static NFCSTATUS phLibNfc_GetSysInfoResp(void *pcontext, NFCSTATUS status, void *pInfo);
+
 static NFCSTATUS phLibNfc_GetSysInfoComplete(void *pContext,NFCSTATUS status,void *pInfo);
 
 phLibNfc_Sequence_t gphLibNfc_Iso15693GetSysInfoSeq[] = {
@@ -21,7 +28,7 @@ phLibNfc_Sequence_t gphLibNfc_Iso15693GetSysInfoSeq[] = {
 
 static void phLibNfc_Iso15693Sequence(void* pContext,NFCSTATUS status,pphNciNfc_Data_t pInfo);
 
-NFCSTATUS phLibNfc_GetSysInfoCmd(void *pContext,NFCSTATUS status,void *pInfo)
+static NFCSTATUS phLibNfc_GetSysInfoCmd(void *pContext,NFCSTATUS status,void *pInfo)
 {
     NFCSTATUS wStatus = status;
     pphLibNfc_Context_t pCtx = (pphLibNfc_Context_t ) pContext;
@@ -70,7 +77,7 @@ NFCSTATUS phLibNfc_GetSysInfoCmd(void *pContext,NFCSTATUS status,void *pInfo)
     return wStatus;
 }
 
-NFCSTATUS phLibNfc_GetSysInfoResp(void *pContext,NFCSTATUS status,void *pInfo)
+static NFCSTATUS phLibNfc_GetSysInfoResp(void *pContext,NFCSTATUS status,void *pInfo)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     pphLibNfc_LibContext_t pLibContext  = (pphLibNfc_LibContext_t)pContext;

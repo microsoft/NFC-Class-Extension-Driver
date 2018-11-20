@@ -129,6 +129,8 @@ typedef struct phFriNfc_ISO15693_AddInfo
     uint8_t         format_seq;
     /* Maximum data size in the card */
     uint16_t        max_data_size;
+    /* Supported command list  */
+    uint32_t        supported_command_list;
 }phFriNfc_ISO15693_AddInfo_t;
 
 typedef struct phFriNfc_sNdefSmtCrdFmt_AddInfo

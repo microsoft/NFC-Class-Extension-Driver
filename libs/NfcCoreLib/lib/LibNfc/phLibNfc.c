@@ -1896,8 +1896,8 @@ static NFCSTATUS phLibNfc_InternalPresenceCheck(phLibNfc_Handle     hRemoteDevic
                                            0x05   /*Byte1 of 2 byte BlockList => 0x05 (BlockNumber)*/
                                           };
     static uint8_t bFelicaRespBuff[27];
-    static uint8_t bCommonCmdBuff[3] = {0};
-    static uint8_t bCommonRespBuff[68]; /* Max 528 bits can be received */
+    static uint8_t bType5CmdBuff[4] = {0};
+    static uint8_t bType5RespBuff[68]; /* Max 528 bits can be received */
     uint8_t bIndex=0;
     uint8_t bIndex1=0;
     phLibNfc_LibContext_t* pLibContext = phLibNfc_GetContext();
@@ -2039,17 +2039,22 @@ static NFCSTATUS phLibNfc_InternalPresenceCheck(phLibNfc_Handle     hRemoteDevic
         else if(phNfc_eISO15693_PICC == pLibNfc_RemoteDevInfo->RemDevType)
         {
             /* Sending Ack command */
-            bCommonCmdBuff[0] = 0x02;
-            bCommonCmdBuff[1] = 0x20;
-            bCommonCmdBuff[2] = 0x00;
+            bType5CmdBuff[bIndex++] = ISO15693_FLAG_HIGH_DATARATE;
+            bType5CmdBuff[bIndex++] = ISO15693_READ_COMMAND;
+            bType5CmdBuff[bIndex++] = 0x00; // Block number, 1st byte
+            if (ISO15693_PROTOEXT_FLAG_REQUIRED(pLibNfc_RemoteDevInfo->RemoteDevInfo.Iso15693_Info.Uid))
+            {
+                bType5CmdBuff[0] |= ISO15693_FLAG_PROTOEXT;
+                bType5CmdBuff[bIndex++] = 0x00; // Block number, 2nd byte
+            }
 
             phOsalNfc_SetMemory(&TransceiveInfo, 0x00, sizeof(phLibNfc_sTransceiveInfo_t));
             TransceiveInfo.cmd.Iso15693Cmd = phNfc_eIso15693_Raw;
 
-            TransceiveInfo.sSendData.buffer = bCommonCmdBuff;
-            TransceiveInfo.sSendData.length = sizeof(bCommonCmdBuff);
-            TransceiveInfo.sRecvData.buffer = bCommonRespBuff;
-            TransceiveInfo.sRecvData.length = sizeof(bCommonRespBuff);
+            TransceiveInfo.sSendData.buffer = bType5CmdBuff;
+            TransceiveInfo.sSendData.length = bIndex;
+            TransceiveInfo.sRecvData.buffer = bType5RespBuff;
+            TransceiveInfo.sRecvData.length = sizeof(bType5RespBuff);
             wStatus =phLibNfc_InternalTransceive(hRemoteDevice,
                                                 &TransceiveInfo,
                                                 &phLibNfc_ChkPresence_Trcv_Cb,

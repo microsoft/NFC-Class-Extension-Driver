@@ -13,8 +13,11 @@
 
 /* Command identifiers */
 #define ISO15693_READ_COMMAND               0x20U
-#define ISO15693_READ_MULTIPLE_COMMAND      0x23U
 #define ISO15693_WRITE_COMMAND              0x21U
+#define ISO15693_READ_MULTIPLE_COMMAND      0x23U
+#define ISO15693_EXT_READ_COMMAND           0x30U
+#define ISO15693_EXT_WRITE_COMMAND          0x31U
+#define ISO15693_EXT_READ_MULTIPLE_COMMAND  0x33U
 
 #define ICODE_INVENTORY_PAGEREAD_COMMAND    0xB0U
 
@@ -23,6 +26,13 @@
 #define ISO15693_FLAG_IPR                   0x04U
 #define ISO15693_FLAG_PROTOEXT              0x08U
 #define ISO15693_FLAG_UID                   0x20U
+
+/* CC indicating tag is capable of multi-block read */
+#define ISO15693_CC_USE_MBR                 0x01U
+/* CC indicating tag is capable of inventory page read */
+#define ISO15693_CC_USE_IPR                 0x02U
+/* CC indicating tag memory size exceeds the CC2 field */
+#define ISO15693_CC_MEM_EXCEEDED            0x04U
 
 /* UID bytes to differentiate ICODE cards */
 #define ISO15693_UID_BYTE_4                 0x04U
@@ -59,6 +69,10 @@
 #define ISO15693_UIDBYTE_5_STM_M24LR64ER    0x5C
 #define ISO15693_UIDBYTE_5_STM_M24LR16ER    0x4C
 
+#define ISO15693_STM_LRIS64K_MAX_SIZE       8192
+#define ISO15693_STM_M24LR16ER_MAX_SIZE     2048
+#define ISO15693_STM_M24LR64X_MAX_SIZE      8192
+
 /* Get the NDEF TLV VALUE field block and byte address */
 #define ISO15693_GET_VALUE_FIELD_BLOCK_NO(blk, byte_addr, ndef_size) \
     (((byte_addr + 1 + ((ndef_size >= ISO15693_THREE_BYTE_LENGTH_ID) ? 3 : 1)) > \
@@ -75,6 +89,8 @@
          (pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR64R || \
          (pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR64ER || \
          (pUid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK) == ISO15693_UIDBYTE_5_STM_M24LR16ER))
+
+#define ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR 0x20U
 
 NFCSTATUS
 phFriNfc_ISO15693_RdNdef (

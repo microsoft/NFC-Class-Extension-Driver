@@ -43,7 +43,20 @@ StorageClassISO15693::UpdateUniqueID(
     m_UidLength = uidLength;
     RtlCopyMemory(m_Uid, Uid, m_UidLength);
     TRACE_LINE(LEVEL_INFO, "m_UidLength=%d", m_UidLength);
-    
+
+    if (ISO15693_MANUFACTURER_STM == m_Uid[ISO15693_UID_BYTE_6])
+    {
+        uint8_t maskedUidByte5 = m_Uid[ISO15693_UID_BYTE_5] & ISO15693_UIDBYTE_5_STM_MASK;
+        m_IsProtocolExtensionFlagNeeded = (maskedUidByte5 == ISO15693_UIDBYTE_5_STM_LRIS64K ||
+                                           maskedUidByte5 == ISO15693_UIDBYTE_5_STM_M24LR64R ||
+                                           maskedUidByte5 == ISO15693_UIDBYTE_5_STM_M24LR64ER ||
+                                           maskedUidByte5 == ISO15693_UIDBYTE_5_STM_M24LR16ER);
+    }
+    else
+    {
+        m_IsProtocolExtensionFlagNeeded = FALSE;
+    }
+
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
@@ -226,12 +239,8 @@ StorageClassISO15693::ValidateUpdateBinaryParameters(
     ApduResult retResult = RESULT_SUCCESS;
 
     UNREFERENCED_PARAMETER(p1);
+    UNREFERENCED_PARAMETER(p2);
 
-    if (p2 != 0x00) {
-        retResult = RESULT_WRONG_P1P2;
-        goto Done;
-    }
-    
     if (lc != ISO15693_BYTES_PER_BLOCK) {
         retResult = RESULT_WRONG_LENGTH;
         goto Done;
@@ -257,10 +266,23 @@ StorageClassISO15693::PrepareTransceiveForUpdate(
         goto Done;
     }
 
-    m_CommandBuffer[size++] = 0; // Request Flags
-    m_CommandBuffer[size++] = ISO15693_WRITE_COMMAND;
-    m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
-
+    if (m_IsProtocolExtensionFlagNeeded) {
+        m_CommandBuffer[size++] = ISO15693_FLAG_PROTOEXT; // Request Flags
+        m_CommandBuffer[size++] = ISO15693_WRITE_COMMAND;
+        m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
+        m_CommandBuffer[size++] = pPcscCmdApdu->P2;
+    }
+    else if (pPcscCmdApdu->P2 != 0) {
+        m_CommandBuffer[size++] = 0; // Request Flags
+        m_CommandBuffer[size++] = ISO15693_EXT_WRITE_COMMAND;
+        m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
+        m_CommandBuffer[size++] = pPcscCmdApdu->P2;
+    }
+    else {
+        m_CommandBuffer[size++] = 0; // Request Flags
+        m_CommandBuffer[size++] = ISO15693_WRITE_COMMAND;
+        m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
+    }
     RtlCopyMemory(&m_CommandBuffer[size], pPcscCmdApdu->DataIn, ISO15693_BYTES_PER_BLOCK);
     size += ISO15693_BYTES_PER_BLOCK;
 
@@ -337,11 +359,7 @@ StorageClassISO15693::ValidateReadBinaryParamters(
     ApduResult retResult = RESULT_SUCCESS;
 
     UNREFERENCED_PARAMETER(p1);
-
-    if (p2 != 0x00) {
-        retResult = RESULT_WRONG_P1P2;
-        goto Done;
-    }
+    UNREFERENCED_PARAMETER(p2);
 
     if (le != ISO15693_BYTES_PER_BLOCK) {
         retResult = RESULT_WRONG_LENGTH;
@@ -368,10 +386,23 @@ StorageClassISO15693::PrepareTransceiveForRead(
     UNREFERENCED_PARAMETER(p2);
 
     if (le == ISO15693_BYTES_PER_BLOCK) {
-        m_CommandBuffer[size++] = 0; // Request Flags
-        m_CommandBuffer[size++] = ISO15693_READ_COMMAND;
-        m_CommandBuffer[size++] = p1;
-
+        if (m_IsProtocolExtensionFlagNeeded) {
+            m_CommandBuffer[size++] = ISO15693_FLAG_PROTOEXT; // Request Flags
+            m_CommandBuffer[size++] = ISO15693_READ_COMMAND;
+            m_CommandBuffer[size++] = p1;
+            m_CommandBuffer[size++] = p2;
+        }
+        else if (p2 != 0) {
+            m_CommandBuffer[size++] = 0; // Request Flags
+            m_CommandBuffer[size++] = ISO15693_EXT_READ_COMMAND;
+            m_CommandBuffer[size++] = p1;
+            m_CommandBuffer[size++] = p2;
+        }
+        else {
+            m_CommandBuffer[size++] = 0; // Request Flags
+            m_CommandBuffer[size++] = ISO15693_READ_COMMAND;
+            m_CommandBuffer[size++] = p1;
+        }
         m_CmdBufferSize = size;
     }
     else {
