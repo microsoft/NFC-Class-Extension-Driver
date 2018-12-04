@@ -1644,7 +1644,7 @@ phFriNfc_ReadRemainingInMultiple (
                 nb_blocks = ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR - (ps_iso_15693_con->current_block % ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR) - 1;
             }
 
-            mbread_len = 2;
+            mbread_len = 1;
             command = ISO15693_READ_MULTIPLE_COMMAND;
         }
         else if (psNdefMap->MaxNFCVFrameSize > 0)
