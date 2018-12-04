@@ -402,7 +402,7 @@ phFriNfc_ISO15693_H_ReadWrite (
     {
         (void)phOsalNfc_MemCopy ((void *)(psNdefMap->SendRecvBuf + send_index),
                     (void *)p_data, data_length);
-        send_index =+ data_length;
+        send_index += data_length;
     }
 
     psNdefMap->SendLength = send_index;
@@ -764,7 +764,7 @@ phFriNfc_ISO15693_H_CheckCCBytesFirstBlock (
                 {
                     /* CC is 8 bytes long */
                     /* MLEN is stored in byte 6 and 7 of the CC */
-                    ps_iso_15693_con->current_block =+ 1;
+                    ps_iso_15693_con->current_block += 1;
 
                     /* State update - Read the next block for the T5T_Area */
                     psNdefMap->State = ISO15693_CHECK_NDEF_SECOND_BLOCK;
