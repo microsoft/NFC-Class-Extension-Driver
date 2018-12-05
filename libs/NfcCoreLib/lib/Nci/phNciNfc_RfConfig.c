@@ -699,12 +699,6 @@ phNciNfc_BuildSetLstnRtngCmdPayload(uint8_t                *pBuffer,
             {
                 offset += phNciNfc_WriteRoutingEntryToPayload(&pBuffer[offset], &pRtngConfig[entryIndex]);
             }
-            else
-            {
-                /* Should never enter here since all input parameters are already validated */
-                PH_LOG_NCI_WARN_STR("Unknown routing type");
-                break;
-            }
         }
     }
 
