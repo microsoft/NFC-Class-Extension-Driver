@@ -273,7 +273,9 @@ typedef enum phNciNfc_RfTechnologies
 
 /**
  * \ingroup grp_nci_nfc
- * \brief NFCEE Mode Info contains Nfcee related modes identifier.
+ * \brief NFCEE mode.
+ *
+ * NFC Controller Interface (NCI), Version 2.0, Section 10.3, NFCEE_MODE_SET_CMD
  */
 typedef enum phNciNfc_NfceeModes
 {
@@ -281,11 +283,22 @@ typedef enum phNciNfc_NfceeModes
    PH_NCINFC_EXT_NFCEEMODE_DISABLE = 0x00,
   /** NFCEE  disable identifier*/
    PH_NCINFC_EXT_NFCEEMODE_ENABLE = 0x01,
-   /** NFCEE  removed identifier*/
-   PH_NCINFC_NFCEE_REMOVED = 0x02,
    /** Future or unknown identifier */
-   PH_NCINFC_NFCEEDISC_UNKNOWN
+   PH_NCINFC_NFCEEDISC_UNKNOWN,
 }phNciNfc_NfceeModes_t;
+
+/**
+ * \ingroup grp_nci_nfc
+ * \brief NFCEE status.
+ *
+ * NFC Controller Interface (NCI), Version 2.0, Section 10.2, NFCEE_DISCOVER_NTF
+ */
+typedef enum phNciNfc_NfceeStatus
+{
+    phNciNfc_NfceeStatus_Enabled = 0x00,
+    phNciNfc_NfceeStatus_Disabled = 0x01,
+    phNciNfc_NfceeStatus_Unresposive = 0x02,
+} phNciNfc_NfceeStatus_t;
 
 /**
 * \ingroup grp_nci_nfc

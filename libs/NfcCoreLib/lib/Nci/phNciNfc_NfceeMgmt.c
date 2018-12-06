@@ -565,14 +565,14 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
         /* Validate NFCEE Id & Status*/
         if( (0 == pBuff[bIndex]) ||\
             (PH_NCINFC_NFCEE_INVALIDID == pBuff[bIndex]) ||\
-            (pBuff[bIndex + 1] > PH_NCINFC_NFCEE_REMOVED) )
+            (pBuff[bIndex + 1] > phNciNfc_NfceeStatus_Unresposive) )
         {
             wStatus = NFCSTATUS_INVALID_PARAMETER;
         }
         else
         {
             /* Check NFCEE status to remove Id details from the list */
-            if(PH_NCINFC_NFCEE_REMOVED != pBuff[bIndex + 1])
+            if(phNciNfc_NfceeStatus_Unresposive != pBuff[bIndex + 1])
             {
                 bNfceeStatus = TRUE;
                 /* Check whether NFCEE id is already available */
@@ -605,14 +605,14 @@ static NFCSTATUS phNciNfc_NfceeDiscNtfHandler(void *pContext,
         }
         /* Store Notification info if NFCEE is connected */
         if( (NFCSTATUS_SUCCESS == wStatus) &&\
-            (pBuff[bIndex + 1] != PH_NCINFC_NFCEE_REMOVED) )
+            (pBuff[bIndex + 1] != phNciNfc_NfceeStatus_Unresposive) )
         {
             /* Store the RF disc ID[which indicates the NFCEE is Activated] to INVALID */
             pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.bRfDiscId = PH_NCINFC_NFCEE_NOT_ACTIVATED;
             /* Store NFCEE ID & status */
             pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.bNfceeID = pBuff[bIndex++];
 
-            if(0x00 == pBuff[bIndex])
+            if(phNciNfc_NfceeStatus_Enabled == pBuff[bIndex])
             {
                 pCtx->tNfceeContext.pNfceeDevInfo[bDevIndex].tDevInfo.eNfceeStatus = PH_NCINFC_EXT_NFCEEMODE_ENABLE;
             }
