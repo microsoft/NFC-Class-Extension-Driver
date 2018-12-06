@@ -9,18 +9,21 @@
 #include "NciControlPacket.h"
 #include "NciSimConnector.h"
 
+#include "Tests\TestLogging.h"
+
 static constexpr DWORD IO_TIMEOUT_MILLISECONDS = 5'000;
 
 NciSimConnector::NciSimConnector()
 {
     // Find the NciSim device interface.
-    std::vector<std::wstring> interfaceList = DeviceQuery::FindDriverInterfaces(GUID_DEVINTERFACE_NCI_SIMULATOR);
-    VERIFY_ARE_NOT_EQUAL(static_cast<size_t>(0), interfaceList.size());
+    std::vector<std::wstring> interfaceList = DeviceQuery::FindDriverInterfaces(GUID_DEVINTERFACE_NCI_SIMULATOR, /*timeout(ms)*/ 1'000);
+    VERIFY_ARE_EQUAL(1u, interfaceList.size());
 
     const std::wstring& interfaceId = interfaceList[0];
     _DeviceId = DeviceQuery::GetDeviceIdOfInterface(interfaceId.c_str());
 
     // Open handle to driver.
+    LOG_COMMENT(L"Test Device: %s", interfaceId.c_str());
     _DriverHandle.Reset(CreateFile(
         interfaceId.c_str(),
         GENERIC_READ,

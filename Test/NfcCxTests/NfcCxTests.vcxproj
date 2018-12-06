@@ -98,6 +98,7 @@
     <ClInclude Include="Simulation\SimSequenceStep.h" />
     <ClInclude Include="Simulation\SimSequenceView.h" />
     <ClInclude Include="Simulation\TagPayloads.h" />
+    <ClInclude Include="Simulation\TestDeviceInstall.h" />
     <ClInclude Include="Simulation\VerifyHelpers.h" />
     <ClInclude Include="Tests\Module.h" />
     <ClInclude Include="Tests\Precomp.h" />
@@ -120,6 +121,7 @@
     <ClCompile Include="Simulation\SimSequenceStep.cpp" />
     <ClCompile Include="Simulation\SimSequenceView.cpp" />
     <ClCompile Include="Simulation\TagPayloads.cpp" />
+    <ClCompile Include="Simulation\TestDeviceInstall.cpp" />
     <ClCompile Include="Simulation\VerifyHelpers.cpp" />
     <ClCompile Include="Tests\AirplaneModeTests.cpp" />
     <ClCompile Include="Tests\InitTests.cpp" />

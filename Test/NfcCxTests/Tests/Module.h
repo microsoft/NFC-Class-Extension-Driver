@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <optional>
+
+#include <Simulation\TestDeviceInstall.h>
+
 static PCWSTR ProximityServicesNames[] = 
 {
     L"ProximitySvc",
@@ -36,6 +40,7 @@ private:
         _In_ DWORD startType);
     bool StopService(_In_ SC_HANDLE serviceHandle);
 
-    SC_HANDLE _SCManager;
+    SC_HANDLE _SCManager = nullptr;
     ServiceState _ServiceStateCache[ProximityServicesCount];
+    std::optional<TestDeviceInstall> _TestDeviceInstall;
 };

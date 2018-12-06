@@ -5,7 +5,6 @@
 #include "Precomp.h"
 
 #include "TestLogging.h"
-
 #include "Module.h"
 
 BEGIN_MODULE()
@@ -32,11 +31,15 @@ ModuleCleanup()
 bool
 Module::Setup()
 {
+    // Stop system services.
     if (!StopAndDisableServices())
     {
         ResumeServices();
         return false;
     }
+
+    // Install the test device.
+    _TestDeviceInstall.emplace();
 
     return true;
 }
@@ -44,6 +47,10 @@ Module::Setup()
 bool
 Module::Cleanup()
 {
+    // Uninstall test device.
+    _TestDeviceInstall = std::nullopt;
+
+    // Resume system services.
     ResumeServices();
     return true;
 }

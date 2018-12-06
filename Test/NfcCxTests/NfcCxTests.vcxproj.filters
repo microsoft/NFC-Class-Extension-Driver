@@ -84,6 +84,9 @@
     <ClInclude Include="Simulation\SimSequenceView.h">
       <Filter>Simulation</Filter>
     </ClInclude>
+    <ClInclude Include="Simulation\TestDeviceInstall.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IOHelpers\DeviceQuery.cpp">
@@ -150,6 +153,9 @@
       <Filter>IOHelpers</Filter>
     </ClCompile>
     <ClCompile Include="Simulation\SimSequenceView.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\TestDeviceInstall.cpp">
       <Filter>Simulation</Filter>
     </ClCompile>
   </ItemGroup>

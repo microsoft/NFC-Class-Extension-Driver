@@ -198,7 +198,7 @@ DeviceQuery::CreateInterfaceQueryString(
 
     queryString += L"System.Devices.InterfaceClassGuid:=\"";
     queryString += GuidToString(interfaceTypeId);
-    queryString += L"\"";
+    queryString += L"\" AND System.Devices.InterfaceEnabled:=System.StructuredQueryType.Boolean#True";
 
     return std::move(queryString);
 }
