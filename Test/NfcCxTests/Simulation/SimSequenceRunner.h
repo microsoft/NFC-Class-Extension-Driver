@@ -12,6 +12,10 @@
 class SimSequenceRunner
 {
 public:
+    static void VerifyStep(
+        const SimSequenceStep& expectedStep,
+        NciSimCallbackView message);
+
     static void Run(
         _In_ NciSimConnector& simConnector,
         _In_ const SimSequenceStep& step);
@@ -45,4 +49,7 @@ public:
     {
         Run(simConnector, sequenceList, ArraySize);
     }
+
+private:
+    static void LogExpectedStep(const SimSequenceStep& expectedStep);
 };

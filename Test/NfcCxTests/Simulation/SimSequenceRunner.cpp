@@ -9,6 +9,71 @@
 #include "VerifyHelpers.h"
 
 void
+SimSequenceRunner::VerifyStep(
+    const SimSequenceStep& expectedStep,
+    NciSimCallbackView message)
+{
+    // Log the actual message and ensure it matches what is expected.
+    switch (message.Header->Type)
+    {
+    case NciSimCallbackType::NciWrite:
+    {
+        DWORD nciPacketSize = message.Length - NciSimCallbackNciWriteMinSize;
+        auto nciWrite = static_cast<const NciSimCallbackNciWrite*>(message.Header);
+
+        if (message.Header->Type != NciSimCallbackType::NciWrite ||
+            !AreArraysEqual(expectedStep.NciPacketData.PacketBytes(), expectedStep.NciPacketData.PacketBytesLength(), nciWrite->NciMessage, nciPacketSize))
+        {
+            LogExpectedStep(expectedStep);
+            LogByteBuffer(L"Actual NCI packet  ", nciWrite->NciMessage, nciPacketSize);
+        }
+
+        break;
+    }
+    case NciSimCallbackType::SequenceHandler:
+    {
+        auto params = static_cast<const NciSimCallbackSequenceHandler*>(message.Header);
+
+        if (message.Header->Type != NciSimCallbackType::SequenceHandler ||
+            expectedStep.SequenceHandlerType != params->Sequence)
+        {
+            LogExpectedStep(expectedStep);
+            LOG_COMMENT(L"Actual sequence handler:   %d", int(params->Sequence));
+        }
+
+        break;
+    }
+    default:
+        LogExpectedStep(expectedStep);
+        VERIFY_FAIL_MSG(L"Unknown driver message type: %d", message.Header->Type);
+        break;
+    }
+
+    LOG_COMMENT(L"Step and driver message match.");
+}
+
+void
+SimSequenceRunner::LogExpectedStep(const SimSequenceStep& expectedStep)
+{
+    switch (expectedStep.Type)
+    {
+    case SimSequenceStepType::NciWrite:
+    {
+        LogByteBuffer(L"Expected NCI packet", expectedStep.NciPacketData.PacketBytes(), expectedStep.NciPacketData.PacketBytesLength());
+        break;
+    }
+    case SimSequenceStepType::SequenceHandler:
+    {
+        LOG_COMMENT(L"Expected sequence handler: %d", int(expectedStep.SequenceHandlerType));
+        break;
+    }
+    default:
+        LOG_ERROR(L"Step (%d) doesn't have an equivalent NciSimCallbackType.", int(expectedStep.Type));
+        break;
+    }
+}
+
+void
 SimSequenceRunner::Run(
     _In_ NciSimConnector& simConnector,
     _In_ const SimSequenceStep& step)
@@ -20,7 +85,7 @@ SimSequenceRunner::Run(
     case SimSequenceStepType::NciWrite:
     {
         NciSimCallbackView message = simConnector.ReceiveCallback();
-        VerifyNciPacket(step.NciPacketData, message);
+        VerifyStep(step, message);
 
         simConnector.SendNciWriteCompleted();
 
@@ -28,14 +93,13 @@ SimSequenceRunner::Run(
     }
     case SimSequenceStepType::NciRead:
     {
-        LogByteBuffer(L"Packet", step.NciPacketData.PacketBytes(), step.NciPacketData.PacketBytesLength());
         simConnector.SendNciRead(step.NciPacketData);
         break;
     }
     case SimSequenceStepType::SequenceHandler:
     {
         NciSimCallbackView message = simConnector.ReceiveCallback();
-        VerifySequenceHandler(step.SequenceHandlerType, message);
+        VerifyStep(step, message);
 
         simConnector.SendSequenceCompleted(step.SequenceHandlerStatus, step.SequenceHandlerFlags);
         break;

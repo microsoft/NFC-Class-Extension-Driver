@@ -5,6 +5,8 @@
 #pragma once
 
 #define LOG_COMMENT(fmt, ...) ::WEX::Logging::Log::Comment(::WEX::Common::String().Format(fmt, __VA_ARGS__))
+#define LOG_ERROR(fmt, ...) ::WEX::Logging::Log::Error(::WEX::Common::String().Format(fmt, __VA_ARGS__))
+#define VERIFY_FAIL_MSG(fmt, ...) VERIFY_FAIL(::WEX::Common::String().Format(fmt, __VA_ARGS__))
 
 void LogByteBuffer(
     _In_ PCWSTR bufferName,

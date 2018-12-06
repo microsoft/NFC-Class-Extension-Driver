@@ -30,7 +30,7 @@ NciSimConnector::NciSimConnector()
         OPEN_EXISTING,
         FILE_ATTRIBUTE_NORMAL,
         nullptr));
-    VERIFY_WIN32_BOOL_SUCCEEDED(INVALID_HANDLE_VALUE != _DriverHandle.Get());
+    ThrowIfWin32BoolFailed(INVALID_HANDLE_VALUE != _DriverHandle.Get());
 }
 
 const std::wstring&
@@ -43,28 +43,28 @@ void
 NciSimConnector::AddD0PowerReference()
 {
     DWORD bytesReturned;
-    VERIFY_WIN32_BOOL_SUCCEEDED(DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_ADD_D0_POWER_REFERENCE, nullptr, 0, nullptr, 0, &bytesReturned, nullptr));
+    ThrowIfWin32BoolFailed(DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_ADD_D0_POWER_REFERENCE, nullptr, 0, nullptr, 0, &bytesReturned, nullptr));
 }
 
 void
 NciSimConnector::RemoveD0PowerReference()
 {
     DWORD bytesReturned;
-    VERIFY_WIN32_BOOL_SUCCEEDED(DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_REMOVE_D0_POWER_REFERENCE, nullptr, 0, nullptr, 0, &bytesReturned, nullptr));
+    ThrowIfWin32BoolFailed(DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_REMOVE_D0_POWER_REFERENCE, nullptr, 0, nullptr, 0, &bytesReturned, nullptr));
 }
 
 void
 NciSimConnector::SendNciWriteCompleted()
 {
     DWORD bytesReturned;
-    VERIFY_WIN32_BOOL_SUCCEEDED(DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_NCI_WRITE_COMPLETE, nullptr, 0, nullptr, 0, &bytesReturned, nullptr));
+    ThrowIfWin32BoolFailed(DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_NCI_WRITE_COMPLETE, nullptr, 0, nullptr, 0, &bytesReturned, nullptr));
 }
 
 void
 NciSimConnector::SendNciRead(const NciPacket& packet)
 {
     DWORD bytesReturned;
-    VERIFY_WIN32_BOOL_SUCCEEDED(DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_NCI_READ, const_cast<void*>(packet.PacketBytes()), packet.PacketBytesLength(), nullptr, 0, &bytesReturned, nullptr));
+    ThrowIfWin32BoolFailed(DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_NCI_READ, const_cast<void*>(packet.PacketBytes()), packet.PacketBytesLength(), nullptr, 0, &bytesReturned, nullptr));
 }
 
 void
@@ -73,7 +73,7 @@ NciSimConnector::SendSequenceCompleted(NTSTATUS status, ULONG flags)
     NciSimSequenceHandlerComplete params = { status, flags };
 
     DWORD bytesReturned;
-    VERIFY_WIN32_BOOL_SUCCEEDED(DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_SEQUENCE_HANDLER_COMPLETE, &params, sizeof(params), nullptr, 0, &bytesReturned, nullptr));
+    ThrowIfWin32BoolFailed(DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_SEQUENCE_HANDLER_COMPLETE, &params, sizeof(params), nullptr, 0, &bytesReturned, nullptr));
 }
 
 NciSimCallbackView
@@ -98,7 +98,25 @@ NciSimConnector::ReceiveCallback()
             continue;
         }
 
-        VERIFY_WIN32_BOOL_SUCCEEDED(ioSucceeded);
+        ThrowIfWin32BoolFailed(ioSucceeded);
         return { bytesReturned, reinterpret_cast<NciSimCallbackHeader*>(_CallbackDataBuffer.data()) };
+    }
+}
+
+void
+NciSimConnector::ThrowIfWin32BoolFailed(BOOL succeeded)
+{
+    if (!succeeded)
+    {
+        throw std::system_error(GetLastError(), std::system_category());
+    }
+}
+
+void
+NciSimConnector::ThrowWin32Failed(DWORD error)
+{
+    if (error != ERROR_SUCCESS)
+    {
+        throw std::system_error(error, std::system_category());
     }
 }

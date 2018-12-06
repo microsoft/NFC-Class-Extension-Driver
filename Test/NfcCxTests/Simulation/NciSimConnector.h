@@ -35,6 +35,9 @@ public:
     NciSimCallbackView ReceiveCallback();
 
 private:
+    static void ThrowIfWin32BoolFailed(BOOL succeeded);
+    static void ThrowWin32Failed(DWORD error);
+
     UniqueHandle _DriverHandle;
     std::vector<BYTE> _CallbackDataBuffer;
     std::wstring _DeviceId;

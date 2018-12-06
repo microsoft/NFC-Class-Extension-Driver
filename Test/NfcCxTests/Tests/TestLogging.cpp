@@ -11,15 +11,16 @@ void LogByteBuffer(
     _In_reads_bytes_(bufferLength) const void* buffer,
     _In_ size_t bufferLength)
 {
-    const uint8_t* bufferAsBytes = reinterpret_cast<const uint8_t*>(buffer);
+    std::wstring result = bufferName;
+    result += L": ";
 
-    std::wstring bufferAsString;
-    for (size_t i = 0; i != bufferLength; ++i)
+    const uint8_t* bufferAsBytes = reinterpret_cast<const uint8_t*>(buffer);
+    for (const uint8_t* itr = bufferAsBytes; itr != bufferAsBytes + bufferLength; itr++)
     {
-        WCHAR sz[6]; // provide enough space for "0xXX " strings.
-        swprintf_s(sz, L"0x%02X ", bufferAsBytes[i]);
-        bufferAsString += sz;
+        WCHAR sz[4]; // provide enough space for "0xXX " strings.
+        swprintf_s(sz, L"%02X ", *itr);
+        result += sz;
     }
 
-    LOG_COMMENT(L"%s: %s", bufferName, bufferAsString.c_str());
+    WEX::Logging::Log::Comment(result.c_str());
 }

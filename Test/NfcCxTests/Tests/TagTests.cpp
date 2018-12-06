@@ -117,7 +117,7 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1, 5);
 
     NciSimCallbackView simCallback = simConnector.ReceiveCallback();
-    VerifySequenceHandler(SequenceRfDiscStartComplete, simCallback);
+    SimSequenceRunner::VerifyStep(RfDiscoverySequences::DiscoveryStart::DiscoverStartComplete, simCallback);
 
     // Activate an NFC tag in the reader, while the SequenceRfDiscStartComplete sequence handler is still running.
     // This will verify that NfcCx properly defers processing hardware events while another operation is running.
@@ -182,9 +182,10 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     // Manually process the first read command.
     LOG_COMMENT(L"# Manually processing ReadPage2Command step.");
     NciSimCallbackView message = simConnector.ReceiveCallback();
-    VerifyNciPacket(TagSequences::NdefSubscriptionNtag216::ReadPage2Command.NciPacketData, message);
+    SimSequenceRunner::VerifyStep(TagSequences::NdefSubscriptionNtag216::ReadPage2Command, message);
 
     // Don't send the NCI write complete message, until after the NCI response timer will have expired.
+    LOG_COMMENT(L"Waiting for timeout to trigger.");
     Sleep(PHNCINFC_NCI_TRANSCEIVE_TIMEOUT * 2);
     simConnector.SendNciWriteCompleted();
 

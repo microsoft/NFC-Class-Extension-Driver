@@ -97,9 +97,10 @@ InitTests::InitAndDeinitNci1WithSlowIoTest()
     // Manually process the GetConfigCommand step.
     LOG_COMMENT(L"# Manually processing GetConfigCommand step.");
     NciSimCallbackView message = simConnector.ReceiveCallback();
-    VerifyNciPacket(InitSequences::InitializeNoSEs::GetConfigCommand.NciPacketData, message);
+    SimSequenceRunner::VerifyStep(InitSequences::InitializeNoSEs::GetConfigCommand, message);
 
     // Don't send the NCI write complete message, until after the NCI response timer will have expired.
+    LOG_COMMENT(L"Waiting for timeout to trigger.");
     Sleep(PHNCINFC_NCI_CMD_RSP_TIMEOUT * 2);
     simConnector.SendNciWriteCompleted();
 
