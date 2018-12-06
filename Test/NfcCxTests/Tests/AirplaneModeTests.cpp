@@ -32,18 +32,13 @@ AirplaneModeTests::RadioStateBasicTest()
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
 
-    // Pull the device into D0, so that all the device interfaces are created.
-    LOG_COMMENT(L"# Pull device into D0.");
-    simConnector.AddD0PowerReference();
+    // Start NFC Controller.
+    LOG_COMMENT(L"# Start NFC Controller.");
+    std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Verify NCI is initialized.
     SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
-
-    // Drop the D0 power reference.
-    simConnector.RemoveD0PowerReference();
-
-    // Verify NCI is uninitialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Open radio manager
     RadioManager radioManager(simConnector.DeviceId().c_str());
@@ -60,7 +55,7 @@ AirplaneModeTests::RadioStateBasicTest()
     UniqueHandle nfpSubInterface = DriverHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
 
     // Verify NCI is initialized and discovery mode is started.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Verify enabling airplane mode disables radio.
@@ -69,14 +64,14 @@ AirplaneModeTests::RadioStateBasicTest()
     VERIFY_ARE_EQUAL(false, radioManager.GetNfcRadioState());
 
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
 
     // Verify disabling airplane mode re-enables the radio.
     LOG_COMMENT(L"== 2 ==");
     radioManager.SetAirplaneMode(false);
     VERIFY_ARE_EQUAL(true, radioManager.GetNfcRadioState());
 
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Verify disabling the radio actually disables the radio.
@@ -85,7 +80,7 @@ AirplaneModeTests::RadioStateBasicTest()
     VERIFY_ARE_EQUAL(false, radioManager.GetNfcRadioState());
 
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
 
     // Verify enabling airplane mode doesn't enable the radio.
     LOG_COMMENT(L"== 4 ==");
@@ -102,7 +97,7 @@ AirplaneModeTests::RadioStateBasicTest()
     radioManager.SetNfcRadioState(true);
     VERIFY_ARE_EQUAL(true, radioManager.GetNfcRadioState());
 
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Verify enabling airplane mode disables radio.
@@ -111,14 +106,14 @@ AirplaneModeTests::RadioStateBasicTest()
     VERIFY_ARE_EQUAL(false, radioManager.GetNfcRadioState());
 
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
 
     // Verify that the user can enable the radio while airplane mode is enabled.
     LOG_COMMENT(L"== 8 ==");
     radioManager.SetNfcRadioState(true);
     VERIFY_ARE_EQUAL(true, radioManager.GetNfcRadioState());
 
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Verify disabling the radio actually disables the radio (while airplane mode is enabled).
@@ -127,14 +122,14 @@ AirplaneModeTests::RadioStateBasicTest()
     VERIFY_ARE_EQUAL(false, radioManager.GetNfcRadioState());
 
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
 
     // Verify disabling airplane mode re-enables radio (even though the NFC radio was manually enabled and then disabled).
     LOG_COMMENT(L"== 10 ==");
     radioManager.SetAirplaneMode(false);
     VERIFY_ARE_EQUAL(true, radioManager.GetNfcRadioState());
 
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Verify disabling the radio actually disables the radio.
@@ -143,7 +138,7 @@ AirplaneModeTests::RadioStateBasicTest()
     VERIFY_ARE_EQUAL(false, radioManager.GetNfcRadioState());
 
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
 
     // Verify enabling airplane mode doesn't enable the radio.
     LOG_COMMENT(L"== 12 ==");
@@ -155,7 +150,7 @@ AirplaneModeTests::RadioStateBasicTest()
     radioManager.SetNfcRadioState(true);
     VERIFY_ARE_EQUAL(true, radioManager.GetNfcRadioState());
 
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Verify disabling airplane mode doesn't disable the radio (even though the radio was disabled when airplane mode was first enabled).
@@ -167,5 +162,12 @@ AirplaneModeTests::RadioStateBasicTest()
     nfpSubInterface.Reset();
 
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
+
+    // Stop NFC Controller.
+    LOG_COMMENT(L"# Stop NFC Controller.");
+    std::shared_ptr<IoOperation> ioStopHost = simConnector.StopHostAsync();
+
+    // Verify NCI is uninitialized.
     SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
 }

@@ -27,6 +27,12 @@ public:
     NTSTATUS PostSequenceHandlerCallback(
         _In_ NFC_CX_SEQUENCE Sequence
         );
+    // Queues up a callback message that signals that a D0 entry was triggered.
+    NTSTATUS PostD0EntryCallback(
+        );
+    // Queues up a callback message that signals that a D0 exit was triggered.
+    NTSTATUS PostD0ExitCallback(
+        );
     // Processes a IOCTL_NCISIM_GET_NEXT_CALLBACK request (including storing the request in a queue if a
     // callback is not available yet).
     void HandleCallbackRequest(
@@ -50,6 +56,9 @@ private:
         _In_ DeferredCallbackListItem* deferredCallbackListItem
         );
     void TryFulfillCallbackRequest();
+
+    template <typename CallbackDataType>
+    NTSTATUS PostSimpleCallback(const CallbackDataType& callbackData);
 
     WDFWAITLOCK _Lock = nullptr;
     WDFQUEUE _DeferredCallbackRequests = nullptr;

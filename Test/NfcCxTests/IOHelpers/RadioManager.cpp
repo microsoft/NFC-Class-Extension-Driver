@@ -35,9 +35,11 @@ bool
 RadioManager::GetNfcRadioState()
 {
     std::shared_ptr<IoOperation> ioOperation = IoOperation::DeviceIoControl(_DeviceInterface.Get(), IOCTL_NFCRM_QUERY_RADIO_STATE, nullptr, 0, sizeof(NFCRM_RADIO_STATE));
-    VERIFY_WIN32_SUCCEEDED(ioOperation->WaitForResult(/*wait (ms)*/ 1'000), L"Get radio state");
+    IoOperation::Result ioResult = ioOperation->WaitForResult(/*wait (ms)*/ 1'000);
 
-    auto radioState = reinterpret_cast<const NFCRM_RADIO_STATE*>(ioOperation->OutputBuffer().data());
+    VERIFY_WIN32_SUCCEEDED(ioResult.ErrorCode, L"Get radio state");
+
+    auto radioState = reinterpret_cast<const NFCRM_RADIO_STATE*>(ioResult.Output.data());
     return !!radioState->MediaRadioOn;
 }
 
@@ -64,11 +66,11 @@ RadioManager::SetRadioState(bool isSystemUpdate, bool enableRadio)
     radioState.MediaRadioOn = enableRadio;
 
     std::shared_ptr<IoOperation> ioOperation = IoOperation::DeviceIoControl(_DeviceInterface.Get(), IOCTL_NFCRM_SET_RADIO_STATE, &radioState, sizeof(radioState), 0);
-    DWORD ioResult = ioOperation->WaitForResult(/*wait (ms)*/ 1'000);
+    IoOperation::Result ioResult = ioOperation->WaitForResult(/*wait (ms)*/ 1'000);
 
     // ERROR_BAD_COMMAND is returned when the state is already correct.
-    if (ioResult != ERROR_BAD_COMMAND)
+    if (ioResult.ErrorCode != ERROR_BAD_COMMAND)
     {
-        VERIFY_WIN32_SUCCEEDED(ioResult);
+        VERIFY_WIN32_SUCCEEDED(ioResult.ErrorCode);
     }
 }

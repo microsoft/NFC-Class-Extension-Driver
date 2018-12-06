@@ -55,15 +55,21 @@ InitTests::InitAndDeinitTest(bool isNci2)
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
 
-    LOG_COMMENT(L"# Pull device into D0.");
-    simConnector.AddD0PowerReference();
+    // Start NFC Controller.
+    LOG_COMMENT(L"# Start NFC Controller.");
+    std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
+    // Verify NCI is initialized.
     SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence(isNci2));
+    VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
-    LOG_COMMENT(L"# Allow device to drop out of D0.");
-    simConnector.RemoveD0PowerReference();
+    // Stop NFC Controller.
+    LOG_COMMENT(L"# Stop NFC Controller.");
+    std::shared_ptr<IoOperation> ioStopHost = simConnector.StopHostAsync();
 
+    // Verify NCI is uninitialized.
     SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence(isNci2));
+    VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
 }
 
 // Tests NFC controller initialization and deinitialization for NCI 1.1.
@@ -87,16 +93,16 @@ InitTests::InitAndDeinitNci1WithSlowIoTest()
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
 
-    // Pull device into D0 so that NCI is initialized.
-    LOG_COMMENT(L"# Pull device into D0.");
-    simConnector.AddD0PowerReference();
+    // Start NFC Controller.
+    LOG_COMMENT(L"# Start NFC Controller.");
+    std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Run through the first half of the initialization sequence, stopping just before the GetConfigCommand step.
     SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1, 5);
 
     // Manually process the GetConfigCommand step.
     LOG_COMMENT(L"# Manually processing GetConfigCommand step.");
-    NciSimCallbackView message = simConnector.ReceiveCallback();
+    NciSimCallbackMessage message = simConnector.ReceiveLibNfcThreadCallback();
     SimSequenceRunner::VerifyStep(InitSequences::InitializeNoSEs::GetConfigCommand, message);
 
     // Don't send the NCI write complete message, until after the NCI response timer will have expired.
@@ -106,13 +112,15 @@ InitTests::InitAndDeinitNci1WithSlowIoTest()
 
     // Process the remainder of the initialization sequence.
     SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1 + 6, std::size(InitSequences::InitializeNoSEs::Sequence_Nci1) - 6);
+    VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Allow device to drop out of D0, so that NCI is deinitialized.
-    LOG_COMMENT(L"# Allow device to drop out of D0.");
-    simConnector.RemoveD0PowerReference();
+    LOG_COMMENT(L"# Stop NFC Controller.");
+    std::shared_ptr<IoOperation> ioStopHost = simConnector.StopHostAsync();
 
     // Run through the deinitialization sequence.
     SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
 }
 
 void
@@ -121,11 +129,13 @@ InitTests::DiscoveryInitAndDeinitTest(bool isNci2)
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
 
-    LOG_COMMENT(L"# Pull device into D0.");
-    simConnector.AddD0PowerReference();
+    // Start NFC Controller.
+    LOG_COMMENT(L"# Start NFC Controller.");
+    std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Verify NCI is initialized.
     SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence(isNci2));
+    VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Try to find the smartcard (NFC) interface and open it.
     UniqueHandle nfcScInterface = DriverHandleFactory::OpenSmartcardHandle(simConnector.DeviceId().c_str(), SmartCardReaderKind::Nfc);
@@ -134,10 +144,8 @@ InitTests::DiscoveryInitAndDeinitTest(bool isNci2)
     // This should result in the radio being initialized.
     std::shared_ptr<IoOperation> ioIsPresent = IoOperation::DeviceIoControl(nfcScInterface.Get(), IOCTL_SMARTCARD_IS_PRESENT, nullptr, 0, 0);
 
-    // No longer need the extra D0 power reference.
-    simConnector.RemoveD0PowerReference();
-
     // Verify discovery mode is started.
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence(isNci2));
 
     // Cancel the IOCTL_SMARTCARD_IS_PRESENT I/O, so that the smartcard reader handle is no longer considered active.
@@ -145,9 +153,15 @@ InitTests::DiscoveryInitAndDeinitTest(bool isNci2)
 
     // Verify discovery mode is stopped.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
+
+    // Stop NFC Controller.
+    LOG_COMMENT(L"# Stop NFC Controller.");
+    std::shared_ptr<IoOperation> ioStopHost = simConnector.StopHostAsync();
 
     // Verify NCI is uninitialized.
     SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence(isNci2));
+    VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
 }
 
 // Tests entering and exiting RF discovery mode for NCI 1.1.

@@ -175,22 +175,6 @@ DeviceContext::ClientConnected(
 
     WdfWaitLockRelease(_ClientLock);
 
-    // The device's WDF lock provides a convenient way to serialize with the power event callbacks.
-    WdfObjectAcquireLock(_Device);
-
-    // We only want to start NfcCx after the first client connection, otherwise the NCI initialization
-    // will fail.
-    if (_DeviceState != DeviceState::FirstTcpClientNotConnected)
-    {
-        // Nothing to do.
-        WdfObjectReleaseLock(_Device);
-        TRACE_FUNCTION_SUCCESS(LEVEL_VERBOSE);
-        return STATUS_SUCCESS;
-    }
-
-    _DeviceState = DeviceState::HostNotStarted;
-
-    WdfObjectReleaseLock(_Device);
     TRACE_FUNCTION_SUCCESS(LEVEL_VERBOSE);
     return STATUS_SUCCESS;
 }
@@ -262,25 +246,12 @@ DeviceContext::D0Entry(
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
     NTSTATUS status;
 
-    if (_DeviceState != DeviceState::HostNotStarted)
-    {
-        // Don't do anything
-        TRACE_LINE(LEVEL_VERBOSE, "Waiting for client connection.");
-        return STATUS_SUCCESS;
-    }
-
-    NFC_CX_HARDWARE_EVENT eventArgs = {};
-    eventArgs.HostAction = HostActionStart;
-    eventArgs.HardwareStatus = STATUS_SUCCESS;
-
-    status = NfcCxHardwareEvent(_Device, &eventArgs);
+    status = _ApiCallbacksManager.PostD0EntryCallback();
     if (!NT_SUCCESS(status))
     {
-        TRACE_LINE(LEVEL_ERROR, "NfcCxHardwareEvent (HostActionStart) failed. %!STATUS!", status);
+        TRACE_LINE(LEVEL_ERROR, "CallbacksManager::PostD0EntryCallback failed. %!STATUS!", status);
         return status;
     }
-
-    _DeviceState = DeviceState::HostStarted;
 
     TRACE_FUNCTION_SUCCESS(LEVEL_VERBOSE);
     return STATUS_SUCCESS;
@@ -305,25 +276,12 @@ DeviceContext::D0Exit(
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
     NTSTATUS status;
 
-    if (_DeviceState != DeviceState::HostStarted)
-    {
-        // Don't do anything
-        TRACE_LINE(LEVEL_VERBOSE, "Waiting for client connection.");
-        return STATUS_SUCCESS;
-    }
-
-    NFC_CX_HARDWARE_EVENT eventArgs = {};
-    eventArgs.HostAction = HostActionStop;
-    eventArgs.HardwareStatus = STATUS_SUCCESS;
-
-    status = NfcCxHardwareEvent(_Device, &eventArgs);
+    status = _ApiCallbacksManager.PostD0ExitCallback();
     if (!NT_SUCCESS(status))
     {
-        TRACE_LINE(LEVEL_ERROR, "NfcCxHardwareEvent (HostActionStop) failed. %!STATUS!", status);
+        TRACE_LINE(LEVEL_ERROR, "CallbacksManager::PostD0ExitCallback failed. %!STATUS!", status);
         return status;
     }
-
-    _DeviceState = DeviceState::HostNotStarted;
 
     TRACE_FUNCTION_SUCCESS(LEVEL_VERBOSE);
     return STATUS_SUCCESS;
@@ -427,12 +385,8 @@ DeviceContext::DeviceIo(
             commandFunction = &DeviceContext::CommandNciRead;
             break;
 
-        case IOCTL_NCISIM_ADD_D0_POWER_REFERENCE:
-            commandFunction = &DeviceContext::CommandAddD0PowerReference;
-            break;
-
-        case IOCTL_NCISIM_REMOVE_D0_POWER_REFERENCE:
-            commandFunction = &DeviceContext::CommandRemoveD0PowerReference;
+        case IOCTL_NCISIM_HARDWARE_EVENT:
+            commandFunction = &DeviceContext::CommandHardwareEvent;
             break;
 
         case IOCTL_NCISIM_SEQUENCE_HANDLER_COMPLETE:
@@ -561,37 +515,39 @@ DeviceContext::CommandNciRead(
 }
 
 NTSTATUS
-DeviceContext::CommandAddD0PowerReference(
+DeviceContext::CommandHardwareEvent(
     _In_ WDFREQUEST Request
     )
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
     NTSTATUS status;
 
-    status = WdfDeviceStopIdle(_Device, /*WaitForD0*/ FALSE);
+    NFC_CX_HOST_ACTION* param;
+    status = WdfRequestRetrieveInputBuffer(Request, sizeof(*param), (void**)&param, nullptr);
     if (!NT_SUCCESS(status))
     {
-        TRACE_LINE(LEVEL_ERROR, "WdfDeviceStopIdle failed. %!STATUS!", status);
+        TRACE_LINE(LEVEL_ERROR, "WdfRequestRetrieveInputMemory failed. %!STATUS!", status);
+        return status;
+    }
+
+    // The device's WDF lock provides a convenient way to serialize with the power event callbacks.
+    WdfObjectAcquireLock(_Device);
+
+    NFC_CX_HARDWARE_EVENT eventArgs = {};
+    eventArgs.HostAction = *param;
+    eventArgs.HardwareStatus = STATUS_SUCCESS;
+
+    status = NfcCxHardwareEvent(_Device, &eventArgs);
+    if (!NT_SUCCESS(status))
+    {
+        TRACE_LINE(LEVEL_ERROR, "NfcCxHardwareEvent (%d) failed. %!STATUS!", *param, status);
+        WdfObjectReleaseLock(_Device);
         return status;
     }
 
     WdfRequestComplete(Request, STATUS_SUCCESS);
 
-    TRACE_FUNCTION_SUCCESS(LEVEL_VERBOSE);
-    return STATUS_SUCCESS;
-}
-
-NTSTATUS
-DeviceContext::CommandRemoveD0PowerReference(
-    _In_ WDFREQUEST Request
-    )
-{
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    WdfDeviceResumeIdle(_Device);
-
-    WdfRequestComplete(Request, STATUS_SUCCESS);
-
+    WdfObjectReleaseLock(_Device);
     TRACE_FUNCTION_SUCCESS(LEVEL_VERBOSE);
     return STATUS_SUCCESS;
 }

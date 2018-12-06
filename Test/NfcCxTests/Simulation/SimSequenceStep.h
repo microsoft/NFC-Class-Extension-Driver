@@ -16,6 +16,8 @@ enum class SimSequenceStepType
     NciWrite,
     NciRead,
     SequenceHandler,
+    D0Entry,
+    D0Exit,
 };
 
 struct SimSequenceStep
@@ -45,6 +47,10 @@ struct SimSequenceStep
     static SimSequenceStep NciDataRead(
         std::wstring stepName,
         const NciDataPacket& packet);
+    static SimSequenceStep D0Entry(
+        std::wstring stepName);
+    static SimSequenceStep D0Exit(
+        std::wstring stepName);
 
     static SimSequenceStep SequenceHandler(
         std::wstring stepName,

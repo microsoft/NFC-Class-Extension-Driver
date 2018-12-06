@@ -286,6 +286,14 @@ const SimSequenceStep InitSequences::Uninitialize::ShutdownComplete = SimSequenc
     0
 );
 
+const SimSequenceStep InitSequences::Power::D0Entry = SimSequenceStep::D0Entry(
+    L"D0Entry"
+);
+
+const SimSequenceStep InitSequences::Power::D0Exit = SimSequenceStep::D0Exit(
+    L"D0Exit"
+);
+
 const SimSequenceStep InitSequences::Reset::Sequence_Nci1[2] =
 {
     NciResetCommand,

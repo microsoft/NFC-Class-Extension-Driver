@@ -28,16 +28,6 @@ static constexpr GUID GUID_DEVINTERFACE_NCI_SIMULATOR = { 0xc64afeb6, 0x48e4, 0x
 // Output: <none>
 #define IOCTL_NCISIM_NCI_READ                       CTL_CODE(FILE_DEVICE_NCISIM, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
-// Requests for 'WdfDeviceStopIdle' to be called.
-// Input: <none>
-// Output: <none>
-#define IOCTL_NCISIM_ADD_D0_POWER_REFERENCE         CTL_CODE(FILE_DEVICE_NCISIM, 0x802, METHOD_BUFFERED, FILE_ANY_ACCESS)
-
-// Requests for 'WdfDeviceResumeIdle' to be called.
-// Input: <none>
-// Output: <none>
-#define IOCTL_NCISIM_REMOVE_D0_POWER_REFERENCE      CTL_CODE(FILE_DEVICE_NCISIM, 0x803, METHOD_BUFFERED, FILE_ANY_ACCESS)
-
 // Provides the result for a sequence handler.
 // Input: NciSimSequenceHandlerComplete
 // Output: <none>
@@ -48,15 +38,21 @@ static constexpr GUID GUID_DEVINTERFACE_NCI_SIMULATOR = { 0xc64afeb6, 0x48e4, 0x
 // Output: <none>
 #define IOCTL_NCISIM_NCI_WRITE_COMPLETE             CTL_CODE(FILE_DEVICE_NCISIM, 0x805, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
-enum class NciSimCallbackType : DWORD
-{
-    NciWrite = 0,
-    SequenceHandler = 1,
-};
+// Requests a call to `NfcCxHardwareEvent`.
+// Input: NFC_CX_HOST_ACTION
+// Output: <none>
+#define IOCTL_NCISIM_HARDWARE_EVENT                 CTL_CODE(FILE_DEVICE_NCISIM, 0x806, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 // NfcCx.h has a hard dependency on Wdf.h, which isn't accessible to normal apps.
 // So duplicate any required definitions.
 #ifndef _NFCCX_H_
+
+typedef enum _NFC_CX_HOST_ACTION {
+    HostActionStart = 0,
+    HostActionStop,
+    HostActionRestart,
+    HostActionUnload,
+} NFC_CX_HOST_ACTION, *PNFC_CX_HOST_ACTION;
 
 enum NFC_CX_SEQUENCE
 {
@@ -82,6 +78,14 @@ enum NFC_CX_SEQUENCE
 #define NFC_CX_SEQUENCE_PRE_SHUTDOWN_FLAG_SKIP_RESET  0x00000001 // Skip sending NCI reset during shutdown sequence
 
 #endif // _NFCCX_H_
+
+enum class NciSimCallbackType : DWORD
+{
+    NciWrite = 0,
+    SequenceHandler = 1,
+    D0Entry = 2,
+    D0Exit = 3,
+};
 
 struct NciSimCallbackHeader
 {

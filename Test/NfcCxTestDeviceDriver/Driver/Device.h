@@ -85,10 +85,7 @@ private:
     NTSTATUS CommandNciRead(
         _In_ WDFREQUEST Request
         );
-    NTSTATUS CommandAddD0PowerReference(
-        _In_ WDFREQUEST Request
-        );
-    NTSTATUS CommandRemoveD0PowerReference(
+    NTSTATUS CommandHardwareEvent(
         _In_ WDFREQUEST Request
         );
     NTSTATUS CommandSequenceHandlerComplete(
@@ -100,17 +97,6 @@ private:
 
     WDFDEVICE _Device = nullptr;
 
-    //
-    // Protected by the WDFDEVICE lock.
-    //
-    enum class DeviceState
-    {
-        FirstTcpClientNotConnected,
-        HostNotStarted,
-        HostStarted,
-    };
-
-    DeviceState _DeviceState = DeviceState::FirstTcpClientNotConnected;
     ApiCallbacksManager _ApiCallbacksManager;
 
     WDFWAITLOCK _ClientLock = nullptr;

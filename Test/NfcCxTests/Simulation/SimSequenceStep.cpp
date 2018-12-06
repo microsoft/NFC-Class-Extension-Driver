@@ -63,3 +63,17 @@ SimSequenceStep::SequenceHandler(
 {
     return SimSequenceStep{ SimSequenceStepType::SequenceHandler, std::move(stepName), {}, type, status, flags };
 }
+
+SimSequenceStep
+SimSequenceStep::D0Entry(
+    std::wstring stepName)
+{
+    return SimSequenceStep{ SimSequenceStepType::D0Entry, std::move(stepName), {}, {}, {}, {} };
+}
+
+SimSequenceStep
+SimSequenceStep::D0Exit(
+    std::wstring stepName)
+{
+    return SimSequenceStep{ SimSequenceStepType::D0Exit, std::move(stepName), {}, {}, {}, {} };
+}

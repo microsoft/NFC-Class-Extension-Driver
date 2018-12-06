@@ -51,4 +51,10 @@ struct InitSequences
         static const SimSequenceView Sequence_Nci2[3];
         static const SimSequenceView Sequence(bool isNci2);
     };
+
+    struct Power
+    {
+        static const SimSequenceStep D0Entry;
+        static const SimSequenceStep D0Exit;
+    };
 };

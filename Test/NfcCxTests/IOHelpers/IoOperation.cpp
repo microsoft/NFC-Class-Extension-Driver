@@ -7,9 +7,9 @@
 #include "IoOperation.h"
 
 std::shared_ptr<IoOperation>
-IoOperation::DeviceIoControl(_In_ HANDLE driverHandle, _In_ DWORD ioctl, _In_reads_bytes_opt_(inputSize) const void* input, _In_ DWORD inputSize, DWORD _In_ outputBufferSize)
+IoOperation::DeviceIoControl(_In_ HANDLE driverHandle, _In_ DWORD ioctl, _In_reads_bytes_opt_(inputSize) const void* input, _In_ DWORD inputSize, DWORD _In_ outputBufferSize, _In_ std::function<Callback> callback)
 {
-    auto ioOperation = std::make_shared<IoOperation>(PrivateToken{}, driverHandle, input, inputSize, outputBufferSize);
+    auto ioOperation = std::make_shared<IoOperation>(PrivateToken{}, driverHandle, input, inputSize, outputBufferSize, std::move(callback));
 
     void* inputBuffer = inputSize == 0 ?
         nullptr :
@@ -19,22 +19,24 @@ IoOperation::DeviceIoControl(_In_ HANDLE driverHandle, _In_ DWORD ioctl, _In_rea
         nullptr :
         ioOperation->_OutputBuffer.data();
 
+    // Ensure the object's memory stays around until the I/O operation has completed.
+    ioOperation->_SelfRef = ioOperation;
+
     BOOL ioResult = ::DeviceIoControl(driverHandle, ioctl, inputBuffer, inputSize, outputBuffer, outputBufferSize, nullptr, &ioOperation->_Overlapped);
     if (!ioResult && GetLastError() != ERROR_IO_PENDING)
     {
+        ioOperation->_SelfRef = nullptr;
         throw std::system_error(GetLastError(), std::system_category());
     }
-
-    // Ensure the object's memory stays around until the I/O operation has completed.
-    ioOperation->_SelfRef = ioOperation;
 
     return ioOperation;
 }
 
-IoOperation::IoOperation(PrivateToken, _In_ HANDLE driverHandle, _In_reads_bytes_opt_(inputSize) const void* input, _In_ DWORD inputSize, DWORD _In_ outputBufferSize) :
+IoOperation::IoOperation(PrivateToken, _In_ HANDLE driverHandle, _In_reads_bytes_opt_(inputSize) const void* input, _In_ DWORD inputSize, DWORD _In_ outputBufferSize, std::function<Callback>&& callback) :
     _DriverHandle(driverHandle),
     _InputBuffer((const BYTE*)input, (const BYTE*)input + inputSize),
-    _OutputBuffer(outputBufferSize)
+    _OutputBuffer(outputBufferSize),
+    _Callback(std::move(callback))
 {
     ZeroMemory(&_Overlapped, sizeof(_Overlapped));
 
@@ -83,13 +85,11 @@ IoOperation::IoCompleted()
     std::shared_ptr<IoOperation> selfRef = std::move(_SelfRef);
 
     // Get the result of the operation.
-    DWORD outputSize;
-    BOOL operationSucceeded = GetOverlappedResult(_DriverHandle, &_Overlapped, &outputSize, /*wait*/ false);
+    BOOL operationSucceeded = GetOverlappedResult(_DriverHandle, &_Overlapped, &_BytesReturned, /*wait*/ false);
 
     // Handle results.
     if (operationSucceeded)
     {
-        _OutputBuffer.resize(outputSize);
         _OperationResult = ERROR_SUCCESS;
     }
     else
@@ -99,6 +99,12 @@ IoOperation::IoCompleted()
 
     // Let other threads know that the operation has completed.
     WakeByAddressAll(&_OperationResult);
+
+    // Call callback (if provided).
+    if (_Callback)
+    {
+        _Callback(selfRef);
+    }
 }
 
 bool
@@ -123,36 +129,25 @@ IoOperation::Cancel()
     CancelIoEx(_DriverHandle, &_Overlapped);
 }
 
-DWORD
-IoOperation::Result()
+IoOperation::Result
+IoOperation::GetResult()
 {
     if (_OperationResult == ERROR_IO_PENDING)
     {
         throw std::runtime_error("I/O operation has not completed yet.");
     }
 
-    return _OperationResult;
+    return { _OperationResult, _BytesReturned, std::move(_OutputBuffer) };
 }
 
 // Waits for the I/O request to complete and returns the result.
-DWORD
+IoOperation::Result
 IoOperation::WaitForResult(_In_ DWORD timeoutMilliseconds)
 {
     if (!Wait(timeoutMilliseconds))
     {
-        return ERROR_TIMEOUT;
+        return { ERROR_TIMEOUT, 0, {} };
     }
 
-    return _OperationResult;
-}
-
-const std::vector<BYTE>&
-IoOperation::OutputBuffer()
-{
-    if (_OperationResult == ERROR_IO_PENDING)
-    {
-        throw std::runtime_error("I/O operation has not completed yet.");
-    }
-
-    return _OutputBuffer;
+    return { _OperationResult, _BytesReturned, std::move(_OutputBuffer) };
 }

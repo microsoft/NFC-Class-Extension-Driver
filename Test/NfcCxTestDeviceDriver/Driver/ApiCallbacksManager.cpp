@@ -114,12 +114,45 @@ ApiCallbacksManager::PostSequenceHandlerCallback(
     _In_ NFC_CX_SEQUENCE Sequence
     )
 {
+    NciSimCallbackSequenceHandler data;
+    data.Type = NciSimCallbackType::SequenceHandler;
+    data.Sequence = Sequence;
+
+    return PostSimpleCallback(data);
+}
+
+// Queues up a callback message that signals that a D0 entry was triggered.
+NTSTATUS
+ApiCallbacksManager::PostD0EntryCallback(
+    )
+{
+    NciSimCallbackHeader data;
+    data.Type = NciSimCallbackType::D0Entry;
+
+    return PostSimpleCallback(data);
+}
+
+// Queues up a callback message that signals that a D0 exit was triggered.
+NTSTATUS
+ApiCallbacksManager::PostD0ExitCallback(
+    )
+{
+    NciSimCallbackHeader data;
+    data.Type = NciSimCallbackType::D0Exit;
+
+    return PostSimpleCallback(data);
+}
+
+template <typename CallbackDataType>
+NTSTATUS
+ApiCallbacksManager::PostSimpleCallback(const CallbackDataType& callbackData)
+{
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
     NTSTATUS status;
 
     // Allocate memory for the deferred callback.
     DeferredCallbackListItem* callbackListItem;
-    status = AllocateDeferredCallbackListItem(sizeof(NciSimCallbackSequenceHandler), &callbackListItem);
+    status = AllocateDeferredCallbackListItem(sizeof(CallbackDataType), &callbackListItem);
     if (!NT_SUCCESS(status))
     {
         TRACE_LINE(LEVEL_ERROR, "AllocateDeferredCallbackListItem failed. %!STATUS!", status);
@@ -127,9 +160,8 @@ ApiCallbacksManager::PostSequenceHandlerCallback(
     }
 
     // Set callback data.
-    auto callbackData = reinterpret_cast<NciSimCallbackSequenceHandler*>(callbackListItem->Data);
-    callbackData->Type = NciSimCallbackType::SequenceHandler;
-    callbackData->Sequence = Sequence;
+    auto data = reinterpret_cast<CallbackDataType*>(callbackListItem->Data);
+    *data = callbackData;
 
     // Add deferred callback to list.
     QueueNewCallback(callbackListItem);

@@ -14,7 +14,7 @@ class SimSequenceRunner
 public:
     static void VerifyStep(
         const SimSequenceStep& expectedStep,
-        NciSimCallbackView message);
+        const NciSimCallbackMessage& message);
 
     static void Run(
         _In_ NciSimConnector& simConnector,

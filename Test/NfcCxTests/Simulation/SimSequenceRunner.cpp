@@ -11,17 +11,17 @@
 void
 SimSequenceRunner::VerifyStep(
     const SimSequenceStep& expectedStep,
-    NciSimCallbackView message)
+    const NciSimCallbackMessage& message)
 {
     // Log the actual message and ensure it matches what is expected.
-    switch (message.Header->Type)
+    switch (message.Header()->Type)
     {
     case NciSimCallbackType::NciWrite:
     {
-        DWORD nciPacketSize = message.Length - NciSimCallbackNciWriteMinSize;
-        auto nciWrite = static_cast<const NciSimCallbackNciWrite*>(message.Header);
+        DWORD nciPacketSize = message.Length() - NciSimCallbackNciWriteMinSize;
+        auto nciWrite = static_cast<const NciSimCallbackNciWrite*>(message.Header());
 
-        if (message.Header->Type != NciSimCallbackType::NciWrite ||
+        if (expectedStep.Type != SimSequenceStepType::NciWrite ||
             !AreArraysEqual(expectedStep.NciPacketData.PacketBytes(), expectedStep.NciPacketData.PacketBytesLength(), nciWrite->NciMessage, nciPacketSize))
         {
             LogExpectedStep(expectedStep);
@@ -32,9 +32,9 @@ SimSequenceRunner::VerifyStep(
     }
     case NciSimCallbackType::SequenceHandler:
     {
-        auto params = static_cast<const NciSimCallbackSequenceHandler*>(message.Header);
+        auto params = static_cast<const NciSimCallbackSequenceHandler*>(message.Header());
 
-        if (message.Header->Type != NciSimCallbackType::SequenceHandler ||
+        if (expectedStep.Type != SimSequenceStepType::SequenceHandler ||
             expectedStep.SequenceHandlerType != params->Sequence)
         {
             LogExpectedStep(expectedStep);
@@ -43,9 +43,27 @@ SimSequenceRunner::VerifyStep(
 
         break;
     }
+    case NciSimCallbackType::D0Entry:
+    {
+        if (expectedStep.Type != SimSequenceStepType::D0Entry)
+        {
+            LogExpectedStep(expectedStep);
+            LOG_COMMENT(L"Actual:   D0 Entry");
+        }
+        break;
+    }
+    case NciSimCallbackType::D0Exit:
+    {
+        if (expectedStep.Type != SimSequenceStepType::D0Exit)
+        {
+            LogExpectedStep(expectedStep);
+            LOG_COMMENT(L"Actual:   D0 Exit");
+        }
+        break;
+    }
     default:
         LogExpectedStep(expectedStep);
-        VERIFY_FAIL_MSG(L"Unknown driver message type: %d", message.Header->Type);
+        VERIFY_FAIL_MSG(L"Unknown driver message type: %d", message.Header()->Type);
         break;
     }
 
@@ -67,6 +85,16 @@ SimSequenceRunner::LogExpectedStep(const SimSequenceStep& expectedStep)
         LOG_COMMENT(L"Expected sequence handler: %d", int(expectedStep.SequenceHandlerType));
         break;
     }
+    case SimSequenceStepType::D0Entry:
+    {
+        LOG_COMMENT(L"Expected: D0 Entry");
+        break;
+    }
+    case SimSequenceStepType::D0Exit:
+    {
+        LOG_COMMENT(L"Expected: D0 Exit");
+        break;
+    }
     default:
         LOG_ERROR(L"Step (%d) doesn't have an equivalent NciSimCallbackType.", int(expectedStep.Type));
         break;
@@ -84,7 +112,7 @@ SimSequenceRunner::Run(
     {
     case SimSequenceStepType::NciWrite:
     {
-        NciSimCallbackView message = simConnector.ReceiveCallback();
+        NciSimCallbackMessage message = simConnector.ReceiveLibNfcThreadCallback();
         VerifyStep(step, message);
 
         simConnector.SendNciWriteCompleted();
@@ -98,10 +126,24 @@ SimSequenceRunner::Run(
     }
     case SimSequenceStepType::SequenceHandler:
     {
-        NciSimCallbackView message = simConnector.ReceiveCallback();
+        NciSimCallbackMessage message = simConnector.ReceiveLibNfcThreadCallback();
         VerifyStep(step, message);
 
         simConnector.SendSequenceCompleted(step.SequenceHandlerStatus, step.SequenceHandlerFlags);
+        break;
+    }
+    case SimSequenceStepType::D0Entry:
+    {
+        NciSimCallbackMessage message = simConnector.ReceivePowerCallback();
+        VerifyStep(step, message);
+
+        break;
+    }
+    case SimSequenceStepType::D0Exit:
+    {
+        NciSimCallbackMessage message = simConnector.ReceivePowerCallback();
+        VerifyStep(step, message);
+
         break;
     }
     }
