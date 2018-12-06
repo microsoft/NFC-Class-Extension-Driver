@@ -84,19 +84,19 @@ typedef enum
 #define PH_FRINFC_NDEFMAP_MFUL_64BYTES_BUF     2048 /**< \internal To store 2048 bytes after reading entire card */
 #define PH_FRINFC_NDEFMAP_MFUL_4BYTES_BUF      4    /**< \internal To store 4 bytes after write */
 
-#define PH_FRINFC_NDEFMAP_CR_CHK_NDEF       0  
-#define PH_FRINFC_NDEFMAP_CR_RD_NDEF        1  
-#define PH_FRINFC_NDEFMAP_CR_WR_NDEF        2  
-#define PH_FRINFC_NDEFMAP_CR_ERASE_NDEF     3  
-#define PH_FRINFC_NDEFMAP_CR_INVALID_OPE    4  
-#define PH_FRINFC_NDEFMAP_CR                5  
+#define PH_FRINFC_NDEFMAP_CR_CHK_NDEF       0
+#define PH_FRINFC_NDEFMAP_CR_RD_NDEF        1
+#define PH_FRINFC_NDEFMAP_CR_WR_NDEF        2
+#define PH_FRINFC_NDEFMAP_CR_ERASE_NDEF     3
+#define PH_FRINFC_NDEFMAP_CR_INVALID_OPE    4
+#define PH_FRINFC_NDEFMAP_CR                5
 
-#define PH_FRINFC_NDEFMAP_SEEK_CUR                          0 
-#define PH_FRINFC_NDEFMAP_SEEK_BEGIN                        1 
-#define PH_FRINFC_NDEFMAP_SEEK_INVALID                      0xFF 
+#define PH_FRINFC_NDEFMAP_SEEK_CUR                          0
+#define PH_FRINFC_NDEFMAP_SEEK_BEGIN                        1
+#define PH_FRINFC_NDEFMAP_SEEK_INVALID                      0xFF
 
-#define PH_FRINFC_NDEFMAP_MAX_SEND_RECV_BUF_SIZE            252 
-#define PH_FRINFC_NDEFMAP_MF_READ_BLOCK_SIZE                16  
+#define PH_FRINFC_NDEFMAP_MAX_SEND_RECV_BUF_SIZE            252
+#define PH_FRINFC_NDEFMAP_MF_READ_BLOCK_SIZE                16
 
 #define ISO15693_MAX_DATA_TO_STORE           0x9FU
 

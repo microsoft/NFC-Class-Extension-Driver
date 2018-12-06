@@ -9,7 +9,7 @@ Module Name:
 Abstract:
 
     Storage card ISO15693 declaration
-    
+
 Environment:
 
     User mode
@@ -84,34 +84,34 @@ public:
     StorageClassISO15693(IStorageCard *pStorageCard);
     virtual ~StorageClassISO15693() {}
 
-    virtual void 
+    virtual void
     GetUniqueID(
                 _Outptr_result_bytebuffer_(*pUidLength) BYTE **pUid,
                 _Out_ BYTE *pUidLength
                 );
 
-    virtual void 
+    virtual void
     UpdateUniqueID(
                     _In_reads_bytes_(uidLength) BYTE *pUid,
                     _In_ BYTE uidLength
                     );
 
-    virtual void 
+    virtual void
     UpdateHistoricalBytes(
                         _In_reads_bytes_(HistoBytesLength) BYTE *pHistoBytes,
                         _In_ DWORD HistoBytesLength
                         );
 
-    virtual ApduResult 
+    virtual ApduResult
     GetDataCommand(
                     _In_reads_bytes_(cbSize) const BYTE *pbDataBuffer,
                     _In_ DWORD cbSize,
                     _Out_writes_bytes_to_(cbOutBufferSize, *pcbReturnBufferSize) BYTE *pbOutBuffer,
                     _In_ DWORD cbOutBufferSize,
-                    _Out_ DWORD *pcbReturnBufferSize 
+                    _Out_ DWORD *pcbReturnBufferSize
                     );
 
-    virtual ApduResult 
+    virtual ApduResult
     UpdateBinary(
                 _In_reads_bytes_(cbSize) BYTE *pbDataBuffer,
                 _In_ DWORD cbSize,
@@ -129,23 +129,23 @@ public:
                 _Out_ DWORD *pcbReturnBufferSize
                 );
 
-    virtual ApduResult 
+    virtual ApduResult
     GetGeneralAuthenticateCommand(
                                   _In_ void* getLoadKey,
                                   _In_reads_bytes_(cbSize) const BYTE *pbDataBuffer,
                                   _In_ DWORD cbSize,
                                   _Out_writes_bytes_to_(cbOutBufferSize, *pcbReturnBufferSize) BYTE *pbOutBuffer,
                                   _In_ DWORD cbOutBufferSize,
-                                  _Out_ DWORD *pcbReturnBufferSize  
+                                  _Out_ DWORD *pcbReturnBufferSize
                                  );
 
-    virtual ApduResult 
+    virtual ApduResult
     HandleIncDecCommand(
                         _In_reads_bytes_(cbSize) const BYTE *pbDataBuffer,
                         _In_ DWORD cbSize,
                         _Out_writes_bytes_to_(cbOutBufferSize, *pcbReturnBufferSize) BYTE *pbOutBuffer,
                         _In_ DWORD cbOutBufferSize,
-                        _Out_ DWORD *pcbReturnBufferSize  
+                        _Out_ DWORD *pcbReturnBufferSize
                         );
 
     virtual void
@@ -156,7 +156,7 @@ public:
                                         _Inout_updates_bytes_(DEFAULT_APDU_STATUS_SIZE) BYTE Sw1Sw2Return[],
                                         _Inout_updates_bytes_to_(cbOutBufferSize, *pcbReturnBufferSize) BYTE *pbOutBuffer,
                                         _In_ DWORD cbOutBufferSize,
-                                        _Out_ DWORD *pcbReturnBufferSize  
+                                        _Out_ DWORD *pcbReturnBufferSize
                                         );
 
     virtual ApduResult
@@ -202,14 +202,14 @@ private:
                                _In_ PPcscCommandApduInfo pPcscCmdApdu
                                );
 
-    ApduResult 
+    ApduResult
     PrepareTransceiveForGeneralAuthenticate(
                                             _In_ void* getLoadKey,
                                             _In_reads_bytes_(cbSize) const BYTE *pbDataBuffer,
                                             _In_ DWORD cbSize,
                                             _Out_writes_bytes_to_(cbOutBufferSize, *pcbReturnBufferSize) BYTE *pbOutBuffer,
                                             _In_ DWORD cbOutBufferSize,
-                                            _Out_ DWORD *pcbReturnBufferSize 
+                                            _Out_ DWORD *pcbReturnBufferSize
                                             );
 
     ApduResult
