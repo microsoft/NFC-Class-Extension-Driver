@@ -21,7 +21,7 @@ DriverHandleFactory::FindProximityInterfaceForDevice(_In_ PCWSTR deviceName)
 std::wstring
 DriverHandleFactory::FindSmartcardInterfaceForDevice(
     _In_ PCWSTR deviceName,
-    _In_ ::ABI::Windows::Devices::SmartCards::SmartCardReaderKind readerKind)
+    _In_ ::winrt::Windows::Devices::SmartCards::SmartCardReaderKind readerKind)
 {
     std::vector<std::wstring> nfcScInterfaces = DeviceQuery::GetSmartcardInterfacesOfType(deviceName, BYTE(readerKind));
     VERIFY_ARE_EQUAL(1u, nfcScInterfaces.size());
@@ -56,7 +56,7 @@ DriverHandleFactory::OpenSubscriptionHandle(_In_ PCWSTR deviceName, _In_ PCWSTR 
 UniqueHandle
 DriverHandleFactory::OpenSmartcardHandle(
     _In_ PCWSTR deviceName,
-    _In_ ::ABI::Windows::Devices::SmartCards::SmartCardReaderKind readerKind)
+    _In_ ::winrt::Windows::Devices::SmartCards::SmartCardReaderKind readerKind)
 {
     std::wstring smartcardInterfaceName = FindSmartcardInterfaceForDevice(deviceName, readerKind);
 

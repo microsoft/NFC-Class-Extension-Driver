@@ -18,7 +18,7 @@
 #include <IOHelpers\UniqueHandle.h>
 #include <Simulation\VerifyHelpers.h>
 
-using namespace ABI::Windows::Devices::SmartCards;
+using namespace ::winrt::Windows::Devices::SmartCards;
 
 class InitTests
 {
@@ -128,7 +128,7 @@ InitTests::DiscoveryInitAndDeinitTest(bool isNci2)
     SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence(isNci2));
 
     // Try to find the smartcard (NFC) interface and open it.
-    UniqueHandle nfcScInterface = DriverHandleFactory::OpenSmartcardHandle(simConnector.DeviceId().c_str(), SmartCardReaderKind_Nfc);
+    UniqueHandle nfcScInterface = DriverHandleFactory::OpenSmartcardHandle(simConnector.DeviceId().c_str(), SmartCardReaderKind::Nfc);
 
     // Start an IOCTL_SMARTCARD_IS_PRESENT request, so that the driver considers the smartcard reader handle to be in use.
     // This should result in the radio being initialized.

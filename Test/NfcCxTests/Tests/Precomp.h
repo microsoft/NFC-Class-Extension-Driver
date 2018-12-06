@@ -12,6 +12,5 @@
 #include <devioctl.h>
 #include <NfpDev.h>
 #include <winsmcrd.h>
-#include <windows.devices.smartcards.h>
 
 #include <WexTestClass.h>

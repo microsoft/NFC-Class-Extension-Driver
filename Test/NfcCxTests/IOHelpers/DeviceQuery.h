@@ -9,36 +9,29 @@
 #include <memory>
 #include <string>
 
-typedef DWORD CONFIGRET;
+#include <winrt/windows.devices.enumeration.h>
 
 // Helper class for querying for drivers, devices and device interfaces on the system.
 class DeviceQuery
 {
 public:
     // Find all the driver interfaces with the specified GUID type on a device.
+    static std::vector<::winrt::Windows::Devices::Enumeration::DeviceInformation> DevicesQuery(
+        std::wstring_view queryString,
+        const ::winrt::param::iterable<::winrt::hstring>& additionalProperties,
+        ::winrt::Windows::Devices::Enumeration::DeviceInformationKind deviceKind,
+        DWORD timeoutMilliseconds);
+
+    // Find all the driver interfaces with the specified GUID type on a device.
     static std::vector<std::wstring> FindDriverInterfaces(
         _In_opt_ PCWSTR deviceId,
-        const GUID& interfaceTypeId);
+        const GUID& interfaceTypeId,
+        DWORD timeoutMilliseconds = 0);
 
     // Find all the driver interfaces on the system with the specified GUID type.
     static std::vector<std::wstring> FindDriverInterfaces(
-        const GUID& interfaceTypeId);
-
-    // Retrieves a property of a device interface.
-    static std::vector<BYTE> GetDeviceInterfaceProperty(
-        _In_ PCWSTR interfaceId,
-        const DEVPROPKEY& propertyId,
-        _Out_opt_ DEVPROPTYPE* resultType);
-
-    // Retrieves a property of a device interface as a BYTE.
-    static BYTE GetDeviceInterfaceByteProperty(
-        _In_ PCWSTR interfaceId,
-        const DEVPROPKEY& propertyId);
-
-    // Retrieves a property of a device interface as a string.
-    static std::wstring GetDeviceInterfaceStringProperty(
-        _In_ PCWSTR interfaceId,
-        const DEVPROPKEY& propertyId);
+        const GUID& interfaceTypeId,
+        DWORD timeoutMilliseconds = 0);
 
     // Gets the ID of the device that exposes the specified device interface.
     static std::wstring GetDeviceIdOfInterface(
@@ -47,11 +40,14 @@ public:
     // Gets all the smartcard reader interfaces of a particular type.
     static std::vector<std::wstring> GetSmartcardInterfacesOfType(
         _In_opt_ PCWSTR deviceId,
-        _In_ BYTE smartcardType);
+        _In_ BYTE smartcardType,
+        DWORD timeoutMilliseconds = 0);
 
 private:
-    static void VerifyCmSucceeded(CONFIGRET result);
-
-    static std::vector<std::wstring> ConvertFlatStringList(
-        _In_ _NullNull_terminated_ WCHAR* list);
+    static std::wstring GuidToString(const GUID& guid);
+    static std::wstring DevPropToString(const DEVPROPKEY& propertyId);
+    static std::vector<std::wstring> ToIdList(const std::vector<::winrt::Windows::Devices::Enumeration::DeviceInformation>& devicesList);
+    static std::wstring CreateInterfaceQueryString(
+        _In_opt_ PCWSTR deviceId,
+        const GUID& interfaceTypeId);
 };
