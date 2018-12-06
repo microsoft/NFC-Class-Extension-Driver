@@ -182,6 +182,139 @@ phNciNfc_CompleteDataSequence(void *pContext, NFCSTATUS wStatus)
     return wStatus;
 }
 
+static NFCSTATUS phNciNfc_RegAllNtfs(void*     pContext)
+{
+    NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
+    pphNciNfc_Context_t pCtx = pContext;
+    phNciNfc_sCoreHeaderInfo_t tHeaderInfo;
+    PH_LOG_NCI_FUNC_ENTRY();
+    if (NULL != pCtx)
+    {
+        /*Register Notification function for Rf field info*/
+        tHeaderInfo.Group_ID = phNciNfc_e_CoreRfMgtGid;
+        tHeaderInfo.Opcode_ID.OidType.RfMgtNtfOid = phNciNfc_e_RfMgtRfFieldInfoNtfOid;
+        tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlNtf;
+        wStatus = phNciNfc_CoreIfRegRspNtf(&(pCtx->NciCoreContext),
+            &(tHeaderInfo),
+            &phNciNfc_RfFieldInfoNtfHandler,
+            pContext
+        );
+        /*Register Notification function for Rf-Nfcee Action info*/
+        if (NFCSTATUS_SUCCESS == wStatus)
+        {
+            PH_LOG_NCI_INFO_STR("Registering for Rf-Nfcee Action Notification");
+            tHeaderInfo.Group_ID = phNciNfc_e_CoreRfMgtGid;
+            tHeaderInfo.Opcode_ID.OidType.RfMgtNtfOid = phNciNfc_e_RfMgtRfNfceeActionNtfOid;
+            tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlNtf;
+            wStatus = phNciNfc_CoreIfRegRspNtf(&(pCtx->NciCoreContext),
+                &(tHeaderInfo),
+                &phNciNfc_NfceeActionNtfHandler,
+                pContext
+            );
+        }
+        if (NFCSTATUS_SUCCESS == wStatus)
+        {
+            /*Register Notification function for Rf Deactivate info*/
+            tHeaderInfo.Group_ID = phNciNfc_e_CoreRfMgtGid;
+            tHeaderInfo.Opcode_ID.OidType.RfMgtNtfOid = phNciNfc_e_RfMgtRfDeactivateNtfOid;
+            tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlNtf;
+            wStatus = phNciNfc_CoreIfRegRspNtf(&(pCtx->NciCoreContext),
+                &(tHeaderInfo),
+                &phNciNfc_ProcessDeActvNtf,
+                pContext
+            );
+        }
+        if (NFCSTATUS_SUCCESS == wStatus)
+        {
+            PH_LOG_NCI_INFO_STR("Registering for Interface Activated Notification");
+            /* Register for Interface Activation Notification */
+            tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlNtf;
+            tHeaderInfo.Group_ID = phNciNfc_e_CoreRfMgtGid;
+            tHeaderInfo.Opcode_ID.OidType.RfMgtNtfOid = phNciNfc_e_RfMgtRfIntfActivatedNtfOid;
+            wStatus = phNciNfc_CoreIfRegRspNtf(&(pCtx->NciCoreContext),
+                &(tHeaderInfo),
+                &phNciNfc_ProcessActvNtf,
+                pContext
+            );
+        }
+        if (NFCSTATUS_SUCCESS == wStatus)
+        {
+            PH_LOG_NCI_INFO_STR("Registering for Discover Notification");
+            /* Register for Interface Activation Notification */
+            tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlNtf;
+            tHeaderInfo.Group_ID = phNciNfc_e_CoreRfMgtGid;
+            tHeaderInfo.Opcode_ID.OidType.RfMgtNtfOid = phNciNfc_e_RfMgtRfDiscoverNtfOid;
+            wStatus = phNciNfc_CoreIfRegRspNtf(&(pCtx->NciCoreContext),
+                &(tHeaderInfo),
+                &phNciNfc_ProcessDiscNtf,
+                pContext
+            );
+        }
+        /* Register for Interface error notification */
+        if (NFCSTATUS_SUCCESS == wStatus)
+        {
+            PH_LOG_NCI_INFO_STR("Registering for Interface Error Notification");
+            /* Register for Interface Activation Notification */
+            tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlNtf;
+            tHeaderInfo.Group_ID = phNciNfc_e_CoreNciCoreGid;
+            tHeaderInfo.Opcode_ID.OidType.NciCoreNtfOid = phNciNfc_e_NciCoreInterfaceErrNtfOid;
+            wStatus = phNciNfc_CoreIfRegRspNtf(&(pCtx->NciCoreContext),
+                &(tHeaderInfo),
+                &phNciNfc_ProcessIntfErrNtf,
+                pContext
+            );
+        }
+        /* Register for Generic error notification */
+        if (NFCSTATUS_SUCCESS == wStatus)
+        {
+            PH_LOG_NCI_INFO_STR("Registering for Generic Error Notification");
+            /* Register for Interface Activation Notification */
+            tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlNtf;
+            tHeaderInfo.Group_ID = phNciNfc_e_CoreNciCoreGid;
+            tHeaderInfo.Opcode_ID.OidType.NciCoreNtfOid = phNciNfc_e_NciCoreGenericErrNtfOid;
+            wStatus = phNciNfc_CoreIfRegRspNtf(&(pCtx->NciCoreContext),
+                &(tHeaderInfo),
+                &phNciNfc_ProcessGenericErrNtf,
+                pContext
+            );
+        }
+        /* Register for Reset notification */
+        if (NFCSTATUS_SUCCESS == wStatus)
+        {
+            PH_LOG_NCI_INFO_STR("Registering for Reset Notification");
+            /* Register for Interface Activation Notification */
+            tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlNtf;
+            tHeaderInfo.Group_ID = phNciNfc_e_CoreNciCoreGid;
+            tHeaderInfo.Opcode_ID.OidType.NciCoreNtfOid = phNciNfc_e_NciCoreResetNtfOid;
+            wStatus = phNciNfc_CoreIfRegRspNtf(&(pCtx->NciCoreContext),
+                &(tHeaderInfo),
+                &phNciNfc_ResetNtfCb,
+                pContext
+            );
+        }
+        /*Register for Rf Nfcee Discovery Request Notification */
+        if (NFCSTATUS_SUCCESS == wStatus)
+        {
+            PH_LOG_NCI_INFO_STR("Registering for Rf Nfcee Discovery Request Notification");
+            tHeaderInfo.Group_ID = phNciNfc_e_CoreRfMgtGid;
+            tHeaderInfo.Opcode_ID.OidType.RfMgtNtfOid = phNciNfc_e_RfMgtRfNfceeDiscoveryReqNtfOid;
+            tHeaderInfo.eMsgType = phNciNfc_e_NciCoreMsgTypeCntrlNtf;
+            wStatus = phNciNfc_CoreIfRegRspNtf(&(pCtx->NciCoreContext),
+                &(tHeaderInfo),
+                &phNciNfc_NfceeDiscReqNtfHandler,
+                pContext
+            );
+        }
+    }
+    else
+    {
+        wStatus = NFCSTATUS_INVALID_PARAMETER;
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}
+
+
 NFCSTATUS
 phNciNfc_Initialise(
                     void*                        pHwRef,
@@ -239,19 +372,30 @@ phNciNfc_Initialise(
             wStatus =  phNciNfc_LogConnInit(pNciContext);
             if(NFCSTATUS_SUCCESS == wStatus)
             {
-                pNciContext->ResetInfo.ResetTypeReq = eResetType;
-                /* Init payload to display the build number in the init response */
-                pNciContext->tInitInfo.bExtension[0] = 0x00;
-                pNciContext->tInitInfo.bExtension[1] = 0x00;
-                pNciContext->tInitInfo.bSkipRegisterAllNtfs = 0x00;
-                wStatus = phNciNfc_GenericSequence((void *)pNciContext, NULL, NFCSTATUS_SUCCESS);
-                if(NFCSTATUS_PENDING != wStatus)
+                wStatus = phNciNfc_RegAllNtfs(pNciContext);
+                if (NFCSTATUS_PENDING != wStatus)
                 {
-                    PH_LOG_NCI_CRIT_STR("Init Sequence failed!");
-                    phNciNfc_FreeSendPayloadBuff(pNciContext);
+                    pNciContext->ResetInfo.ResetTypeReq = eResetType;
+                    /* Init payload to display the build number in the init response */
+                    pNciContext->tInitInfo.bExtension[0] = 0x00;
+                    pNciContext->tInitInfo.bExtension[1] = 0x00;
+                    wStatus = phNciNfc_GenericSequence((void *)pNciContext, NULL, NFCSTATUS_SUCCESS);
+                    if (NFCSTATUS_PENDING != wStatus)
+                    {
+                        PH_LOG_NCI_CRIT_STR("Init Sequence failed!");
+                        phNciNfc_FreeSendPayloadBuff(pNciContext);
+                        phOsalNfc_FreeMemory(pNciContext);
+                        phNciNfc_SetContext(NULL);
+                        phNciNfc_SetCoreContext(NULL);
+                    }
+                }
+                else
+                {
+                    PH_LOG_NCI_WARN_STR("phNciNfc_RegAllNtfs failed!");
                     phOsalNfc_FreeMemory(pNciContext);
                     phNciNfc_SetContext(NULL);
                     phNciNfc_SetCoreContext(NULL);
+                    wStatus = NFCSTATUS_FAILED;
                 }
             }
             else
@@ -296,7 +440,6 @@ phNciNfc_ReInitialise(void* pNciHandle,
         /* Init payload to display the build number in the init response */
         pNciContext->tInitInfo.bExtension[0] = 0x00;
         pNciContext->tInitInfo.bExtension[1] = 0x00;
-        pNciContext->tInitInfo.bSkipRegisterAllNtfs = 0x01;
         PHNCINFC_INIT_SEQUENCE(pNciContext, gphNciNfc_InitSequence);
         wStatus = phNciNfc_GenericSequence((void *)pNciContext, NULL, NFCSTATUS_SUCCESS);
         if(NFCSTATUS_PENDING != wStatus)
@@ -1106,6 +1249,7 @@ NFCSTATUS phNciNfc_GetConfigRaw(
         if(NFCSTATUS_PENDING != wStatus)
         {
               PH_LOG_NCI_CRIT_STR("Get Config Raw Sequence failed!");
+              phNciNfc_FreeSendPayloadBuff(pNciContext);
         }
     }
     else
@@ -2105,11 +2249,7 @@ phNciNfc_ReleaseNciHandle(void )
                 pNciCtx->tTranscvCtxt.tRecvPld.wLen = 0;
             }
 
-            if (NULL != pNciCtx->tSendPayload.pBuff) {
-                phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
-                pNciCtx->tSendPayload.pBuff = NULL;
-                pNciCtx->tSendPayload.wPayloadSize = 0;
-            }
+            phNciNfc_FreeSendPayloadBuff(pNciCtx);
 
             if (NULL != pNciCtx->InitRspParams.ManufacturerInfo.Buffer) {
                 phOsalNfc_FreeMemory(pNciCtx->InitRspParams.ManufacturerInfo.Buffer);
@@ -2586,12 +2726,7 @@ static NFCSTATUS phNciNfc_CompleteSetPowerSubStateSequence(void *pContext, NFCST
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL != pNciCtx)
     {
-        if(NULL != pNciCtx->tSendPayload.pBuff)
-        {
-            phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
-            pNciCtx->tSendPayload.pBuff = NULL;
-            pNciCtx->tSendPayload.wPayloadSize = 0;
-        }
+        phNciNfc_FreeSendPayloadBuff(pNciCtx);
         phNciNfc_Notify(pNciCtx, wStatus, NULL);
     }
     PH_LOG_NCI_FUNC_EXIT();

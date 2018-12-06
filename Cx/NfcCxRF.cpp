@@ -5767,33 +5767,6 @@ NfcCxRFInterfaceStateRfIdle(
     return status;
 }
 
-static void
-NfcCxRFInterfaceRfDiscoveryConfigSeqComplete(
-    _In_ PNFCCX_RF_INTERFACE RFInterface,
-    _In_ NTSTATUS Status,
-    _In_opt_ VOID* /*Param1*/,
-    _In_opt_ VOID* /*Param2*/
-    )
-{
-    PNFCCX_STATE_INTERFACE stateInterface = NfcCxRFInterfaceGetStateInterface(RFInterface);
-
-    TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-    RFInterface->pLibNfcContext->Status = Status;
-
-    if (NT_SUCCESS(Status)) {
-        NfcCxStateInterfaceChainEvent(stateInterface, NfcCxEventReqCompleted, NULL, NULL, NULL);
-    }
-    else if ((RFInterface->FdoContext->NfcCxClientGlobal->Config.DriverFlags & NFC_CX_DRIVER_DISABLE_RECOVERY_MODE) == 0) {
-        NfcCxStateInterfaceChainEvent(stateInterface, NfcCxEventRecovery, NULL, NULL, NULL);
-    }
-    else {
-        NfcCxStateInterfaceChainEvent(stateInterface, NfcCxEventFailed, NULL, NULL, NULL);
-    }
-
-    TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
-}
-
 NTSTATUS
 NfcCxRFInterfaceStateRfDiscovery(
     _In_ PNFCCX_STATE_INTERFACE StateInterface,
@@ -5805,34 +5778,17 @@ NfcCxRFInterfaceStateRfDiscovery(
 {
     NTSTATUS status = STATUS_SUCCESS;
     PNFCCX_RF_INTERFACE rfInterface = StateInterface->FdoContext->RFInterface;
-    phLibNfc_sADD_Cfg_t discoveryConfig = {};
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-    if (Event == NfcCxEventConfigDiscovery)
-    {
-        NFCCX_CX_BEGIN_SEQUENCE_MAP(RfDiscoveryConfigSequence)
-            RF_INTERFACE_RF_DISCOVERY_STOP_SEQUENCE
-            RF_INTERFACE_RF_DISCOVERY_CONFIG_SEQUENCE
-        NFCCX_CX_END_SEQUENCE_MAP()
 
-        NfcCxRFInterfaceGetDiscoveryConfig(rfInterface, &discoveryConfig);
-
-        if (memcmp(&discoveryConfig, &rfInterface->DiscoveryConfig, sizeof(phLibNfc_sADD_Cfg_t)) != 0) {
-            status = NfcCxSequenceStart(rfInterface, RfDiscoveryConfigSequence, NfcCxRFInterfaceRfDiscoveryConfigSeqComplete, Param2, Param3);
-        }
-        else {
-            TRACE_LINE(LEVEL_INFO, "No change in discovery configuration");
-        }
-    }
-    else
+    if (Event == NfcCxEventSE)
     {
         // Warning C4311: 'type cast': pointer truncation from 'void *' to 'UINT32'
         // Warning C4302: 'type cast': truncation from 'void *' to 'UINT32'
 #pragma warning(suppress:4311 4302)
         UINT32 eLibNfcMessage = (UINT32)Param1;
 
-        NT_ASSERT(Event == NfcCxEventSE);
         status = NfcCxRFInterfaceStateSEEvent(rfInterface, eLibNfcMessage, Param2, Param3);
     }
 

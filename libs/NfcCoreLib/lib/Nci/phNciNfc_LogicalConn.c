@@ -174,15 +174,14 @@ phNciNfc_LogConnCreate(
                     if(NFCSTATUS_PENDING != wStatus)
                     {
                         PH_LOG_NCI_CRIT_STR("Logical connection Sequence failed!");
-                        phNciNfc_FreeSendPayloadBuff(psNciCtxt);
                     }
                 }
                 else
                 {
                     wStatus = PHNFCSTVAL(CID_NFC_NCI, NFCSTATUS_FAILED);
                     PH_LOG_NCI_INFO_STR("Failed to create entry in logical connection list");
-                    phNciNfc_FreeSendPayloadBuff(psNciCtxt);
                 }
+                phNciNfc_FreeSendPayloadBuff(psNciCtxt);
             }
             else
             {

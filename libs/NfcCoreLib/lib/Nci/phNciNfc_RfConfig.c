@@ -699,12 +699,6 @@ phNciNfc_BuildSetLstnRtngCmdPayload(uint8_t                *pBuffer,
             {
                 offset += phNciNfc_WriteRoutingEntryToPayload(&pBuffer[offset], &pRtngConfig[entryIndex]);
             }
-            else
-            {
-                /* Should never enter here since all input parameters are already validated */
-                PH_LOG_NCI_WARN_STR("Unknown routing type");
-                break;
-            }
         }
     }
 
@@ -900,12 +894,7 @@ phNciNfc_CompleteProtoIfMap(void *pContext,
     /*Dealocate resource allocate before init sequnce*/
     if(NULL != pNciCtx)
     {
-        if(NULL != pNciCtx->tSendPayload.pBuff)
-        {
-            phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
-            pNciCtx->tSendPayload.pBuff = NULL;
-            pNciCtx->tSendPayload.wPayloadSize = 0;
-        }
+        phNciNfc_FreeSendPayloadBuff(pNciCtx);
         phNciNfc_Notify(pNciCtx, wStatus, NULL);
     }
     PH_LOG_NCI_FUNC_EXIT();
@@ -1048,12 +1037,7 @@ phNciNfc_CompleteSetConfig(void *pContext, NFCSTATUS wStatus)
     /*Dealocate resource allocate before init sequnce*/
     if(NULL != pNciCtx)
     {
-        if(NULL != pNciCtx->tSendPayload.pBuff)
-        {
-            phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
-            pNciCtx->tSendPayload.pBuff = NULL;
-            pNciCtx->tSendPayload.wPayloadSize = 0;
-        }
+        phNciNfc_FreeSendPayloadBuff(pNciCtx);
         /*Free the allocated memory used for set config optimization*/
         if(pNciCtx->tSetConfOptInfo.pSetConfParams != NULL)
         {
@@ -1866,12 +1850,7 @@ phNciNfc_CompleteSetRtngConfig(void *pContext,
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL != pNciCtx)
     {
-        if(NULL != pNciCtx->tSendPayload.pBuff)
-        {
-            phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
-            pNciCtx->tSendPayload.pBuff = NULL;
-            pNciCtx->tSendPayload.wPayloadSize = 0;
-        }
+        phNciNfc_FreeSendPayloadBuff(pNciCtx);
         if(NFCSTATUS_SUCCESS == wStatus)
         {
             if(1 == pNciCtx->tRtngConfInfo.bMore)
@@ -2469,12 +2448,7 @@ phNciNfc_CompleteRfParamUpdate(void *pContext, NFCSTATUS wStatus)
     /*Dealocate resource allocate before init sequnce*/
     if(NULL != pNciCtx)
     {
-        if(NULL != pNciCtx->tSendPayload.pBuff)
-        {
-            phOsalNfc_FreeMemory(pNciCtx->tSendPayload.pBuff);
-            pNciCtx->tSendPayload.pBuff = NULL;
-            pNciCtx->tSendPayload.wPayloadSize = 0;
-        }
+        phNciNfc_FreeSendPayloadBuff(pNciCtx);
         phNciNfc_Notify(pNciCtx, wStatus, NULL);
     }
     PH_LOG_NCI_FUNC_EXIT();
@@ -4693,12 +4667,7 @@ static NFCSTATUS phNciNfc_CompleteGetConfigRaw(void *pContext,NFCSTATUS wStatus)
     PH_LOG_NCI_FUNC_ENTRY();
     if(NULL != pNciContext)
     {
-        if(NULL != pNciContext->tSendPayload.pBuff)
-        {
-            phOsalNfc_FreeMemory(pNciContext->tSendPayload.pBuff);
-            pNciContext->tSendPayload.pBuff = NULL;
-            pNciContext->tSendPayload.wPayloadSize = 0;
-        }
+        phNciNfc_FreeSendPayloadBuff(pNciContext);
         if(NFCSTATUS_SUCCESS == wStatus)
         {
             if(pNciContext->RspBuffInfo.wLen > (ARRAYSIZE(aGetConfig) - 1))

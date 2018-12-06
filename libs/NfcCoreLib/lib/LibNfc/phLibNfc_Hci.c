@@ -22,7 +22,6 @@ static NFCSTATUS phLibNfc_HciGetSessionIdentityProc(void* pContext,NFCSTATUS sta
 static NFCSTATUS phLibNfc_HciChildDevCommonInitComplete(void* pContext, NFCSTATUS status, void* pInfo);
 static NFCSTATUS phLibNfc_HciInitComplete(void* pContext,NFCSTATUS status,void* pInfo);
 static NFCSTATUS phLibNfc_HciChildDevCreateApduPipeComplete(void* pContext, NFCSTATUS status, void* pInfo);
-static NFCSTATUS phLibNfc_HciEndInitSequence(void* pContext, NFCSTATUS status, void* pInfo);
 static NFCSTATUS phLibNfc_NfceeModeSet(void *pContext,NFCSTATUS wStatus,void *pInfo);
 static NFCSTATUS phLibNfc_NfceeModeSetProc(void *pContext, NFCSTATUS wStatus, void *pInfo);
 
