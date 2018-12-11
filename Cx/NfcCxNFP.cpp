@@ -596,12 +596,6 @@ Return Value:
     TRACE_LINE(LEVEL_INFO,
         "Completing request %p, with %!STATUS!, 0x%I64x", wdfRequest, status, actualSize);
 
-#ifdef EVENT_WRITE
-    EventWriteNfpGetNextSubscribedMsgStop(WdfRequestGetFileObject(wdfRequest),
-                                          status,
-                                          actualSize);
-#endif
-
     WdfRequestCompleteWithInformation(wdfRequest, status, actualSize);
     wdfRequest = NULL;
 
@@ -661,10 +655,6 @@ Return Value:
     TRANSLATION_TYPE_PROTOCOL expectedTranslationType;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-#ifdef EVENT_WRITE
-    EventWriteRfArrivalDeparture(Event);
-#endif
 
     WdfWaitLockAcquire(NfpInterface->SubsLock, NULL);
 
@@ -2134,10 +2124,6 @@ Return Value:
     UNREFERENCED_PARAMETER(InputBuffer);
     UNREFERENCED_PARAMETER(InputBufferLength);
 
-#ifdef EVENT_WRITE
-    EventWriteNfpGetNextSubscribedMsgStart(FileContext->FileObject);
-#endif
-
     if (ROLE_SUBSCRIPTION != FileContext->Role) {
         TRACE_LINE(LEVEL_ERROR, "Invalid role for request");
         status = STATUS_INVALID_DEVICE_STATE;
@@ -2196,10 +2182,6 @@ Return Value:
             delete pBuffer;
         }
 
-#ifdef EVENT_WRITE
-        EventWriteNfpGetNextSubscribedMsgStop(FileContext->FileObject, status, usedBufferSize);
-#endif
-
         WdfRequestCompleteWithInformation(Request, status, usedBufferSize);
         NfcCxNfpInterfaceSubscriptionTelemetry(status, FileContext->TranslationType);
 
@@ -2251,13 +2233,6 @@ Return Value:
     status = STATUS_PENDING;
 
 Done:
-
-#ifdef EVENT_WRITE
-    if (!NT_SUCCESS(status)) {
-        EventWriteNfpGetNextSubscribedMsgStop(FileContext->FileObject, status, 0);
-    }
-#endif
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }
@@ -2319,10 +2294,6 @@ Return Value:
         TRACE_LINE(LEVEL_ERROR, "Failed to set the payload, %!STATUS!", status);
         goto Done;
     }
-
-#ifdef EVENT_WRITE
-    EventWriteNfpSetPayload(FileContext->FileObject, InputBufferLength);
-#endif
 
     //
     // If the file object is enabled, and we are already connected,
@@ -2387,10 +2358,6 @@ Return Value:
         "Get Next Transmitted Message for client role %!FILE_OBJECT_ROLE! and %!TRANSLATION_TYPE_PROTOCOL!", 
         FileContext->Role, FileContext->TranslationType);
 
-#ifdef EVENT_WRITE
-    EventWriteNfpGetNextTransmittedMsgStart(FileContext->FileObject);
-#endif
-
     if (ROLE_PUBLICATION != FileContext->Role) {
         TRACE_LINE(LEVEL_ERROR, "Invalid role for request");
         status = STATUS_INVALID_DEVICE_STATE;
@@ -2440,10 +2407,6 @@ Return Value:
         TRACE_LINE(LEVEL_INFO, "Completed queued notification");
         FileContext->RoleParameters.Pub.SentMsgCounter--;
 
-#ifdef EVENT_WRITE
-        EventWriteNfpGetNextTransmittedMsgStop(FileContext->FileObject, STATUS_SUCCESS);
-#endif
-
         WdfRequestComplete(Request, STATUS_SUCCESS);
         NfcCxNfpInterfacePublicationTelemetry(STATUS_SUCCESS, FileContext->TranslationType);
 
@@ -2489,13 +2452,6 @@ Return Value:
     status = STATUS_PENDING;
 
 Done:
-
-#ifdef EVENT_WRITE
-    if (!NT_SUCCESS(status)) {
-        EventWriteNfpGetNextTransmittedMsgStop(FileContext->FileObject, status);
-    }
-#endif
-
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
 }

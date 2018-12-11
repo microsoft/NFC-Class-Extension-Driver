@@ -1085,10 +1085,6 @@ Return Value:
     
     TRACE_LINE(LEVEL_INFO, "Current Power State = %!BOOLEAN!", PowerManager->NfpRadioState);
 
-#ifdef EVENT_WRITE
-    EventWritePowerSetRadioState(PowerManager->NfpRadioState);
-#endif
-
 Done:
     //
     // Persist the data into the registry

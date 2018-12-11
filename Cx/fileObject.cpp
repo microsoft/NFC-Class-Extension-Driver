@@ -344,15 +344,6 @@ Return Value:
     TRACE_LINE(LEVEL_INFO, "    Client Type = %s",                                      fileContext->pszTypes);
     TRACE_LINE(LEVEL_INFO, "    Client Tnf = %d",                                       fileContext->Tnf);
 
-#ifdef EVENT_WRITE
-    EventWriteNfpClientCreate(FileObject,
-                              fileContext->Role,
-                              fileContext->pszTypes,
-                              fileContext->TranslationType,
-                              fileContext->Tnf);
-#endif
-
-
     if (NFC_CX_DEVICE_MODE_RAW == fdoContext->NfcCxClientGlobal->Config.DeviceMode)
     {
         if (fdoContext->DisablePowerManagerStopIdle)
@@ -521,14 +512,6 @@ Return Value:
     TRACE_LINE(LEVEL_INFO, "    Client TranslationType = %!TRANSLATION_TYPE_PROTOCOL!", fileContext->TranslationType);
     TRACE_LINE(LEVEL_INFO, "    Client Type = %s", fileContext->pszTypes);
     TRACE_LINE(LEVEL_INFO, "    Client Tnf = %d", fileContext->Tnf);
-
-#ifdef EVENT_WRITE
-    EventWriteNfpClientDestroy(FileObject,
-                               fileContext->Role,
-                               fileContext->pszTypes,
-                               fileContext->TranslationType,
-                               fileContext->Tnf);
-#endif
 
     switch (fileContext->Role) {
     case ROLE_SUBSCRIPTION:
@@ -1302,10 +1285,6 @@ Return Value:
 
         TRACE_LINE(LEVEL_INFO,
             "Completing request %p, with %!STATUS!, 0x%I64x", wdfRequest, status, 0);
-
-#ifdef EVENT_WRITE
-        EventWriteNfpGetNextTransmittedMsgStop(FileContext->FileObject, status);
-#endif
 
         WdfRequestCompleteWithInformation(wdfRequest, status, 0);
         wdfRequest = NULL;

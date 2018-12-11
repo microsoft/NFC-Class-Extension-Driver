@@ -43,10 +43,6 @@ DllMain(
         WPP_INIT_TRACING(NFCCX_TRACING_ID);
 #endif
 
-#ifdef EVENT_WRITE
-        EventRegisterMicrosoft_Windows_NFC_ClassExtension();
-#endif
-
 #ifdef TELEMETRY
         TlgRegisterAggregateProvider(g_hNfcCxProvider);
 #endif
@@ -54,10 +50,6 @@ DllMain(
     else if (DLL_PROCESS_DETACH == Reason) {
 #ifndef WPP_MACRO_USE_KM_VERSION_FOR_UM
         WPP_CLEANUP();
-#endif
-
-#ifdef EVENT_WRITE
-        EventUnregisterMicrosoft_Windows_NFC_ClassExtension();
 #endif
 
 #ifdef TELEMETRY

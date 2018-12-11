@@ -161,10 +161,6 @@ typedef struct _NFCCX_DDI_MODULE {
 //
 // Local Includes
 //
-#ifdef EVENT_WRITE
-#include "NfcCx.Events.h"
-#endif
-
 #include "NfcCxUtils.h"
 
 #include "StorageCardManager.h"

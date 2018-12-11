@@ -680,17 +680,6 @@ Return Value:
                                               &nciHeader)) {
         TRACE_LINE(LEVEL_ERROR, "Failed to parse the Nci Packet Header");
     }
-    else {
-#ifdef EVENT_WRITE
-        EventWriteNciPacketWrite(nciHeader.MessageType,
-                                 nciHeader.PBF,
-                                 BufferLength);
-        EventWriteNciPacketWritePayload(nciHeader.MessageType,
-                                        nciHeader.PBF,
-                                        BufferLength,
-                                        Buffer);
-#endif
-    }
 
     WdfRequestSetCompletionRoutine(request, NfcCxTml_WriteCompletion, NULL);
 
@@ -915,17 +904,6 @@ Return Value:
                                               &nciHeader)) {
         // Ignore the error
         TRACE_LINE(LEVEL_ERROR, "Failed to parse the Nci Packet Header");
-    }
-    else {
-#ifdef EVENT_WRITE
-        EventWriteNciPacketReceived(nciHeader.MessageType,
-                                    nciHeader.PBF,
-                                    BufferSize);
-        EventWriteNciPacketReceivedPayload(nciHeader.MessageType,
-                                           nciHeader.PBF,
-                                           BufferSize,
-                                           Buffer);
-#endif
     }
 
     WdfWaitLockAcquire(TmlInterface->QueueLock, NULL);

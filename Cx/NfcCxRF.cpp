@@ -742,20 +742,12 @@ Return Value:
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-#ifdef EVENT_WRITE
-    EventWriteRfInitializeStart();
-#endif
-
     //
     // Start the RF Module
     //
     WdfWaitLockAcquire(RFInterface->DeviceLock, NULL);
     status = NfcCxRFInterfaceExecute(RFInterface, NFCCX_RF_OP_INIT, NULL, NULL);
     WdfWaitLockRelease(RFInterface->DeviceLock);
-
-#ifdef EVENT_WRITE
-    EventWriteRfInitializeStop(status);
-#endif
 
     TRACE_FUNCTION_EXIT_NTSTATUS(LEVEL_VERBOSE, status);
     return status;
@@ -2843,10 +2835,6 @@ NfcCxRFInterfaceNdefTagWriteCB(
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
 
-#ifdef EVENT_WRITE
-    EventWriteRfNdefTagWriteStop(status);
-#endif
-
     rfInterface->pLibNfcContext->bIsTagWriteAttempted = TRUE;
     NfcCxSequenceDispatchResume(rfInterface, sequence, status, NULL, NULL);
 
@@ -2869,10 +2857,6 @@ NfcCxRFInterfaceTagWriteNdef(
         TRACE_LINE(LEVEL_ERROR, "Tag Ndef Write already attempted");
     }
     else {
-#ifdef EVENT_WRITE
-        EventWriteRfNdefTagWriteStart(RFInterface->sSendBuffer.length);
-#endif
-
         nfcStatus = phLibNfc_Ndef_Write(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev,
                                         &RFInterface->sSendBuffer,
                                         NfcCxRFInterfaceNdefTagWriteCB,
@@ -2896,10 +2880,6 @@ NfcCxRFInterfaceTagReadNdefCB(
     PNFCCX_RF_INTERFACE rfInterface = sequence->RFInterface;
 
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-
-#ifdef EVENT_WRITE
-    EventWriteRfNdefTagReadStop(status, (USHORT)rfInterface->sNdefMsg.length);
-#endif
 
     if (NT_SUCCESS(status)) {
         NfcCxRFInterfaceHandleReceivedNdefMessage(rfInterface,
@@ -2978,10 +2958,6 @@ NfcCxRFInterfaceTagReadNdef(
     RFInterface->sNdefMsg.buffer = (uint8_t*)malloc(RFInterface->uiActualNdefMsgLength);
     if (RFInterface->sNdefMsg.buffer) {
         RFInterface->sNdefMsg.length = RFInterface->uiActualNdefMsgLength;
-
-#ifdef EVENT_WRITE
-        EventWriteRfNdefTagReadStart();
-#endif
 
         nfcStatus = phLibNfc_Ndef_Read(RFInterface->pLibNfcContext->pRemDevList[0].hTargetDev,
                                        &RFInterface->sNdefMsg,
