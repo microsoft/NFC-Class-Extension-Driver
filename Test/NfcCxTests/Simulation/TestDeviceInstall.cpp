@@ -3,6 +3,10 @@
 #include <combaseapi.h>
 #include <system_error>
 
+#include <SimulationSequences\InitSequences.h>
+
+#include "NciSimConnector.h"
+#include "SimSequenceRunner.h"
 #include "TestDeviceInstall.h"
 
 TestDeviceInstall::TestDeviceInstall()
@@ -41,6 +45,11 @@ TestDeviceInstall::TestDeviceInstall()
     }
 
     VerifyHresultSucceeded(createResult);
+
+    // Handle the initial D0 entry/exit that occurs during device initialization.
+    NciSimConnector simConnector;
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
 }
 
 TestDeviceInstall::~TestDeviceInstall()

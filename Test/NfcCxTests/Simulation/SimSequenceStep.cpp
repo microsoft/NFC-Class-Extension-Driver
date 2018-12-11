@@ -55,6 +55,22 @@ SimSequenceStep::NciDataRead(
 }
 
 SimSequenceStep
+SimSequenceStep::HciWrite(
+    std::wstring stepName,
+    const NciHciDataPacket& packet)
+{
+    return NciWrite(std::move(stepName), packet);
+}
+
+SimSequenceStep
+SimSequenceStep::HciRead(
+    std::wstring stepName,
+    const NciHciDataPacket& packet)
+{
+    return NciRead(std::move(stepName), packet);
+}
+
+SimSequenceStep
 SimSequenceStep::SequenceHandler(
     std::wstring stepName,
     NFC_CX_SEQUENCE type,

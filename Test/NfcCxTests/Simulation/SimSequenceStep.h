@@ -9,6 +9,7 @@
 
 #include "NciControlPacket.h"
 #include "NciDataPacket.h"
+#include "NciHciDataPacket.h"
 #include "NciPacket.h"
 
 enum class SimSequenceStepType
@@ -51,6 +52,12 @@ struct SimSequenceStep
         std::wstring stepName);
     static SimSequenceStep D0Exit(
         std::wstring stepName);
+    static SimSequenceStep HciWrite(
+        std::wstring stepName,
+        const NciHciDataPacket& packet);
+    static SimSequenceStep HciRead(
+        std::wstring stepName,
+        const NciHciDataPacket& packet);
 
     static SimSequenceStep SequenceHandler(
         std::wstring stepName,

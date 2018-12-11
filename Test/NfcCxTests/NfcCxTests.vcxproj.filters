@@ -87,6 +87,15 @@
     <ClInclude Include="Simulation\TestDeviceInstall.h">
       <Filter>Simulation</Filter>
     </ClInclude>
+    <ClInclude Include="IOHelpers\AsyncTask.h">
+      <Filter>IOHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\NciHciDataPacket.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="SimulationSequences\SEInitializationSequences.h">
+      <Filter>SimulationSequences</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IOHelpers\DeviceQuery.cpp">
@@ -157,6 +166,15 @@
     </ClCompile>
     <ClCompile Include="Simulation\TestDeviceInstall.cpp">
       <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\NciHciDataPacket.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="SimulationSequences\SEInitializationSequences.cpp">
+      <Filter>SimulationSequences</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\SETests.cpp">
+      <Filter>Tests</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

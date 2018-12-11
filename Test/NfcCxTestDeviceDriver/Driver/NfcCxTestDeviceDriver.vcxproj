@@ -81,7 +81,7 @@
       <WppModuleName>NfcNciSimulator</WppModuleName>
       <WppScanConfigurationData>Trace.h</WppScanConfigurationData>
       <DisableSpecificWarnings>4577;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\Api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\Api;$(ProjectDir)..\..\..\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <PostBuildEvent>
       <Command>tracepdb -f $(OutDir)$(AssemblyName).pdb -p $(OutDir)</Command>

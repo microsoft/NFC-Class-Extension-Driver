@@ -11,6 +11,7 @@
 
 #include <NfcCxTestDeviceDriver.h>
 
+#include <IOHelpers\AsyncTask.h>
 #include <IOHelpers\IoOperation.h>
 #include <IOHelpers\UniqueHandle.h>
 
@@ -54,6 +55,8 @@ public:
     void SendSequenceCompleted(NTSTATUS status, ULONG flags);
     NciSimCallbackMessage ReceiveLibNfcThreadCallback();
     NciSimCallbackMessage ReceivePowerCallback();
+    std::shared_ptr<Async::AsyncTaskBase<void>> WhenLibNfcThreadCallbackAvailableAsync();
+    std::shared_ptr<Async::AsyncTaskBase<void>> WhenPowerCallbackAvailableAsync();
 
 private:
     static void ThrowIfWin32BoolFailed(BOOL succeeded);
@@ -62,7 +65,7 @@ private:
     void SendCommandSync(_In_ DWORD ioctl, _In_reads_bytes_opt_(inputSize) const void* input, _In_ DWORD inputSize);
 
     void StartGetNextCallback();
-    void CallbackRetrieved(const std::shared_ptr<IoOperation>& ioOperation);
+    void CallbackRetrieved(Async::AsyncTaskBase<IoOperationResult>& ioOperation);
 
     UniqueHandle _DriverHandle;
     std::vector<BYTE> _CallbackDataBuffer;
@@ -82,7 +85,9 @@ private:
     std::condition_variable _CallbacksUpdatedEvent;
     CallbacksState _CallbacksState = CallbacksState::Stopped;
     DWORD _CallbackAllocSize = NciPacketRaw::MaxLength + sizeof(NciSimCallbackHeader);
-    std::shared_ptr<IoOperation> _CurrentCallbackIo;
+    std::weak_ptr<IoOperation> _CurrentCallbackIo;
     std::queue<NciSimCallbackMessage> _LibNfcThreadCallbacks;
     std::queue<NciSimCallbackMessage> _PowerCallbacks;
+    std::vector<std::shared_ptr<Async::AsyncTaskCompletionSource<void>>> _LibNfcThreadCallbackWaiters;
+    std::vector<std::shared_ptr<Async::AsyncTaskCompletionSource<void>>> _PowerCallbackWaiters;
 };

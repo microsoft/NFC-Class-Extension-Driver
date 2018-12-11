@@ -21,7 +21,7 @@ struct InitSequences
         static const SimSequenceStep Sequence_Nci2[3];
     };
 
-    struct InitializeNoSEs
+    struct Initialize
     {
         static const SimSequenceStep PreInitialize;
         static const SimSequenceStep InitializeCommand_Nci1;
@@ -31,15 +31,12 @@ struct InitSequences
         static const SimSequenceStep InitializeComplete;
         static const SimSequenceStep GetConfigCommand;
         static const SimSequenceStep GetConfigResponse;
-        static const SimSequenceStep PreNfceeDiscovery;
-        static const SimSequenceStep NfceeDiscoverCommand_Nci1;
-        static const SimSequenceStep NfceeDiscoverCommand_Nci2;
-        static const SimSequenceStep NfceeDiscoverResponse;
-        static const SimSequenceStep NfceeDiscoveryComplete;
 
-        static const SimSequenceView Sequence_Nci1[11];
-        static const SimSequenceView Sequence_Nci2[11];
-        static const SimSequenceView Sequence(bool isNci2);
+        static const SimSequenceView NoSEsSequence_Nci1[8];
+        static const SimSequenceView NoSEsSequence_Nci2[8];
+        static const SimSequenceView NoSEsSequence(bool isNci2);
+
+        static const SimSequenceView WithEseSequence_Nci1[8];
     };
 
     struct Uninitialize

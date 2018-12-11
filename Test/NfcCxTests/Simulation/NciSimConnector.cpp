@@ -59,15 +59,21 @@ NciSimConnector::~NciSimConnector()
 
     while (_CallbacksState != CallbacksState::Stopped)
     {
+        std::shared_ptr<IoOperation> callbackIo = _CurrentCallbackIo.lock();
+
         // Cancel any pending I/O.
-        if (_CurrentCallbackIo)
+        if (callbackIo)
         {
-            _CurrentCallbackIo->Cancel();
+            callbackIo->Cancel();
         }
 
         // Wait for the callbacks loop to stop.
         _CallbacksUpdatedEvent.wait(gate);
     }
+
+    // Ensure there aren't any leftover callbacks, to ensure the test has accounted for all the events.
+    VERIFY_ARE_EQUAL(0u, _LibNfcThreadCallbacks.size());
+    VERIFY_ARE_EQUAL(0u, _PowerCallbacks.size());
 }
 
 const std::wstring&
@@ -153,6 +159,42 @@ NciSimConnector::ReceivePowerCallback()
     return std::move(result);
 }
 
+std::shared_ptr<Async::AsyncTaskBase<void>>
+NciSimConnector::WhenLibNfcThreadCallbackAvailableAsync()
+{
+    std::shared_ptr<Async::AsyncTaskCompletionSource<void>> completionSource = Async::MakeCompletionSource<void>();
+
+    std::unique_lock<std::mutex> gate(_CallbacksLock);
+    if (!_LibNfcThreadCallbacks.empty())
+    {
+        completionSource->EmplaceResult();
+    }
+    else
+    {
+        _LibNfcThreadCallbackWaiters.push_back(completionSource);
+    }
+
+    return completionSource;
+}
+
+std::shared_ptr<Async::AsyncTaskBase<void>>
+NciSimConnector::WhenPowerCallbackAvailableAsync()
+{
+    std::shared_ptr<Async::AsyncTaskCompletionSource<void>> completionSource = Async::MakeCompletionSource<void>();
+
+    std::unique_lock<std::mutex> gate(_CallbacksLock);
+    if (!_PowerCallbacks.empty())
+    {
+        completionSource->EmplaceResult();
+    }
+    else
+    {
+        _PowerCallbackWaiters.push_back(completionSource);
+    }
+
+    return completionSource;
+}
+
 void
 NciSimConnector::StartGetNextCallback()
 {
@@ -164,19 +206,22 @@ NciSimConnector::StartGetNextCallback()
         return;
     }
 
-    _CurrentCallbackIo = IoOperation::DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_GET_NEXT_CALLBACK, nullptr, 0, _CallbackAllocSize,
-        [this](const std::shared_ptr<IoOperation>& ioOperation)
+    std::shared_ptr<IoOperation> callbackIo = IoOperation::DeviceIoControl(_DriverHandle.Get(), IOCTL_NCISIM_GET_NEXT_CALLBACK, nullptr, 0, _CallbackAllocSize);
+    _CurrentCallbackIo = callbackIo;
+
+    callbackIo->SetAsyncCompletedHandler(
+        [this](Async::AsyncTaskBase<IoOperationResult>& ioOperation)
     {
         this->CallbackRetrieved(ioOperation);
     });
 }
 
 void
-NciSimConnector::CallbackRetrieved(const std::shared_ptr<IoOperation>& ioOperation)
+NciSimConnector::CallbackRetrieved(Async::AsyncTaskBase<IoOperationResult>& ioOperation)
 {
     std::unique_lock<std::mutex> gate(_CallbacksLock);
 
-    _CurrentCallbackIo = nullptr;
+    _CurrentCallbackIo.reset();
     if (_CallbacksState == CallbacksState::Stopping)
     {
         // Class is being destroyed.
@@ -185,7 +230,7 @@ NciSimConnector::CallbackRetrieved(const std::shared_ptr<IoOperation>& ioOperati
         return;
     }
 
-    IoOperation::Result ioResult = ioOperation->GetResult();
+    IoOperationResult ioResult = ioOperation.Get();
     if (ioResult.ErrorCode == ERROR_INSUFFICIENT_BUFFER)
     {
         // Increase the size of the output buffer.
@@ -196,6 +241,7 @@ NciSimConnector::CallbackRetrieved(const std::shared_ptr<IoOperation>& ioOperati
 
         // Try get the message again but with a bigger buffer this time.
         StartGetNextCallback();
+        return;
     }
 
     ThrowIfWin32Failed(ioResult.ErrorCode);
@@ -208,13 +254,32 @@ NciSimConnector::CallbackRetrieved(const std::shared_ptr<IoOperation>& ioOperati
     {
     case NciSimCallbackType::NciWrite:
     case NciSimCallbackType::SequenceHandler:
+    {
         _LibNfcThreadCallbacks.push(std::move(callbackMessage));
-        break;
 
+        for (const std::shared_ptr<Async::AsyncTaskCompletionSource<void>>& waiter : _LibNfcThreadCallbackWaiters)
+        {
+            waiter->EmplaceResult();
+        }
+
+        _LibNfcThreadCallbackWaiters.clear();
+
+        break;
+    }
     case NciSimCallbackType::D0Entry:
     case NciSimCallbackType::D0Exit:
+    {
         _PowerCallbacks.push(std::move(callbackMessage));
+
+        for (const std::shared_ptr<Async::AsyncTaskCompletionSource<void>>& waiter : _PowerCallbackWaiters)
+        {
+            waiter->EmplaceResult();
+        }
+
+        _PowerCallbackWaiters.clear();
+
         break;
+    }
     }
 
     _CallbacksUpdatedEvent.notify_all();

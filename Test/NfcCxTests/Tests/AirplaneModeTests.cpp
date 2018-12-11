@@ -37,7 +37,7 @@ AirplaneModeTests::RadioStateBasicTest()
     std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence_Nci1);
     VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Open radio manager
@@ -162,6 +162,7 @@ AirplaneModeTests::RadioStateBasicTest()
     nfpSubInterface.Reset();
 
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
 
     // Stop NFC Controller.
     LOG_COMMENT(L"# Stop NFC Controller.");

@@ -23,7 +23,8 @@ DeviceContext::DeviceAdd(
     NFC_CX_CLIENT_CONFIG_INIT(&nfcCxConfig, NFC_CX_TRANSPORT_CUSTOM);
     nfcCxConfig.EvtNfcCxWriteNciPacket = WriteNciPacketCallback;
     nfcCxConfig.EvtNfcCxDeviceIoControl = DeviceIoCallback;
-    nfcCxConfig.DriverFlags = NFC_CX_DRIVER_ENABLE_EEPROM_WRITE_PROTECTION;
+    nfcCxConfig.DriverFlags = NFC_CX_DRIVER_ENABLE_EEPROM_WRITE_PROTECTION |
+        NFC_CX_DRIVER_POWER_AND_LINK_CONTROL_SUPPORTED;
 
     status = NfcCxDeviceInitConfig(DeviceInit, &nfcCxConfig);
     if (!NT_SUCCESS(status))

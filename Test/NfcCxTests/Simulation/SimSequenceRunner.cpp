@@ -26,6 +26,7 @@ SimSequenceRunner::VerifyStep(
         {
             LogExpectedStep(expectedStep);
             LogByteBuffer(L"Actual NCI packet  ", nciWrite->NciMessage, nciPacketSize);
+            VERIFY_FAIL(L"Step and driver message don't match.");
         }
 
         break;
@@ -39,6 +40,7 @@ SimSequenceRunner::VerifyStep(
         {
             LogExpectedStep(expectedStep);
             LOG_COMMENT(L"Actual sequence handler:   %d", int(params->Sequence));
+            VERIFY_FAIL(L"Step and driver message don't match.");
         }
 
         break;
@@ -49,6 +51,7 @@ SimSequenceRunner::VerifyStep(
         {
             LogExpectedStep(expectedStep);
             LOG_COMMENT(L"Actual:   D0 Entry");
+            VERIFY_FAIL(L"Step and driver message don't match.");
         }
         break;
     }
@@ -58,6 +61,7 @@ SimSequenceRunner::VerifyStep(
         {
             LogExpectedStep(expectedStep);
             LOG_COMMENT(L"Actual:   D0 Exit");
+            VERIFY_FAIL(L"Step and driver message don't match.");
         }
         break;
     }

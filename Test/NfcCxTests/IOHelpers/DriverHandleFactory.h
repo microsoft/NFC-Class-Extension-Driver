@@ -5,8 +5,11 @@
 #pragma once
 
 #include <string>
+#include <memory>
+
 #include <winrt/windows.devices.smartcards.h>
 
+#include "AsyncTask.h"
 #include "UniqueHandle.h"
 
 class DriverHandleFactory
@@ -20,4 +23,8 @@ public:
     static UniqueHandle OpenSmartcardHandle(
         _In_ PCWSTR deviceName,
         _In_ ::winrt::Windows::Devices::SmartCards::SmartCardReaderKind readerKind);
+    static std::shared_ptr<::Async::AsyncTaskBase<UniqueHandle>> OpenSmartcardHandleAsync(
+        _In_ PCWSTR deviceName,
+        _In_ ::winrt::Windows::Devices::SmartCards::SmartCardReaderKind readerKind);
+    static std::shared_ptr<::Async::AsyncTaskBase<void>> CloseHandleAsync(UniqueHandle&& obj);
 };

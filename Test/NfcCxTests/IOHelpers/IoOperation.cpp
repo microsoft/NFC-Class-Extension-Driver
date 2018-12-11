@@ -7,9 +7,9 @@
 #include "IoOperation.h"
 
 std::shared_ptr<IoOperation>
-IoOperation::DeviceIoControl(_In_ HANDLE driverHandle, _In_ DWORD ioctl, _In_reads_bytes_opt_(inputSize) const void* input, _In_ DWORD inputSize, DWORD _In_ outputBufferSize, _In_ std::function<Callback> callback)
+IoOperation::DeviceIoControl(_In_ HANDLE driverHandle, _In_ DWORD ioctl, _In_reads_bytes_opt_(inputSize) const void* input, _In_ DWORD inputSize, _In_ DWORD outputBufferSize)
 {
-    auto ioOperation = std::make_shared<IoOperation>(PrivateToken{}, driverHandle, input, inputSize, outputBufferSize, std::move(callback));
+    auto ioOperation = std::make_shared<IoOperation>(PrivateToken{}, driverHandle, input, inputSize, outputBufferSize);
 
     void* inputBuffer = inputSize == 0 ?
         nullptr :
@@ -32,11 +32,10 @@ IoOperation::DeviceIoControl(_In_ HANDLE driverHandle, _In_ DWORD ioctl, _In_rea
     return ioOperation;
 }
 
-IoOperation::IoOperation(PrivateToken, _In_ HANDLE driverHandle, _In_reads_bytes_opt_(inputSize) const void* input, _In_ DWORD inputSize, DWORD _In_ outputBufferSize, std::function<Callback>&& callback) :
+IoOperation::IoOperation(PrivateToken, _In_ HANDLE driverHandle, _In_reads_bytes_opt_(inputSize) const void* input, _In_ DWORD inputSize, _In_ DWORD outputBufferSize) :
     _DriverHandle(driverHandle),
     _InputBuffer((const BYTE*)input, (const BYTE*)input + inputSize),
-    _OutputBuffer(outputBufferSize),
-    _Callback(std::move(callback))
+    _OutputBuffer(outputBufferSize)
 {
     ZeroMemory(&_Overlapped, sizeof(_Overlapped));
 
@@ -84,70 +83,18 @@ IoOperation::IoCompleted()
     // Drop the self-reference once this function has completed.
     std::shared_ptr<IoOperation> selfRef = std::move(_SelfRef);
 
-    // Get the result of the operation.
-    BOOL operationSucceeded = GetOverlappedResult(_DriverHandle, &_Overlapped, &_BytesReturned, /*wait*/ false);
+    // Get the results of the operation.
+    DWORD bytesTransferred;
+    BOOL operationSucceeded = GetOverlappedResult(_DriverHandle, &_Overlapped, &bytesTransferred, /*wait*/ false);
 
-    // Handle results.
-    if (operationSucceeded)
-    {
-        _OperationResult = ERROR_SUCCESS;
-    }
-    else
-    {
-        _OperationResult = GetLastError();
-    }
+    DWORD errorCode = operationSucceeded ? ERROR_SUCCESS : GetLastError();
 
-    // Let other threads know that the operation has completed.
-    WakeByAddressAll(&_OperationResult);
-
-    // Call callback (if provided).
-    if (_Callback)
-    {
-        _Callback(selfRef);
-    }
-}
-
-bool
-IoOperation::Wait(_In_ DWORD timeoutMilliseconds)
-{
-    for (DWORD operationResult = _OperationResult; _OperationResult == ERROR_IO_PENDING; operationResult = _OperationResult)
-    {
-        static_assert(sizeof(_OperationResult) == sizeof(DWORD), "std::atomic has an unsupported implementation");
-        if (!WaitOnAddress(&_OperationResult, &operationResult, sizeof(DWORD), timeoutMilliseconds))
-        {
-            // Wait timed out
-            return false;
-        }
-    }
-
-    return true;
+    // Set the task result.
+    EmplaceResult(errorCode, bytesTransferred, std::move(_OutputBuffer));
 }
 
 void
-IoOperation::Cancel()
+IoOperation::OnCanceled()
 {
     CancelIoEx(_DriverHandle, &_Overlapped);
-}
-
-IoOperation::Result
-IoOperation::GetResult()
-{
-    if (_OperationResult == ERROR_IO_PENDING)
-    {
-        throw std::runtime_error("I/O operation has not completed yet.");
-    }
-
-    return { _OperationResult, _BytesReturned, std::move(_OutputBuffer) };
-}
-
-// Waits for the I/O request to complete and returns the result.
-IoOperation::Result
-IoOperation::WaitForResult(_In_ DWORD timeoutMilliseconds)
-{
-    if (!Wait(timeoutMilliseconds))
-    {
-        return { ERROR_TIMEOUT, 0, {} };
-    }
-
-    return { _OperationResult, _BytesReturned, std::move(_OutputBuffer) };
 }

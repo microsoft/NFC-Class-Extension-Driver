@@ -50,7 +50,7 @@ TagTests::SimpleNdefSubscriptionTest()
     std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence_Nci1);
     VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Open handle for NDEF subscription.
@@ -73,7 +73,9 @@ TagTests::SimpleNdefSubscriptionTest()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Ensure subscription receives the tag's message.
-    IoOperation::Result ioGetMessageResult = ioGetMessage->WaitForResult(/*wait (ms)*/ 1'000);
+    VERIFY_IS_TRUE(ioGetMessage->Wait(/*wait (ms)*/ 1'000));
+
+    IoOperationResult ioGetMessageResult = ioGetMessage->Get();
     VERIFY_WIN32_SUCCEEDED(ioGetMessageResult.ErrorCode);
 
     // Verify message is correct.
@@ -107,7 +109,7 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
     std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence_Nci1);
     VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Open handle for NDEF subscription.
@@ -139,7 +141,9 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Ensure subscription receives the tag's message.
-    IoOperation::Result ioGetMessageResult = ioGetMessage->WaitForResult(/*wait (ms)*/ 1'000);
+    VERIFY_IS_TRUE(ioGetMessage->Wait(/*wait (ms)*/ 1'000));
+
+    IoOperationResult ioGetMessageResult = ioGetMessage->Get();
     VERIFY_WIN32_SUCCEEDED(ioGetMessageResult.ErrorCode);
 
     // Verify message is correct.
@@ -173,7 +177,7 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence_Nci1);
     VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Open handle for NDEF subscription.
@@ -208,7 +212,9 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Ensure subscription receives the tag's message.
-    IoOperation::Result ioGetMessageResult = ioGetMessage->WaitForResult(/*wait (ms)*/ 1'000);
+    VERIFY_IS_TRUE(ioGetMessage->Wait(/*wait (ms)*/ 1'000));
+
+    IoOperationResult ioGetMessageResult = ioGetMessage->Get();
     VERIFY_WIN32_SUCCEEDED(ioGetMessageResult.ErrorCode);
 
     // Verify message is correct.

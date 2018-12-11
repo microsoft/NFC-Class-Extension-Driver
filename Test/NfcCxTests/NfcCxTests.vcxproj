@@ -67,7 +67,7 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(FrameworkSdkDir)Testing\Development\inc;$(ProjectDir)..\NfcCxTestDeviceDriver\Api;$(ProjectDir)..\..\libs\NfcCoreLib\inc;$(ProjectDir)..\..\libs\NfcCoreLib\lib\NciCore;$(ProjectDir)..\..\libs\NfcCoreLib\lib\Nci;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FrameworkSdkDir)Testing\Development\inc;$(ProjectDir)..\NfcCxTestDeviceDriver\Api;$(ProjectDir)..\..\libs\NfcCoreLib\inc;$(ProjectDir)..\..\libs\NfcCoreLib\lib\Fri;$(ProjectDir)..\..\libs\NfcCoreLib\lib\LibNfc;$(ProjectDir)..\..\libs\NfcCoreLib\lib\NciCore;$(ProjectDir)..\..\libs\NfcCoreLib\lib\Nci;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PreprocessorDefinitions>INITGUID;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
@@ -79,6 +79,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="IOHelpers\AsyncTask.h" />
     <ClInclude Include="IOHelpers\DeviceQuery.h" />
     <ClInclude Include="IOHelpers\DriverHandleFactory.h" />
     <ClInclude Include="IOHelpers\IoOperation.h" />
@@ -88,9 +89,11 @@
     <ClInclude Include="SimulationSequences\InitSequences.h" />
     <ClInclude Include="SimulationSequences\Precomp.h" />
     <ClInclude Include="SimulationSequences\RfDiscoverySequences.h" />
+    <ClInclude Include="SimulationSequences\SEInitializationSequences.h" />
     <ClInclude Include="SimulationSequences\TagSequences.h" />
     <ClInclude Include="Simulation\NciControlPacket.h" />
     <ClInclude Include="Simulation\NciDataPacket.h" />
+    <ClInclude Include="Simulation\NciHciDataPacket.h" />
     <ClInclude Include="Simulation\NciPacket.h" />
     <ClInclude Include="Simulation\NciSimConnector.h" />
     <ClInclude Include="Simulation\Precomp.h" />
@@ -112,9 +115,11 @@
     <ClCompile Include="IOHelpers\UniqueHandle.cpp" />
     <ClCompile Include="SimulationSequences\InitSequences.cpp" />
     <ClCompile Include="SimulationSequences\RfDiscoverySequences.cpp" />
+    <ClCompile Include="SimulationSequences\SEInitializationSequences.cpp" />
     <ClCompile Include="SimulationSequences\TagSequences.cpp" />
     <ClCompile Include="Simulation\NciControlPacket.cpp" />
     <ClCompile Include="Simulation\NciDataPacket.cpp" />
+    <ClCompile Include="Simulation\NciHciDataPacket.cpp" />
     <ClCompile Include="Simulation\NciPacket.cpp" />
     <ClCompile Include="Simulation\NciSimConnector.cpp" />
     <ClCompile Include="Simulation\SimSequenceRunner.cpp" />
@@ -126,6 +131,7 @@
     <ClCompile Include="Tests\AirplaneModeTests.cpp" />
     <ClCompile Include="Tests\InitTests.cpp" />
     <ClCompile Include="Tests\Module.cpp" />
+    <ClCompile Include="Tests\SETests.cpp" />
     <ClCompile Include="Tests\TagTests.cpp" />
     <ClCompile Include="Tests\TestLogging.cpp" />
   </ItemGroup>

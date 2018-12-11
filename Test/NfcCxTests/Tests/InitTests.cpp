@@ -36,6 +36,10 @@ class InitTests
         TEST_METHOD_PROPERTY(L"Category", L"Reliability")
     END_TEST_METHOD()
 
+    BEGIN_TEST_METHOD(InitAndDeinitWithEseNci1Test)
+        TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
+    END_TEST_METHOD()
+
     BEGIN_TEST_METHOD(DiscoveryInitAndDeinitNci1Test)
         TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
     END_TEST_METHOD()
@@ -60,7 +64,7 @@ InitTests::InitAndDeinitTest(bool isNci2)
     std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence(isNci2));
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence(isNci2));
     VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Stop NFC Controller.
@@ -98,12 +102,12 @@ InitTests::InitAndDeinitNci1WithSlowIoTest()
     std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Run through the first half of the initialization sequence, stopping just before the GetConfigCommand step.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1, 5);
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence_Nci1, 5);
 
     // Manually process the GetConfigCommand step.
     LOG_COMMENT(L"# Manually processing GetConfigCommand step.");
     NciSimCallbackMessage message = simConnector.ReceiveLibNfcThreadCallback();
-    SimSequenceRunner::VerifyStep(InitSequences::InitializeNoSEs::GetConfigCommand, message);
+    SimSequenceRunner::VerifyStep(InitSequences::Initialize::GetConfigCommand, message);
 
     // Don't send the NCI write complete message, until after the NCI response timer will have expired.
     LOG_COMMENT(L"Waiting for timeout to trigger.");
@@ -111,7 +115,7 @@ InitTests::InitAndDeinitNci1WithSlowIoTest()
     simConnector.SendNciWriteCompleted();
 
     // Process the remainder of the initialization sequence.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence_Nci1 + 6, std::size(InitSequences::InitializeNoSEs::Sequence_Nci1) - 6);
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence_Nci1 + 6, std::size(InitSequences::Initialize::NoSEsSequence_Nci1) - 6);
     VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Allow device to drop out of D0, so that NCI is deinitialized.
@@ -123,6 +127,31 @@ InitTests::InitAndDeinitNci1WithSlowIoTest()
     VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
 }
 
+// Tests NFC controller initialization and deinitialization with an eSE for NCI 1.1.
+void
+InitTests::InitAndDeinitWithEseNci1Test()
+{
+    LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
+    NciSimConnector simConnector;
+
+    // Start NFC Controller.
+    LOG_COMMENT(L"# Start NFC Controller.");
+    std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
+
+    // Verify NCI is initialized.
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::WithEseSequence_Nci1);
+    VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
+
+    // Stop NFC Controller.
+    LOG_COMMENT(L"# Stop NFC Controller.");
+    std::shared_ptr<IoOperation> ioStopHost = simConnector.StopHostAsync();
+
+    // Verify NCI is uninitialized.
+    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
+}
+
+// Tests entering and exiting RF discovery mode.
 void
 InitTests::DiscoveryInitAndDeinitTest(bool isNci2)
 {
@@ -134,7 +163,7 @@ InitTests::DiscoveryInitAndDeinitTest(bool isNci2)
     std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::InitializeNoSEs::Sequence(isNci2));
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence(isNci2));
     VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Try to find the smartcard (NFC) interface and open it.

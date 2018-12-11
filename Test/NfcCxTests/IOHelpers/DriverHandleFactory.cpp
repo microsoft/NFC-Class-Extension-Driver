@@ -72,3 +72,24 @@ DriverHandleFactory::OpenSmartcardHandle(
 
     return std::move(scInterface);
 }
+
+std::shared_ptr<::Async::AsyncTaskBase<UniqueHandle>>
+DriverHandleFactory::OpenSmartcardHandleAsync(
+    _In_ PCWSTR deviceName,
+    _In_ ::winrt::Windows::Devices::SmartCards::SmartCardReaderKind readerKind)
+{
+    return Async::RunBackgroundTask(
+        [deviceName = std::wstring(deviceName), readerKind]()
+    {
+        return OpenSmartcardHandle(deviceName.c_str(), readerKind);
+    });
+}
+
+std::shared_ptr<::Async::AsyncTaskBase<void>>
+DriverHandleFactory::CloseHandleAsync(UniqueHandle&& obj)
+{
+    return Async::RunBackgroundTask(
+        [obj = std::move(obj)]()
+    {
+    });
+}
