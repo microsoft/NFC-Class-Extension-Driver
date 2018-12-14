@@ -6,7 +6,11 @@
 
 #include <IOHelpers\DriverHandleFactory.h>
 #include <IOHelpers\IoOperation.h>
+#include <IOHelpers\SmartcardIo.h>
+#include <Simulation\ApduOverNciHciGenerator.h>
+#include <Simulation\ApduSamples.h>
 #include <Simulation\SimSequenceRunner.h>
+#include <Simulation\VerifyHelpers.h>
 #include <SimulationSequences\InitSequences.h>
 #include <SimulationSequences\SEInitializationSequences.h>
 
@@ -21,6 +25,21 @@ class SETests
     BEGIN_TEST_METHOD(EseClientConnectDisconnectNci1Test)
         TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
     END_TEST_METHOD()
+
+    BEGIN_TEST_METHOD(EseApduNci1Test)
+        TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
+    END_TEST_METHOD()
+
+private:
+    UniqueHandle ConnectToEse(NciSimConnector& simConnector);
+    void DisconnectFromEse(NciSimConnector& simConnector, UniqueHandle&& eseInterface);
+    void TestApdu(
+        NciSimConnector& simConnector,
+        _In_ HANDLE eseInterface,
+        _In_reads_bytes_(commandLength) const void* command,
+        _In_ DWORD commandLength,
+        _In_reads_bytes_(responseLength) const void* response,
+        _In_ DWORD responseLength);
 };
 
 void
@@ -29,6 +48,52 @@ SETests::EseClientConnectDisconnectNci1Test()
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
 
+    UniqueHandle eseInterface = ConnectToEse(simConnector);
+    DisconnectFromEse(simConnector, std::move(eseInterface));
+}
+
+void
+SETests::EseApduNci1Test()
+{
+    LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
+    NciSimConnector simConnector;
+
+    // Startup.
+    UniqueHandle eseInterface = ConnectToEse(simConnector);
+
+    // Ensure eSE reports as present.
+    std::shared_ptr<IoOperation> ioIsPresent = IoOperation::DeviceIoControl(eseInterface.Get(), IOCTL_SMARTCARD_IS_PRESENT, nullptr, 0, 0);
+    VERIFY_IS_TRUE(ioIsPresent->Wait(/*timeout(ms)*/ 1'000));
+    IoOperationResult isPresentResult = ioIsPresent->Get();
+    VERIFY_WIN32_SUCCEEDED(isPresentResult.ErrorCode);
+
+    // Get the smartcard state of the eSE.
+    std::shared_ptr<IoOperation> getState = IoOperation::DeviceIoControl(eseInterface.Get(), IOCTL_SMARTCARD_GET_STATE, nullptr, 0, sizeof(DWORD));
+    IoOperationResult getStateResult = getState->Get();
+    VERIFY_WIN32_SUCCEEDED(getStateResult.ErrorCode);
+
+    // eSE doesn't support smartcard protocol negotiation. So its state skips directly to 'SCARD_SPECIFIC'.
+    VERIFY_ARE_EQUAL(DWORD(SCARD_SPECIFIC), *reinterpret_cast<DWORD*>(getStateResult.Output.data()));
+
+    // Test basic APDU.
+    LOG_COMMENT(L"# Basic APDU");
+    TestApdu(simConnector, eseInterface.Get(), ApduSamples::GetDataCommand, ARRAYSIZE(ApduSamples::GetDataCommand), ApduSamples::GetDataResponse, ARRAYSIZE(ApduSamples::GetDataResponse));
+
+    // Test extended APDU.
+    LOG_COMMENT(L"# Extended APDU");
+
+    std::vector<uint8_t> apduCommand = ApduSamples::GenerateExtendedApduCommand(/*payloadLength*/ 1'000);
+    std::vector<uint8_t> apduResponse = ApduSamples::GenerateExtendedApduResponse(/*payloadLength*/ 1'000);
+
+    TestApdu(simConnector, eseInterface.Get(), apduCommand.data(), DWORD(apduCommand.size()), apduResponse.data(), DWORD(apduResponse.size()));
+
+    // Shutdown.
+    DisconnectFromEse(simConnector, std::move(eseInterface));
+}
+
+UniqueHandle
+SETests::ConnectToEse(NciSimConnector& simConnector)
+{
     // Start NFC Controller.
     LOG_COMMENT(L"# Start NFC Controller.");
     std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
@@ -66,8 +131,12 @@ SETests::EseClientConnectDisconnectNci1Test()
     }
 
     // Wait for eSE interface to finish opening.
-    UniqueHandle eseInterface = std::move(openEseTask->Get());
+    return openEseTask->Get();
+}
 
+void
+SETests::DisconnectFromEse(NciSimConnector& simConnector, UniqueHandle&& eseInterface)
+{
     // Close eSE interface handle asynchronously.
     std::shared_ptr<Async::AsyncTaskBase<void>> closeEseTask = DriverHandleFactory::CloseHandleAsync(std::move(eseInterface));
 
@@ -85,4 +154,40 @@ SETests::EseClientConnectDisconnectNci1Test()
     // Verify NCI is uninitialized.
     SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
     VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
+}
+
+void
+SETests::TestApdu(
+    NciSimConnector& simConnector,
+    _In_ HANDLE eseInterface,
+    _In_reads_bytes_(commandLength) const void* command,
+    _In_ DWORD commandLength,
+    _In_reads_bytes_(responseLength) const void* response,
+    _In_ DWORD responseLength)
+{
+    // Send an APDU I/O request.
+    std::shared_ptr<Async::AsyncTaskBase<IoApduResult>> ioApdu = SmartcardIo::SendApdu(eseInterface, command, commandLength, responseLength);
+
+    // Process APDU NCI packets.
+    SimSequenceRunner::Run(simConnector, ApduOverNciHciGenerator::CreateCommandSequence(
+        L"eSE command APDU",
+        SEInitializationSequences::HciNetworkConnectionId,
+        SEInitializationSequences::EseApduPipeId,
+        command,
+        commandLength));
+
+    SimSequenceRunner::Run(simConnector, ApduOverNciHciGenerator::CreateResponseSequence(
+        L"eSE response APDU (NCI)",
+        SEInitializationSequences::HciNetworkConnectionId,
+        SEInitializationSequences::EseApduPipeId,
+        response,
+        responseLength));
+
+    // Wait for the APDU I/O request to complete.
+    VERIFY_IS_TRUE(ioApdu->Wait(/*timeout(ms)*/ 1'000));
+
+    // Verify APDU I/O request's results.
+    IoApduResult ioApduResult = ioApdu->Get();
+    VERIFY_WIN32_SUCCEEDED(ioApduResult.ErrorCode);
+    VerifyArraysAreEqual(L"eSE response APDU (IOCTL)", response, responseLength, ioApduResult.ApduResponse.data(), ioApduResult.ApduResponse.size());
 }

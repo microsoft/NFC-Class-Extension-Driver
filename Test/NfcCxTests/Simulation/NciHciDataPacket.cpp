@@ -108,7 +108,7 @@ NciHciDataPacket::GenerateFirstPacket(
         (instruction & instructionBitMask);
 
     // Ensure HCI payload isn't too big.
-    if (payloadLength > NciHciDataPacket::MaxPayloadSize)
+    if (payloadLength > NciHciDataPacket::MaxFirstPayloadSize)
     {
         throw std::exception("NciHciDataPacket payload is too big.");
     }
@@ -136,7 +136,7 @@ NciHciDataPacket::GenerateSubsequentPacket(
     // Add HCP packet header
     packet[0] = GenerateHcpHeader(finalPacket, pipeId);
 
-    if (payloadLength > NciHciDataPacket::MaxPayloadSize)
+    if (payloadLength > NciHciDataPacket::MaxSubsequentPayloadSize)
     {
         throw std::exception("NciHciDataPacket payload is too big.");
     }

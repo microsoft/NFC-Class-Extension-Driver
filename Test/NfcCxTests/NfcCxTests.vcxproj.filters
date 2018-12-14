@@ -96,6 +96,15 @@
     <ClInclude Include="SimulationSequences\SEInitializationSequences.h">
       <Filter>SimulationSequences</Filter>
     </ClInclude>
+    <ClInclude Include="Simulation\ApduOverNciHciGenerator.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="IOHelpers\SmartcardIo.h">
+      <Filter>IOHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulation\ApduSamples.h">
+      <Filter>Simulation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IOHelpers\DeviceQuery.cpp">
@@ -175,6 +184,15 @@
     </ClCompile>
     <ClCompile Include="Tests\SETests.cpp">
       <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\ApduOverNciHciGenerator.cpp">
+      <Filter>Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="IOHelpers\SmartcardIo.cpp">
+      <Filter>IOHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulation\ApduSamples.cpp">
+      <Filter>Simulation</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

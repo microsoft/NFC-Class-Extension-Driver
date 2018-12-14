@@ -17,8 +17,11 @@ class NciHciDataPacket :
     public NciDataPacket
 {
 public:
-    static constexpr uint8_t MaxHeaderSize = 2;
-    static constexpr uint8_t MaxPayloadSize = NciPacketRaw::MaxPayloadLength - MaxHeaderSize;
+    static constexpr uint8_t FirstHeaderSize = 2;
+    static constexpr uint8_t MaxFirstPayloadSize = NciPacketRaw::MaxPayloadLength - FirstHeaderSize;
+
+    static constexpr uint8_t SubsequentHeaderSize = 1;
+    static constexpr uint8_t MaxSubsequentPayloadSize = NciPacketRaw::MaxPayloadLength - SubsequentHeaderSize;
 
     // Simple packet (no message fragment chaining).
     NciHciDataPacket(

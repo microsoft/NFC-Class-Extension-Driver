@@ -13,10 +13,6 @@
 
 #include "SEInitializationSequences.h"
 
-static constexpr uint8_t EseNfceeId = phHciNfc_e_ProprietaryHostID_Min;
-static constexpr uint8_t EseApduPipeId = 0x19;
-static constexpr uint8_t HciNetworkConnectionId = 0x03;
-
 // NFC Controller Interface (NCI), Version 1.1, Section 4.4.4, CORE_CONN_CREDITS_NTF
 const SimSequenceStep SEInitializationSequences::HciNetworkCredit = SimSequenceStep::NciControlRead(
     L"CORE_CONN_CREDITS_NTF",
@@ -774,9 +770,10 @@ SEInitializationSequences::WithEse::ClientConnectedSequence_Nci1[4] =
 };
 
 const SimSequenceView
-SEInitializationSequences::WithEse::GetAtrSequence_Nci1[2] =
+SEInitializationSequences::WithEse::GetAtrSequence_Nci1[3] =
 {
     EseResetCommand,
+    HciNetworkCredit,
     EseAtrEvent,
 };
 

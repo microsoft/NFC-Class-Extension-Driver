@@ -168,6 +168,14 @@ SimSequenceRunner::Run(
 void
 SimSequenceRunner::Run(
     NciSimConnector& simConnector,
+    const std::vector<SimSequenceStep>& stepList)
+{
+    Run(simConnector, stepList.data(), stepList.size());
+}
+
+void
+SimSequenceRunner::Run(
+    NciSimConnector& simConnector,
     SimSequenceView sequence)
 {
     switch (sequence.GetType())
@@ -192,4 +200,12 @@ SimSequenceRunner::Run(
     {
         Run(simConnector, *itr);
     }
+}
+
+void
+SimSequenceRunner::Run(
+    NciSimConnector& simConnector,
+    const std::vector<SimSequenceView>& sequenceList)
+{
+    Run(simConnector, sequenceList.data(), sequenceList.size());
 }

@@ -6,6 +6,7 @@
 
 #include "DeviceQuery.h"
 #include "DriverHandleFactory.h"
+#include "IoOperation.h"
 
 std::wstring
 DriverHandleFactory::FindProximityInterfaceForDevice(_In_ PCWSTR deviceName)

@@ -10,6 +10,10 @@
 // NCI command/response sequences relating to NFCEE enumeration.
 struct SEInitializationSequences
 {
+    static constexpr uint8_t EseNfceeId = phHciNfc_e_ProprietaryHostID_Min;
+    static constexpr uint8_t EseApduPipeId = 0x19;
+    static constexpr uint8_t HciNetworkConnectionId = 0x03;
+
     static const SimSequenceStep HciNetworkCredit;
 
     struct Common
@@ -82,7 +86,7 @@ struct SEInitializationSequences
         // Sequences
         static const SimSequenceView InitializeSequence_Nci1[32];
         static const SimSequenceView ClientConnectedSequence_Nci1[4];
-        static const SimSequenceView GetAtrSequence_Nci1[2];
+        static const SimSequenceView GetAtrSequence_Nci1[3];
         static const SimSequenceView ClientDisconnectedSequence_Nci1[4];
     };
 };

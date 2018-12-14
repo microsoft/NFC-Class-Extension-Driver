@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "NciControlPacket.h"
 #include "NciSimConnector.h"
 #include "SimSequenceView.h"
@@ -25,6 +27,10 @@ public:
         _In_reads_(stepListSize) const SimSequenceStep* stepList,
         _In_ size_t stepListSize);
 
+    static void Run(
+        NciSimConnector& simConnector,
+        const std::vector<SimSequenceStep>& stepList);
+
     template <size_t ArraySize>
     static void Run(
         _In_ NciSimConnector& simConnector,
@@ -41,6 +47,10 @@ public:
         _In_ NciSimConnector& simConnector,
         _In_reads_(sequenceListSize) const SimSequenceView* sequenceList,
         _In_ size_t sequenceListSize);
+
+    static void Run(
+        NciSimConnector& simConnector,
+        const std::vector<SimSequenceView>& sequenceList);
 
     template <size_t ArraySize>
     static void Run(
