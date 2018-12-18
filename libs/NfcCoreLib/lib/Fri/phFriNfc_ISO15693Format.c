@@ -495,7 +495,7 @@ phFriNfc_ISO15693_H_ProFormat (
 
         case ISO15693_EXT_GET_SYS_INFO:
         {
-            if (NFCSTATUS_SUCCESS !=
+            if (NFCSTATUS_SUCCESS ==
                 phFriNfc_ISO15693_H_ProcessSystemInfo(psNdefSmtCrdFmt,
                                                       psNdefSmtCrdFmt->SendRecvBuf + ISO15693_EXTRA_RESPONSE_FLAG,
                                                       *psNdefSmtCrdFmt->SendRecvLength - ISO15693_EXTRA_RESPONSE_FLAG,
