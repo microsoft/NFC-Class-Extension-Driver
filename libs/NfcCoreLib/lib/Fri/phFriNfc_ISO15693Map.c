@@ -1621,38 +1621,43 @@ phFriNfc_ReadRemainingInMultiple (
     // Check capabilities
     if (ps_iso_15693_con->read_capabilities & ISO15693_CC_USE_MBR)
     {
+        // 'Number of blocks' field value. Depending on the tag can be 1-byte or 2-bytes value
         uint16_t nb_blocks = 0;
+
+        // Tags from STM M24LR* family use proprietary protocol extension.
+        // MULTI_BYTE_READ special command format:
+        //  'First block number'    : 2 bytes
+        //  'Number of blocks'      : 1 byte
+        bool_t is_M24LR = ISO15693_PROTOEXT_FLAG_REQUIRED(ps_iso_15693_info->Uid);
 
         // Multi-page read command
         uint8_t mbread[2];
-        uint8_t mbread_len = (ps_iso_15693_con->is_2byte_address_mode) ? 2 : 1;
-        uint8_t command = (ps_iso_15693_con->is_2byte_address_mode) ? ISO15693_EXT_READ_MULTIPLE_COMMAND
-                                                                    : ISO15693_READ_MULTIPLE_COMMAND;
+        uint8_t mbread_len = 1;
+        uint8_t command = ISO15693_READ_MULTIPLE_COMMAND;
 
-        /* Compute how many block can be read at a time.
-           If we are in NCI2.0 mode, MaxNFCVFrameSize is set and we need to split the packet to MaxNFCVFrameSize - 1.
-           In case of M24LR tag, we can read 32 blocks maximum if they are all located in the same sector.
-         */
-        nb_blocks = (remaining_size / ISO15693_BYTES_PER_BLOCK) - 1;
-        if (ISO15693_PROTOEXT_FLAG_REQUIRED(ps_iso_15693_info->Uid))
+        // Check if extended ISO15693 command format should be used.
+        if (ps_iso_15693_con->is_2byte_address_mode && !is_M24LR)
         {
-            /* This tag supports 2-byte address mode regardless of
-             * 'ISO15693, Amd. 3' compliancy
-             */
-            if ((nb_blocks + (ps_iso_15693_con->current_block % ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR)) >= ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR - 1)
-            {
-                nb_blocks = ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR - (ps_iso_15693_con->current_block % ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR) - 1;
-            }
-
-            mbread_len = 1;
+            mbread_len = 2;
+            command = ISO15693_EXT_READ_MULTIPLE_COMMAND;
         }
-        else if (psNdefMap->MaxNFCVFrameSize > 0)
+
+        // Compute how many block can be read at a time.
+        nb_blocks = (remaining_size / ISO15693_BYTES_PER_BLOCK) - 1;
+
+        // In case of M24LR tag, we can read 32 blocks maximum if they are all located in the same sector.
+        if (is_M24LR)
+        {
+            uint16_t max_M24LR_nb_blocks =
+                ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR - (ps_iso_15693_con->current_block % ISO15693_STM_M24LR_MAX_BLOCKS_READ_PER_SECTOR) - 1;
+            nb_blocks = min(nb_blocks, max_M24LR_nb_blocks);
+        }
+
+        // If we are in NCI2.0 mode, MaxNFCVFrameSize is set and we need to split the packet to MaxNFCVFrameSize - 1.
+        if (psNdefMap->MaxNFCVFrameSize > 0)
         {
             uint16_t maxNFCCSupportedFrameCount = (psNdefMap->MaxNFCVFrameSize / ISO15693_BYTES_PER_BLOCK) - 1;
-            if (nb_blocks > maxNFCCSupportedFrameCount)
-            {
-                nb_blocks = maxNFCCSupportedFrameCount;
-            }
+            nb_blocks = min(nb_blocks, maxNFCCSupportedFrameCount);
         }
 
         mbread[0] = (uint8_t)nb_blocks;
