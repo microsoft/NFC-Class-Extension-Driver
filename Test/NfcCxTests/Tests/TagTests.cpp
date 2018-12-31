@@ -21,10 +21,14 @@
 
 class TagTests
 {
+public:
     TEST_CLASS(TagTests);
 
     // Tests reading a NDEF NFC tag using a proximity subscription.
-    BEGIN_TEST_METHOD(SimpleNdefSubscriptionTest)
+    BEGIN_TEST_METHOD(SimpleNdefSubscriptionNci1Test)
+        TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
+    END_TEST_METHOD()
+    BEGIN_TEST_METHOD(SimpleNdefSubscriptionNci2Test)
         TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
     END_TEST_METHOD()
     // Ensures NfcCxRf/NfcCxState will properly defer processing the tag arrivial event while an existing operation
@@ -37,32 +41,31 @@ class TagTests
     BEGIN_TEST_METHOD(SimpleNdefSubscriptionTestWithSlowIO)
         TEST_METHOD_PROPERTY(L"Category", L"Reliability")
     END_TEST_METHOD()
+
+private:
+    void SimpleNdefSubscriptionTest(bool isNci2);
+
+    UniqueHandle OpenSubscription(NciSimConnector& simConnector, bool isNci2);
+    void CloseSubscription(NciSimConnector& simConnector, bool isNci2, UniqueHandle&& nfpSubInterface);
+    std::shared_ptr<IoOperation> StartGetSubscriptionMessage(HANDLE nfpSubInterface);
+    void VerifySubscriptionMessage(const std::shared_ptr<IoOperation>& ioGetMessage);
 };
 
 void
-TagTests::SimpleNdefSubscriptionTest()
+TagTests::SimpleNdefSubscriptionTest(bool isNci2)
 {
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
 
-    // Start NFC Controller.
-    LOG_COMMENT(L"# Start NFC Controller.");
-    std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
+    // Startup.
+    UniqueHandle nfpSubInterface = OpenSubscription(simConnector, isNci2);
 
-    // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence_Nci1);
-    VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
-
-    // Open handle for NDEF subscription.
-    UniqueHandle nfpSubInterface = DriverHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
-
-    // Start an I/O request for the next message,
-    constexpr DWORD messageBufferSize = 2048;
-    std::shared_ptr<IoOperation> ioGetMessage = IoOperation::DeviceIoControl(nfpSubInterface.Get(), IOCTL_NFP_GET_NEXT_SUBSCRIBED_MESSAGE, nullptr, 0, messageBufferSize);
+    // Start get next message request.
+    std::shared_ptr<IoOperation> ioGetMessage = StartGetSubscriptionMessage(nfpSubInterface.Get());
 
     // Verify discovery mode is started.
     SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence(isNci2));
 
     // Provide a tag for the subscription to read.
     SimSequenceRunner::Run(simConnector, TagSequences::Ntag216Activated::Sequence);
@@ -70,32 +73,25 @@ TagTests::SimpleNdefSubscriptionTest()
 
     // The driver has finished with the tag. So it will restart discovery to look for new tags.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence(isNci2));
 
-    // Ensure subscription receives the tag's message.
-    VERIFY_IS_TRUE(ioGetMessage->Wait(/*wait (ms)*/ 1'000));
+    // Verify message.
+    VerifySubscriptionMessage(ioGetMessage);
 
-    IoOperationResult ioGetMessageResult = ioGetMessage->Get();
-    VERIFY_WIN32_SUCCEEDED(ioGetMessageResult.ErrorCode);
+    // Shutdown.
+    CloseSubscription(simConnector, isNci2, std::move(nfpSubInterface));
+}
 
-    // Verify message is correct.
-    VerifyProximitySubscribeMessage(ioGetMessageResult.Output.data(), ioGetMessageResult.BytesTransferred, TagPayloads::NdefBingUri, std::size(TagPayloads::NdefBingUri));
+void
+TagTests::SimpleNdefSubscriptionNci1Test()
+{
+    SimpleNdefSubscriptionTest(false);
+}
 
-    // Close proximity subscription handle.
-    // This should drop the last power reference, which should cause discovery to stop and NCI to be uninitialized.
-    nfpSubInterface.Reset();
-
-    // Verify discovery mode is stopped.
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
-
-    // Stop NFC Controller.
-    LOG_COMMENT(L"# Stop NFC Controller.");
-    std::shared_ptr<IoOperation> ioStopHost = simConnector.StopHostAsync();
-
-    // Verify NCI is uninitialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
-    VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
+void
+TagTests::SimpleNdefSubscriptionNci2Test()
+{
+    SimpleNdefSubscriptionTest(true);
 }
 
 void
@@ -104,20 +100,11 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
 
-    // Start NFC Controller.
-    LOG_COMMENT(L"# Start NFC Controller.");
-    std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
+    // Startup.
+    UniqueHandle nfpSubInterface = OpenSubscription(simConnector, false);
 
-    // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence_Nci1);
-    VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
-
-    // Open handle for NDEF subscription.
-    UniqueHandle nfpSubInterface = DriverHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
-
-    // Start an I/O request for the next message,
-    constexpr DWORD messageBufferSize = 2048;
-    std::shared_ptr<IoOperation> ioGetMessage = IoOperation::DeviceIoControl(nfpSubInterface.Get(), IOCTL_NFP_GET_NEXT_SUBSCRIBED_MESSAGE, nullptr, 0, messageBufferSize);
+    // Start get next message request.
+    std::shared_ptr<IoOperation> ioGetMessage = StartGetSubscriptionMessage(nfpSubInterface.Get());
 
     // Verify discovery mode is started. But don't complete the SequenceRfDiscStartComplete sequence handler yet.
     SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
@@ -140,30 +127,11 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
-    // Ensure subscription receives the tag's message.
-    VERIFY_IS_TRUE(ioGetMessage->Wait(/*wait (ms)*/ 1'000));
+    // Verify message.
+    VerifySubscriptionMessage(ioGetMessage);
 
-    IoOperationResult ioGetMessageResult = ioGetMessage->Get();
-    VERIFY_WIN32_SUCCEEDED(ioGetMessageResult.ErrorCode);
-
-    // Verify message is correct.
-    VerifyProximitySubscribeMessage(ioGetMessageResult.Output.data(), ioGetMessageResult.BytesTransferred, TagPayloads::NdefBingUri, std::size(TagPayloads::NdefBingUri));
-
-    // Close proximity subscription handle.
-    // This should drop the last power reference, which should cause discovery to stop and NCI to be uninitialized.
-    nfpSubInterface.Reset();
-
-    // Verify discovery mode is stopped.
-    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
-    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
-
-    // Stop NFC Controller.
-    LOG_COMMENT(L"# Stop NFC Controller.");
-    std::shared_ptr<IoOperation> ioStopHost = simConnector.StopHostAsync();
-
-    // Verify NCI is uninitialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
-    VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
+    // Shutdown.
+    CloseSubscription(simConnector, false, std::move(nfpSubInterface));
 }
 
 void
@@ -172,20 +140,11 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
 
-    // Start NFC Controller.
-    LOG_COMMENT(L"# Start NFC Controller.");
-    std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
+    // Startup.
+    UniqueHandle nfpSubInterface = OpenSubscription(simConnector, false);
 
-    // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence_Nci1);
-    VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
-
-    // Open handle for NDEF subscription.
-    UniqueHandle nfpSubInterface = DriverHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
-
-    // Start an I/O request for the next message,
-    constexpr DWORD messageBufferSize = 2048;
-    std::shared_ptr<IoOperation> ioGetMessage = IoOperation::DeviceIoControl(nfpSubInterface.Get(), IOCTL_NFP_GET_NEXT_SUBSCRIBED_MESSAGE, nullptr, 0, messageBufferSize);
+    // Start get next message request.
+    std::shared_ptr<IoOperation> ioGetMessage = StartGetSubscriptionMessage(nfpSubInterface.Get());
 
     // Verify discovery mode is started.
     SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
@@ -211,17 +170,35 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
-    // Ensure subscription receives the tag's message.
-    VERIFY_IS_TRUE(ioGetMessage->Wait(/*wait (ms)*/ 1'000));
+    // Verify message.
+    VerifySubscriptionMessage(ioGetMessage);
 
-    IoOperationResult ioGetMessageResult = ioGetMessage->Get();
-    VERIFY_WIN32_SUCCEEDED(ioGetMessageResult.ErrorCode);
+    // Shutdown.
+    CloseSubscription(simConnector, false, std::move(nfpSubInterface));
+}
 
-    // Verify message is correct.
-    VerifyProximitySubscribeMessage(ioGetMessageResult.Output.data(), ioGetMessageResult.BytesTransferred, TagPayloads::NdefBingUri, std::size(TagPayloads::NdefBingUri));
+UniqueHandle
+TagTests::OpenSubscription(NciSimConnector& simConnector, bool isNci2)
+{
+    // Start NFC Controller.
+    LOG_COMMENT(L"# Start NFC Controller.");
+    std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
+    // Verify NCI is initialized.
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::NoSEsSequence(isNci2));
+    VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
+
+    // Open handle for NDEF subscription.
+    UniqueHandle nfpSubInterface = DriverHandleFactory::OpenSubscriptionHandle(simConnector.DeviceId().c_str(), L"NDEF");
+
+    return std::move(nfpSubInterface);
+}
+
+void
+TagTests::CloseSubscription(NciSimConnector& simConnector, bool isNci2, UniqueHandle&& nfpSubInterface)
+{
     // Close proximity subscription handle.
-    // This should drop the last power reference, which should cause discovery to stop.
+    // This should drop the last power reference, which should cause discovery to stop and NCI to be uninitialized.
     nfpSubInterface.Reset();
 
     // Verify discovery mode is stopped.
@@ -233,6 +210,29 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     std::shared_ptr<IoOperation> ioStopHost = simConnector.StopHostAsync();
 
     // Verify NCI is uninitialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence(isNci2));
     VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
+}
+
+std::shared_ptr<IoOperation>
+TagTests::StartGetSubscriptionMessage(HANDLE nfpSubInterface)
+{
+    // Start an I/O request for the next message,
+    constexpr DWORD messageBufferSize = 2048;
+    std::shared_ptr<IoOperation> ioGetMessage = IoOperation::DeviceIoControl(nfpSubInterface, IOCTL_NFP_GET_NEXT_SUBSCRIBED_MESSAGE, nullptr, 0, messageBufferSize);
+
+    return std::move(ioGetMessage);
+}
+
+void
+TagTests::VerifySubscriptionMessage(const std::shared_ptr<IoOperation>& ioGetMessage)
+{
+    // Ensure subscription receives the tag's message.
+    VERIFY_IS_TRUE(ioGetMessage->Wait(/*wait (ms)*/ 1'000));
+
+    IoOperationResult ioGetMessageResult = ioGetMessage->Get();
+    VERIFY_WIN32_SUCCEEDED(ioGetMessageResult.ErrorCode);
+
+    // Verify message is correct.
+    VerifyProximitySubscribeMessage(ioGetMessageResult.Output.data(), ioGetMessageResult.BytesTransferred, TagPayloads::NdefBingUri, std::size(TagPayloads::NdefBingUri));
 }
