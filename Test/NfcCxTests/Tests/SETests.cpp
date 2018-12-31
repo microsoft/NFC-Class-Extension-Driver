@@ -26,13 +26,24 @@ class SETests
         TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
     END_TEST_METHOD()
 
+    BEGIN_TEST_METHOD(EseClientConnectDisconnectNci2Test)
+        TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
+    END_TEST_METHOD()
+
     BEGIN_TEST_METHOD(EseApduNci1Test)
         TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
     END_TEST_METHOD()
 
+    BEGIN_TEST_METHOD(EseApduNci2Test)
+        TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
+    END_TEST_METHOD()
+
 private:
-    UniqueHandle ConnectToEse(NciSimConnector& simConnector);
-    void DisconnectFromEse(NciSimConnector& simConnector, UniqueHandle&& eseInterface);
+    void EseClientConnectDisconnectTest(bool isNci2);
+    void EseApduTest(bool isNci2);
+
+    UniqueHandle ConnectToEse(NciSimConnector& simConnector, bool isNci2);
+    void DisconnectFromEse(NciSimConnector& simConnector, bool isNci2, UniqueHandle&& eseInterface);
     void TestApdu(
         NciSimConnector& simConnector,
         _In_ HANDLE eseInterface,
@@ -43,23 +54,35 @@ private:
 };
 
 void
-SETests::EseClientConnectDisconnectNci1Test()
+SETests::EseClientConnectDisconnectTest(bool isNci2)
 {
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
 
-    UniqueHandle eseInterface = ConnectToEse(simConnector);
-    DisconnectFromEse(simConnector, std::move(eseInterface));
+    UniqueHandle eseInterface = ConnectToEse(simConnector, isNci2);
+    DisconnectFromEse(simConnector, isNci2, std::move(eseInterface));
 }
 
 void
-SETests::EseApduNci1Test()
+SETests::EseClientConnectDisconnectNci1Test()
+{
+    EseClientConnectDisconnectTest(false);
+}
+
+void
+SETests::EseClientConnectDisconnectNci2Test()
+{
+    EseClientConnectDisconnectTest(true);
+}
+
+void
+SETests::EseApduTest(bool isNci2)
 {
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
 
     // Startup.
-    UniqueHandle eseInterface = ConnectToEse(simConnector);
+    UniqueHandle eseInterface = ConnectToEse(simConnector, isNci2);
 
     // Ensure eSE reports as present.
     std::shared_ptr<IoOperation> ioIsPresent = IoOperation::DeviceIoControl(eseInterface.Get(), IOCTL_SMARTCARD_IS_PRESENT, nullptr, 0, 0);
@@ -88,18 +111,30 @@ SETests::EseApduNci1Test()
     TestApdu(simConnector, eseInterface.Get(), apduCommand.data(), DWORD(apduCommand.size()), apduResponse.data(), DWORD(apduResponse.size()));
 
     // Shutdown.
-    DisconnectFromEse(simConnector, std::move(eseInterface));
+    DisconnectFromEse(simConnector, isNci2, std::move(eseInterface));
+}
+
+void
+SETests::EseApduNci1Test()
+{
+    EseApduTest(false);
+}
+
+void
+SETests::EseApduNci2Test()
+{
+    EseApduTest(true);
 }
 
 UniqueHandle
-SETests::ConnectToEse(NciSimConnector& simConnector)
+SETests::ConnectToEse(NciSimConnector& simConnector, bool isNci2)
 {
     // Start NFC Controller.
     LOG_COMMENT(L"# Start NFC Controller.");
     std::shared_ptr<IoOperation> ioStartHost = simConnector.StartHostAsync();
 
     // Verify NCI is initialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::WithEseSequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Initialize::WithEseSequence(isNci2));
     VERIFY_IS_TRUE(ioStartHost->Wait(/*timeout(ms)*/ 1'000));
 
     // Open eSE interface.
@@ -107,7 +142,7 @@ SETests::ConnectToEse(NciSimConnector& simConnector)
 
     // Verify eSE is enabled.
     SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
-    SimSequenceRunner::Run(simConnector, SEInitializationSequences::WithEse::ClientConnectedSequence_Nci1);
+    SimSequenceRunner::Run(simConnector, SEInitializationSequences::WithEse::ClientConnectedSequence(isNci2));
 
     // When the first client connects to the eSE interface, the driver retrieves the eSE's ATR.
     // Check if this is the first connection by waiting for either a new NCI packet or handle creation to complete.
@@ -122,7 +157,7 @@ SETests::ConnectToEse(NciSimConnector& simConnector)
 
     case 1:
         // Process the GetAtr sequence.
-        SimSequenceRunner::Run(simConnector, SEInitializationSequences::WithEse::GetAtrSequence_Nci1);
+        SimSequenceRunner::Run(simConnector, SEInitializationSequences::WithEse::GetAtrSequence);
         break;
 
     case 2:
@@ -135,13 +170,13 @@ SETests::ConnectToEse(NciSimConnector& simConnector)
 }
 
 void
-SETests::DisconnectFromEse(NciSimConnector& simConnector, UniqueHandle&& eseInterface)
+SETests::DisconnectFromEse(NciSimConnector& simConnector, bool isNci2, UniqueHandle&& eseInterface)
 {
     // Close eSE interface handle asynchronously.
     std::shared_ptr<Async::AsyncTaskBase<void>> closeEseTask = DriverHandleFactory::CloseHandleAsync(std::move(eseInterface));
 
     // Verify eSE is disabled.
-    SimSequenceRunner::Run(simConnector, SEInitializationSequences::WithEse::ClientDisconnectedSequence_Nci1);
+    SimSequenceRunner::Run(simConnector, SEInitializationSequences::WithEse::ClientDisconnectedSequence(isNci2));
     SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Exit);
 
     // Wait for eSE to finish closing.
@@ -152,7 +187,7 @@ SETests::DisconnectFromEse(NciSimConnector& simConnector, UniqueHandle&& eseInte
     std::shared_ptr<IoOperation> ioStopHost = simConnector.StopHostAsync();
 
     // Verify NCI is uninitialized.
-    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence_Nci1);
+    SimSequenceRunner::Run(simConnector, InitSequences::Uninitialize::Sequence(isNci2));
     VERIFY_IS_TRUE(ioStopHost->Wait(/*timeout(ms)*/ 1'000));
 }
 

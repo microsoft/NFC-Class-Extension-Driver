@@ -12,7 +12,7 @@ struct SEInitializationSequences
 {
     static constexpr uint8_t EseNfceeId = phHciNfc_e_ProprietaryHostID_Min;
     static constexpr uint8_t EseApduPipeId = 0x19;
-    static constexpr uint8_t HciNetworkConnectionId = 0x03;
+    static constexpr uint8_t HciNetworkConnectionId = 0x01;
 
     static const SimSequenceStep HciNetworkCredit;
 
@@ -46,7 +46,8 @@ struct SEInitializationSequences
         static const SimSequenceStep HciNetworkEnumeration;
         static const SimSequenceStep HciNetworkCreateConnectionCommand;
         static const SimSequenceStep HciNetworkCreateConnectionResponse;
-        static const SimSequenceStep EseEnumeration;
+        static const SimSequenceStep EseEnumeration_Nci1;
+        static const SimSequenceStep EseEnumeration_Nci2;
         static const SimSequenceStep EseSupportsNfcA;
         static const SimSequenceStep EseSupportsNfcB;
         static const SimSequenceStep EseSupportsNfcF;
@@ -66,8 +67,10 @@ struct SEInitializationSequences
         // Enable and disable command/responses.
         static const SimSequenceStep EseEnableCommand;
         static const SimSequenceStep EseEnableResponse;
+        static const SimSequenceStep EseEnableNotification;
         static const SimSequenceStep EseDisableCommand;
         static const SimSequenceStep EseDisableResponse;
+        static const SimSequenceStep EseDisableNotification;
 
         // Power and link control command/responses.
         static const SimSequenceStep EsePowerOnCommand;
@@ -85,8 +88,17 @@ struct SEInitializationSequences
 
         // Sequences
         static const SimSequenceView InitializeSequence_Nci1[32];
+        static const SimSequenceView InitializeSequence_Nci2[31];
+        static const SimSequenceView InitializeSequence(bool isNci2);
+
         static const SimSequenceView ClientConnectedSequence_Nci1[4];
-        static const SimSequenceView GetAtrSequence_Nci1[3];
+        static const SimSequenceView ClientConnectedSequence_Nci2[5];
+        static const SimSequenceView ClientConnectedSequence(bool isNci2);
+
+        static const SimSequenceView GetAtrSequence[3];
+
         static const SimSequenceView ClientDisconnectedSequence_Nci1[4];
+        static const SimSequenceView ClientDisconnectedSequence_Nci2[5];
+        static const SimSequenceView ClientDisconnectedSequence(bool isNci2);
     };
 };

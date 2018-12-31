@@ -37,6 +37,8 @@ struct InitSequences
         static const SimSequenceView NoSEsSequence(bool isNci2);
 
         static const SimSequenceView WithEseSequence_Nci1[8];
+        static const SimSequenceView WithEseSequence_Nci2[8];
+        static const SimSequenceView WithEseSequence(bool isNci2);
     };
 
     struct Uninitialize

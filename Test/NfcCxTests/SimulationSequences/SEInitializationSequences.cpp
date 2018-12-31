@@ -152,8 +152,8 @@ const SimSequenceStep SEInitializationSequences::WithEse::HciNetworkCreateConnec
     }
 );
 
-// NFC Controller notifies that an eSE NFCEE also exists.
-const SimSequenceStep SEInitializationSequences::WithEse::EseEnumeration = SimSequenceStep::NciControlRead(
+// NFC Controller notifies that an eSE NFCEE exists.
+const SimSequenceStep SEInitializationSequences::WithEse::EseEnumeration_Nci1 = SimSequenceStep::NciControlRead(
     L"NFCEE_DISCOVER_NTF (eSE)",
     {
         // NFC Controller Interface (NCI), Version 1.1, Section 9.2, NFCEE_DISCOVER_NTF
@@ -166,6 +166,28 @@ const SimSequenceStep SEInitializationSequences::WithEse::EseEnumeration = SimSe
             1, // Number of protocol entries (that follow)
                 0x80, // Proprietary protocol
             0, // Number of information TLVs (that follow)
+        },
+    }
+);
+
+// NFC Controller notifies that an eSE NFCEE exists.
+const SimSequenceStep SEInitializationSequences::WithEse::EseEnumeration_Nci2 = SimSequenceStep::NciControlRead(
+    L"NFCEE_DISCOVER_NTF (eSE)",
+    {
+        // NFC Controller Interface (NCI), Version 2.0, Section 10.2, NFCEE_DISCOVER_NTF
+        phNciNfc_e_NciCoreMsgTypeCntrlNtf,
+        phNciNfc_e_CoreNfceeMgtGid,
+        phNciNfc_e_NfceeMgtNfceeDiscNtfOid,
+        {
+            EseNfceeId,
+            phNciNfc_NfceeStatus_Enabled,
+            1, // Number of protocol entries (that follow)
+                0x80, // Proprietary protocol
+            1, // Number of information TLVs (that follow)
+                phNciNfc_HciNetworkHostIdType, // Tag (eSE Host ID)
+                1, // Length
+                EseNfceeId, // Value
+            1, // NFCC has control of NFCEE's power.
         },
     }
 );
@@ -465,6 +487,20 @@ const SimSequenceStep SEInitializationSequences::WithEse::EseEnableResponse = Si
     }
 );
 
+// NFC Controller responds that the eSE was initialized successfully.
+const SimSequenceStep SEInitializationSequences::WithEse::EseEnableNotification = SimSequenceStep::NciControlRead(
+    L"NFCEE_MODE_SET_NTF: ENABLE",
+    {
+        // NFC Controller Interface (NCI), Version 2.0, Section 10.3, NFCEE_MODE_SET_NTF
+        phNciNfc_e_NciCoreMsgTypeCntrlNtf,
+        phNciNfc_e_CoreNfceeMgtGid,
+        phNciNfc_e_NfceeMgtModeSetCmdOid,
+        {
+            PH_NCINFC_STATUS_OK, // Status
+        },
+    }
+);
+
 // Driver tells NFC Controller to disable the eSE.
 const SimSequenceStep SEInitializationSequences::WithEse::EseDisableCommand = SimSequenceStep::NciControlWrite(
     L"NFCEE_MODE_SET_CMD: DISABLE",
@@ -486,6 +522,20 @@ const SimSequenceStep SEInitializationSequences::WithEse::EseDisableResponse = S
     {
         // NFC Controller Interface (NCI), Version 1.1, Section 9.3, NFCEE_MODE_SET_RSP
         phNciNfc_e_NciCoreMsgTypeCntrlRsp,
+        phNciNfc_e_CoreNfceeMgtGid,
+        phNciNfc_e_NfceeMgtModeSetCmdOid,
+        {
+            PH_NCINFC_STATUS_OK, // Status
+        },
+    }
+);
+
+// NFC Controller responds that the eSE was uninitialized successfully.
+const SimSequenceStep SEInitializationSequences::WithEse::EseDisableNotification = SimSequenceStep::NciControlRead(
+    L"NFCEE_MODE_SET_NTF: DISABLE",
+    {
+        // NFC Controller Interface (NCI), Version 2.0, Section 10.3, NFCEE_MODE_SET_NTF
+        phNciNfc_e_NciCoreMsgTypeCntrlNtf,
         phNciNfc_e_CoreNfceeMgtGid,
         phNciNfc_e_NfceeMgtModeSetCmdOid,
         {
@@ -713,14 +763,13 @@ const SimSequenceView
 SEInitializationSequences::WithEse::InitializeSequence_Nci1[32] =
 {
     Common::InitializeStartSequence_Nci1,
-
     NfceeDiscoverResponse,
 
     HciNetworkEnumeration,
     HciNetworkCreateConnectionCommand,
     HciNetworkCreateConnectionResponse,
 
-    EseEnumeration,
+    EseEnumeration_Nci1,
     EseSupportsNfcA,
     EseSupportsNfcB,
     EseSupportsNfcF,
@@ -760,6 +809,64 @@ SEInitializationSequences::WithEse::InitializeSequence_Nci1[32] =
 };
 
 const SimSequenceView
+SEInitializationSequences::WithEse::InitializeSequence_Nci2[31] =
+{
+    Common::InitializeStartSequence_Nci2,
+    NfceeDiscoverResponse,
+
+    EseEnumeration_Nci2,
+    EseSupportsNfcA,
+    EseSupportsNfcB,
+    EseSupportsNfcF,
+
+    OpenAdminPipeCommand,
+    HciNetworkCredit,
+    OpenAdminPipeResponse,
+
+    SetWhitelistCommand,
+    HciNetworkCredit,
+    SetWhitelistResponse,
+
+    SetHostTypeCommand,
+    HciNetworkCredit,
+    SetHostTypeResponse,
+
+    GetSessionIdCommand,
+    HciNetworkCredit,
+    GetSessionIdResponse,
+
+    EseEnableCommand,
+    EseEnableResponse,
+    EseEnableNotification,
+
+    GetHostListCommand,
+    HciNetworkCredit,
+    GetHostListResponse,
+
+    GetHostTypeListCommand,
+    HciNetworkCredit,
+    GetHostTypeListResponse,
+
+    Common::InitializeEndSequence,
+
+    // Driver disables all the SEs to save power, until there is a client handle that requires them.
+    EseDisableCommand,
+    EseDisableResponse,
+    EseDisableNotification,
+};
+
+const SimSequenceView
+SEInitializationSequences::WithEse::InitializeSequence(bool isNci2)
+{
+    if (isNci2)
+    {
+        return InitializeSequence_Nci2;
+    }
+
+    return InitializeSequence_Nci1;
+}
+
+const SimSequenceView
 SEInitializationSequences::WithEse::ClientConnectedSequence_Nci1[4] =
 {
     EsePowerAndLinkOnCommand,
@@ -770,7 +877,29 @@ SEInitializationSequences::WithEse::ClientConnectedSequence_Nci1[4] =
 };
 
 const SimSequenceView
-SEInitializationSequences::WithEse::GetAtrSequence_Nci1[3] =
+SEInitializationSequences::WithEse::ClientConnectedSequence_Nci2[5] =
+{
+    EsePowerAndLinkOnCommand,
+    EsePowerAndLinkOnResponse,
+
+    EseEnableCommand,
+    EseEnableResponse,
+    EseEnableNotification,
+};
+
+const SimSequenceView
+SEInitializationSequences::WithEse::ClientConnectedSequence(bool isNci2)
+{
+    if (isNci2)
+    {
+        return ClientConnectedSequence_Nci2;
+    }
+
+    return ClientConnectedSequence_Nci1;
+}
+
+const SimSequenceView
+SEInitializationSequences::WithEse::GetAtrSequence[3] =
 {
     EseResetCommand,
     HciNetworkCredit,
@@ -786,3 +915,25 @@ SEInitializationSequences::WithEse::ClientDisconnectedSequence_Nci1[4] =
     EseDisableCommand,
     EseDisableResponse,
 };
+
+const SimSequenceView
+SEInitializationSequences::WithEse::ClientDisconnectedSequence_Nci2[5] =
+{
+    EsePowerOffCommand,
+    EsePowerOffResponse,
+
+    EseDisableCommand,
+    EseDisableResponse,
+    EseDisableNotification,
+};
+
+const SimSequenceView
+SEInitializationSequences::WithEse::ClientDisconnectedSequence(bool isNci2)
+{
+    if (isNci2)
+    {
+        return ClientDisconnectedSequence_Nci2;
+    }
+
+    return ClientDisconnectedSequence_Nci1;
+}

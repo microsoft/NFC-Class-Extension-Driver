@@ -315,13 +315,17 @@ typedef enum phNciNfc_PowerLinkMode
 
 /*!
  * \ingroup grp_nci_nfc
- * \brief NFCEE Information TLV types(NCI Spec Table 84)
+ * \brief NFCEE Information TLV types
+ *
+ * NFC Controller Interface (NCI), Version 2.0, Section 10.2, Table 118, TLV Coding for NFCEE Discovery
  */
 typedef enum phNciNfc_NfceeTlvTypes
 {
     phNciNfc_HwRegIdType = 0x00, /**< Hardware registration ID*/
     phNciNfc_AtrBytesType = 0x01, /**< ATR Bytes for NFCEE*/
-    phNciNfc_T3TCmdSetType = 0x02 /**< T3T Command set information*/
+    phNciNfc_T3TCmdSetType = 0x02, /**< T3T Command set information*/
+    phNciNfc_HciNetworkHostIdType = 0x03, /**< Host ID in the HCI Network */
+    phNciNfc_NdefStorageType = 0x04, /**< NFCEE supports NDEF storage */
 }phNciNfc_NfceeTlvTypes_t;
 
 /**

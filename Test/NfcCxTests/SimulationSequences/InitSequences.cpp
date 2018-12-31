@@ -138,14 +138,15 @@ const SimSequenceStep InitSequences::Initialize::InitializeResponse_Nci2 = SimSe
         phNciNfc_e_NciCoreInitCmdOid,
         {
             PH_NCINFC_STATUS_OK,
-            0b00000011, // Supported discovery config (Merges RF config, Frequency config supported)
+            0b00001011, // Supported discovery config (HCI network, Merges RF config, Frequency config supported)
             0b00011110, // Supported routing types (Technology, Protocol, AID, System code)
             0b00000011, // Supported routing power modes (Switched off, Battery off)
             0b00000000, // Proprietary capabilities
+            0, // Max number of Dynamic Logical Connections
             0xFF, 0xFF, // Max routing table size
             0xFF, // Max control packet payload size
             0xFF, // Max static HCI packet size
-            0xFF, // Number of static HCI credits (no flow control)
+            1, // Number of static HCI network connection credits
             0xFF, 0xFF, // Max NFC-V RF frame size
             5, // Number of supported interfaces, that follow.
                 phNciNfc_e_RfInterfacesNfceeDirect_RF, // Interface
@@ -304,6 +305,30 @@ const SimSequenceView InitSequences::Initialize::WithEseSequence_Nci1[8] =
     GetConfigResponse,
     SEInitializationSequences::WithEse::InitializeSequence_Nci1,
 };
+
+// Error-free initialize with an eSE using NCI 2.0.
+const SimSequenceView InitSequences::Initialize::WithEseSequence_Nci2[8] =
+{
+    PreInitialize,
+    Reset::Sequence_Nci2,
+    InitializeCommand_Nci2,
+    InitializeResponse_Nci2,
+    InitializeComplete,
+    GetConfigCommand,
+    GetConfigResponse,
+    SEInitializationSequences::WithEse::InitializeSequence_Nci2,
+};
+
+const SimSequenceView
+InitSequences::Initialize::WithEseSequence(bool isNci2)
+{
+    if (isNci2)
+    {
+        return WithEseSequence_Nci2;
+    }
+
+    return WithEseSequence_Nci1;
+}
 
 // Error-free NCI 1.1 uninitialize.
 const SimSequenceView InitSequences::Uninitialize::Sequence_Nci1[3] =

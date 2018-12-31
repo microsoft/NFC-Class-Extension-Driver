@@ -1673,7 +1673,7 @@ phHciNfc_HostID_t phLibNfc_SE_GetHciHostId(void* pContext, pphNciNfc_NfceeInfo_t
             wStatus = phNciNfc_TlvUtilsGetNxtTlv(&tTlvInfo, &bType, &bLen, &pValue);
             if (NFCSTATUS_SUCCESS == wStatus)
             {
-                if (bType == PHNCINFC_TLVUTIL_NCI_PROP_HCINWK_HOST_ID && bLen == 1)
+                if (bType == phNciNfc_HciNetworkHostIdType && bLen == 1)
                 {
                     return pValue[0];
                 }
