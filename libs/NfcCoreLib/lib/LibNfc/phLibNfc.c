@@ -1482,14 +1482,18 @@ NFCSTATUS phLibNfc_RemoteDev_Disconnect( phLibNfc_Handle                  hRemot
                                          void*                            pContext
     )
 {
+    // NOTE:
+    // If a tag ever fails to activate, then the NFC Controller will trigger the CORE_GENERIC_ERROR_NTF event
+    // with DISCOVERY_TARGET_ACTIVATION_FAILED error code. If this happens, this function must still be
+    // invoked so that the RF_DEACTIVATE_CMD command is issued, which will place the NFC Controller back in
+    // the RFST_IDLE state.
+
     NFCSTATUS wRetVal = NFCSTATUS_SUCCESS;
     pphNciNfc_RemoteDevInformation_t pNciRemoteDevInfo;
     pphNciNfc_RemoteDevInformation_t pNciRemoteDevHandle;
-    phLibNfc_Event_t TrigEvent = phLibNfc_EventDeActivate;
     phLibNfc_sRemoteDevInformation_t *pLibRemoteDevHandle;
     pphLibNfc_Context_t pLibContext = phLibNfc_GetContext();
     phNfc_eDiscAndDisconnMode_t DisconnType;
-    void* param1 = NULL;
 
     PH_LOG_LIBNFC_FUNC_ENTRY();
     wRetVal = phLibNfc_IsInitialised(pLibContext);
@@ -1507,8 +1511,9 @@ NFCSTATUS phLibNfc_RemoteDev_Disconnect( phLibNfc_Handle                  hRemot
     {
         wRetVal= NFCSTATUS_SHUTDOWN;
     }
-    else if(pLibContext->Connected_handle==0)
+    else if(pLibContext->Connected_handle == NULL && ReleaseType == NFC_DEVICE_SLEEP)
     {
+        // The caller is asking for the current tag to be deactivated (sleep) but there isn't a connected tag.
         PH_LOG_LIBNFC_CRIT_STR("Target not connected");
         wRetVal = NFCSTATUS_TARGET_NOT_CONNECTED;
     }
@@ -1539,6 +1544,8 @@ NFCSTATUS phLibNfc_RemoteDev_Disconnect( phLibNfc_Handle                  hRemot
             }
             else
             {
+                phLibNfc_Event_t TrigEvent = phLibNfc_EventDeActivate;
+
                 /* Map actual release type to internal release type */
                 switch(ReleaseType)
                 {
@@ -1592,7 +1599,7 @@ NFCSTATUS phLibNfc_RemoteDev_Disconnect( phLibNfc_Handle                  hRemot
                 wRetVal = phLibNfc_StateHandler(pLibContext,
                                                 TrigEvent,
                                                 (void *)DisconnType,
-                                                param1,
+                                                NULL,
                                                 NULL);
 
                 if( NFCSTATUS_PENDING == PHNFCSTATUS(wRetVal))
