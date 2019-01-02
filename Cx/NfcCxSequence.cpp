@@ -93,6 +93,7 @@ Return Value:
     if (sequenceStatus != STATUS_PENDING)
     {
         // The sequence handler completed synchronously (success or failure).
+        // Defer the completed handler to avoid reentrancy issues.
         TRACE_LINE(LEVEL_INFO, "Sequence handler completed synchronously. Deferring complete function. %!STATUS!", sequenceStatus);
 
         // Ensure that the complete function is called when the sequence is next resumed.
@@ -101,6 +102,8 @@ Return Value:
         // Queue the sequence handler.
         NfcCxSequenceDispatchResume(RFInterface, sequence, sequenceStatus, Param1, Param2);
 
+        // Sequence will complete asynchronously.
+        status = STATUS_PENDING;
         goto Done;
     }
 
