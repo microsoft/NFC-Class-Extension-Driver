@@ -138,6 +138,7 @@
     <ClCompile Include="Tests\InitTests.cpp" />
     <ClCompile Include="Tests\Module.cpp" />
     <ClCompile Include="Tests\SETests.cpp" />
+    <ClCompile Include="Tests\SmartcardTagTests.cpp" />
     <ClCompile Include="Tests\TagTests.cpp" />
     <ClCompile Include="Tests\TestLogging.cpp" />
   </ItemGroup>

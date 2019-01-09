@@ -194,5 +194,8 @@
     <ClCompile Include="Simulation\ApduSamples.cpp">
       <Filter>Simulation</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\SmartcardTagTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

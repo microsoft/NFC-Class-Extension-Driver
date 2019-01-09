@@ -13,8 +13,8 @@ struct TagSequences
 {
     static const SimSequenceStep Connection0CreditStep;
 
-    // Sequence a NTAG 216 tag is activated.
-    struct Ntag216Activated
+    // NTAG 216 tag with a payload containing http://www.bing.com
+    struct Ntag216
     {
         static const SimSequenceStep ActivatedNotification;
         static const SimSequenceStep GetVersionCommand;
@@ -25,12 +25,6 @@ struct TagSequences
         static const SimSequenceStep DiscoverSelectCommand;
         static const SimSequenceStep DiscoverSelectResponse;
 
-        static const SimSequenceStep Sequence[10];
-    };
-
-    // Sequence when a NDEF subscription reads a NTAG 216 tag with a payload containing http://www.bing.com
-    struct NdefSubscriptionNtag216
-    {
         static const SimSequenceStep ReadPage2Command;
         static const SimSequenceStep ReadPage2Response;
         static const SimSequenceStep ReadPage4Command;
@@ -39,6 +33,13 @@ struct TagSequences
         static const SimSequenceStep ReadPage8Response;
         static const SimSequenceStep ReadErrorResponse;
 
-        static const SimSequenceStep Sequence[20];
+        static const SimSequenceStep ActivatedSequence[10];
+        static const SimSequenceStep ResetSequence[6];
+
+        static const SimSequenceStep ReadSequence[18];
+        static const SimSequenceStep PresenceCheckConnected[2];
+        static const SimSequenceStep PresenceCheckDisconnected[2];
+
+        static const uint8_t Atr[20];
     };
 };

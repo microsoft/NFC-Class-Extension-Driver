@@ -26,7 +26,7 @@ const SimSequenceStep TagSequences::Connection0CreditStep = SimSequenceStep::Nci
 );
 
 // NFC Controller Interface (NCI), Version 1.1, Section 7.3.1, RF_INTF_ACTIVATED_NTF
-const SimSequenceStep TagSequences::Ntag216Activated::ActivatedNotification = SimSequenceStep::NciControlRead(
+const SimSequenceStep TagSequences::Ntag216::ActivatedNotification = SimSequenceStep::NciControlRead(
     L"RF_INTF_ACTIVATED_NTF",
     {
         phNciNfc_e_NciCoreMsgTypeCntrlNtf,
@@ -57,7 +57,7 @@ const SimSequenceStep TagSequences::Ntag216Activated::ActivatedNotification = Si
 );
 
 // NTAG213/215/216, Rev. 3.2, Section 10.1, GET_VERSION command, Table 26
-const SimSequenceStep TagSequences::Ntag216Activated::GetVersionCommand = SimSequenceStep::NciDataWrite(
+const SimSequenceStep TagSequences::Ntag216::GetVersionCommand = SimSequenceStep::NciDataWrite(
     L"[Mifare] GET_VERSION command",
     {
         0, // Connection ID
@@ -69,7 +69,7 @@ const SimSequenceStep TagSequences::Ntag216Activated::GetVersionCommand = SimSeq
 
 // NTAG213/215/216, Rev. 3.2, Section 10.1, GET_VERSION response, Table 28
 // NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14
-const SimSequenceStep TagSequences::Ntag216Activated::GetVersionResponse = SimSequenceStep::NciDataRead(
+const SimSequenceStep TagSequences::Ntag216::GetVersionResponse = SimSequenceStep::NciDataRead(
     L"[Mifare] GET_VERSION response",
     {
         0, // Connection ID
@@ -81,7 +81,7 @@ const SimSequenceStep TagSequences::Ntag216Activated::GetVersionResponse = SimSe
 );
 
 // NFC Controller Interface (NCI), Version 1.1, Section 7.3.2, RF_DEACTIVATE_CMD
-const SimSequenceStep TagSequences::Ntag216Activated::DeactivateCommand = SimSequenceStep::NciControlWrite(
+const SimSequenceStep TagSequences::Ntag216::DeactivateCommand = SimSequenceStep::NciControlWrite(
     L"RF_DEACTIVATE_CMD",
     {
         phNciNfc_e_NciCoreMsgTypeCntrlCmd,
@@ -94,7 +94,7 @@ const SimSequenceStep TagSequences::Ntag216Activated::DeactivateCommand = SimSeq
 );
 
 // NFC Controller Interface (NCI), Version 1.1, Section 7.3.2, RF_DEACTIVATE_RSP
-const SimSequenceStep TagSequences::Ntag216Activated::DeactivateResponse = SimSequenceStep::NciControlRead(
+const SimSequenceStep TagSequences::Ntag216::DeactivateResponse = SimSequenceStep::NciControlRead(
     L"RF_DEACTIVATE_RSP",
     {
         phNciNfc_e_NciCoreMsgTypeCntrlRsp,
@@ -107,7 +107,7 @@ const SimSequenceStep TagSequences::Ntag216Activated::DeactivateResponse = SimSe
 );
 
 // NFC Controller Interface (NCI), Version 1.1, Section 7.3.2, RF_DEACTIVATE_NTF
-const SimSequenceStep TagSequences::Ntag216Activated::DeactivateNotification = SimSequenceStep::NciControlRead(
+const SimSequenceStep TagSequences::Ntag216::DeactivateNotification = SimSequenceStep::NciControlRead(
     L"RF_DEACTIVATE_NTF",
     {
         phNciNfc_e_NciCoreMsgTypeCntrlNtf,
@@ -121,7 +121,7 @@ const SimSequenceStep TagSequences::Ntag216Activated::DeactivateNotification = S
 );
 
 // NFC Controller Interface (NCI), Version 1.1, Section 7.3.2, RF_DISCOVER_SELECT_CMD
-const SimSequenceStep TagSequences::Ntag216Activated::DiscoverSelectCommand = SimSequenceStep::NciControlWrite(
+const SimSequenceStep TagSequences::Ntag216::DiscoverSelectCommand = SimSequenceStep::NciControlWrite(
     L"RF_DISCOVER_SELECT_CMD",
     {
         phNciNfc_e_NciCoreMsgTypeCntrlCmd,
@@ -136,7 +136,7 @@ const SimSequenceStep TagSequences::Ntag216Activated::DiscoverSelectCommand = Si
 );
 
 // NFC Controller Interface (NCI), Version 1.1, Section 7.3.2, RF_DISCOVER_SELECT_RSP
-const SimSequenceStep TagSequences::Ntag216Activated::DiscoverSelectResponse = SimSequenceStep::NciControlRead(
+const SimSequenceStep TagSequences::Ntag216::DiscoverSelectResponse = SimSequenceStep::NciControlRead(
     L"RF_DISCOVER_SELECT_RSP",
     {
         phNciNfc_e_NciCoreMsgTypeCntrlRsp,
@@ -149,7 +149,7 @@ const SimSequenceStep TagSequences::Ntag216Activated::DiscoverSelectResponse = S
 );
 
 // NTAG213/215/216, Rev. 3.2, Section 10.2, Table 29. READ command
-const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage2Command = SimSequenceStep::NciDataWrite(
+const SimSequenceStep TagSequences::Ntag216::ReadPage2Command = SimSequenceStep::NciDataWrite(
     L"[Mifare] READ page 2 command",
     {
         0, // Connection ID
@@ -162,7 +162,7 @@ const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage2Command = 
 
 // NTAG213/215/216, Rev. 3.2, Section 8.5, Fig 7. Memory organization NTAG216
 // NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14
-const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage2Response = SimSequenceStep::NciDataRead(
+const SimSequenceStep TagSequences::Ntag216::ReadPage2Response = SimSequenceStep::NciDataRead(
     L"[Mifare] READ page 2 response",
     {
         0, // Connection ID
@@ -178,7 +178,7 @@ const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage2Response =
 );
 
 // NTAG213/215/216, Rev. 3.2, Section 10.2, Table 29. READ command
-const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage4Command = SimSequenceStep::NciDataWrite(
+const SimSequenceStep TagSequences::Ntag216::ReadPage4Command = SimSequenceStep::NciDataWrite(
     L"[Mifare] READ page 4 command",
     {
         0, // Connection ID
@@ -191,7 +191,7 @@ const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage4Command = 
 
 // NTAG213/215/216, Rev. 3.2, Section 8.5, Fig 7. Memory organization NTAG216
 // NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14
-const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage4Response = SimSequenceStep::NciDataRead(
+const SimSequenceStep TagSequences::Ntag216::ReadPage4Response = SimSequenceStep::NciDataRead(
     L"[Mifare] READ page 4 response",
     {
         0, // Connection ID
@@ -203,7 +203,7 @@ const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage4Response =
 );
 
 // NTAG213/215/216, Rev. 3.2, Section 10.2, Table 29. READ command
-const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage8Command = SimSequenceStep::NciDataWrite(
+const SimSequenceStep TagSequences::Ntag216::ReadPage8Command = SimSequenceStep::NciDataWrite(
     L"[Mifare] READ page 8 command",
     {
         0, // Connection ID
@@ -216,7 +216,7 @@ const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage8Command = 
 
 // NTAG213/215/216, Rev. 3.2, Section 8.5, Fig 7. Memory organization NTAG216
 // NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14
-const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage8Response = SimSequenceStep::NciDataRead(
+const SimSequenceStep TagSequences::Ntag216::ReadPage8Response = SimSequenceStep::NciDataRead(
     L"[Mifare] READ page 8 response",
     {
         0, // Connection ID
@@ -228,7 +228,7 @@ const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadPage8Response =
 );
 
 // NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14
-const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadErrorResponse = SimSequenceStep::NciDataRead(
+const SimSequenceStep TagSequences::Ntag216::ReadErrorResponse = SimSequenceStep::NciDataRead(
     L"[Mifare] READ error response",
     {
         0, // Connection ID
@@ -238,7 +238,7 @@ const SimSequenceStep TagSequences::NdefSubscriptionNtag216::ReadErrorResponse =
     }
 );
 
-const SimSequenceStep TagSequences::Ntag216Activated::Sequence[10] =
+const SimSequenceStep TagSequences::Ntag216::ActivatedSequence[10] =
 {
     // Signal that a tag has arrived.
     ActivatedNotification,
@@ -257,7 +257,18 @@ const SimSequenceStep TagSequences::Ntag216Activated::Sequence[10] =
     ActivatedNotification,
 };
 
-const SimSequenceStep TagSequences::NdefSubscriptionNtag216::Sequence[20] =
+// Sequence when the tag is reset through IOCTL_SMARTCARD_POWER.
+const SimSequenceStep TagSequences::Ntag216::ResetSequence[6]
+{
+    DeactivateCommand,
+    DeactivateResponse,
+    DeactivateNotification,
+    DiscoverSelectCommand,
+    DiscoverSelectResponse,
+    ActivatedNotification,
+};
+
+const SimSequenceStep TagSequences::Ntag216::ReadSequence[18] =
 {
     // Driver reads bytes from the tag to verify that the connection is working.
     ReadPage2Command,
@@ -286,9 +297,25 @@ const SimSequenceStep TagSequences::NdefSubscriptionNtag216::Sequence[20] =
     ReadPage8Command,
     Connection0CreditStep,
     ReadPage8Response,
+};
 
-    // Driver checks if tag is still connected (i.e. presence check).
+const SimSequenceStep TagSequences::Ntag216::PresenceCheckConnected[2] =
+{
+    // Driver checks if tag is still connected by issuing a read command.
+    // Succeed to indicate that the tag is still present.
+    ReadPage2Command,
+    ReadPage2Response,
+};
+
+const SimSequenceStep TagSequences::Ntag216::PresenceCheckDisconnected[2]
+{
+    // Driver checks if tag is still connected by issuing a read command.
     // Return an error to indicate that the tag has disappeared.
     ReadPage2Command,
     ReadErrorResponse,
+};
+
+const uint8_t TagSequences::Ntag216::Atr[20] =
+{
+    0x3B, 0x8F, 0x80, 0x01, 0x80, 0x4F, 0x0C, 0xA0, 0x00, 0x00, 0x03, 0x06, 0x03, 0x00, 0x3D, 0x00, 0x00, 0x00, 0x00, 0x56
 };

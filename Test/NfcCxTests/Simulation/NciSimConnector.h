@@ -15,7 +15,7 @@
 #include <IOHelpers\IoOperation.h>
 #include <IOHelpers\UniqueHandle.h>
 
-class NciControlPacket;
+#include "NciPacket.h"
 
 struct NciSimCallbackMessage
 {

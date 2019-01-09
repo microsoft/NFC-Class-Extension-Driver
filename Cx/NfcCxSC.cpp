@@ -1300,11 +1300,41 @@ Return Value:
 
     case SCARD_POWER_DOWN:
         status = STATUS_NOT_SUPPORTED;
-        break;
+        TRACE_LINE(LEVEL_ERROR, "SCARD_POWER_DOWN is not supported. %!STATUS!", status);
+        goto Done;
 
     default:
         status = STATUS_INVALID_PARAMETER;
-        break;
+        TRACE_LINE(LEVEL_ERROR, "Unknown power type: %d. %!STATUS!", *pdwPower, status);
+        goto Done;
+    }
+
+    // If an output buffer was provided, then return the ATR.
+    if (OutputBuffer)
+    {
+        // Try to retrieve the ATR.
+        size_t atrLength = OutputBufferLength;
+        NTSTATUS getAtrStatus = NfcCxSCInterfaceDispatchAttributeAtr(scInterface, (BYTE*)OutputBuffer, &atrLength);
+
+        if (getAtrStatus == STATUS_BUFFER_TOO_SMALL)
+        {
+            // Pass along errors that are the caller's fault.
+            status = getAtrStatus;
+            TRACE_LINE(LEVEL_ERROR, "ATR too large for output buffer. %!STATUS!", status);
+            goto Done;
+        }
+        else if (!NT_SUCCESS(getAtrStatus))
+        {
+            // ATR isn't available for some reason. For example, the tag disappeared.
+            // Don't report an error for an otherwise successful reset operation.
+            TRACE_LINE(LEVEL_WARNING, "ATR not available. Ignoring. %!STATUS!", getAtrStatus);
+            status = STATUS_SUCCESS;
+            goto Done;
+        }
+
+        // Return the length of the ATR.
+        WdfRequestCompleteWithInformation(Request, getAtrStatus, atrLength);
+        status = STATUS_PENDING; // Request already completed.
     }
 
 Done:

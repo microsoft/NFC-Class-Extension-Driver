@@ -68,8 +68,10 @@ TagTests::SimpleNdefSubscriptionTest(bool isNci2)
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence(isNci2));
 
     // Provide a tag for the subscription to read.
-    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216Activated::Sequence);
-    SimSequenceRunner::Run(simConnector, TagSequences::NdefSubscriptionNtag216::Sequence);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ActivatedSequence);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ReadSequence);
+
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnected);
 
     // The driver has finished with the tag. So it will restart discovery to look for new tags.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
@@ -115,13 +117,14 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
 
     // Activate an NFC tag in the reader, while the SequenceRfDiscStartComplete sequence handler is still running.
     // This will verify that NfcCx properly defers processing hardware events while another operation is running.
-    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216Activated::Sequence);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ActivatedSequence);
 
     // Complete the SequenceRfDiscStartComplete sequence handler.
     simConnector.SendSequenceCompleted(STATUS_SUCCESS, 0);
 
     // Verify tag is read.
-    SimSequenceRunner::Run(simConnector, TagSequences::NdefSubscriptionNtag216::Sequence);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ReadSequence);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnected);
 
     // The driver has finished with the tag. So it will restart discovery to look for new tags.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
@@ -151,12 +154,12 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence_Nci1);
 
     // Provide a tag for the subscription to read.
-    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216Activated::Sequence);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ActivatedSequence);
 
     // Manually process the first read command.
     LOG_COMMENT(L"# Manually processing ReadPage2Command step.");
     NciSimCallbackMessage message = simConnector.ReceiveLibNfcThreadCallback();
-    SimSequenceRunner::VerifyStep(TagSequences::NdefSubscriptionNtag216::ReadPage2Command, message);
+    SimSequenceRunner::VerifyStep(TagSequences::Ntag216::ReadPage2Command, message);
 
     // Don't send the NCI write complete message, until after the NCI response timer will have expired.
     LOG_COMMENT(L"Waiting for timeout to trigger.");
@@ -164,7 +167,8 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
     simConnector.SendNciWriteCompleted();
 
     // Process the remainder of the tag read sequence.
-    SimSequenceRunner::Run(simConnector, TagSequences::NdefSubscriptionNtag216::Sequence + 1, std::size(TagSequences::NdefSubscriptionNtag216::Sequence) - 1);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ReadSequence + 1, std::size(TagSequences::Ntag216::ReadSequence) - 1);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnected);
 
     // The driver has finished with the tag. So it will restart discovery to look for new tags.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
