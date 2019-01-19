@@ -24,6 +24,7 @@ struct TagSequences
         static const SimSequenceStep DeactivateNotification;
         static const SimSequenceStep DiscoverSelectCommand;
         static const SimSequenceStep DiscoverSelectResponse;
+        static const SimSequenceStep ActivateFailedNotification;
 
         static const SimSequenceStep ReadPage2Command;
         static const SimSequenceStep ReadPage2Response;
@@ -35,6 +36,7 @@ struct TagSequences
 
         static const SimSequenceStep ActivatedSequence[10];
         static const SimSequenceStep ResetSequence[6];
+        static const SimSequenceStep ResetFailedSequence[6];
 
         static const SimSequenceStep ReadSequence[18];
         static const SimSequenceStep PresenceCheckConnected[2];

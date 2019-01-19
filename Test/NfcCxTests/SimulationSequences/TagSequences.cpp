@@ -148,6 +148,18 @@ const SimSequenceStep TagSequences::Ntag216::DiscoverSelectResponse = SimSequenc
     }
 );
 
+const SimSequenceStep TagSequences::Ntag216::ActivateFailedNotification = SimSequenceStep::NciControlRead(
+    L"CORE_GENERIC_ERROR_NTF (Activation Failed)",
+    {
+        phNciNfc_e_NciCoreMsgTypeCntrlNtf,
+        phNciNfc_e_CoreNciCoreGid,
+        phNciNfc_e_NciCoreGenericErrNtfOid,
+        {
+            PH_NCINFC_STATUS_DISCOVERY_TARGET_ACTIVATION_FAILED, // Status
+        },
+    }
+);
+
 // NTAG213/215/216, Rev. 3.2, Section 10.2, Table 29. READ command
 const SimSequenceStep TagSequences::Ntag216::ReadPage2Command = SimSequenceStep::NciDataWrite(
     L"[Mifare] READ page 2 command",
@@ -266,6 +278,17 @@ const SimSequenceStep TagSequences::Ntag216::ResetSequence[6]
     DiscoverSelectCommand,
     DiscoverSelectResponse,
     ActivatedNotification,
+};
+
+// Sequence when the tag is reset through IOCTL_SMARTCARD_POWER but the tag has disappeared.
+const SimSequenceStep TagSequences::Ntag216::ResetFailedSequence[6] =
+{
+    DeactivateCommand,
+    DeactivateResponse,
+    DeactivateNotification,
+    DiscoverSelectCommand,
+    DiscoverSelectResponse,
+    ActivateFailedNotification
 };
 
 const SimSequenceStep TagSequences::Ntag216::ReadSequence[18] =

@@ -31,8 +31,16 @@ public:
         TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
     END_TEST_METHOD()
 
+    BEGIN_TEST_METHOD(ResetAndTagDisappearsNci1Test)
+        TEST_METHOD_PROPERTY(L"Category", L"Reliability")
+    END_TEST_METHOD()
+    BEGIN_TEST_METHOD(ResetAndTagDisappearsNci2Test)
+        TEST_METHOD_PROPERTY(L"Category", L"Reliability")
+    END_TEST_METHOD()
+
 private:
     void ResetAndGetAtrTest(bool isNci2);
+    void ResetAndTagDisappearsTest(bool isNci2);
 
     void StartNfcController(NciSimConnector& simConnector, bool isNci2);
     void StopNfcController(NciSimConnector& simConnector, bool isNci2);
@@ -88,6 +96,54 @@ void
 SmartcardTagTests::ResetAndGetAtrNci2Test()
 {
     ResetAndGetAtrTest(true);
+}
+
+void
+SmartcardTagTests::ResetAndTagDisappearsTest(bool isNci2)
+{
+    LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
+    NciSimConnector simConnector;
+
+    // Start the NFC Controller.
+    StartNfcController(simConnector, isNci2);
+
+    // Try to find the smartcard (NFC) interface and open it.
+    UniqueHandle nfcScInterface = DriverHandleFactory::OpenSmartcardHandle(simConnector.DeviceId().c_str(), SmartCardReaderKind::Nfc);
+
+    // Present an NFC tag in the reader.
+    PresentTag(simConnector, isNci2, nfcScInterface.Get());
+
+    // Issue a smartcard reset and read the ATR.
+    DWORD powerType = SCARD_COLD_RESET;
+    std::shared_ptr<IoOperation> ioReset = IoOperation::DeviceIoControl(nfcScInterface.Get(), IOCTL_SMARTCARD_POWER, &powerType, sizeof(powerType), 0);
+
+    // Tag will be deactivated and reactivated. But fail the reactivation.
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ResetFailedSequence);
+
+    // Get the result of the reset operation.
+    // Even though the tag reactivation failed, the NFC CX pretends that the reset was successful. But it will eventually
+    // report the tag as absent once the presence check runs again.
+    VERIFY_IS_TRUE(ioReset->Wait(1'000));
+    IoOperationResult ioResetResult = ioReset->Get();
+    VERIFY_WIN32_SUCCEEDED(ioResetResult.ErrorCode);
+
+    // Tag has disconnected due to the reactivation failure.
+    AfterTagDisconnected(simConnector, isNci2, nfcScInterface.Get());
+
+    // Stop the NFC controller.
+    StopNfcController(simConnector, isNci2);
+}
+
+void
+SmartcardTagTests::ResetAndTagDisappearsNci1Test()
+{
+    ResetAndTagDisappearsTest(false);
+}
+
+void
+SmartcardTagTests::ResetAndTagDisappearsNci2Test()
+{
+    ResetAndTagDisappearsTest(true);
 }
 
 // Starts the NFC Controller.
