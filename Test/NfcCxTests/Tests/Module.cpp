@@ -9,6 +9,7 @@
 
 BEGIN_MODULE()
     MODULE_PROPERTY(L"RunFixtureAs:Module", L"System")
+    MODULE_PROPERTY(L"ThreadingModel", L"MTA")
 END_MODULE()
 
 MODULE_SETUP(ModuleSetup);
