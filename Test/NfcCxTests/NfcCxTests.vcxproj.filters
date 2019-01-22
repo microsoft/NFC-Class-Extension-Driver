@@ -105,6 +105,9 @@
     <ClInclude Include="Simulation\ApduSamples.h">
       <Filter>Simulation</Filter>
     </ClInclude>
+    <ClInclude Include="SimulationSequences\Type5TagSequences.h">
+      <Filter>SimulationSequences</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IOHelpers\DeviceQuery.cpp">
@@ -196,6 +199,9 @@
     </ClCompile>
     <ClCompile Include="Tests\SmartcardTagTests.cpp">
       <Filter>Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="SimulationSequences\Type5TagSequences.cpp">
+      <Filter>SimulationSequences</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

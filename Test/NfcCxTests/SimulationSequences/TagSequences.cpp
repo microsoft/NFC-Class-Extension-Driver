@@ -68,7 +68,7 @@ const SimSequenceStep TagSequences::Ntag216::GetVersionCommand = SimSequenceStep
 );
 
 // NTAG213/215/216, Rev. 3.2, Section 10.1, GET_VERSION response, Table 28
-// NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14
+// NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14, Format for Frame RF Interface (NFC-A) for Reception
 const SimSequenceStep TagSequences::Ntag216::GetVersionResponse = SimSequenceStep::NciDataRead(
     L"[Mifare] GET_VERSION response",
     {
@@ -173,7 +173,7 @@ const SimSequenceStep TagSequences::Ntag216::ReadPage2Command = SimSequenceStep:
 );
 
 // NTAG213/215/216, Rev. 3.2, Section 8.5, Fig 7. Memory organization NTAG216
-// NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14
+// NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14, Format for Frame RF Interface (NFC-A) for Reception
 const SimSequenceStep TagSequences::Ntag216::ReadPage2Response = SimSequenceStep::NciDataRead(
     L"[Mifare] READ page 2 response",
     {
@@ -202,7 +202,7 @@ const SimSequenceStep TagSequences::Ntag216::ReadPage4Command = SimSequenceStep:
 );
 
 // NTAG213/215/216, Rev. 3.2, Section 8.5, Fig 7. Memory organization NTAG216
-// NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14
+// NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14, Format for Frame RF Interface (NFC-A) for Reception
 const SimSequenceStep TagSequences::Ntag216::ReadPage4Response = SimSequenceStep::NciDataRead(
     L"[Mifare] READ page 4 response",
     {
@@ -227,7 +227,7 @@ const SimSequenceStep TagSequences::Ntag216::ReadPage8Command = SimSequenceStep:
 );
 
 // NTAG213/215/216, Rev. 3.2, Section 8.5, Fig 7. Memory organization NTAG216
-// NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14
+// NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14, Format for Frame RF Interface (NFC-A) for Reception
 const SimSequenceStep TagSequences::Ntag216::ReadPage8Response = SimSequenceStep::NciDataRead(
     L"[Mifare] READ page 8 response",
     {
@@ -239,7 +239,7 @@ const SimSequenceStep TagSequences::Ntag216::ReadPage8Response = SimSequenceStep
     }
 );
 
-// NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14
+// NFC Controller Interface (NCI), Version 1.1, Section 8.2.1.2, Figure 14, Format for Frame RF Interface (NFC-A) for Reception
 const SimSequenceStep TagSequences::Ntag216::ReadErrorResponse = SimSequenceStep::NciDataRead(
     L"[Mifare] READ error response",
     {
@@ -322,19 +322,21 @@ const SimSequenceStep TagSequences::Ntag216::ReadSequence[18] =
     ReadPage8Response,
 };
 
-const SimSequenceStep TagSequences::Ntag216::PresenceCheckConnected[2] =
+const SimSequenceStep TagSequences::Ntag216::PresenceCheckConnectedSequence[3] =
 {
     // Driver checks if tag is still connected by issuing a read command.
     // Succeed to indicate that the tag is still present.
     ReadPage2Command,
+    Connection0CreditStep,
     ReadPage2Response,
 };
 
-const SimSequenceStep TagSequences::Ntag216::PresenceCheckDisconnected[2]
+const SimSequenceStep TagSequences::Ntag216::PresenceCheckDisconnectedSequence[3]
 {
     // Driver checks if tag is still connected by issuing a read command.
     // Return an error to indicate that the tag has disappeared.
     ReadPage2Command,
+    Connection0CreditStep,
     ReadErrorResponse,
 };
 

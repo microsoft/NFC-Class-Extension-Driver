@@ -79,7 +79,7 @@ SmartcardTagTests::ResetAndGetAtrTest(bool isNci2)
     VerifyArraysAreEqual(L"ATR", TagSequences::Ntag216::Atr, std::size(TagSequences::Ntag216::Atr), ioResetResult.Output.data(), ioResetResult.BytesTransferred);
 
     // Disconnect the tag.
-    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnected);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnectedSequence);
     AfterTagDisconnected(simConnector, isNci2, nfcScInterface.Get());
 
     // Stop the NFC controller.
@@ -193,7 +193,7 @@ SmartcardTagTests::PresentTag(NciSimConnector& simConnector, bool isNci2, HANDLE
     VERIFY_WIN32_SUCCEEDED(ioIsPresentResult.ErrorCode);
 
     // Respond to the tag presence check.
-    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckConnected);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckConnectedSequence);
 }
 
 void

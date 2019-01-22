@@ -7,17 +7,19 @@
 #include <phNciNfc_Common.h>
 
 #include <IOHelpers\DeviceQuery.h>
-#include <SimulationSequences\InitSequences.h>
-#include <IOHelpers\IoOperation.h>
-#include <Simulation\NciSimConnector.h>
 #include <IOHelpers\DriverHandleFactory.h>
-#include <SimulationSequences\RfDiscoverySequences.h>
+#include <IOHelpers\IoOperation.h>
+#include <IOHelpers\UniqueHandle.h>
+#include <Simulation\NciSimConnector.h>
 #include <Simulation\SimSequenceRunner.h>
 #include <Simulation\TagPayloads.h>
-#include <SimulationSequences\TagSequences.h>
-#include "TestLogging.h"
-#include <IOHelpers\UniqueHandle.h>
 #include <Simulation\VerifyHelpers.h>
+#include <SimulationSequences\InitSequences.h>
+#include <SimulationSequences\RfDiscoverySequences.h>
+#include <SimulationSequences\TagSequences.h>
+#include <SimulationSequences\Type5TagSequences.h>
+
+#include "TestLogging.h"
 
 class TagTests
 {
@@ -25,25 +27,32 @@ public:
     TEST_CLASS(TagTests);
 
     // Tests reading a NDEF NFC tag using a proximity subscription.
-    BEGIN_TEST_METHOD(SimpleNdefSubscriptionNci1Test)
+    BEGIN_TEST_METHOD(T2TNdefSubscriptionNci1Test)
         TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
     END_TEST_METHOD()
-    BEGIN_TEST_METHOD(SimpleNdefSubscriptionNci2Test)
+    BEGIN_TEST_METHOD(T2TNdefSubscriptionNci2Test)
+        TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
+    END_TEST_METHOD()
+    BEGIN_TEST_METHOD(T5TNdefSubscriptionNci1Test)
+        TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
+    END_TEST_METHOD()
+    BEGIN_TEST_METHOD(T5TNdefSubscriptionNci2Test)
         TEST_METHOD_PROPERTY(L"Category", L"GoldenPath")
     END_TEST_METHOD()
     // Ensures NfcCxRf/NfcCxState will properly defer processing the tag arrivial event while an existing operation
     // is running. Closely mirrors the SimpleNdefSubscriptionTest test.
-    BEGIN_TEST_METHOD(NdefSubscriptionWithEarlyTagArrivalTest)
+    BEGIN_TEST_METHOD(T2TNdefSubscriptionWithEarlyTagArrivalTest)
         TEST_METHOD_PROPERTY(L"Category", L"Reliability")
     END_TEST_METHOD()
     // Ensures driver can properly handle when the NCI write I/O request takes a long time to complete.
     // Closely mirrors the SimpleNdefSubscriptionTest test.
-    BEGIN_TEST_METHOD(SimpleNdefSubscriptionTestWithSlowIO)
+    BEGIN_TEST_METHOD(T2TNdefSubscriptionTestWithSlowIO)
         TEST_METHOD_PROPERTY(L"Category", L"Reliability")
     END_TEST_METHOD()
 
 private:
-    void SimpleNdefSubscriptionTest(bool isNci2);
+    void T2TNdefSubscriptionTest(bool isNci2);
+    void T5TNdefSubscriptionTest(bool isNci2);
 
     UniqueHandle OpenSubscription(NciSimConnector& simConnector, bool isNci2);
     void CloseSubscription(NciSimConnector& simConnector, bool isNci2, UniqueHandle&& nfpSubInterface);
@@ -52,7 +61,7 @@ private:
 };
 
 void
-TagTests::SimpleNdefSubscriptionTest(bool isNci2)
+TagTests::T2TNdefSubscriptionTest(bool isNci2)
 {
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
@@ -71,7 +80,7 @@ TagTests::SimpleNdefSubscriptionTest(bool isNci2)
     SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ActivatedSequence);
     SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ReadSequence);
 
-    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnected);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnectedSequence);
 
     // The driver has finished with the tag. So it will restart discovery to look for new tags.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
@@ -85,19 +94,65 @@ TagTests::SimpleNdefSubscriptionTest(bool isNci2)
 }
 
 void
-TagTests::SimpleNdefSubscriptionNci1Test()
+TagTests::T2TNdefSubscriptionNci1Test()
 {
-    SimpleNdefSubscriptionTest(false);
+    T2TNdefSubscriptionTest(false);
 }
 
 void
-TagTests::SimpleNdefSubscriptionNci2Test()
+TagTests::T2TNdefSubscriptionNci2Test()
 {
-    SimpleNdefSubscriptionTest(true);
+    T2TNdefSubscriptionTest(true);
 }
 
 void
-TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
+TagTests::T5TNdefSubscriptionTest(bool isNci2)
+{
+    LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
+    NciSimConnector simConnector;
+
+    // Startup.
+    UniqueHandle nfpSubInterface = OpenSubscription(simConnector, isNci2);
+
+    // Start get next message request.
+    std::shared_ptr<IoOperation> ioGetMessage = StartGetSubscriptionMessage(nfpSubInterface.Get());
+
+    // Verify discovery mode is started.
+    SimSequenceRunner::Run(simConnector, InitSequences::Power::D0Entry);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence(isNci2));
+
+    // Provide a tag for the subscription to read.
+    SimSequenceRunner::Run(simConnector, Type5TagSequences::LRI2K::ActivatedSequence);
+    SimSequenceRunner::Run(simConnector, Type5TagSequences::LRI2K::ReadSequence);
+
+    SimSequenceRunner::Run(simConnector, Type5TagSequences::LRI2K::PresenceCheckConnectedSequence);
+    SimSequenceRunner::Run(simConnector, Type5TagSequences::LRI2K::PresenceCheckDisconnectedSequence);
+
+    // The driver has finished with the tag. So it will restart discovery to look for new tags.
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
+    SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStart::Sequence(isNci2));
+
+    // Verify message.
+    VerifySubscriptionMessage(ioGetMessage);
+
+    // Shutdown.
+    CloseSubscription(simConnector, isNci2, std::move(nfpSubInterface));
+}
+
+void
+TagTests::T5TNdefSubscriptionNci1Test()
+{
+    T5TNdefSubscriptionTest(false);
+}
+
+void
+TagTests::T5TNdefSubscriptionNci2Test()
+{
+    T5TNdefSubscriptionTest(true);
+}
+
+void
+TagTests::T2TNdefSubscriptionWithEarlyTagArrivalTest()
 {
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
@@ -124,7 +179,7 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
 
     // Verify tag is read.
     SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ReadSequence);
-    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnected);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnectedSequence);
 
     // The driver has finished with the tag. So it will restart discovery to look for new tags.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);
@@ -138,7 +193,7 @@ TagTests::NdefSubscriptionWithEarlyTagArrivalTest()
 }
 
 void
-TagTests::SimpleNdefSubscriptionTestWithSlowIO()
+TagTests::T2TNdefSubscriptionTestWithSlowIO()
 {
     LOG_COMMENT(L"# Open connection to NCI Simulator Driver.");
     NciSimConnector simConnector;
@@ -168,7 +223,7 @@ TagTests::SimpleNdefSubscriptionTestWithSlowIO()
 
     // Process the remainder of the tag read sequence.
     SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::ReadSequence + 1, std::size(TagSequences::Ntag216::ReadSequence) - 1);
-    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnected);
+    SimSequenceRunner::Run(simConnector, TagSequences::Ntag216::PresenceCheckDisconnectedSequence);
 
     // The driver has finished with the tag. So it will restart discovery to look for new tags.
     SimSequenceRunner::Run(simConnector, RfDiscoverySequences::DiscoveryStop::Sequence);

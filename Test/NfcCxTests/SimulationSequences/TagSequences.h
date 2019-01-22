@@ -39,8 +39,8 @@ struct TagSequences
         static const SimSequenceStep ResetFailedSequence[6];
 
         static const SimSequenceStep ReadSequence[18];
-        static const SimSequenceStep PresenceCheckConnected[2];
-        static const SimSequenceStep PresenceCheckDisconnected[2];
+        static const SimSequenceStep PresenceCheckConnectedSequence[3];
+        static const SimSequenceStep PresenceCheckDisconnectedSequence[3];
 
         static const uint8_t Atr[20];
     };

@@ -92,6 +92,7 @@
     <ClInclude Include="SimulationSequences\RfDiscoverySequences.h" />
     <ClInclude Include="SimulationSequences\SEInitializationSequences.h" />
     <ClInclude Include="SimulationSequences\TagSequences.h" />
+    <ClInclude Include="SimulationSequences\Type5TagSequences.h" />
     <ClInclude Include="Simulation\ApduOverNciHciGenerator.h" />
     <ClInclude Include="Simulation\ApduSamples.h" />
     <ClInclude Include="Simulation\NciControlPacket.h" />
@@ -121,6 +122,7 @@
     <ClCompile Include="SimulationSequences\RfDiscoverySequences.cpp" />
     <ClCompile Include="SimulationSequences\SEInitializationSequences.cpp" />
     <ClCompile Include="SimulationSequences\TagSequences.cpp" />
+    <ClCompile Include="SimulationSequences\Type5TagSequences.cpp" />
     <ClCompile Include="Simulation\ApduOverNciHciGenerator.cpp" />
     <ClCompile Include="Simulation\ApduSamples.cpp" />
     <ClCompile Include="Simulation\NciControlPacket.cpp" />
