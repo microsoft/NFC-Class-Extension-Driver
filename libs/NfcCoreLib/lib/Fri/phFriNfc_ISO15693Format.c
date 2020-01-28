@@ -16,11 +16,16 @@
 
 typedef enum phFriNfc_ISO15693_Command
 {
-    // Standard command set
-    ISO15693_GET_SYSTEM_INFO_CMD = 0x2BU,
+    // Mandatory ISO15693 commands
+    ISO15693_INVENTORY_CMD = 0x01U,
+
+    // Optional ISO15693 commands
     ISO15693_RD_SINGLE_BLK_CMD = 0x20U,
     ISO15693_WR_SINGLE_BLK_CMD = 0x21U,
+    ISO15693_LOCK_SINGLE_BLK_CMD = 0x22U,
     ISO15693_RD_MULTIPLE_BLKS_CMD = 0x23U,
+    ISO15693_GET_SYSTEM_INFO_CMD = 0x2BU,
+
     // Extended command set
     ISO15693_EXT_GET_SYSTEM_INFO_CMD = 0x3BU
 } phFriNfc_ISO15693_Command_t;
@@ -178,6 +183,14 @@ phFriNfc_ISO15693_H_FmtReadWrite (
     {
         psNdefSmtCrdFmt->SendRecvBuf[send_index] |= ISO15693_FLAG_PROTOEXT;
     }
+
+    /* Tag-IT tags require Option flag to be set for Write and Lock commands */
+    if ((command == ISO15693_WR_SINGLE_BLK_CMD || command == ISO15693_LOCK_SINGLE_BLK_CMD)
+        && (ps_iso_15693_info->Uid[ISO15693_UID_BYTE_6] == ISO15693_MANUFACTURER_TI) )
+    {
+        psNdefSmtCrdFmt->SendRecvBuf[send_index] |= ISO15693_FLAG_OPTION;
+    }
+
     send_index += 1;
 
     /* Set command_code */

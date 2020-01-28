@@ -14,6 +14,7 @@
 /* Command identifiers */
 #define ISO15693_READ_COMMAND               0x20U
 #define ISO15693_WRITE_COMMAND              0x21U
+#define ISO15693_LOCK_COMMAND               0x22U
 #define ISO15693_READ_MULTIPLE_COMMAND      0x23U
 #define ISO15693_EXT_READ_COMMAND           0x30U
 #define ISO15693_EXT_WRITE_COMMAND          0x31U
@@ -26,6 +27,7 @@
 #define ISO15693_FLAG_IPR                   0x04U
 #define ISO15693_FLAG_PROTOEXT              0x08U
 #define ISO15693_FLAG_UID                   0x20U
+#define ISO15693_FLAG_OPTION                0x40U
 
 /* CC indicating tag is capable of multi-block read */
 #define ISO15693_CC_USE_MBR                 0x01U

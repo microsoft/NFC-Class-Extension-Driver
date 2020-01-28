@@ -9,4 +9,4 @@
 #include "phLibNfc_Sequence.h"
 
 extern
-phLibNfc_Sequence_t gphLibNfc_Iso15693GetSysInfoSeq[];
+phLibNfc_Sequence_t gphLibNfc_Iso15693GetTagInfoSeq[];

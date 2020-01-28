@@ -734,36 +734,44 @@ static NFCSTATUS phLibNfc_RequestMoreInfo(void* pContext,\
     NFCSTATUS wStatus = status;
     pphLibNfc_LibContext_t pLibContext = (pphLibNfc_LibContext_t)pContext;
     pphNciNfc_DeviceInfo_t pDeviceInfo = pLibContext->pInfo;
-    if( (NFCSTATUS_SINGLE_TAG_ACTIVATED == wStatus) ||\
-        (NFCSTATUS_MULTIPLE_TAGS == wStatus) )
+
+    if( NFCSTATUS_SINGLE_TAG_ACTIVATED != wStatus && NFCSTATUS_MULTIPLE_TAGS != wStatus )
     {
-        if((pDeviceInfo->dwNumberOfDevices == 1) && (NULL != pDeviceInfo->pRemDevList[bIndex]))
-        {
-            if((phNciNfc_e_RfProtocolsT1tProtocol == pDeviceInfo->pRemDevList[bIndex]->eRFProtocol)&&\
-               (0x00 == pDeviceInfo->pRemDevList[bIndex]->tRemoteDevInfo.Jewel_Info.UidLength) )
-            {
-                PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_T1tGetUidSequence);
-                pLibContext->DiscTagTrigEvent = TrigEvent;
-                /* Re-Using bLastCmdSent to store the index at which Jewel info is stored */
-                pLibContext->bLastCmdSent = bIndex;
-                wStatus = phLibNfc_SeqHandler(pContext,NFCSTATUS_SUCCESS,NULL);
-            }
-            else if ((phNciNfc_e_RfProtocolsT2tProtocol == pDeviceInfo->pRemDevList[bIndex]->eRFProtocol) && \
-                (PHLIBNFC_MIFAREUL_SAK == pDeviceInfo->pRemDevList[bIndex]->tRemoteDevInfo.Iso14443A_Info.Sak))
-            {
-                PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_DistinguishMifareUL);
-                pLibContext->DiscTagTrigEvent = TrigEvent;
-                wStatus = phLibNfc_SeqHandler(pContext, NFCSTATUS_SUCCESS, NULL);
-            }
-            else if((phNciNfc_NFCISO15693_Poll == pDeviceInfo->pRemDevList[bIndex]->eRFTechMode)&&\
-                   (0x00 == pDeviceInfo->pRemDevList[bIndex]->tRemoteDevInfo.Iso15693_Info.Afi))
-            {
-                PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_Iso15693GetSysInfoSeq);
-                pLibContext->DiscTagTrigEvent = TrigEvent;
-                wStatus = phLibNfc_SeqHandler(pContext,NFCSTATUS_SUCCESS,NULL);
-            }
-        }
+        PH_LOG_LIBNFC_WARN_STR("Unexpected status = %!NFCSTATUS!", status);
+        goto Done;
     }
+
+    if( pDeviceInfo->dwNumberOfDevices != 1 || NULL == pDeviceInfo->pRemDevList[bIndex] )
+    {
+        PH_LOG_LIBNFC_WARN_STR("Unexpected pDeviceInfo data");
+        goto Done;
+    }
+
+    if((phNciNfc_e_RfProtocolsT1tProtocol == pDeviceInfo->pRemDevList[bIndex]->eRFProtocol)&&\
+        (0x00 == pDeviceInfo->pRemDevList[bIndex]->tRemoteDevInfo.Jewel_Info.UidLength) )
+    {// T1T
+        PHLIBNFC_INIT_SEQUENCE(pLibContext,gphLibNfc_T1tGetUidSequence);
+        pLibContext->DiscTagTrigEvent = TrigEvent;
+        /* Re-Using bLastCmdSent to store the index at which Jewel info is stored */
+        pLibContext->bLastCmdSent = bIndex;
+        wStatus = phLibNfc_SeqHandler(pContext,NFCSTATUS_SUCCESS,NULL);
+    }
+    else if ((phNciNfc_e_RfProtocolsT2tProtocol == pDeviceInfo->pRemDevList[bIndex]->eRFProtocol) && \
+        (PHLIBNFC_MIFAREUL_SAK == pDeviceInfo->pRemDevList[bIndex]->tRemoteDevInfo.Iso14443A_Info.Sak))
+    {// MIFARE Ultralight
+        PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_DistinguishMifareUL);
+        pLibContext->DiscTagTrigEvent = TrigEvent;
+        wStatus = phLibNfc_SeqHandler(pContext, NFCSTATUS_SUCCESS, NULL);
+    }
+    else if((phNciNfc_NFCISO15693_Poll == pDeviceInfo->pRemDevList[bIndex]->eRFTechMode)&&\
+            (0x00 == pDeviceInfo->pRemDevList[bIndex]->tRemoteDevInfo.Iso15693_Info.Afi))
+    {// T5T
+        PHLIBNFC_INIT_SEQUENCE(pLibContext, gphLibNfc_Iso15693GetTagInfoSeq);
+        pLibContext->DiscTagTrigEvent = TrigEvent;
+        wStatus = phLibNfc_SeqHandler(pContext,NFCSTATUS_SUCCESS,NULL);
+    }
+
+Done:
     return wStatus;
 }
 
@@ -2590,20 +2598,12 @@ static NFCSTATUS phLibNfc_ParseDiscActivatedRemDevInfo(phLibNfc_sRemoteDevInform
             break;
             case phNciNfc_NFCISO15693_Poll:
             {
-                if(pNciDevInfo->eRFTechMode == phNciNfc_NFCISO15693_Poll)
-                {
-                    pLibNfcDeviceInfo->RemDevType = phNfc_eISO15693_PICC;
+                pLibNfcDeviceInfo->RemDevType = phNfc_eISO15693_PICC;
 
-                    wStatus=phLibNfc_MapRemoteDevIso15693(&pLibNfcDeviceInfo->RemoteDevInfo.Iso15693_Info,
-                                                          &pNciDevInfo->tRemoteDevInfo.Iso15693_Info);
+                wStatus=phLibNfc_MapRemoteDevIso15693(&pLibNfcDeviceInfo->RemoteDevInfo.Iso15693_Info,
+                                                        &pNciDevInfo->tRemoteDevInfo.Iso15693_Info);
 
-                    if(wStatus!=NFCSTATUS_SUCCESS)
-                    {
-                        pLibNfcDeviceInfo->RemDevType = phNfc_eInvalid_DevType;
-                        wStatus=NFCSTATUS_FAILED;
-                    }
-                }
-                else
+                if(wStatus!=NFCSTATUS_SUCCESS)
                 {
                     pLibNfcDeviceInfo->RemDevType = phNfc_eInvalid_DevType;
                     wStatus=NFCSTATUS_FAILED;
@@ -2925,8 +2925,11 @@ static NFCSTATUS phLibNfc_MapRemoteDevIso15693(phNfc_sIso15693Info_t   *pRemoteD
         {
             PH_LOG_LIBNFC_WARN_STR("Invalid ISO15693 UID length");
         }
-        phOsalNfc_MemCopy(pRemoteDevInfo->Uid,pNciRemoteDevInfo->Uid,
-                          pNciRemoteDevInfo->UidLength);
+        phOsalNfc_MemCopy(
+            pRemoteDevInfo->Uid,
+            pNciRemoteDevInfo->Uid,
+            pNciRemoteDevInfo->UidLength);
+
         pRemoteDevInfo->UidLength = pNciRemoteDevInfo->UidLength;
         pRemoteDevInfo->Afi = pNciRemoteDevInfo->Afi;
         pRemoteDevInfo->Dsfid = pNciRemoteDevInfo->Dsfid;
