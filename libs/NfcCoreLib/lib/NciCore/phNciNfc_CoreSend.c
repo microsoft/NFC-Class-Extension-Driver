@@ -593,16 +593,9 @@ static NFCSTATUS phNciNfc_CoreStartResponseTimer(pphNciNfc_CoreContext_t pCtx)
                                         pCtx->dwRspTimeOutMs,
                                         &phNciNfc_RspTimeOutCb,
                                         pCtx);
-        if (NFCSTATUS_SUCCESS == wStatus)
-        {
-            PH_LOG_NCI_INFO_STR("Response timer started.");
-            pCtx->TimerInfo.TimerStatus = phNciNfc_e_RspTimerRunning;
-        }
-        else
-        {
-            pCtx->TimerInfo.TimerStatus = phNciNfc_e_RspTimerIdle;
-            PH_LOG_NCI_INFO_STR("Response timer start failed.");
-        }
+
+        PH_LOG_NCI_INFO_STR("NCI response timer start status=%!NFCSTATUS!, timerId=%u", wStatus, pCtx->TimerInfo.dwRspTimerId);
+        pCtx->TimerInfo.TimerStatus = (NFCSTATUS_SUCCESS == wStatus) ? phNciNfc_e_RspTimerRunning : phNciNfc_e_RspTimerIdle;
     }
 
     PH_LOG_NCI_FUNC_EXIT();
@@ -730,9 +723,9 @@ static NFCSTATUS phNciNfc_StateWaitCredit2Send(void *pContext)
 {
     NFCSTATUS wStatus = NFCSTATUS_SUCCESS;
     PH_LOG_NCI_FUNC_ENTRY();
-    
+
     wStatus = phNciNfc_CoreRegisterForNotifications(pContext);
-    
+
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
 }

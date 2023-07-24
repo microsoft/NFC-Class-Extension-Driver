@@ -2004,6 +2004,14 @@ phNciNfc_Update15693SysInfo(void *pContext,\
                             pphNciNfc_RemoteDevInformation_t pRemDev,\
                             uint8_t *pBuff);
 
+
+extern NFCSTATUS
+phNciNfc_Update15693InventoryInfo(void *pContext,\
+                                  pphNciNfc_RemoteDevInformation_t pRemDev,\
+                                  uint8_t *pBuff);
+
+
+
 /**
  *  \ingroup grp_nci_nfc
  *

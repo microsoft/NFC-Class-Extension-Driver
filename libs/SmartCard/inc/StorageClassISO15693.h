@@ -77,6 +77,7 @@ Environment:
 #define ISO15693_UIDBYTE_5_STM_MASK         0xFC
 
 #define ISO15693_FLAG_PROTOEXT              0x08U
+#define ISO15693_FLAG_OPTION                0x40U
 
 class StorageClassISO15693 : public IStorageClass
 {
@@ -227,4 +228,5 @@ protected:
     BYTE                m_UidLength;
     BOOL                m_IsLesserLeLc;
     BOOL                m_IsProtocolExtensionFlagNeeded;
+    BOOL                m_IsOptionFlagForWriteLockNeeded;
 };

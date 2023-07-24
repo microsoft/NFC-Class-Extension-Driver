@@ -369,6 +369,13 @@ phFriNfc_ISO15693_H_ReadWrite (
         command |= ISO15693_EXTENDED_CMD_MASK;
     }
 
+    /* Tag-IT tags require Option flag to be set for Write and Lock commands */
+    if ((command == ISO15693_WRITE_COMMAND || command == ISO15693_LOCK_COMMAND)
+        && (ps_iso_15693_info->Uid[ISO15693_UID_BYTE_6] == ISO15693_MANUFACTURER_TI) )
+    {
+        request_flags |= ISO15693_FLAG_OPTION;
+    }
+
     psNdefMap->SendRecvBuf[send_index] = request_flags;
     send_index += 1;
 

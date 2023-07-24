@@ -1007,303 +1007,294 @@ void phNciNfc_PrintPacketDescription(
         return;
     }
 
-    PH_LOG_NCI_FUNC_ENTRY();
-
-    PH_LOG_NCI_INFO_STR("NCI Packet Details:");
-    PH_LOG_NCI_INFO_STR("====================================================");
+    PH_LOG_NCI_INFO_STR("================ NCI Packet Details ================");
 
     switch (pHeaderInfo->eMsgType)
     {
-        case phNciNfc_e_NciCoreMsgTypeData:
-        {
-            PH_LOG_NCI_INFO_STR("Message type: Data");
-            PH_LOG_NCI_INFO_X32MSG("Conn ID:", (uint32_t)pHeaderInfo->bConn_ID);
-        }
-        break;
-        case phNciNfc_e_NciCoreMsgTypeCntrlCmd:
-        {
-            PH_LOG_NCI_INFO_STR("Message type: Command");
-            PH_LOG_NCI_INFO_STR("GID: %!phNciNfc_CoreGid!", pHeaderInfo->Group_ID);
-
-            switch (pHeaderInfo->Group_ID)
-            {
-            case phNciNfc_e_CoreNciCoreGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNciCoreCmdOid_t!", pHeaderInfo->Opcode_ID.Val);
-
-                switch (pHeaderInfo->Opcode_ID.Val)
-                {
-                case phNciNfc_e_NciCoreResetCmdOid:
-                    phNciNfc_PrintCoreResetCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreInitCmdOid:
-                    phNciNfc_PrintCoreInitCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreSetConfigCmdOid:
-                    phNciNfc_PrintCoreSetConfigCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreGetConfigCmdOid:
-                    phNciNfc_PrintCoreGetConfigCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreConnCreateCmdOid:
-                    phNciNfc_PrintCoreConnCreateCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreConnCloseCmdOid:
-                    phNciNfc_PrintCoreConnCloseCmdDescription(pBuff, wLen);
-                    break;
-                }
-                break;
-            case phNciNfc_e_CoreRfMgtGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreRfMgtCmdOid_t!", pHeaderInfo->Opcode_ID.Val);
-                switch (pHeaderInfo->Opcode_ID.Val)
-                {
-                case phNciNfc_e_RfMgtRfDiscoverMapCmdOid:
-                    phNciNfc_PrintRfDiscoverMapCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfSetRoutingCmdOid:
-                    phNciNfc_PrintRfSetListenModeRoutingCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfGetRoutingCmdOid:
-                    phNciNfc_PrintRfGetListenModeRoutingCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfDiscoverCmdOid:
-                    phNciNfc_PrintRfDiscoverCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfDiscSelectCmdOid:
-                    phNciNfc_PrintRfDiscoverSelectCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfDeactivateCmdOid:
-                    phNciNfc_PrintRfDeactivateCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfT3tPollingCmdOid:
-                    phNciNfc_PrintRfT3tPollingCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfParamUpdateCmdOid:
-                    phNciNfc_PrintRfParamUpdateCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfIsoDepPresChkCmdOid:
-                    phNciNfc_PrintRfIsoDepPresChkCmdDescription(pBuff, wLen);
-                    break;
-                }
-                break;
-            case phNciNfc_e_CoreNfceeMgtGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNfceeMgtCmdOid_t!", pHeaderInfo->Opcode_ID.Val);
-                switch (pHeaderInfo->Opcode_ID.Val)
-                {
-                case phNciNfc_e_NfceeMgtNfceeDiscCmdOid:
-                    phNciNfc_PrintNfceeDiscoverCmdDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NfceeMgtModeSetCmdOid:
-                    phNciNfc_PrintNfceeModeSetCmdDescription(pBuff, wLen);
-                    break;
-                }
-                break;
-            case phNciNfc_e_CorePropGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CorePropCmdOid_t!", pHeaderInfo->Opcode_ID.Val);
-                break;
-            case phNciNfc_e_CoreInvalidGid:
-            default:
-                PH_LOG_NCI_INFO_X32MSG("OID:",(uint32_t)pHeaderInfo->Opcode_ID.Val);
-                break;
-            }
-        }
-        break;
-        case phNciNfc_e_NciCoreMsgTypeCntrlRsp:
-        {
-            PH_LOG_NCI_INFO_STR("Message type: Response");
-            PH_LOG_NCI_INFO_STR("GID: %!phNciNfc_CoreGid!", pHeaderInfo->Group_ID);
-
-            switch (pHeaderInfo->Group_ID)
-            {
-            case phNciNfc_e_CoreNciCoreGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNciCoreRspOid_t!", pHeaderInfo->Opcode_ID.Val);
-                switch (pHeaderInfo->Opcode_ID.Val)
-                {
-                case phNciNfc_e_NciCoreResetRspOid:
-                    phNciNfc_PrintCoreResetRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreInitRspOid:
-                    switch (NciVer & PH_NCINFC_VERSION_MAJOR_MASK)
-                    {
-                    case PH_NCINFC_VERSION_1x:
-                        phNciNfc_PrintCoreInitNci1xRspDescription(pBuff, wLen);
-                        break;
-                    case PH_NCINFC_VERSION_2x:
-                        phNciNfc_PrintCoreInitNci2xRspDescription(pBuff, wLen);
-                        break;
-                    }
-                    break;
-                case phNciNfc_e_NciCoreSetConfigRspOid:
-                    phNciNfc_PrintCoreSetConfigRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreGetConfigRspOid:
-                    phNciNfc_PrintCoreGetConfigRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreDhConnRspOid:
-                    phNciNfc_PrintCoreConnCreateRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreConnCloseRspOid:
-                    phNciNfc_PrintCoreConnCloseRspDescription(pBuff, wLen);
-                    break;
-                }
-                break;
-            case phNciNfc_e_CoreRfMgtGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreRfMgtRspOid_t!", pHeaderInfo->Opcode_ID.Val);
-                switch (pHeaderInfo->Opcode_ID.Val)
-                {
-                case phNciNfc_e_RfMgtRfDiscoverMapRspOid:
-                    phNciNfc_PrintRfDiscoverMapRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfSetRoutingRspOid:
-                    phNciNfc_PrintRfSetListenModeRoutingRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfGetRoutingRspOid:
-                    phNciNfc_PrintRfGetListenModeRoutingRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfDiscoverRspOid:
-                    phNciNfc_PrintRfDiscoverRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfDiscSelectRspOid:
-                    phNciNfc_PrintRfDiscoverSelectRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfDeactivateRspOid:
-                    phNciNfc_PrintRfDeactivateRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfT3tPollingRspOid:
-                    phNciNfc_PrintRfT3tPollingRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfParamUpdateRspOid:
-                    phNciNfc_PrintRfParamUpdateRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfIsoDepPresChkRspOid:
-                    phNciNfc_PrintRfIsoDepPresChkRspDescription(pBuff, wLen);
-                    break;
-                }
-                break;
-            case phNciNfc_e_CoreNfceeMgtGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNfceeMgtRspOid_t!", pHeaderInfo->Opcode_ID.Val);
-                switch (pHeaderInfo->Opcode_ID.Val)
-                {
-                case phNciNfc_e_NfceeMgtNfceeDiscRspOid:
-                    phNciNfc_PrintNfceeDiscoverRspDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NfceeMgtModeSetRspOid:
-                    phNciNfc_PrintNfceeModeSetRspDescription(pBuff, wLen);
-                    break;
-                }
-                break;
-            case phNciNfc_e_CorePropGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CorePropRspOid_t!", pHeaderInfo->Opcode_ID.Val);
-                break;
-            case phNciNfc_e_CoreInvalidGid:
-            default:
-                PH_LOG_NCI_INFO_X32MSG("OID:",(uint32_t)pHeaderInfo->Opcode_ID.Val);
-                break;
-            }
-        }
-        break;
-        case phNciNfc_e_NciCoreMsgTypeCntrlNtf:
-        {
-            PH_LOG_NCI_INFO_STR("Message type: Notification Message");
-            PH_LOG_NCI_INFO_STR("GID: %!phNciNfc_CoreGid!", pHeaderInfo->Group_ID);
-
-            switch (pHeaderInfo->Group_ID)
-            {
-            case phNciNfc_e_CoreNciCoreGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNciCoreNtfOid_t!", pHeaderInfo->Opcode_ID.Val);
-                switch (pHeaderInfo->Opcode_ID.Val)
-                {
-                case phNciNfc_e_NciCoreResetNtfOid:
-                    phNciNfc_PrintCoreResetNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreConnCreditNtfOid:
-                    phNciNfc_PrintCoreConnCreditsNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreGenericErrNtfOid:
-                    phNciNfc_PrintCoreGenericErrorNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NciCoreInterfaceErrNtfOid:
-                    phNciNfc_PrintCoreInterfaceErrorNtfDescription(pBuff, wLen);
-                    break;
-                }
-                break;
-            case phNciNfc_e_CoreRfMgtGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreRfMgtNtfOid_t!", pHeaderInfo->Opcode_ID.Val);
-                switch (pHeaderInfo->Opcode_ID.Val)
-                {
-                case phNciNfc_e_RfMgtRfGetListenModeRoutingNtfOid:
-                    phNciNfc_PrintRfGetListenModeRoutingNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfDiscoverNtfOid:
-                    phNciNfc_PrintRfDiscoverNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfIntfActivatedNtfOid:
-                    phNciNfc_PrintRfIntfActivatedNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfDeactivateNtfOid:
-                    phNciNfc_PrintRfDeactivateNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfFieldInfoNtfOid:
-                    phNciNfc_PrintRfFieldInfoNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfT3tPollingNtfOid:
-                    phNciNfc_PrintRfT3tPollingNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfNfceeActionNtfOid:
-                    phNciNfc_PrintRfNfceeActionNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfNfceeDiscoveryReqNtfOid:
-                    phNciNfc_PrintRfNfceeDiscoveryReqNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_RfMgtRfIsoDepPresChkNtfOid:
-                    phNciNfc_PrintRfIsoDepPresChkNtfDescription(pBuff, wLen);
-                    break;
-                }
-                break;
-            case phNciNfc_e_CoreNfceeMgtGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNfceeMgtNtfOid_t!", pHeaderInfo->Opcode_ID.Val);
-                switch (pHeaderInfo->Opcode_ID.Val)
-                {
-                case phNciNfc_e_NfceeMgtNfceeDiscNtfOid:
-                    phNciNfc_PrintNfceeDiscoverNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NfceeMgtModeSetNtfOid:
-                    phNciNfc_PrintNfceeModeSetNtfDescription(pBuff, wLen);
-                    break;
-                case phNciNfc_e_NfceeMgtStatusNtfOid:
-                    phNciNfc_PrintNfceeStatusNtfDescription(pBuff, wLen);
-                    break;
-                }
-                break;
-            case phNciNfc_e_CorePropGid:
-                PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CorePropNtfOid_t!", pHeaderInfo->Opcode_ID.Val);
-                break;
-            case phNciNfc_e_CoreInvalidGid:
-            default:
-                PH_LOG_NCI_INFO_X32MSG("OID:",(uint32_t)pHeaderInfo->Opcode_ID.Val);
-                break;
-            }
-        }
-        break;
-        default:
-        {
-            PH_LOG_NCI_INFO_STR("Message type: Invalid Message");
-        }
-        break;
-    }
-
-    PH_LOG_NCI_INFO_U32MSG("Payload Length:", (uint32_t)wLen);
-    if (pHeaderInfo->eMsgType == phNciNfc_e_NciCoreMsgTypeData)
+    case phNciNfc_e_NciCoreMsgTypeData:
     {
-        if (bLogDataMessages)
+        PH_LOG_NCI_INFO_STR("Message type: Data");
+        PH_LOG_NCI_INFO_X32MSG("Conn ID:", (uint32_t)pHeaderInfo->bConn_ID);
+        break;
+    }
+    case phNciNfc_e_NciCoreMsgTypeCntrlCmd:
+    {
+        PH_LOG_NCI_INFO_STR("Message type: Command");
+        PH_LOG_NCI_INFO_STR("GID: %!phNciNfc_CoreGid!", pHeaderInfo->Group_ID);
+
+        switch (pHeaderInfo->Group_ID)
         {
-            PH_LOG_NCI_INFO_HEXDUMP("Payload: %!HEXDUMP!", WppLogHex(pBuff, wLen));
+        case phNciNfc_e_CoreNciCoreGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNciCoreCmdOid_t!", pHeaderInfo->Opcode_ID.Val);
+
+            switch (pHeaderInfo->Opcode_ID.Val)
+            {
+            case phNciNfc_e_NciCoreResetCmdOid:
+                phNciNfc_PrintCoreResetCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreInitCmdOid:
+                phNciNfc_PrintCoreInitCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreSetConfigCmdOid:
+                phNciNfc_PrintCoreSetConfigCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreGetConfigCmdOid:
+                phNciNfc_PrintCoreGetConfigCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreConnCreateCmdOid:
+                phNciNfc_PrintCoreConnCreateCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreConnCloseCmdOid:
+                phNciNfc_PrintCoreConnCloseCmdDescription(pBuff, wLen);
+                break;
+            }
+            break;
+        case phNciNfc_e_CoreRfMgtGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreRfMgtCmdOid_t!", pHeaderInfo->Opcode_ID.Val);
+            switch (pHeaderInfo->Opcode_ID.Val)
+            {
+            case phNciNfc_e_RfMgtRfDiscoverMapCmdOid:
+                phNciNfc_PrintRfDiscoverMapCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfSetRoutingCmdOid:
+                phNciNfc_PrintRfSetListenModeRoutingCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfGetRoutingCmdOid:
+                phNciNfc_PrintRfGetListenModeRoutingCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfDiscoverCmdOid:
+                phNciNfc_PrintRfDiscoverCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfDiscSelectCmdOid:
+                phNciNfc_PrintRfDiscoverSelectCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfDeactivateCmdOid:
+                phNciNfc_PrintRfDeactivateCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfT3tPollingCmdOid:
+                phNciNfc_PrintRfT3tPollingCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfParamUpdateCmdOid:
+                phNciNfc_PrintRfParamUpdateCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfIsoDepPresChkCmdOid:
+                phNciNfc_PrintRfIsoDepPresChkCmdDescription(pBuff, wLen);
+                break;
+            }
+            break;
+        case phNciNfc_e_CoreNfceeMgtGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNfceeMgtCmdOid_t!", pHeaderInfo->Opcode_ID.Val);
+            switch (pHeaderInfo->Opcode_ID.Val)
+            {
+            case phNciNfc_e_NfceeMgtNfceeDiscCmdOid:
+                phNciNfc_PrintNfceeDiscoverCmdDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NfceeMgtModeSetCmdOid:
+                phNciNfc_PrintNfceeModeSetCmdDescription(pBuff, wLen);
+                break;
+            }
+            break;
+        case phNciNfc_e_CorePropGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CorePropCmdOid_t!", pHeaderInfo->Opcode_ID.Val);
+            break;
+        case phNciNfc_e_CoreInvalidGid:
+        default:
+            PH_LOG_NCI_INFO_X32MSG("OID:",(uint32_t)pHeaderInfo->Opcode_ID.Val);
+            break;
         }
     }
-    else
+    break;
+    case phNciNfc_e_NciCoreMsgTypeCntrlRsp:
+    {
+        PH_LOG_NCI_INFO_STR("Message type: Response");
+        PH_LOG_NCI_INFO_STR("GID: %!phNciNfc_CoreGid!", pHeaderInfo->Group_ID);
+
+        switch (pHeaderInfo->Group_ID)
+        {
+        case phNciNfc_e_CoreNciCoreGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNciCoreRspOid_t!", pHeaderInfo->Opcode_ID.Val);
+            switch (pHeaderInfo->Opcode_ID.Val)
+            {
+            case phNciNfc_e_NciCoreResetRspOid:
+                phNciNfc_PrintCoreResetRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreInitRspOid:
+                switch (NciVer & PH_NCINFC_VERSION_MAJOR_MASK)
+                {
+                case PH_NCINFC_VERSION_1x:
+                    phNciNfc_PrintCoreInitNci1xRspDescription(pBuff, wLen);
+                    break;
+                case PH_NCINFC_VERSION_2x:
+                    phNciNfc_PrintCoreInitNci2xRspDescription(pBuff, wLen);
+                    break;
+                }
+                break;
+            case phNciNfc_e_NciCoreSetConfigRspOid:
+                phNciNfc_PrintCoreSetConfigRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreGetConfigRspOid:
+                phNciNfc_PrintCoreGetConfigRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreDhConnRspOid:
+                phNciNfc_PrintCoreConnCreateRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreConnCloseRspOid:
+                phNciNfc_PrintCoreConnCloseRspDescription(pBuff, wLen);
+                break;
+            }
+            break;
+        case phNciNfc_e_CoreRfMgtGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreRfMgtRspOid_t!", pHeaderInfo->Opcode_ID.Val);
+            switch (pHeaderInfo->Opcode_ID.Val)
+            {
+            case phNciNfc_e_RfMgtRfDiscoverMapRspOid:
+                phNciNfc_PrintRfDiscoverMapRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfSetRoutingRspOid:
+                phNciNfc_PrintRfSetListenModeRoutingRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfGetRoutingRspOid:
+                phNciNfc_PrintRfGetListenModeRoutingRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfDiscoverRspOid:
+                phNciNfc_PrintRfDiscoverRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfDiscSelectRspOid:
+                phNciNfc_PrintRfDiscoverSelectRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfDeactivateRspOid:
+                phNciNfc_PrintRfDeactivateRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfT3tPollingRspOid:
+                phNciNfc_PrintRfT3tPollingRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfParamUpdateRspOid:
+                phNciNfc_PrintRfParamUpdateRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfIsoDepPresChkRspOid:
+                phNciNfc_PrintRfIsoDepPresChkRspDescription(pBuff, wLen);
+                break;
+            }
+            break;
+        case phNciNfc_e_CoreNfceeMgtGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNfceeMgtRspOid_t!", pHeaderInfo->Opcode_ID.Val);
+            switch (pHeaderInfo->Opcode_ID.Val)
+            {
+            case phNciNfc_e_NfceeMgtNfceeDiscRspOid:
+                phNciNfc_PrintNfceeDiscoverRspDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NfceeMgtModeSetRspOid:
+                phNciNfc_PrintNfceeModeSetRspDescription(pBuff, wLen);
+                break;
+            }
+            break;
+        case phNciNfc_e_CorePropGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CorePropRspOid_t!", pHeaderInfo->Opcode_ID.Val);
+            break;
+        case phNciNfc_e_CoreInvalidGid:
+        default:
+            PH_LOG_NCI_INFO_X32MSG("OID:",(uint32_t)pHeaderInfo->Opcode_ID.Val);
+            break;
+        }
+    }
+    break;
+    case phNciNfc_e_NciCoreMsgTypeCntrlNtf:
+    {
+        PH_LOG_NCI_INFO_STR("Message type: Notification Message");
+        PH_LOG_NCI_INFO_STR("GID: %!phNciNfc_CoreGid!", pHeaderInfo->Group_ID);
+
+        switch (pHeaderInfo->Group_ID)
+        {
+        case phNciNfc_e_CoreNciCoreGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNciCoreNtfOid_t!", pHeaderInfo->Opcode_ID.Val);
+            switch (pHeaderInfo->Opcode_ID.Val)
+            {
+            case phNciNfc_e_NciCoreResetNtfOid:
+                phNciNfc_PrintCoreResetNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreConnCreditNtfOid:
+                phNciNfc_PrintCoreConnCreditsNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreGenericErrNtfOid:
+                phNciNfc_PrintCoreGenericErrorNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NciCoreInterfaceErrNtfOid:
+                phNciNfc_PrintCoreInterfaceErrorNtfDescription(pBuff, wLen);
+                break;
+            }
+            break;
+        case phNciNfc_e_CoreRfMgtGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreRfMgtNtfOid_t!", pHeaderInfo->Opcode_ID.Val);
+            switch (pHeaderInfo->Opcode_ID.Val)
+            {
+            case phNciNfc_e_RfMgtRfGetListenModeRoutingNtfOid:
+                phNciNfc_PrintRfGetListenModeRoutingNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfDiscoverNtfOid:
+                phNciNfc_PrintRfDiscoverNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfIntfActivatedNtfOid:
+                phNciNfc_PrintRfIntfActivatedNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfDeactivateNtfOid:
+                phNciNfc_PrintRfDeactivateNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfFieldInfoNtfOid:
+                phNciNfc_PrintRfFieldInfoNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfT3tPollingNtfOid:
+                phNciNfc_PrintRfT3tPollingNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfNfceeActionNtfOid:
+                phNciNfc_PrintRfNfceeActionNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfNfceeDiscoveryReqNtfOid:
+                phNciNfc_PrintRfNfceeDiscoveryReqNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_RfMgtRfIsoDepPresChkNtfOid:
+                phNciNfc_PrintRfIsoDepPresChkNtfDescription(pBuff, wLen);
+                break;
+            }
+            break;
+        case phNciNfc_e_CoreNfceeMgtGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CoreNfceeMgtNtfOid_t!", pHeaderInfo->Opcode_ID.Val);
+            switch (pHeaderInfo->Opcode_ID.Val)
+            {
+            case phNciNfc_e_NfceeMgtNfceeDiscNtfOid:
+                phNciNfc_PrintNfceeDiscoverNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NfceeMgtModeSetNtfOid:
+                phNciNfc_PrintNfceeModeSetNtfDescription(pBuff, wLen);
+                break;
+            case phNciNfc_e_NfceeMgtStatusNtfOid:
+                phNciNfc_PrintNfceeStatusNtfDescription(pBuff, wLen);
+                break;
+            }
+            break;
+        case phNciNfc_e_CorePropGid:
+            PH_LOG_NCI_INFO_STR("OID: %!phNciNfc_CorePropNtfOid_t!", pHeaderInfo->Opcode_ID.Val);
+            break;
+        case phNciNfc_e_CoreInvalidGid:
+        default:
+            PH_LOG_NCI_INFO_X32MSG("OID:",(uint32_t)pHeaderInfo->Opcode_ID.Val);
+            break;
+        }
+    }
+    break;
+    default:
+    {
+        PH_LOG_NCI_INFO_STR("Message type: Invalid Message");
+    }
+    break;
+    }
+
+    // print payload
+    PH_LOG_NCI_INFO_STR("Payload[%d]", wLen);
+    if (pHeaderInfo->eMsgType != phNciNfc_e_NciCoreMsgTypeData || bLogDataMessages)
     {
         PH_LOG_NCI_INFO_HEXDUMP("Payload: %!HEXDUMP!", WppLogHex(pBuff, wLen));
     }
 
     PH_LOG_NCI_INFO_STR("====================================================");
-    PH_LOG_NCI_FUNC_EXIT();
 }
+

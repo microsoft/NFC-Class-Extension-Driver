@@ -325,6 +325,7 @@ phNciNfc_UpdateRemDevInfo(pphNciNfc_RemoteDevInformation_t pRemDevInf,
             pRemDevInf->bInitialCredit = pBuff[5];
             /* Obtain the len of RF tech specific parameters from Resp buff */
             RfTechSpecParamsLen = pBuff[6];
+            // TODO: fill tech specific params
             pRemDevInf->bTechSpecificParamLen = RfTechSpecParamsLen;
             pRfNtfBuff = &(pBuff[7+RfTechSpecParamsLen]);
 

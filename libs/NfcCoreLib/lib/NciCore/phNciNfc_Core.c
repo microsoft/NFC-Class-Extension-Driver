@@ -312,6 +312,7 @@ static void phNciNfc_CoreRecvCb(void *pContext, phTmlNfc_TransactInfo_t *pInfo)
         }else
         {
             PH_LOG_NCI_INFO_X32MSG("Received packet with length : ", pInfo->wLength);
+            PH_LOG_NCI_INFO_STR("Error: NciCoreContext mismatch");
 
             wStatus = NFCSTATUS_INVALID_PARAMETER;
             UNREFERENCED_PARAMETER(wStatus);

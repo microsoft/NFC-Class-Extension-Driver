@@ -262,3 +262,31 @@ NFCSTATUS phNciNfc_Update15693SysInfo(void *pContext,\
     PH_LOG_NCI_FUNC_EXIT();
     return wStatus;
 }
+
+NFCSTATUS phNciNfc_Update15693InventoryInfo(void *pContext,\
+                                            pphNciNfc_RemoteDevInformation_t pRemDev,\
+                                            uint8_t *pBuff)
+{
+    NFCSTATUS wStatus;
+    phNciNfc_Context_t *pNciContext = (phNciNfc_Context_t *)pContext;
+    uint8_t bOffset = 1;
+    PH_LOG_NCI_FUNC_ENTRY();
+    if((NULL != pNciContext) && (NULL != pBuff))
+    {
+        pRemDev->tRemoteDevInfo.Iso15693_Info.Dsfid = pBuff[bOffset++];
+
+        pRemDev->tRemoteDevInfo.Iso15693_Info.UidLength = PH_NCINFCTYPES_15693_UID_LENGTH;
+        phOsalNfc_MemCopy(&pRemDev->tRemoteDevInfo.Iso15693_Info.Uid,
+                          &pBuff[bOffset],PH_NCINFCTYPES_15693_UID_LENGTH);
+
+        bOffset += PH_NCINFCTYPES_15693_UID_LENGTH;
+
+        wStatus = NFCSTATUS_SUCCESS;
+    }
+    else
+    {
+        wStatus = NFCSTATUS_FAILED;
+    }
+    PH_LOG_NCI_FUNC_EXIT();
+    return wStatus;
+}

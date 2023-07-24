@@ -52,9 +52,14 @@ StorageClassISO15693::UpdateUniqueID(
                                            maskedUidByte5 == ISO15693_UIDBYTE_5_STM_M24LR64ER ||
                                            maskedUidByte5 == ISO15693_UIDBYTE_5_STM_M24LR16ER);
     }
+    else if (ISO15693_MANUFACTURER_TI == m_Uid[ISO15693_UID_BYTE_6])
+    {
+        m_IsOptionFlagForWriteLockNeeded = TRUE;
+    }
     else
     {
         m_IsProtocolExtensionFlagNeeded = FALSE;
+        m_IsOptionFlagForWriteLockNeeded = FALSE;
     }
 
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
@@ -67,24 +72,24 @@ StorageClassISO15693::GetUniqueID(
                                )
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     *uidLength = m_UidLength;
     *uid = m_Uid;
-    
+
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
-void 
+void
 StorageClassISO15693::UpdateHistoricalBytes(
                                             _In_reads_bytes_(HistoBytesLength) BYTE *HistoBytes,
                                             _In_ DWORD HistoBytesLength
                                             )
 {
     TRACE_FUNCTION_ENTRY(LEVEL_VERBOSE);
-    
+
     m_HistoricalByteLength = HistoBytesLength;
     RtlCopyMemory(m_HistoricalBytes, HistoBytes, m_HistoricalByteLength);
-    
+
     TRACE_FUNCTION_EXIT(LEVEL_VERBOSE);
 }
 
@@ -157,17 +162,17 @@ Done:
     return retValue;
 }
 
-ApduResult 
+ApduResult
 StorageClassISO15693::HandleIncDecCommand(
                             _In_reads_bytes_(size) const BYTE *pbDataBuffer,
                             _In_ DWORD size,
                             _Out_writes_bytes_to_(cbOutBufferSize, *pcbReturnBufferSize) BYTE *pbOutBuffer,
                             _In_ DWORD cbOutBufferSize,
-                            _Out_ DWORD *pcbReturnBufferSize  
+                            _Out_ DWORD *pcbReturnBufferSize
                             )
 {
     ApduResult retResult = RESULT_NOT_SUPPORTED;
-    
+
     UNREFERENCED_PARAMETER(pbDataBuffer);
     UNREFERENCED_PARAMETER(size);
     UNREFERENCED_PARAMETER(pbOutBuffer);
@@ -260,26 +265,30 @@ StorageClassISO15693::PrepareTransceiveForUpdate(
 
     ApduResult retResult = RESULT_SUCCESS;
     BYTE size = 0;
+    BYTE requestFlags = 0;
 
     if (pPcscCmdApdu->Lc != ISO15693_BYTES_PER_BLOCK) {
         retResult = RESULT_WRONG_LENGTH;
         goto Done;
     }
 
+    requestFlags |= (m_IsProtocolExtensionFlagNeeded ? ISO15693_FLAG_PROTOEXT : 0);
+    requestFlags |= (m_IsOptionFlagForWriteLockNeeded ? ISO15693_FLAG_OPTION : 0);
+
     if (m_IsProtocolExtensionFlagNeeded) {
-        m_CommandBuffer[size++] = ISO15693_FLAG_PROTOEXT; // Request Flags
+        m_CommandBuffer[size++] = requestFlags;
         m_CommandBuffer[size++] = ISO15693_WRITE_COMMAND;
         m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
         m_CommandBuffer[size++] = pPcscCmdApdu->P2;
     }
     else if (pPcscCmdApdu->P2 != 0) {
-        m_CommandBuffer[size++] = 0; // Request Flags
+        m_CommandBuffer[size++] = requestFlags;
         m_CommandBuffer[size++] = ISO15693_EXT_WRITE_COMMAND;
         m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
         m_CommandBuffer[size++] = pPcscCmdApdu->P2;
     }
     else {
-        m_CommandBuffer[size++] = 0; // Request Flags
+        m_CommandBuffer[size++] = requestFlags;
         m_CommandBuffer[size++] = ISO15693_WRITE_COMMAND;
         m_CommandBuffer[size++] = pPcscCmdApdu->P1; // Block Number
     }
